@@ -1,0 +1,18 @@
+# Smoke test: app launches and the welcome screen renders.
+#
+# Maestro auto-derives the appId from the build's bundle id, so the same
+# flow runs against the dev simulator binary (`com.example.<pkg>` fallback
+# in app.config.ts) and the production binary (`com.<your-team>.<app>`)
+# without edits.
+#
+# Run locally: `maestro test .maestro/launch.yaml`
+# Run on EAS:  triggered by `.eas/workflows/e2e-tests.yml` on every PR.
+appId: ${MAESTRO_APP_ID}
+---
+- launchApp:
+    clearState: true
+- assertVisible:
+    text: "Welcome"
+    timeout: 30000
+- assertVisible: "Your new app starts here."
+- takeScreenshot: welcome

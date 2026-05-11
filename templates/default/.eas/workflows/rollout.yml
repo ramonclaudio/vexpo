@@ -1,0 +1,84 @@
+name: Rollout
+
+# Manually run a gradual rollout: publish a fresh OTA at a non-100%
+# percentage, or bump/lower the % of the most recent rollout group on a
+# branch. Mirrors the canonical EAS Update rollout flow:
+#   https://docs.expo.dev/eas-update/rollouts/
+#
+# Two paths, controlled by `action`:
+#
+#   "publish"  → `eas update --branch <b> --rollout-percentage <%>`
+#                Publishes a fresh OTA from the current HEAD at the given %.
+#                Use to start a new rollout (e.g. 5% → 25% → 100%).
+#
+#   "edit"     → `eas update:edit --branch <b> --rollout-percentage <%>`
+#                Bumps the percentage of the currently-active rollout group
+#                on the branch. Use to ramp an existing rollout.
+#
+# After confirming adoption looks healthy on the Insights dashboard, set
+# the rollout to 100. To kill a bad rollout, use the `rollback` workflow.
+
+on:
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: Branch (production | pr-<n>)
+        type: string
+        required: true
+        default: production
+      action:
+        description: Publish a new rollout, or edit the % of the existing one
+        type: select
+        required: true
+        default: edit
+        options:
+          - edit
+          - publish
+      percentage:
+        description: Rollout percentage (1-100)
+        type: number
+        required: true
+        default: 25
+
+concurrency:
+  cancel_in_progress: false
+  group: ${{ workflow.filename }}-${{ inputs.branch }}
+
+defaults:
+  tools:
+    bun: latest
+
+jobs:
+  rollout:
+    name: ${{ inputs.action }} → ${{ inputs.percentage }}% on ${{ inputs.branch }}
+    environment: ${{ inputs.branch == 'production' && 'production' || 'development' }}
+    runs_on: linux-medium
+    steps:
+      - uses: eas/checkout
+      - uses: eas/install_node_modules
+      - name: Roll out
+        run: |
+          if [ "${{ inputs.action }}" = "publish" ]; then
+            bunx eas-cli update \
+              --branch "${{ inputs.branch }}" \
+              --platform ios \
+              --rollout-percentage "${{ inputs.percentage }}" \
+              --non-interactive \
+              --message "Rollout publish @ ${{ inputs.percentage }}%"
+          else
+            bunx eas-cli update:edit \
+              --branch "${{ inputs.branch }}" \
+              --rollout-percentage "${{ inputs.percentage }}" \
+              --non-interactive
+          fi
+
+  notify:
+    name: Notify Slack
+    needs: [rollout]
+    type: slack
+    params:
+      webhook_url: https://hooks.slack.com/services/REPLACE/ME/HERE
+      message: |
+        :chart_with_upwards_trend: Rollout ${{ inputs.action }} on `${{ inputs.branch }}` → ${{ inputs.percentage }}%
+        Triggered by: ${{ github.triggering_actor }}
+        Workflow: ${{ workflow.url }}

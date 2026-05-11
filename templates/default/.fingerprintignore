@@ -1,0 +1,24 @@
+# Environment files (no native impact)
+.env*
+
+# EAS workflows (CI config, not native code)
+.eas/**/*
+
+# Convex backend (server-side only)
+convex/**/*
+
+# Static assets (handled by expo-asset plugin separately)
+assets/**/*
+
+# Documentation
+*.md
+
+# Meta / ignored by native
+plans/
+docs/
+.agents/
+.claude/
+.github/
+app-store/
+store.config.json
+eas.json

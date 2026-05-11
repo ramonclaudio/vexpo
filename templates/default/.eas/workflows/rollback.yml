@@ -1,0 +1,86 @@
+name: Rollback
+
+# Manually trigger a rollback on any branch. Two flavors, matching the
+# canonical eas-cli surface:
+#
+#   "previous"  → republish an earlier update group on the same branch.
+#                 Picks the most recent successful update before the
+#                 currently-active one. Use this when a recent OTA broke
+#                 something users on previous builds didn't see.
+#                 Maps to `eas update:republish`.
+#                 https://docs.expo.dev/eas-update/rollbacks/
+#
+#   "embedded"  → roll back to the build's embedded bundle (the JS that
+#                 shipped with the .ipa). Effectively makes the next-OTA-check
+#                 ignore the current rollout and serve the binary as-is.
+#                 Use this when a broken OTA shouldn't ship to ANYONE on
+#                 that build. Maps to `eas update:roll-back-to-embedded`.
+#                 https://docs.expo.dev/eas-update/rollbacks/
+#
+# Pair with the asc-events workflow's Slack notify so the team knows.
+
+on:
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: Branch to roll back (production | pr-<n>)
+        type: string
+        required: true
+      type:
+        description: Rollback flavor
+        type: select
+        required: true
+        default: previous
+        options:
+          - previous
+          - embedded
+      message:
+        description: Optional message stored on the update group
+        type: string
+        required: false
+
+concurrency:
+  cancel_in_progress: false
+  group: ${{ workflow.filename }}-${{ inputs.branch }}
+
+defaults:
+  tools:
+    bun: latest
+
+jobs:
+  rollback:
+    name: Roll back ${{ inputs.branch }} (${{ inputs.type }})
+    environment: ${{ inputs.branch == 'production' && 'production' || 'development' }}
+    runs_on: linux-medium
+    steps:
+      - uses: eas/checkout
+      - uses: eas/install_node_modules
+      - name: Roll back
+        run: |
+          MSG="${{ inputs.message }}"
+          MSG_ARG=""
+          if [ -n "$MSG" ]; then MSG_ARG="--message \"$MSG\""; fi
+          if [ "${{ inputs.type }}" = "embedded" ]; then
+            eval bunx eas-cli update:roll-back-to-embedded \
+              --branch "${{ inputs.branch }}" \
+              --platform ios \
+              --non-interactive \
+              $MSG_ARG
+          else
+            eval bunx eas-cli update:republish \
+              --branch "${{ inputs.branch }}" \
+              --platform ios \
+              --non-interactive \
+              $MSG_ARG
+          fi
+
+  notify:
+    name: Notify Slack
+    needs: [rollback]
+    type: slack
+    params:
+      webhook_url: https://hooks.slack.com/services/REPLACE/ME/HERE
+      message: |
+        :rewind: Rolled back `${{ inputs.branch }}` to ${{ inputs.type }}.
+        Triggered by: ${{ github.triggering_actor }}
+        Workflow: ${{ workflow.url }}

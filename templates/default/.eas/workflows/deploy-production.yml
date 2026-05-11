@@ -1,0 +1,129 @@
+name: Deploy to production
+
+on:
+  push:
+    branches: ["main"]
+  workflow_dispatch: {}
+
+concurrency:
+  cancel_in_progress: true
+  group: ${{ workflow.filename }}-${{ github.ref }}
+
+defaults:
+  tools:
+    bun: latest
+
+jobs:
+  precheck:
+    name: Precheck
+    type: custom
+    runs_on: linux-medium
+    steps:
+      - uses: eas/checkout
+      - uses: eas/install_node_modules
+      - name: Typecheck
+        run: bun run typecheck
+      - name: Lint
+        run: bun run lint
+      - name: Test
+        run: bun run test
+
+  deploy_convex:
+    name: Deploy Convex
+    needs: [precheck]
+    type: custom
+    runs_on: linux-medium
+    # `production` env pulls CONVEX_DEPLOY_KEY (a production deploy key, set
+    # at secret visibility) into the job. `convex deploy` is non-interactive
+    # whenever CONVEX_DEPLOY_KEY is present. no --yes / --auto-accept flag.
+    # https://docs.convex.dev/cli#deploy-convex-functions-to-production
+    # https://docs.convex.dev/cli/deploy-key-types
+    environment: production
+    steps:
+      - uses: eas/checkout
+      - uses: eas/install_node_modules
+      - name: Deploy Convex backend
+        run: bunx convex deploy
+
+  fingerprint:
+    name: Fingerprint
+    needs: [precheck]
+    type: fingerprint
+    environment: production
+
+  get_ios_build:
+    name: Check existing iOS build
+    needs: [fingerprint]
+    type: get-build
+    params:
+      platform: ios
+      fingerprint_hash: ${{ needs.fingerprint.outputs.ios_fingerprint_hash }}
+      profile: production
+
+  build_ios:
+    name: Build iOS
+    needs: [get_ios_build, deploy_convex]
+    if: ${{ !needs.get_ios_build.outputs.build_id }}
+    type: build
+    params:
+      platform: ios
+      profile: production
+
+  submit_ios:
+    name: Submit to App Store
+    needs: [build_ios]
+    type: submit
+    params:
+      build_id: ${{ needs.build_ios.outputs.build_id }}
+
+  update_ios:
+    name: OTA update
+    needs: [get_ios_build, deploy_convex]
+    if: ${{ needs.get_ios_build.outputs.build_id }}
+    type: update
+    environment: production
+    params:
+      platform: ios
+      branch: production
+
+  # Post-deploy notification with EAS Insights link. `update_ios` exposes
+  # `first_update_group_id` (https://docs.expo.dev/eas/workflows/pre-packaged-jobs/#update-outputs);
+  # we feed it into a Slack message that links to:
+  #   - the update group page (rollout %, runtime version, builds touched)
+  #   - the deployments dashboard (adoption curves, crash-free %, unique users)
+  #   - the channel insights page (filtered to production)
+  #
+  # `webhook_url` only accepts hardcoded strings today (env-stored webhooks
+  # are upcoming per https://docs.expo.dev/eas/workflows/pre-packaged-jobs/#slack);
+  # paste yours in `SLACK_WEBHOOK_URL` below and uncomment, or strip this job
+  # if you don't use Slack. The `print_insights` job prints `update:insights`
+  # JSON to workflow logs so you can audit adoption metrics directly.
+  print_insights:
+    name: Capture update:insights output
+    needs: [update_ios]
+    if: ${{ needs.update_ios.outputs.first_update_group_id }}
+    runs_on: linux-medium
+    steps:
+      - uses: eas/checkout
+      - uses: eas/install_node_modules
+      - name: Print insights JSON
+        run: |
+          GROUP="${{ needs.update_ios.outputs.first_update_group_id }}"
+          echo "Update group: $GROUP"
+          bunx eas-cli update:insights "$GROUP" --json --non-interactive || true
+
+  notify_update_published:
+    name: Notify Slack with insights link
+    needs: [update_ios]
+    if: ${{ needs.update_ios.outputs.first_update_group_id }}
+    type: slack
+    params:
+      # Replace with your Slack incoming-webhook URL. EAS does not yet
+      # support reading this from EAS env (see job comment above). interpolation
+      # of `${{ env.* }}` for `webhook_url` lands in a future EAS release.
+      webhook_url: https://hooks.slack.com/services/REPLACE/ME/HERE
+      message: |
+        :rocket: OTA update published to production.
+        Group: ${{ needs.update_ios.outputs.first_update_group_id }}
+        Workflow: ${{ workflow.url }}
+        Open the EAS dashboard for adoption %, crash-free %, and unique users.

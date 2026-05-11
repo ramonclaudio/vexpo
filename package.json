@@ -1,0 +1,41 @@
+{
+  "name": "vexpo",
+  "description": "The all-in-one starting point for shipping a real Expo app. Native SwiftUI, Convex, Better Auth, Resend, EAS top-to-bottom.",
+  "private": true,
+  "type": "module",
+  "workspaces": ["packages/*"],
+  "scripts": {
+    "build": "bun --filter '*' build",
+    "typecheck": "bun --filter '*' typecheck",
+    "lint": "oxlint packages",
+    "format:check": "oxfmt --check packages",
+    "format": "oxfmt packages",
+    "test": "bun --filter '*' test && bun run template:test",
+    "test:packages": "bun --filter '*' test",
+    "test:packages:e2e": "bun --filter @ramonclaudio/vexpo test:e2e",
+    "test:template": "cd templates/default && bun run test",
+    "test:all": "bun run test && bun run test:packages:e2e",
+    "link:dev": "bun --filter @ramonclaudio/vexpo build && cd packages/vexpo && bun link && cd ../../templates/default && bun link vexpo && echo '\\nlinked. now `bun run setup` from templates/default routes to the local vexpo build.\\nrun `bun --filter @ramonclaudio/vexpo build` whenever you change cli source.\\n'",
+    "template:install": "cd templates/default && bun install",
+    "template:dev": "cd templates/default && bun run dev",
+    "template:typecheck": "cd templates/default && bun run typecheck",
+    "template:lint": "cd templates/default && bun run lint",
+    "template:format:check": "cd templates/default && bun run format:check",
+    "template:test": "cd templates/default && bun run test"
+  },
+  "devDependencies": {
+    "oxlint": "^1.63.0",
+    "oxfmt": "^0.48.0",
+    "typescript": "^6.0.3"
+  },
+  "license": "MIT",
+  "author": "Ramon Claudio <hello@ramonclaudio.com> (https://github.com/ramonclaudio)",
+  "homepage": "https://github.com/ramonclaudio/vexpo",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ramonclaudio/vexpo.git"
+  },
+  "bugs": {
+    "url": "https://github.com/ramonclaudio/vexpo/issues"
+  }
+}

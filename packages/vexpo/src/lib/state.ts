@@ -1,0 +1,223 @@
+/**
+ * Resumable setup state at .setup-state.json. Records which orchestrator
+ * steps have completed, with a per-step verifyAt cache to avoid re-querying
+ * external services on every run. Secrets are never written here, only IDs
+ * and timestamps. Atomic writes via tmp + rename so a Ctrl+C mid-write
+ * leaves the previous state intact.
+ *
+ * The local cache is never the source of truth: external services win on
+ * disagreement. Use `verifyOrInvalidate(name, fn)` to re-check freshness
+ * before trusting a cached step.
+ *
+ * Uses node:fs so the module works under both bun and node (vitest runs node).
+ */
+
+import { access, readFile, rename, stat, unlink, writeFile } from "node:fs/promises";
+
+export const STATE_FILE = ".setup-state.json";
+const AUDIT_CAP = 50;
+const PID_WARN_WINDOW_MS = 30_000;
+
+export type StepName =
+  | "convex"
+  | "better-auth"
+  | "resend"
+  | "review-account"
+  | "apple-sign-in"
+  | "apple-services-id"
+  | "apple-credentials"
+  | "apple-asc-link"
+  | "apple-eas-rotation-secrets"
+  | "asc-key"
+  | "eas"
+  | "rebrand"
+  | "accounts";
+
+export type StepRecord = {
+  name: StepName;
+  completedAt: string;
+  outputs?: Record<string, unknown>;
+  verifyAt: string;
+};
+
+export type AuditEntry = {
+  invokedAt: string;
+  args: string[];
+  pid: number;
+  bunVersion: string;
+  cwd: string;
+  completed: StepName[];
+  skipped: StepName[];
+  failed?: { step: StepName; message: string };
+};
+
+export type SetupState = {
+  createdAt: string;
+  updatedAt: string;
+  lastPid: number;
+  steps: Partial<Record<StepName, StepRecord>>;
+  audit: AuditEntry[];
+};
+
+const empty = (): SetupState => ({
+  createdAt: new Date().toISOString(),
+  updatedAt: new Date().toISOString(),
+  lastPid: process.pid,
+  steps: {},
+  audit: [],
+});
+
+async function fileExists(p: string): Promise<boolean> {
+  try {
+    await access(p);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export async function load(): Promise<SetupState> {
+  if (!(await fileExists(STATE_FILE))) return empty();
+  // Stat first so we can label "is a directory" / "is a symlink to nowhere"
+  // distinctly from "JSON parse failed". A misleading "invalid JSON: EISDIR"
+  // sends users hunting for syntax errors in a file that isn't there.
+  try {
+    const s = await stat(STATE_FILE);
+    if (s.isDirectory()) throw new Error(`${STATE_FILE} is a directory, not a file`);
+  } catch (err) {
+    if (err instanceof Error && err.message.includes("is a directory")) throw err;
+    // Other stat failures (ENOENT after fileExists, permission). fall through.
+  }
+  let raw: unknown;
+  try {
+    raw = JSON.parse(await readFile(STATE_FILE, "utf8"));
+  } catch (err) {
+    throw new Error(`${STATE_FILE} is invalid JSON: ${err instanceof Error ? err.message : err}`, {
+      cause: err,
+    });
+  }
+  if (raw === null || raw === undefined) throw new Error(`${STATE_FILE} is empty or null`);
+  if (Array.isArray(raw)) throw new Error(`${STATE_FILE} is an array, expected object`);
+  if (typeof raw !== "object") throw new Error(`${STATE_FILE} is not an object`);
+  // Normalize partial state. Old/manual edits may omit any of these fields.
+  // The orchestrator assumes they're present. defaulting here means a
+  // hand-edited `{}` state file doesn't crash the probe.
+  const parsed = raw as Partial<SetupState>;
+  const now = new Date().toISOString();
+  return {
+    createdAt: typeof parsed.createdAt === "string" ? parsed.createdAt : now,
+    updatedAt: typeof parsed.updatedAt === "string" ? parsed.updatedAt : now,
+    lastPid: typeof parsed.lastPid === "number" ? parsed.lastPid : 0,
+    steps: parsed.steps && typeof parsed.steps === "object" ? parsed.steps : {},
+    audit: Array.isArray(parsed.audit) ? parsed.audit : [],
+  };
+}
+
+export async function save(state: SetupState): Promise<void> {
+  const next: SetupState = {
+    ...state,
+    updatedAt: new Date().toISOString(),
+    lastPid: process.pid,
+  };
+  const tmp = `${STATE_FILE}.${process.pid}.tmp`;
+  await writeFile(tmp, JSON.stringify(next, null, 2) + "\n");
+  await rename(tmp, STATE_FILE);
+}
+
+export async function clearAll(): Promise<void> {
+  if (!(await fileExists(STATE_FILE))) return;
+  await unlink(STATE_FILE);
+}
+
+export async function recordStep(name: StepName, outputs?: Record<string, unknown>): Promise<void> {
+  const state = await load();
+  const now = new Date().toISOString();
+  state.steps[name] = {
+    name,
+    completedAt: now,
+    outputs,
+    verifyAt: now,
+  };
+  await save(state);
+}
+
+export async function clearStep(name: StepName): Promise<void> {
+  const state = await load();
+  delete state.steps[name];
+  await save(state);
+}
+
+export async function appendAudit(entry: AuditEntry): Promise<void> {
+  const state = await load();
+  state.audit.push(entry);
+  while (state.audit.length > AUDIT_CAP) state.audit.shift();
+  await save(state);
+}
+
+export function isStepFresh(state: SetupState, name: StepName, ttlHours: number): boolean {
+  const rec = state.steps[name];
+  if (!rec) return false;
+  if (ttlHours === Infinity) return true;
+  const ageMs = Date.now() - new Date(rec.verifyAt).getTime();
+  return ageMs < ttlHours * 3_600_000;
+}
+
+export type VerifyFn = () => Promise<{ ok: boolean; reason?: string }>;
+
+export async function verifyOrInvalidate(name: StepName, verify: VerifyFn): Promise<boolean> {
+  const result = await verify();
+  if (!result.ok) {
+    await clearStep(name);
+    return false;
+  }
+  const state = await load();
+  const rec = state.steps[name];
+  if (rec) {
+    rec.verifyAt = new Date().toISOString();
+    await save(state);
+  }
+  return true;
+}
+
+export function checkConcurrentRun(state: SetupState): { stale: boolean; otherPid?: number } {
+  const updated = new Date(state.updatedAt).getTime();
+  const ageMs = Date.now() - updated;
+  if (ageMs < PID_WARN_WINDOW_MS && state.lastPid !== 0 && state.lastPid !== process.pid) {
+    return { stale: false, otherPid: state.lastPid };
+  }
+  return { stale: true };
+}
+
+export function fingerprint(value: string): string {
+  let h = 0;
+  for (let i = 0; i < value.length; i++) h = (h * 31 + value.charCodeAt(i)) >>> 0;
+  return h.toString(16).padStart(8, "0");
+}
+
+/**
+ * Look up a previously-recorded `.p8` path (or any string output) from
+ * any of the steps that record paths. Returns the first non-empty match
+ * after verifying the file still exists. Returns null otherwise.
+ *
+ * Used by setup-asc-key, setup-apple to avoid
+ * re-prompting the user for the same file path multiple times.
+ */
+export async function lookupCachedPath(
+  state: SetupState,
+  steps: readonly StepName[],
+  key: string,
+): Promise<string | null> {
+  for (const step of steps) {
+    const rec = state.steps[step];
+    if (!rec?.outputs) continue;
+    const value = (rec.outputs as Record<string, unknown>)[key];
+    if (typeof value !== "string" || !value) continue;
+    try {
+      await access(value);
+      return value;
+    } catch {
+      // file moved or deleted; try the next step's cache
+    }
+  }
+  return null;
+}

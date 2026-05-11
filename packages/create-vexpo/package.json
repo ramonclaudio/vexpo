@@ -1,0 +1,69 @@
+{
+  "name": "@ramonclaudio/create-vexpo",
+  "version": "0.1.0",
+  "description": "Scaffold a new vexpo project. Expo SDK 56 + Convex + Better Auth + Resend, wired for iOS, real auth, real push, real OTA, real App Store submission.",
+  "keywords": [
+    "better-auth",
+    "convex",
+    "create",
+    "expo",
+    "expo-sdk-56",
+    "ios",
+    "react-native",
+    "resend",
+    "scaffold",
+    "starter",
+    "template",
+    "vexpo"
+  ],
+  "homepage": "https://github.com/ramonclaudio/vexpo/tree/main/packages/create-vexpo#readme",
+  "bugs": {
+    "url": "https://github.com/ramonclaudio/vexpo/issues"
+  },
+  "license": "MIT",
+  "author": "Ramon Claudio <hello@ramonclaudio.com> (https://github.com/ramonclaudio)",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ramonclaudio/vexpo.git",
+    "directory": "packages/create-vexpo"
+  },
+  "bin": {
+    "create-vexpo": "./dist/index.js"
+  },
+  "files": [
+    "dist",
+    "templates"
+  ],
+  "type": "module",
+  "exports": {
+    ".": "./dist/index.js",
+    "./package.json": "./package.json"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true,
+    "registry": "https://registry.npmjs.org/"
+  },
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "typecheck": "tsc --noEmit",
+    "test": "echo '(create-vexpo: no per-package tests yet. covered by template e2e)'"
+  },
+  "dependencies": {
+    "commander": "^14.0.3",
+    "execa": "^9.6.1",
+    "kleur": "^4.1.5",
+    "ora": "^9.4.0",
+    "prompts": "^2.4.2"
+  },
+  "devDependencies": {
+    "@types/node": "^25.6.0",
+    "@types/prompts": "^2.4.9",
+    "tsup": "^8.5.1",
+    "typescript": "^6.0.3"
+  },
+  "engines": {
+    "node": ">=20.10"
+  }
+}

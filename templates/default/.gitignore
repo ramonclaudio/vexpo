@@ -1,0 +1,69 @@
+# Dependencies
+node_modules/
+
+# Environment variables
+.env
+.env.*
+!.env.example
+
+# Expo
+.expo/
+dist/
+expo-env.d.ts
+
+# Native project (CNG)
+ios/
+*.p8
+*.p12
+*.mobileprovision
+*.cer
+
+# Apple keys with no extension (Apple's default download naming)
+AuthKey_*
+SubscriptionKey_*
+
+# EAS (CLI state; keep workflows tracked)
+.eas/*
+!.eas/workflows/
+
+# Agents / local AI tooling
+.claude/
+.agents/
+.cursor/
+.aider*
+skills-lock.json
+
+# Working notes (not committed)
+plans/
+
+# App Store metadata. Ships with placeholder values so `eas submit` works
+# out-of-the-box. `vexpo rebrand` fills in your real review contact + demo creds.
+# Decide whether to commit your filled-in version based on team policy (it
+# contains demo passwords for App Review).
+# store.config.json
+
+# Setup state cache (resumable orchestrator; never holds secrets)
+.setup-state.json
+.setup-state.json.*.tmp
+
+# Manual-mode instruction files (contain raw secret values when CLIs missing)
+.vexpo-manual-setup/
+.rebrand-backup/
+
+# macOS
+.DS_Store
+
+# Pack artifacts. Allow patches/ tarballs since those are the source of truth
+# for `file:` deps the template ships with.
+*.tgz
+!patches/*.tgz
+
+# Bun
+bun-error.*
+
+# Test coverage
+coverage/
+.vitest-cache/
+
+# Build / typecheck artifacts
+tsconfig.tsbuildinfo

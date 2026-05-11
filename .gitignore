@@ -1,0 +1,77 @@
+# Dependencies + builds
+node_modules
+dist
+packages/*/dist
+packages/*/node_modules
+
+# Template runtime / generated
+templates/default/node_modules
+templates/default/.expo
+templates/default/.tanstack
+templates/default/ios
+templates/default/android
+templates/default/.output
+templates/default/dist
+templates/default/coverage
+
+# Local secrets (in addition to template's own .gitignore)
+**/.env.local
+**/.env.prod
+**/.env.production
+**/.env.convex.local
+**/.setup-state.json
+**/.setup-state.json.*.tmp
+
+# Apple keys (Apple's default download naming + extensions)
+*.p8
+*.p12
+*.mobileprovision
+*.cer
+AuthKey_*
+SubscriptionKey_*
+
+# Security artifacts
+*.pem
+*.key
+*.crt
+.ssh/
+
+# OS detritus
+.DS_Store
+*.log
+
+# IDE state (personal preference, don't ship)
+.vscode/
+.idea/
+.zed/
+*.code-workspace
+*.swp
+*.swo
+*~
+
+# AI tooling state (personal, contributor-specific)
+.claude/
+.cursor/
+.codex/
+.agents/
+.aider*
+.skills/
+.dev/
+skills-lock.json
+
+# Working notes (not for the repo)
+plans/
+.handoff
+*.handoff
+
+# Test caches
+coverage/
+.vitest-cache/
+tsconfig.tsbuildinfo
+
+# Bun
+bun-error.*
+
+# Override global gitignore: track our own AGENTS.md
+!AGENTS.md
+!**/AGENTS.md

@@ -1,0 +1,69 @@
+{
+  "name": "@ramonclaudio/vexpo",
+  "version": "0.1.0",
+  "description": "Operational CLI for vexpo projects: setup orchestration, drift detection, env sync, Apple JWT signing, ASC API integration.",
+  "keywords": [
+    "apple-sign-in",
+    "better-auth",
+    "cli",
+    "convex",
+    "eas",
+    "expo",
+    "resend",
+    "setup",
+    "vexpo"
+  ],
+  "homepage": "https://github.com/ramonclaudio/vexpo/tree/main/packages/vexpo#readme",
+  "bugs": {
+    "url": "https://github.com/ramonclaudio/vexpo/issues"
+  },
+  "license": "MIT",
+  "author": "Ramon Claudio <hello@ramonclaudio.com> (https://github.com/ramonclaudio)",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ramonclaudio/vexpo.git",
+    "directory": "packages/vexpo"
+  },
+  "bin": {
+    "vexpo": "./dist/cli.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "type": "module",
+  "exports": {
+    ".": "./dist/index.js",
+    "./package.json": "./package.json"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true,
+    "registry": "https://registry.npmjs.org/"
+  },
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:e2e": "bun run build && __tests__/e2e/run.sh",
+    "test:all": "bun run test && bun run test:e2e"
+  },
+  "dependencies": {
+    "commander": "^14.0.3",
+    "execa": "^9.6.1",
+    "kleur": "^4.1.5",
+    "ora": "^9.4.0",
+    "prompts": "^2.4.2"
+  },
+  "devDependencies": {
+    "@types/node": "^25.6.0",
+    "@types/prompts": "^2.4.9",
+    "tsup": "^8.5.1",
+    "typescript": "^6.0.3",
+    "vitest": "^4.1.5"
+  },
+  "engines": {
+    "node": ">=20.10"
+  }
+}
