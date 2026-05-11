@@ -1,0 +1,98 @@
+name: PR preview
+
+# Builds + auto-posts a comment on the PR with build/update IDs and QR codes
+# via the `github-comment` job. Mirrors the canonical EAS workflow pattern at
+# https://docs.expo.dev/eas/workflows/pre-packaged-jobs/#github-comment.
+#
+# Flow (canonical fingerprint-gated branch model):
+#   1. fingerprint → compute the iOS fingerprint for the PR's dev env.
+#   2. get_existing_build → check if any development:simulator build with
+#      that fingerprint already exists (returns build_id if so).
+#   3a. Path A (no compatible build): build a fresh dev-client simulator
+#       binary + publish a preview OTA to branch `pr-<n>` so the build
+#       picks it up on launch.
+#   3b. Path B (compatible build exists): publish a preview OTA only.
+#   4. github-comment → post the QR / build / update IDs.
+#
+# Either path publishes an update so a) the PR is always testable via a QR
+# scan and b) `pr-<n>` is a real EAS branch from the first commit, not the
+# second. Uses development:simulator (subscribed to the `development`
+# channel). vexpo doesn't ship a separate `preview` build profile.
+
+on:
+  pull_request:
+    branches: ["main"]
+
+concurrency:
+  cancel_in_progress: true
+  group: ${{ workflow.filename }}-${{ github.ref }}
+
+defaults:
+  tools:
+    bun: latest
+
+jobs:
+  precheck:
+    name: Precheck
+    type: custom
+    runs_on: linux-medium
+    steps:
+      - uses: eas/checkout
+      - uses: eas/install_node_modules
+      - name: Typecheck
+        run: bun run typecheck
+      - name: Lint
+        run: bun run lint
+      - name: Test
+        run: bun run test
+
+  fingerprint:
+    name: Fingerprint
+    needs: [precheck]
+    type: fingerprint
+    environment: development
+
+  get_existing_build:
+    name: Find compatible build
+    needs: [fingerprint]
+    type: get-build
+    params:
+      platform: ios
+      fingerprint_hash: ${{ needs.fingerprint.outputs.ios_fingerprint_hash }}
+      profile: development:simulator
+      wait_for_in_progress: true
+
+  build_ios:
+    name: Build iOS Simulator (only if no compatible build exists)
+    needs: [get_existing_build]
+    if: ${{ !needs.get_existing_build.outputs.build_id }}
+    type: build
+    params:
+      platform: ios
+      profile: development:simulator
+
+  publish_update_new:
+    name: Publish preview update (new fingerprint path)
+    needs: [build_ios]
+    type: update
+    environment: development
+    params:
+      platform: ios
+      branch: pr-${{ github.event.pull_request.number }}
+
+  publish_update_existing:
+    name: Publish preview update (existing build path)
+    needs: [get_existing_build]
+    if: ${{ needs.get_existing_build.outputs.build_id }}
+    type: update
+    environment: development
+    params:
+      platform: ios
+      branch: pr-${{ github.event.pull_request.number }}
+
+  comment:
+    name: Post results to PR
+    after: [build_ios, publish_update_new, publish_update_existing]
+    type: github-comment
+    params:
+      message: "🚀 Preview ready. Scan the QR code or open the link to test."

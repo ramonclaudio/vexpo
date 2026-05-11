@@ -1,0 +1,3 @@
+{
+  "ignorePatterns": ["convex/_generated/", "ios/", ".expo/", "dist/", "coverage/", "node_modules/"]
+}

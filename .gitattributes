@@ -1,0 +1,4 @@
+.gitattributes merge=ours
+README.md merge=ours
+package.json merge=ours
+bun.lock merge=ours

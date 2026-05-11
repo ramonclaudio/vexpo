@@ -1,0 +1,56 @@
+name: Check
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: check-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+jobs:
+  packages:
+    name: packages (typecheck, lint, format, build, test, e2e)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - run: bun install --frozen-lockfile
+      - run: bun --filter '*' typecheck
+      - run: bun run lint
+      - run: bun run format:check
+      - run: bun --filter '*' build
+      - run: bun --filter '*' test
+      - run: bun --filter vexpo test:e2e
+
+  template:
+    name: template (typecheck, lint, format, test)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      # Install at root, then build + link local `vexpo` into `templates/default`.
+      # The template's `package.json` declares `vexpo` as a regular npm
+      # dependency, but the published version doesn't exist until after the
+      # first `release.yml` run. `link:dev` covers the gap: it builds the
+      # local CLI, registers it via `bun link`, and the template consumes
+      # the link (which also installs the template's runtime deps).
+      - run: bun install --frozen-lockfile
+      - run: bun run link:dev
+      - working-directory: templates/default
+        run: bun run typecheck
+      - working-directory: templates/default
+        run: bun run lint
+      - working-directory: templates/default
+        run: bun run format:check
+      - working-directory: templates/default
+        run: bun run test

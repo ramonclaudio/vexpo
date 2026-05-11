@@ -1,0 +1,42 @@
+name: E2E tests
+
+# Builds an iOS Simulator binary and runs Maestro flows against it. Mirrors
+# the canonical EAS workflow at
+# https://docs.expo.dev/eas/workflows/examples/e2e-tests.
+#
+# Maestro flows live under .maestro/ at the repo root. The build profile
+# `development:simulator` already exists in eas.json. it produces a
+# .app bundle the Maestro runner can install on an iOS Simulator.
+#
+# `MAESTRO_APP_ID` resolves to the project's bundle id from the EAS development
+# environment (populated by `vexpo full` or `eas env:create`). The flow
+# yaml at .maestro/launch.yaml reads it as `appId: ${MAESTRO_APP_ID}`.
+
+on:
+  pull_request:
+    branches: ["main"]
+  workflow_dispatch: {}
+
+concurrency:
+  cancel_in_progress: true
+  group: ${{ workflow.filename }}-${{ github.ref }}
+
+jobs:
+  build_ios_simulator:
+    name: Build iOS Simulator
+    type: build
+    params:
+      platform: ios
+      profile: development:simulator
+
+  maestro:
+    name: Run Maestro flows
+    needs: [build_ios_simulator]
+    type: maestro
+    environment: development
+    env:
+      MAESTRO_APP_ID: ${{ env.EXPO_PUBLIC_APP_BUNDLE_ID }}
+    params:
+      build_id: ${{ needs.build_ios_simulator.outputs.build_id }}
+      flow_path: [".maestro"]
+      retries: 2

@@ -1,0 +1,57 @@
+name: TestFlight
+
+# Builds and distributes to TestFlight using the dedicated `testflight` job
+# (https://docs.expo.dev/eas/workflows/pre-packaged-jobs/#testflight). Unlike a
+# plain `submit`, this job lets us name internal/external groups, attach a
+# changelog, and gate on Beta App Review.
+
+on:
+  push:
+    branches: ["beta/*"]
+  workflow_dispatch:
+    inputs:
+      changelog:
+        type: string
+        required: false
+        description: 'What to test ("Bug fixes" if omitted)'
+
+concurrency:
+  cancel_in_progress: true
+  group: ${{ workflow.filename }}-${{ github.ref }}
+
+defaults:
+  tools:
+    bun: latest
+
+jobs:
+  precheck:
+    name: Precheck
+    type: custom
+    runs_on: linux-medium
+    steps:
+      - uses: eas/checkout
+      - uses: eas/install_node_modules
+      - name: Typecheck
+        run: bun run typecheck
+      - name: Lint
+        run: bun run lint
+      - name: Test
+        run: bun run test
+
+  build_ios:
+    name: Build iOS
+    needs: [precheck]
+    type: build
+    params:
+      platform: ios
+      profile: production
+
+  testflight:
+    name: Distribute to TestFlight
+    needs: [build_ios]
+    type: testflight
+    params:
+      build_id: ${{ needs.build_ios.outputs.build_id }}
+      profile: testflight
+      internal_groups: ["Internal"]
+      changelog: ${{ inputs.changelog || github.event.head_commit.message || 'Bug fixes' }}

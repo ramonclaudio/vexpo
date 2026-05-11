@@ -1,0 +1,42 @@
+name: Rotate Apple Sign In JWT
+
+# Apple caps client_secret JWTs at 180 days. We re-sign every 90 days so
+# we always have plenty of headroom and never get caught with an expired
+# token. Replaces the GitHub Actions equivalent. runs on EAS infrastructure
+# and reads secrets from EAS env vars (production, secret visibility) rather
+# than GitHub repo secrets.
+#
+# Required EAS env vars (production environment, secret visibility):
+#   APPLE_P8_PRIVATE_KEY    PEM contents of the Sign In with Apple .p8
+#   APPLE_TEAM_ID           10-char Apple Team id
+#   APPLE_KEY_ID            10-char Sign In with Apple key id
+#   APPLE_SERVICES_ID       Services id (e.g. com.you.app.signin)
+#   CONVEX_DEPLOY_KEY       Production Convex deploy key
+#
+# Set them once with:
+#   eas env:create --name APPLE_P8_PRIVATE_KEY --value-file <path-to-.p8> \
+#     --environment production --visibility secret
+#   eas env:create --name APPLE_TEAM_ID --value <value> \
+#     --environment production --visibility secret
+#   ...etc
+
+on:
+  schedule:
+    - cron: "0 12 1 */3 *" # 12:00 UTC on the 1st, every 3rd month
+  workflow_dispatch: {}
+
+defaults:
+  tools:
+    bun: latest
+
+jobs:
+  rotate:
+    name: Sign + push fresh client_secret
+    type: custom
+    runs_on: linux-medium
+    environment: production # pulls EAS env vars from production
+    steps:
+      - uses: eas/checkout
+      - uses: eas/install_node_modules
+      - name: Sign + push to Convex
+        run: node scripts/rotate-apple-jwt.mjs

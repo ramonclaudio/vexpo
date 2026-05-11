@@ -1,0 +1,7 @@
+.gitattributes merge=ours
+README.md merge=ours
+.env.example merge=ours
+package.json merge=ours
+bun.lock merge=ours
+app.json merge=ours
+eas.json merge=ours

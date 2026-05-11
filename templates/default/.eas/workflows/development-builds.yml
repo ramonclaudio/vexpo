@@ -1,0 +1,19 @@
+name: Development builds
+
+on:
+  workflow_dispatch: {}
+
+jobs:
+  ios_device:
+    name: iOS device
+    type: build
+    params:
+      platform: ios
+      profile: development
+
+  ios_simulator:
+    name: iOS simulator
+    type: build
+    params:
+      platform: ios
+      profile: development:simulator

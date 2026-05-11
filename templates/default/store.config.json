@@ -1,0 +1,58 @@
+{
+  "configVersion": 0,
+  "apple": {
+    "copyright": "YEAR YOUR_NAME",
+    "categories": ["DEVELOPER_TOOLS", "UTILITIES"],
+    "info": {
+      "en-US": {
+        "title": "Your App | Convex on Expo",
+        "subtitle": "Replace before submission",
+        "description": "Replace this with your app's full description before submitting to App Store. Apple allows up to 4,000 characters.",
+        "keywords": ["expo", "convex", "ios"],
+        "marketingUrl": "https://example.com",
+        "supportUrl": "https://example.com",
+        "privacyPolicyUrl": "https://example.com/privacy",
+        "privacyChoicesUrl": ""
+      }
+    },
+    "advisory": {
+      "alcoholTobaccoOrDrugUseOrReferences": "NONE",
+      "contests": "NONE",
+      "gamblingSimulated": "NONE",
+      "horrorOrFearThemes": "NONE",
+      "matureOrSuggestiveThemes": "NONE",
+      "medicalOrTreatmentInformation": "NONE",
+      "profanityOrCrudeHumor": "NONE",
+      "sexualContentGraphicAndNudity": "NONE",
+      "sexualContentOrNudity": "NONE",
+      "violenceCartoonOrFantasy": "NONE",
+      "violenceRealistic": "NONE",
+      "violenceRealisticProlongedGraphicOrSadistic": "NONE",
+      "gambling": false,
+      "unrestrictedWebAccess": false,
+      "kidsAgeBand": null,
+      "ageRatingOverride": "NONE",
+      "koreaAgeRatingOverride": "NONE",
+      "seventeenPlus": false
+    },
+    "review": {
+      "firstName": "YOUR_FIRST_NAME",
+      "lastName": "YOUR_LAST_NAME",
+      "email": "reviewer@example.com",
+      "phone": "+15555555555",
+      "notes": "Run `bunx vexpo rebrand` (or `bunx vexpo full`) before submitting. The wizard replaces every placeholder in this file with your fork's real values.",
+      "demoUsername": "review@example.com",
+      "demoPassword": "REPLACE_BEFORE_SUBMIT"
+    },
+    "release": {
+      "automaticRelease": true,
+      "phasedRelease": true
+    },
+    "releaseNotes": {
+      "en-US": "Initial release."
+    },
+    "promotionalText": {
+      "en-US": "Replace with your app's promotional text before submission."
+    }
+  }
+}

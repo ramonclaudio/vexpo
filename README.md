@@ -1,0 +1,122 @@
+# vexpo
+
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
+Expo SDK 56 + Convex + Better Auth + Resend, wired end-to-end for iOS. Native SwiftUI via `@expo/ui/swift-ui`, email + password + email OTP + Apple Sign In, APNs push, Universal Links served from Convex's HTTP router, profile + active-sessions screens with avatar uploads and device-by-device revocation. EAS doing every job around the build: 10 workflows covering dev builds, PR previews with fingerprint-gated OTA-or-build, deploy on main, TestFlight, rollback, rollout, App Store Connect event triggers, and the Apple Sign In JWT rotation cron. From `npm create` to TestFlight in one afternoon.
+
+iOS only today. Android + web parity follows once `@expo/ui/jetpack-compose` reaches the same surface as `@expo/ui/swift-ui`.
+
+I ship a lot of Expo apps. Every time I start one I end up rebuilding the same scaffolding. Convex deployment, Better Auth secrets, Resend sending key and webhook, the Apple Developer / ASC API / SIWA Services ID dance, EAS init, env mirroring to dev/preview/prod, dist cert, provisioning profile, push key, the rotation cron for the 180-day JWT. By the time I'm writing app code I've burned a day in Apple Developer Portal and EAS dashboards. vexpo is that setup, automated, plus the app already wired correctly behind it.
+
+## Quick start
+
+Needs macOS + Xcode, a [Convex](https://convex.dev) account (free tier), and Bun or Node 20+.
+
+```bash
+npm create vexpo@latest my-app
+cd my-app
+
+bunx vexpo lite         # 60-second path: Convex + Better Auth, simulator-ready
+bunx vexpo lite --new   # same, plus a Convex signup walkthrough if you don't have one
+```
+
+Then in two terminals:
+
+```bash
+bun run convex:dev      # terminal 1
+bun run ios             # terminal 2
+```
+
+Lite mode skips Apple / EAS / Resend entirely. `REQUIRE_EMAIL_VERIFICATION` is off on Convex so sign-up auto-verifies, the user lands in the app with one tap, and the UI hides the OTP / password-reset / change-email flows that need Resend to work.
+
+When you're ready to ship, swap `lite` for `full`:
+
+```bash
+bunx vexpo full         # provisions Resend, Apple Sign In, EAS, rebrand wizard
+bunx vexpo full --new   # same, plus walks Apple / Convex / Expo / Resend signups
+```
+
+`full` jumps straight into provisioning: writes `.env.local`, sets Convex env vars (including `REQUIRE_EMAIL_VERIFICATION=true` once Resend is wired), validates the ASC API key, signs the Apple Sign In JWT, runs `eas init` and `eas env:push`, prompts the rebrand wizard. Prints the `eas build -p ios --profile production --auto-submit-with-profile testflight` command at the end. vexpo doesn't run it for you. You run `bunx eas build` when you're ready.
+
+`full --new` is for first-time users coming in cold. Convex and Expo signups happen via their CLIs' browser-based OAuth. Resend signup is a browser-open + paste-API-key flow (Resend has no signup API). Apple Developer Program is the only signup vexpo can't automate at all. Apple requires identity verification, payment, and 24-48h review. That step pauses the orchestrator while you complete enrollment.
+
+State is cached in `.setup-state.json` so re-runs are fast. `bunx vexpo doctor` auth-checks every credential against the real service (Resend `/api-keys`, ASC `/v1/apps`, Apple JWT decoded for kid/iss/sub/expiry) and cross-references the bundle ID, team ID, and Services ID across `.env.local`, Convex env, EAS env, and `app.config.ts`. Catches "wrong .p8 from another project" or ".env.prod copied from a different fork" in seconds.
+
+## What's in the box
+
+**Stack.** Expo SDK 56 canary + RN 0.85 + React 19 + Convex + Better Auth + Resend. Strict TypeScript, no NativeWind, no Tailwind.
+
+**Native UI.** Every screen renders SwiftUI through `@expo/ui/swift-ui`. Forms, lists, sections, segmented controls, sheets, alerts, dynamic colors, system materials. Liquid Glass on iOS 26+ via `expo-glass-effect`, UIVisualEffectView blur fallback on iOS 16.4-25 via `expo-blur`. DynamicColorIOS for every palette token (auto-adapts to dark mode + the Increase Contrast accessibility setting). SF Symbols via `expo-symbols`. Haptics, dynamic type, VoiceOver labels, reduced motion respected.
+
+**Auth.** Email + password + email OTP via Better Auth (`@convex-dev/better-auth`). Apple Sign In via Apple's official `AppleAuthenticationButton` (HIG-compliant BLACK/WHITE theme-aware styling). SIWA Services ID JWT signing (ES256, 180-day expiry, auto-rotated every 90 days by EAS Workflows cron). Active sessions screen with device-by-device revocation. Profile editing with avatar uploads to Convex storage. Rate limiting on every endpoint via `@convex-dev/rate-limiter`. Ships the `@convex-dev/better-auth` PR #368 patch (Hermes V1 async-bridge race fix) as a `file:` install until upstream merges.
+
+**Push + Universal Links.** APNs push via `expo-notifications` with token registration on sign-in. Apple Universal Links served from Convex's HTTP router (AASA at `/.well-known/apple-app-site-association`).
+
+**Email.** Resend via `@convex-dev/resend` for transactional email + webhook delivery events.
+
+**EAS, every product wired.** 10 workflows under `.eas/workflows/`. PR previews with `github-comment` job + QR code + fingerprint-gated OTA-or-build. Production deploys on `main` (Convex + iOS build + submit + OTA, fingerprint-gated). TestFlight on `beta/*` branches with the dedicated `testflight` job (internal groups + auto-changelog from commit). Maestro E2E. ASC event triggers via `on.app_store_connect`. Manual rollback (`update:republish` or `update:roll-back-to-embedded`). Manual rollout (`update --rollout-percentage` or `update:edit`). Tag releases. Apple Sign In JWT rotation cron. `EAS Webhooks` for `BUILD` and `SUBMIT` events into Convex's HTTP router at `/eas-webhook`, HMAC-SHA1 verified, structured access log with `X-Request-Id`. `expo-insights` SDK installed for cold-start metrics + app-store-version breakdowns.
+
+## Repo layout
+
+```
+vexpo/
+├── packages/
+│   ├── create-vexpo/      # npm scaffolder (`npm create vexpo@latest`)
+│   └── vexpo/             # operational CLI (`bunx vexpo <subcommand>`)
+└── templates/default/     # the Expo + Convex + Better Auth app
+```
+
+`create-vexpo` copies `templates/default/` into a fresh directory, rewrites `package.json`, runs `bun install`, inits git. `vexpo` ships as a devDependency, so `bunx vexpo` resolves to the local pinned version.
+
+## Design rule: don't reinvent EAS
+
+`vexpo` is deliberately small. If `eas <subcommand>` is the canonical answer, the recipe is `bunx eas <subcommand>`. `vexpo` only exists for what `eas-cli` doesn't do:
+
+1. **Setup orchestration.** `lite`, `full`, standalone phases (`accounts`, `rebrand`, `convex`, `better-auth`, `resend`, `review-account`). State machine over `.setup-state.json`, idempotent, drift-aware, resumable.
+2. **Cross-source drift detection.** `doctor` auth-checks every credential and confirms IDs match across `.env.local`, Convex env, EAS env, and `app.config.ts`.
+3. **Apple SIWA work.** `apple jwt` (ES256 signing), `apple services-id` (ASC API + manual web walk), `apple asc-key` (validate against `/v1/apps`), `apple eas-rotation-secrets` (push the 5 secrets the JWT cron needs). `apple credentials` wraps `eas credentials:configure-build` with the cached ASC API key passed through env vars so the wizard skips the Apple Developer login prompt.
+4. **ASC API endpoints `eas-cli` doesn't expose.** `testflight groups/testers/invite/whats-new`, `reviews list/unanswered/respond`, `sandbox list/create/delete`, `asc:version list/view/phased`, `asc:submissions`.
+5. **Multi-destination env sync.** `env push` reads `.env.local` + `.env.prod` and pushes to Convex env (dev/prod) and EAS env (dev/preview/prod) in one pass.
+
+Everything else is `bunx eas <subcommand>` directly. Wrapping commands EAS already ships would add no value over `eas-cli` itself, expand the maintenance surface, and signal a lack of trust in the platform.
+
+## Pre-reqs
+
+- macOS + Xcode for the simulator and signing
+- Apple Developer Program membership ($99/yr) when you're ready to ship
+- A domain you control DNS for (Resend sending domain)
+- Bun or Node 20+
+
+## Long-form docs
+
+- Template README: [`templates/default/README.md`](./templates/default/README.md)
+- Setup walkthrough: [`templates/default/SETUP.md`](./templates/default/SETUP.md). Every phase with full prompts, env-var alternatives for non-interactive runs, recovery paths.
+- Architecture: [`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md). Why Convex over Postgres+Redis+Node, why Better Auth, every EAS product wiring, the setup state machine, performance characteristics, deliberate non-goals.
+- Security: [`docs/SECURITY.md`](./docs/SECURITY.md). Threat model, webhook signature + replay protection, OTA code-signing, Apple credential rotation, the secret-rotation matrix.
+- Operations: [`docs/OPERATIONS.md`](./docs/OPERATIONS.md). Service map, daily checks, failure modes with concrete recovery steps, useful queries, when to escalate.
+- Upstream contributions: [`docs/UPSTREAM.md`](./docs/UPSTREAM.md). Patches vexpo ships locally while waiting for merges. Currently tracking [`get-convex/better-auth#368`](https://github.com/get-convex/better-auth/pull/368).
+- Design system: [`templates/default/DESIGN.md`](./templates/default/DESIGN.md). Color palette, typography, spacing, radius ladder, materials, the SwiftUI primitives + custom composition surface.
+
+## Monorepo dev
+
+For working on the CLI itself:
+
+```bash
+bun install                # install package + workspace deps
+bun run link:dev           # build vexpo + `bun link` it into templates/default
+bun --filter vexpo dev     # tsup watch mode on the CLI source
+cd templates/default
+bunx vexpo full --dry-run  # exercises the linked CLI
+```
+
+Tests:
+
+```bash
+bun run test               # 238 unit (vexpo lib) + 29 template = 267 total
+bun run test:packages:e2e  # 10 e2e tests against the built `vexpo` CLI dist
+bun run test:all           # everything
+```
+
+## License
+
+MIT. See [`LICENSE`](./LICENSE).

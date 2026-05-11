@@ -1,0 +1,56 @@
+{
+  "cli": {
+    "version": ">= 16.0.1",
+    "appVersionSource": "remote"
+  },
+  "build": {
+    "development": {
+      "developmentClient": true,
+      "distribution": "internal",
+      "channel": "development",
+      "autoIncrement": true,
+      "env": {},
+      "cache": {
+        "paths": ["node_modules", "ios/Pods"]
+      }
+    },
+    "development:simulator": {
+      "extends": "development",
+      "env": {},
+      "ios": {
+        "simulator": true
+      }
+    },
+    "development:device": {
+      "extends": "development",
+      "env": {},
+      "ios": {
+        "simulator": false
+      }
+    },
+    "production": {
+      "autoIncrement": true,
+      "channel": "production",
+      "distribution": "store",
+      "env": {},
+      "cache": {
+        "paths": ["node_modules", "ios/Pods"]
+      },
+      "ios": {
+        "credentialsSource": "remote"
+      }
+    }
+  },
+  "submit": {
+    "testflight": {
+      "ios": {
+        "metadataPath": "./store.config.json"
+      }
+    },
+    "production": {
+      "ios": {
+        "metadataPath": "./store.config.json"
+      }
+    }
+  }
+}
