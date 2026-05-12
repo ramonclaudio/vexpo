@@ -28,29 +28,24 @@ jobs:
       - run: bun run format:check
       - run: bun --filter '*' build
       - run: bun --filter '*' test
-      - run: bun --filter vexpo test:e2e
+      - run: bun --filter '@ramonclaudio/vexpo' test:e2e
 
   template:
     name: template (typecheck, lint, format, test)
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: templates/default
     steps:
       - uses: actions/checkout@v4
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: latest
-      # Install at root, then build + link local `vexpo` into `templates/default`.
-      # The template's `package.json` declares `vexpo` as a regular npm
-      # dependency, but the published version doesn't exist until after the
-      # first `release.yml` run. `link:dev` covers the gap: it builds the
-      # local CLI, registers it via `bun link`, and the template consumes
-      # the link (which also installs the template's runtime deps).
+      # `@ramonclaudio/vexpo` is now on npm, so the template installs directly
+      # without needing the monorepo's `link:dev` plumbing. This also exercises
+      # the customer journey: a fresh `bun install` resolves vexpo from npm.
       - run: bun install --frozen-lockfile
-      - run: bun run link:dev
-      - working-directory: templates/default
-        run: bun run typecheck
-      - working-directory: templates/default
-        run: bun run lint
-      - working-directory: templates/default
-        run: bun run format:check
-      - working-directory: templates/default
-        run: bun run test
+      - run: bun run typecheck
+      - run: bun run lint
+      - run: bun run format:check
+      - run: bun run test
