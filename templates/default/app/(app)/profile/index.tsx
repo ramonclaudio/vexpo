@@ -381,6 +381,7 @@ export default function ProfileScreen() {
                     systemName="camera.circle.fill"
                     size={28}
                     color={colors.primary as string}
+                    modifiers={[accessibilityLabel("")]}
                   />
                 </HStack>
               </ConfirmationDialog.Trigger>
@@ -729,7 +730,7 @@ function AvatarView({ avatarUrl, loading }: { avatarUrl: string | null; loading:
       systemName="person.crop.circle.fill"
       size={AVATAR_SIZE}
       color={colors.mutedForeground as string}
-      modifiers={[frame({ width: AVATAR_SIZE, height: AVATAR_SIZE })]}
+      modifiers={[frame({ width: AVATAR_SIZE, height: AVATAR_SIZE }), accessibilityLabel("")]}
     />
   );
 }
@@ -743,7 +744,7 @@ function RemoteAvatar({ url, size }: { url: string; size: number }) {
         systemName="person.crop.circle.fill"
         size={size}
         color={colors.mutedForeground as string}
-        modifiers={[frame({ width: size, height: size })]}
+        modifiers={[frame({ width: size, height: size }), accessibilityLabel("")]}
       />
     );
   }

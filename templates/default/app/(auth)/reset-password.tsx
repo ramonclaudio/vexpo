@@ -146,7 +146,12 @@ export default function ResetPasswordScreen() {
           modifiers={[padding({ horizontal: 24 }), tint(colors.primary as string)]}
         >
           <Spacer />
-          <Image systemName="checkmark.circle.fill" size={56} color={colors.success} />
+          <Image
+            systemName="checkmark.circle.fill"
+            size={56}
+            color={colors.success}
+            modifiers={[accessibilityLabel("")]}
+          />
           <Text modifiers={[dfont({ size: 28, weight: "bold" })]}>Password reset!</Text>
           <Text
             modifiers={[

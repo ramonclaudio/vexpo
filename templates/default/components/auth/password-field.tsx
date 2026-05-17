@@ -125,6 +125,7 @@ export function PasswordField({
           systemName={visible ? "eye.slash" : "eye"}
           size={18}
           color={colors.mutedForeground as string}
+          modifiers={[accessibilityLabel("")]}
         />
       </Button>
     </HStack>

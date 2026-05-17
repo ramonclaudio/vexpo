@@ -158,6 +158,7 @@ export function OtpVerification({
           systemName={isSignIn ? "lock.shield" : "envelope.badge"}
           size={56}
           color={colors.primary}
+          modifiers={[accessibilityLabel("")]}
         />
 
         <Text modifiers={[dfont({ size: 28, weight: "bold" }), multilineTextAlignment("center")]}>

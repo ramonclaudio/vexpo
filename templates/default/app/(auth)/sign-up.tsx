@@ -399,6 +399,7 @@ export default function SignUpScreen() {
                         systemName="camera"
                         size={20}
                         color={colors.mutedForeground as string}
+                        modifiers={[accessibilityLabel("")]}
                       />
                     </VStack>
                   )}
