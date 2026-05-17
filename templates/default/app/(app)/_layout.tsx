@@ -57,10 +57,16 @@ export default function AppLayout() {
 
       <Stack.Screen name="linked" options={{ headerShown: true, title: "Linked" }} />
 
-      <Stack.Screen name="profile" options={{ headerShown: true }}>
+      <Stack.Screen name="profile/index" options={{ headerShown: true }}>
         <Stack.Header transparent />
         <Stack.Screen.Title style={titleStyle}>Profile</Stack.Screen.Title>
         <Stack.Screen.BackButton>Settings</Stack.Screen.BackButton>
+      </Stack.Screen>
+
+      <Stack.Screen name="profile/change-password" options={{ headerShown: true }}>
+        <Stack.Header transparent />
+        <Stack.Screen.Title style={titleStyle}>Password</Stack.Screen.Title>
+        <Stack.Screen.BackButton>Profile</Stack.Screen.BackButton>
       </Stack.Screen>
 
       <Stack.Screen name="sessions" options={{ headerShown: true }}>

@@ -2,7 +2,7 @@ import { startTransition, useActionState, useEffect, useState } from "react";
 import { Image as ExpoImage, useImage } from "expo-image";
 import * as ImagePicker from "expo-image-picker";
 import * as LocalAuthentication from "expo-local-authentication";
-import { Stack } from "expo-router";
+import { router, Stack } from "expo-router";
 import { useMutation, useQuery } from "convex/react";
 import {
   Host,
@@ -16,8 +16,6 @@ import {
   Image,
   RNHostView,
   ConfirmationDialog,
-  BottomSheet,
-  Group,
   ProgressView,
   useNativeState,
 } from "@expo/ui/swift-ui";
@@ -33,6 +31,7 @@ import {
   lineLimit,
   onSubmit,
   submitLabel,
+  textContentType,
   textFieldStyle,
   textInputAutocapitalization,
   monospacedDigit,
@@ -40,8 +39,6 @@ import {
   multilineTextAlignment,
   padding,
   frame,
-  presentationDetents,
-  presentationDragIndicator,
   progressViewStyle,
   scrollDismissesKeyboard,
   onTapGesture,
@@ -58,7 +55,6 @@ import { haptics } from "@/lib/haptics";
 import { firstError, profileUpdateSchema } from "@/lib/schemas";
 import { validateBio } from "@/convex/validators";
 import { useColors } from "@/hooks/use-theme";
-import { PasswordField } from "@/components/auth/password-field";
 import { ProminentButton } from "@/components/ui/prominent-button";
 import { ErrorText, SuccessText } from "@/components/ui/status-text";
 import { formatError } from "@/components/ui/convex-error";
@@ -69,7 +65,6 @@ const AVATAR_SIZE = 96;
 
 type SaveState = { error?: string; success?: string; pendingEmail?: string };
 type OtpState = { error?: string; success?: string };
-type PasswordState = { error?: string; success?: string };
 
 export default function ProfileScreen() {
   const dfont = useDynamicFont();
@@ -124,14 +119,6 @@ export default function ProfileScreen() {
   const [avatarPicker, setAvatarPicker] = useState(false);
   const [signOutConfirm, setSignOutConfirm] = useState(false);
   const [deleteAccountConfirm, setDeleteAccountConfirm] = useState(false);
-  const [passwordSheet, setPasswordSheet] = useState(false);
-  const currentPasswordState = useNativeState("");
-  const newPasswordState = useNativeState("");
-  const confirmPasswordState = useNativeState("");
-  const [currentPassword, setCurrentPassword] = useState("");
-  const [newPassword, setNewPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-
   const hasChanges =
     !!me &&
     (name.trim() !== me.name ||
@@ -314,51 +301,8 @@ export default function ProfileScreen() {
     await authClient.signOut();
   };
 
-  const [passwordState, changePassword, isChangingPassword] = useActionState<PasswordState, void>(
-    async () => {
-      haptics.light();
-      if (!currentPassword || !newPassword || !confirmPassword) {
-        haptics.error();
-        return { error: "Fill in every field" };
-      }
-      if (newPassword.length < 10 || newPassword.length > 128) {
-        haptics.error();
-        return { error: "Password must be 10-128 characters" };
-      }
-      if (newPassword !== confirmPassword) {
-        haptics.error();
-        return { error: "Passwords do not match" };
-      }
-      try {
-        const res = await authClient.changePassword({
-          currentPassword,
-          newPassword,
-          revokeOtherSessions: true,
-        });
-        if (res.error) {
-          haptics.error();
-          return { error: res.error.message ?? "Failed to change password" };
-        }
-        haptics.success();
-        announce("Password changed. Other sessions have been signed out.");
-        currentPasswordState.value = "";
-        newPasswordState.value = "";
-        confirmPasswordState.value = "";
-        setCurrentPassword("");
-        setNewPassword("");
-        setConfirmPassword("");
-        setPasswordSheet(false);
-        return { success: "Password updated. Other sessions have been signed out." };
-      } catch {
-        haptics.error();
-        return { error: "An unexpected error occurred" };
-      }
-    },
-    {} as PasswordState,
-  );
-
-  const error = saveState.error ?? otpState.error ?? passwordState.error ?? avatarError;
-  const success = saveState.success ?? otpState.success ?? passwordState.success;
+  const error = saveState.error ?? otpState.error ?? avatarError;
+  const success = saveState.success ?? otpState.success;
 
   if (!me) {
     return (
@@ -476,6 +420,7 @@ export default function ProfileScreen() {
                     modifiers={[
                       ...inputModifiers,
                       keyboardType("numeric"),
+                      textContentType("oneTimeCode"),
                       onSubmit(() => startTransition(() => verifyOtp())),
                       dfont({ size: 24, design: "monospaced" }),
                       monospacedDigit(),
@@ -525,6 +470,7 @@ export default function ProfileScreen() {
                     modifiers={[
                       ...inputModifiers,
                       textInputAutocapitalization("words"),
+                      textContentType("name"),
                       disabled(isSaving),
                       submitLabel("next"),
                       accessibilityLabel("Name"),
@@ -544,6 +490,7 @@ export default function ProfileScreen() {
                       keyboardType("ascii-capable"),
                       autocorrectionDisabled(),
                       textInputAutocapitalization("never"),
+                      textContentType("username"),
                       disabled(isSaving),
                       submitLabel("next"),
                       accessibilityLabel("Username"),
@@ -566,6 +513,7 @@ export default function ProfileScreen() {
                       keyboardType("email-address"),
                       autocorrectionDisabled(),
                       textInputAutocapitalization("never"),
+                      textContentType("emailAddress"),
                       disabled(isSaving || !emailFeatures),
                       submitLabel("next"),
                       accessibilityLabel("Email address"),
@@ -639,7 +587,7 @@ export default function ProfileScreen() {
                     ]}
                     onPress={() => {
                       haptics.light();
-                      setPasswordSheet(true);
+                      router.push("/profile/change-password");
                     }}
                   >
                     <Text
@@ -748,109 +696,6 @@ export default function ProfileScreen() {
             )}
           </VStack>
         </ScrollView>
-
-        <BottomSheet isPresented={passwordSheet} onIsPresentedChange={setPasswordSheet}>
-          <Group
-            modifiers={[presentationDetents(["medium"]), presentationDragIndicator("visible")]}
-          >
-            <Host style={{ flex: 1, backgroundColor: colors.background }}>
-              <ScrollView
-                modifiers={[
-                  scrollDismissesKeyboard("interactively"),
-                  tint(colors.primary as string),
-                ]}
-              >
-                <VStack
-                  spacing={20}
-                  alignment="leading"
-                  modifiers={[padding({ horizontal: 24, top: 24, bottom: 40 })]}
-                >
-                  <VStack spacing={6} alignment="leading">
-                    <Text modifiers={[dfont({ size: 22, weight: "bold" })]}>Change password</Text>
-                    <Text
-                      modifiers={[
-                        dfont({ size: 14 }),
-                        foregroundStyle(colors.mutedForeground as string),
-                      ]}
-                    >
-                      Other devices will be signed out.
-                    </Text>
-                  </VStack>
-
-                  <VStack
-                    spacing={6}
-                    alignment="leading"
-                    modifiers={[frame({ maxWidth: Infinity })]}
-                  >
-                    <Text modifiers={labelModifiers}>Current password</Text>
-                    <PasswordField
-                      text={currentPasswordState}
-                      onTextChange={setCurrentPassword}
-                      disabled={isChangingPassword}
-                      submitLabelType="next"
-                      accessibilityLabel="Current password"
-                      accessibilityHint="Enter your existing password"
-                    />
-                  </VStack>
-
-                  <VStack
-                    spacing={6}
-                    alignment="leading"
-                    modifiers={[frame({ maxWidth: Infinity })]}
-                  >
-                    <Text modifiers={labelModifiers}>New password</Text>
-                    <PasswordField
-                      text={newPasswordState}
-                      onTextChange={setNewPassword}
-                      disabled={isChangingPassword}
-                      submitLabelType="next"
-                      accessibilityLabel="New password"
-                      accessibilityHint="Choose a new password with at least 10 characters"
-                    />
-                    <Text modifiers={helperModifiers}>At least 10 characters.</Text>
-                  </VStack>
-
-                  <VStack
-                    spacing={6}
-                    alignment="leading"
-                    modifiers={[frame({ maxWidth: Infinity })]}
-                  >
-                    <Text modifiers={labelModifiers}>Confirm new password</Text>
-                    <PasswordField
-                      text={confirmPasswordState}
-                      onTextChange={setConfirmPassword}
-                      onSubmit={() => startTransition(() => changePassword())}
-                      disabled={isChangingPassword}
-                      accessibilityLabel="Confirm new password"
-                      accessibilityHint="Re-enter the new password to confirm"
-                    />
-                  </VStack>
-
-                  {passwordState.error ? <ErrorText>{passwordState.error}</ErrorText> : null}
-
-                  <ProminentButton
-                    label={isChangingPassword ? "Updating..." : "Update password"}
-                    onPress={() => startTransition(() => changePassword())}
-                    disabled={isChangingPassword}
-                  />
-
-                  <VStack alignment="center" modifiers={[frame({ maxWidth: Infinity })]}>
-                    <Button
-                      label="Cancel"
-                      modifiers={[
-                        buttonStyle("plain"),
-                        foregroundStyle(colors.mutedForeground as string),
-                        dfont({ size: 14, weight: "semibold" }),
-                        disabled(isChangingPassword),
-                      ]}
-                      onPress={() => setPasswordSheet(false)}
-                    />
-                  </VStack>
-                </VStack>
-              </ScrollView>
-            </Host>
-          </Group>
-        </BottomSheet>
       </Host>
     </>
   );
