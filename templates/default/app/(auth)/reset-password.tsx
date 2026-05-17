@@ -12,6 +12,7 @@ import {
   Spacer,
   RNHostView,
   ConfirmationDialog,
+  useNativeState,
 } from "@expo/ui/swift-ui";
 import {
   foregroundStyle,
@@ -28,6 +29,7 @@ import {
   monospacedDigit,
   kerning,
   submitLabel,
+  textContentType,
   accessibilityLabel,
   accessibilityHint,
   tint,
@@ -68,6 +70,9 @@ export default function ResetPasswordScreen() {
   const [otp, setOtp] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  // Hidden carrier so iOS keychain pairs the new password with this email
+  // when Strong Password offers a suggestion and the user accepts.
+  const emailIdentityState = useNativeState(email);
 
   const [state, submit, isPending] = useActionState<ResetState, void>(async () => {
     haptics.light();
@@ -141,7 +146,12 @@ export default function ResetPasswordScreen() {
           modifiers={[padding({ horizontal: 24 }), tint(colors.primary as string)]}
         >
           <Spacer />
-          <Image systemName="checkmark.circle.fill" size={56} color={colors.success} />
+          <Image
+            systemName="checkmark.circle.fill"
+            size={56}
+            color={colors.success}
+            modifiers={[accessibilityLabel("")]}
+          />
           <Text modifiers={[dfont({ size: 28, weight: "bold" })]}>Password reset!</Text>
           <Text
             modifiers={[
@@ -195,6 +205,21 @@ export default function ResetPasswordScreen() {
             </Text>
           </VStack>
 
+          <VStack spacing={6} alignment="leading" modifiers={[frame({ maxWidth: Infinity })]}>
+            <Text modifiers={labelModifiers}>Account</Text>
+            <TextField
+              text={emailIdentityState}
+              onTextChange={() => {}}
+              modifiers={[
+                ...inputModifiers,
+                foregroundStyle(colors.mutedForeground as string),
+                textContentType("username"),
+                disabled(true),
+                accessibilityLabel("Account email"),
+              ]}
+            />
+          </VStack>
+
           {error && (
             <VStack spacing={8} alignment="leading">
               <ErrorText>{error}</ErrorText>
@@ -220,6 +245,7 @@ export default function ResetPasswordScreen() {
               modifiers={[
                 ...inputModifiers,
                 keyboardType("numeric"),
+                textContentType("oneTimeCode"),
                 dfont({ size: 24, design: "monospaced" }),
                 monospacedDigit(),
                 kerning(8),
@@ -236,6 +262,7 @@ export default function ResetPasswordScreen() {
             <Text modifiers={labelModifiers}>New password</Text>
             <PasswordField
               onTextChange={setPassword}
+              contentType="newPassword"
               disabled={isPending}
               submitLabelType="next"
               accessibilityLabel="New password"
@@ -253,6 +280,7 @@ export default function ResetPasswordScreen() {
             <PasswordField
               onTextChange={setConfirmPassword}
               onSubmit={() => startTransition(() => submit())}
+              contentType="newPassword"
               disabled={isPending}
               accessibilityLabel="Confirm new password"
               accessibilityHint="Re-enter the new password to confirm"
@@ -298,6 +326,7 @@ export default function ResetPasswordScreen() {
             label="Discard"
             role="destructive"
             onPress={() => {
+              haptics.warning();
               const action = pendingNavAction;
               setPendingNavAction(null);
               if (action) navigation.dispatch(action);

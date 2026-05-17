@@ -23,6 +23,7 @@ import {
   disabled,
   keyboardType,
   submitLabel,
+  textContentType,
   textFieldStyle,
   textInputAutocapitalization,
   padding,
@@ -131,6 +132,7 @@ export default function SignUpScreen() {
   );
 
   const pickAvatar = useCallback(async (source: "library" | "camera") => {
+    haptics.light();
     setAvatarPicker(false);
     // Wait for the action sheet to finish dismissing before opening the
     // picker. iOS refuses to present a second view controller while one is
@@ -141,10 +143,10 @@ export default function SignUpScreen() {
         ? await ImagePicker.requestCameraPermissionsAsync()
         : await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!perm.granted) {
+      haptics.error();
       setAvatarError(source === "camera" ? "Camera access denied" : "Photos access denied");
       return;
     }
-    haptics.light();
     const options: ImagePicker.ImagePickerOptions = {
       mediaTypes: ["images"],
       allowsEditing: true,
@@ -397,6 +399,7 @@ export default function SignUpScreen() {
                         systemName="camera"
                         size={20}
                         color={colors.mutedForeground as string}
+                        modifiers={[accessibilityLabel("")]}
                       />
                     </VStack>
                   )}
@@ -433,6 +436,7 @@ export default function SignUpScreen() {
               modifiers={[
                 ...inputModifiers,
                 textInputAutocapitalization("words"),
+                textContentType("name"),
                 disabled(isLoading),
                 submitLabel("next"),
                 accessibilityLabel("Full name"),
@@ -451,6 +455,7 @@ export default function SignUpScreen() {
                 keyboardType("ascii-capable"),
                 autocorrectionDisabled(),
                 textInputAutocapitalization("never"),
+                textContentType("username"),
                 disabled(isLoading),
                 submitLabel("next"),
                 accessibilityLabel("Username"),
@@ -478,6 +483,7 @@ export default function SignUpScreen() {
                 keyboardType("email-address"),
                 autocorrectionDisabled(),
                 textInputAutocapitalization("never"),
+                textContentType("username"),
                 disabled(isLoading),
                 submitLabel("next"),
                 accessibilityLabel("Email address"),
@@ -491,6 +497,7 @@ export default function SignUpScreen() {
             <PasswordField
               onTextChange={setPassword}
               onSubmit={() => startTransition(() => signUp())}
+              contentType="newPassword"
               disabled={isLoading}
               accessibilityLabel="Password"
               accessibilityHint="Enter a password with at least 10 characters"
@@ -547,6 +554,7 @@ export default function SignUpScreen() {
             label="Discard"
             role="destructive"
             onPress={() => {
+              haptics.warning();
               const action = pendingNavAction;
               setPendingNavAction(null);
               if (action) navigation.dispatch(action);
