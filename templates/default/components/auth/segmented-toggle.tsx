@@ -33,7 +33,7 @@ export function SegmentedToggle<T extends string>({ value, options, onChange }: 
       onSelectionChange={(selection) => {
         const next = selection as T;
         if (next === value) return;
-        haptics.light();
+        haptics.selection();
         onChange(next);
       }}
     >

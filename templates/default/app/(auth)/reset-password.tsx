@@ -321,6 +321,7 @@ export default function ResetPasswordScreen() {
             label="Discard"
             role="destructive"
             onPress={() => {
+              haptics.warning();
               const action = pendingNavAction;
               setPendingNavAction(null);
               if (action) navigation.dispatch(action);

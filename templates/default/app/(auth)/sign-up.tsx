@@ -132,6 +132,7 @@ export default function SignUpScreen() {
   );
 
   const pickAvatar = useCallback(async (source: "library" | "camera") => {
+    haptics.light();
     setAvatarPicker(false);
     // Wait for the action sheet to finish dismissing before opening the
     // picker. iOS refuses to present a second view controller while one is
@@ -142,10 +143,10 @@ export default function SignUpScreen() {
         ? await ImagePicker.requestCameraPermissionsAsync()
         : await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!perm.granted) {
+      haptics.error();
       setAvatarError(source === "camera" ? "Camera access denied" : "Photos access denied");
       return;
     }
-    haptics.light();
     const options: ImagePicker.ImagePickerOptions = {
       mediaTypes: ["images"],
       allowsEditing: true,
@@ -552,6 +553,7 @@ export default function SignUpScreen() {
             label="Discard"
             role="destructive"
             onPress={() => {
+              haptics.warning();
               const action = pendingNavAction;
               setPendingNavAction(null);
               if (action) navigation.dispatch(action);

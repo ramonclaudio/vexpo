@@ -230,6 +230,7 @@ function ChangePasswordForm({ email }: { email: string }) {
             label="Discard"
             role="destructive"
             onPress={() => {
+              haptics.warning();
               const action = pendingNavAction;
               setPendingNavAction(null);
               if (action) navigation.dispatch(action);

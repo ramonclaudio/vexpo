@@ -213,6 +213,7 @@ export default function ProfileScreen() {
   const [avatarError, setAvatarError] = useState<string | null>(null);
 
   const pickAvatar = async (source: "library" | "camera") => {
+    haptics.light();
     setAvatarPicker(false);
     await new Promise((r) => setTimeout(r, 350));
     const perm =
@@ -220,10 +221,10 @@ export default function ProfileScreen() {
         ? await ImagePicker.requestCameraPermissionsAsync()
         : await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!perm.granted) {
+      haptics.error();
       setAvatarError(source === "camera" ? "Camera access denied" : "Photos access denied");
       return;
     }
-    haptics.light();
     const options: ImagePicker.ImagePickerOptions = {
       mediaTypes: ["images"],
       allowsEditing: true,
@@ -453,6 +454,7 @@ export default function ProfileScreen() {
                       disabled(isVerifying),
                     ]}
                     onPress={() => {
+                      haptics.light();
                       setPendingEmail(null);
                       setOtp("");
                     }}
@@ -620,7 +622,10 @@ export default function ProfileScreen() {
                         background(colors.muted as string),
                         clipShape("capsule"),
                       ]}
-                      onPress={() => setSignOutConfirm(true)}
+                      onPress={() => {
+                        haptics.medium();
+                        setSignOutConfirm(true);
+                      }}
                     >
                       <Text
                         modifiers={[
@@ -661,7 +666,10 @@ export default function ProfileScreen() {
                         frame({ maxWidth: 10000 }),
                         clipShape("capsule"),
                       ]}
-                      onPress={() => setDeleteAccountConfirm(true)}
+                      onPress={() => {
+                        haptics.warning();
+                        setDeleteAccountConfirm(true);
+                      }}
                     >
                       <Text
                         modifiers={[
