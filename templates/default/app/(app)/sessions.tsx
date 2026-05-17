@@ -7,6 +7,7 @@ import {
   VStack,
   HStack,
   Spacer,
+  Alert,
   ContentUnavailableView,
 } from "@expo/ui/swift-ui";
 import {
@@ -70,6 +71,7 @@ export default function SessionsScreen() {
   const colors = useColors();
   const [sessions, setSessions] = useState<SessionRow[] | null>(null);
   const [revoking, setRevoking] = useState<string | null>(null);
+  const [confirmToken, setConfirmToken] = useState<string | null>(null);
 
   const load = async () => {
     const res = await authClient.listSessions();
@@ -159,16 +161,47 @@ export default function SessionsScreen() {
                   </Text>
                 </VStack>
                 <Spacer />
-                <Button modifiers={[buttonStyle("plain")]} onPress={() => revoke(s.token)}>
-                  <Text
-                    modifiers={[
-                      dfont({ size: 14, weight: "medium" }),
-                      foregroundStyle(colors.destructive as string),
-                    ]}
-                  >
-                    Revoke
-                  </Text>
-                </Button>
+                <Alert
+                  title="Revoke this session?"
+                  isPresented={confirmToken === s.token}
+                  onIsPresentedChange={(v) => setConfirmToken(v ? s.token : null)}
+                >
+                  <Alert.Trigger>
+                    <Button
+                      modifiers={[buttonStyle("plain")]}
+                      onPress={() => {
+                        haptics.warning();
+                        setConfirmToken(s.token);
+                      }}
+                    >
+                      <Text
+                        modifiers={[
+                          dfont({ size: 14, weight: "medium" }),
+                          foregroundStyle(colors.destructive as string),
+                        ]}
+                      >
+                        Revoke
+                      </Text>
+                    </Button>
+                  </Alert.Trigger>
+                  <Alert.Actions>
+                    <Button
+                      label="Revoke"
+                      role="destructive"
+                      onPress={() => {
+                        setConfirmToken(null);
+                        void revoke(s.token);
+                      }}
+                    />
+                    <Button label="Cancel" role="cancel" />
+                  </Alert.Actions>
+                  <Alert.Message>
+                    <Text modifiers={[dfont({ size: 16 })]}>
+                      Signing out {deviceLabel(s.userAgent)} ends the session everywhere it is
+                      active.
+                    </Text>
+                  </Alert.Message>
+                </Alert>
               </HStack>
             ))}
             {revoking ? (
