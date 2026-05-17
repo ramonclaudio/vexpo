@@ -18,6 +18,7 @@ import {
   accessibilityLabel,
   accessibilityHint,
   tint,
+  textContentType,
   textFieldStyle,
 } from "@expo/ui/swift-ui/modifiers";
 import { useDynamicFont } from "@/lib/dynamic-font";
@@ -194,6 +195,7 @@ export function OtpVerification({
               kerning(8),
               multilineTextAlignment("center"),
               keyboardType("numeric"),
+              textContentType("oneTimeCode"),
               onSubmit(() => startTransition(() => verify())),
               submitLabel("done"),
               accessibilityLabel("Verification code"),

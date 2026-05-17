@@ -23,6 +23,7 @@ import {
   disabled,
   keyboardType,
   submitLabel,
+  textContentType,
   textFieldStyle,
   textInputAutocapitalization,
   padding,
@@ -433,6 +434,7 @@ export default function SignUpScreen() {
               modifiers={[
                 ...inputModifiers,
                 textInputAutocapitalization("words"),
+                textContentType("name"),
                 disabled(isLoading),
                 submitLabel("next"),
                 accessibilityLabel("Full name"),
@@ -451,6 +453,7 @@ export default function SignUpScreen() {
                 keyboardType("ascii-capable"),
                 autocorrectionDisabled(),
                 textInputAutocapitalization("never"),
+                textContentType("username"),
                 disabled(isLoading),
                 submitLabel("next"),
                 accessibilityLabel("Username"),
@@ -478,6 +481,7 @@ export default function SignUpScreen() {
                 keyboardType("email-address"),
                 autocorrectionDisabled(),
                 textInputAutocapitalization("never"),
+                textContentType("username"),
                 disabled(isLoading),
                 submitLabel("next"),
                 accessibilityLabel("Email address"),
@@ -491,6 +495,7 @@ export default function SignUpScreen() {
             <PasswordField
               onTextChange={setPassword}
               onSubmit={() => startTransition(() => signUp())}
+              contentType="newPassword"
               disabled={isLoading}
               accessibilityLabel="Password"
               accessibilityHint="Enter a password with at least 10 characters"
