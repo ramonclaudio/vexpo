@@ -12,6 +12,7 @@ import {
   onSubmit as onSubmitMod,
   padding,
   submitLabel,
+  textContentType,
   textFieldStyle,
   textInputAutocapitalization,
 } from "@expo/ui/swift-ui/modifiers";
@@ -23,6 +24,7 @@ import { haptics } from "@/lib/haptics";
 
 type ObservableTextState = NonNullable<ComponentProps<typeof TextField>["text"]>;
 type SubmitLabel = "next" | "done" | "send" | "go" | "search" | "join" | "route" | "continue";
+type ContentType = "password" | "newPassword";
 
 type Props = {
   text?: ObservableTextState;
@@ -30,6 +32,13 @@ type Props = {
   onTextChange: (next: string) => void;
   onSubmit?: () => void;
   submitLabelType?: SubmitLabel;
+  /**
+   * iOS text content type. `"password"` (default) hooks into keychain
+   * autofill for existing credentials. `"newPassword"` triggers Strong
+   * Password generation and saves the new credential on success. Use it
+   * for the sign-up and reset flows.
+   */
+  contentType?: ContentType;
   disabled?: boolean;
   accessibilityLabel?: string;
   accessibilityHint?: string;
@@ -51,6 +60,7 @@ export function PasswordField({
   onTextChange,
   onSubmit,
   submitLabelType = "done",
+  contentType = "password",
   disabled = false,
   accessibilityLabel: a11yLabel = "Password",
   accessibilityHint: a11yHint = "Enter your password",
@@ -67,6 +77,7 @@ export function PasswordField({
     dfont({ size: 16 }),
     autocorrectionDisabled(),
     textInputAutocapitalization("never"),
+    textContentType(contentType),
     disabledMod(disabled),
     submitLabel(submitLabelType),
     accessibilityLabel(a11yLabel),
