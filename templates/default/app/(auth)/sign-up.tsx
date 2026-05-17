@@ -16,6 +16,7 @@ import {
   Spacer,
   RNHostView,
   ConfirmationDialog,
+  useNativeState,
 } from "@expo/ui/swift-ui";
 import {
   autocorrectionDisabled,
@@ -36,6 +37,9 @@ import {
   background,
   border,
   clipShape,
+  id,
+  scrollPosition,
+  scrollTargetLayout,
 } from "@expo/ui/swift-ui/modifiers";
 import { useDynamicFont } from "@/lib/dynamic-font";
 import { Button as ButtonTokens } from "@/constants/layout";
@@ -49,7 +53,7 @@ import { OtpVerification, type PendingAvatar } from "@/components/auth/otp-verif
 import { PasswordField } from "@/components/auth/password-field";
 import { SegmentedToggle } from "@/components/auth/segmented-toggle";
 import { ProminentButton } from "@/components/ui/prominent-button";
-import { firstError, signUpSchema } from "@/lib/schemas";
+import { firstError, firstErrorField, signUpSchema } from "@/lib/schemas";
 import { ErrorText } from "@/components/ui/status-text";
 import { announce } from "@/lib/a11y";
 import { useColorScheme, useColors, useThemedAsset } from "@/hooks/use-theme";
@@ -83,6 +87,10 @@ export default function SignUpScreen() {
   const [pendingAvatar, setPendingAvatar] = useState<PendingAvatar | null>(null);
   const [avatarPicker, setAvatarPicker] = useState(false);
   const [avatarError, setAvatarError] = useState<string | null>(null);
+
+  // Bound to ScrollView via `scrollPosition`. Writing a field id scrolls the
+  // form so that field aligns with the top of the viewport.
+  const activeField = useNativeState<string | null>(null);
 
   // Live username availability via the better-auth `username` plugin. Status
   // is null while idle, true when the server says the handle is free, false
@@ -197,6 +205,8 @@ export default function SignUpScreen() {
     const parsed = signUpSchema.safeParse({ name, username, email, password });
     if (!parsed.success) {
       haptics.error();
+      const field = firstErrorField(parsed);
+      if (field) activeField.value = `field-${field}`;
       return { error: firstError(parsed)! };
     }
 
@@ -309,12 +319,16 @@ export default function SignUpScreen() {
   return (
     <Host style={{ flex: 1, backgroundColor: colors.background }}>
       <ScrollView
-        modifiers={[scrollDismissesKeyboard("interactively"), tint(colors.primary as string)]}
+        modifiers={[
+          scrollDismissesKeyboard("interactively"),
+          tint(colors.primary as string),
+          scrollPosition(activeField, { anchor: "top" }),
+        ]}
       >
         <VStack
           spacing={20}
           alignment="leading"
-          modifiers={[padding({ horizontal: 24, top: 60, bottom: 40 })]}
+          modifiers={[padding({ horizontal: 24, top: 60, bottom: 40 }), scrollTargetLayout()]}
         >
           <RNHostView matchContents>
             <ExpoImage
@@ -428,7 +442,11 @@ export default function SignUpScreen() {
             </ConfirmationDialog>
           </VStack>
 
-          <VStack spacing={6} alignment="leading" modifiers={[frame({ maxWidth: Infinity })]}>
+          <VStack
+            spacing={6}
+            alignment="leading"
+            modifiers={[frame({ maxWidth: Infinity }), id("field-name")]}
+          >
             <Text modifiers={labelModifiers}>Name</Text>
             <TextField
               placeholder="Your name"
@@ -445,7 +463,11 @@ export default function SignUpScreen() {
             />
           </VStack>
 
-          <VStack spacing={6} alignment="leading" modifiers={[frame({ maxWidth: Infinity })]}>
+          <VStack
+            spacing={6}
+            alignment="leading"
+            modifiers={[frame({ maxWidth: Infinity }), id("field-username")]}
+          >
             <Text modifiers={labelModifiers}>Username (optional)</Text>
             <TextField
               placeholder="johndoe"
@@ -473,7 +495,11 @@ export default function SignUpScreen() {
             )}
           </VStack>
 
-          <VStack spacing={6} alignment="leading" modifiers={[frame({ maxWidth: Infinity })]}>
+          <VStack
+            spacing={6}
+            alignment="leading"
+            modifiers={[frame({ maxWidth: Infinity }), id("field-email")]}
+          >
             <Text modifiers={labelModifiers}>Email</Text>
             <TextField
               placeholder="you@example.com"
@@ -492,7 +518,11 @@ export default function SignUpScreen() {
             />
           </VStack>
 
-          <VStack spacing={6} alignment="leading" modifiers={[frame({ maxWidth: Infinity })]}>
+          <VStack
+            spacing={6}
+            alignment="leading"
+            modifiers={[frame({ maxWidth: Infinity }), id("field-password")]}
+          >
             <Text modifiers={labelModifiers}>Password</Text>
             <PasswordField
               onTextChange={setPassword}
