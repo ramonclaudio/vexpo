@@ -35,7 +35,7 @@ Long-form walkthrough with every prompt, every env-var alternative, and recovery
 
 ## What's wired up
 
-- Convex backend with reactive queries, storage, real-time sync, and rate limiting on every endpoint via `@convex-dev/rate-limiter`
+- Convex backend with reactive queries, storage, real-time sync, and `@convex-dev/rate-limiter` on every application mutation. Auth-route rate limits ship via Better Auth at the HTTP layer.
 - Better Auth via `@convex-dev/better-auth` (sessions, accounts, devices)
 - Resend via `@convex-dev/resend` for OTP, password reset, change-email, with webhook delivery events
 - Apple Sign In via Apple's official `AppleAuthenticationButton`, HIG-compliant BLACK/WHITE theme-aware, SIWA Services ID + ES256 JWT signing (180-day expiry, auto-rotated every 90 days)

@@ -216,6 +216,9 @@ export const deleteAccount = authMutation({
   args: {},
   returns: v.object({ success: v.boolean() }),
   handler: async (ctx) => {
+    // Irreversible, so the strictest bucket. Reserves let the legitimate
+    // single call succeed even if the bucket is empty from earlier writes.
+    await rateLimitWithThrow(ctx, "criticalAction", ctx.user._id.toString());
     const authUserId = ctx.user.authUserId;
 
     const pushTokens = await ctx.db
