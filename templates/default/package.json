@@ -41,7 +41,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "upgrade": "bunx expo install expo@canary && bunx expo install --fix",
-    "upgrade:stable": "bunx expo install expo@latest && bunx expo install --fix"
+    "upgrade:stable": "bunx expo install expo@latest && bunx expo install --fix",
+    "updates:gen-cert": "node scripts/gen-update-cert.mjs"
   },
   "dependencies": {
     "@better-auth/expo": "1.6.9",

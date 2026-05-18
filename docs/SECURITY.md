@@ -40,15 +40,20 @@ The Better Auth routes (registered via `authComponent.registerRoutesLazy`) handl
 ### OTA updates
 
 - **`runtimeVersion: { policy: "fingerprint" }`.** A native change forces a fresh build. OTAs can never load against an incompatible binary.
-- **Code-signing config is staged.** `app.config.ts` ships with the `codeSigningCertificate` / `codeSigningMetadata` block commented in plus the one-shot setup steps. Production / Enterprise plan opt-in. Generate with:
-  ```bash
-  bunx expo-updates codesigning:generate \
-    --certificate-output-directory certs \
-    --key-output-directory ../keys \
-    --certificate-validity-duration-years 10 \
-    --certificate-common-name "Your Organization Name"
-  ```
-  then store `private-key.pem` as an EAS file-type secret (`EAS_UPDATE_PRIVATE_KEY`), reference it from the workflow's `update` job via `private_key_path: "$EAS_UPDATE_PRIVATE_KEY"`, and uncomment the app config block. With this on, a compromised CDN can't ship arbitrary JS. The device verifies every update bundle against the public key.
+- **End-to-end code signing is wired.** `app.config.ts` detects `certs/certificate.pem` at config-eval time and turns on `codeSigningCertificate` / `codeSigningMetadata` automatically. `.eas/workflows/deploy-production.yml`'s `update_ios` job passes `private_key_path: "$EAS_UPDATE_PRIVATE_KEY"` so `eas update` signs locally before publish. Two one-time steps activate it:
+  1. Generate the keypair:
+     ```bash
+     bun run updates:gen-cert -- --name "Your Organization Name"
+     ```
+     Writes `certs/certificate.pem` (commit it) and `../keys/private-key.pem` (do not commit).
+  2. Upload the private key to EAS as a file-type secret:
+     ```bash
+     eas env:create --environment production --visibility secret \
+       --type file --name EAS_UPDATE_PRIVATE_KEY \
+       --value ../keys/private-key.pem
+     ```
+
+  Once both are in place, every OTA bundle is signed with the private key during `eas update` and verified on-device against the bundled certificate before install. A compromised CDN or EAS account cannot ship arbitrary JS. If the env var is unset (cert not yet generated), `eas update` skips signing without erroring.
 - **Gradual rollouts.** `rollout.yml` workflow publishes new updates at controlled percentages (5% → 25% → 100%). A broken update reaches a fraction of users, not all of them.
 - **Rollback workflows.** `rollback.yml` runs `update:republish` or `update:roll-back-to-embedded` non-interactively in CI.
 
