@@ -19,6 +19,7 @@ import {
   buttonStyle,
   background,
   clipShape,
+  defaultScrollAnchorForRole,
   disabled,
   keyboardType,
   textFieldStyle,
@@ -180,7 +181,14 @@ export default function ResetPasswordScreen() {
   return (
     <Host style={{ flex: 1, backgroundColor: colors.background }}>
       <ScrollView
-        modifiers={[scrollDismissesKeyboard("interactively"), tint(colors.primary as string)]}
+        modifiers={[
+          scrollDismissesKeyboard("interactively"),
+          tint(colors.primary as string),
+          // An invalid-code error appears between the account row and the OTP
+          // field, pushing the password fields down. Pin the visible center so
+          // the user stays on the field they were filling. No-op below iOS 18.
+          defaultScrollAnchorForRole("center", "sizeChanges"),
+        ]}
       >
         <VStack
           spacing={20}
