@@ -8,7 +8,7 @@
 
 import { v } from "convex/values";
 
-import { components } from "./_generated/api";
+import { components, internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
 import type { MutationCtx } from "./_generated/server";
 import { authComponent, authUserValidator } from "./auth";
@@ -220,6 +220,28 @@ export const deleteAccount = authMutation({
     // single call succeed even if the bucket is empty from earlier writes.
     await rateLimitWithThrow(ctx, "criticalAction", ctx.user._id.toString());
     const authUserId = ctx.user.authUserId;
+
+    // App Store requires apps that support Sign in with Apple to revoke the
+    // associated refresh tokens at Apple when the user deletes their account.
+    // Schedule the HTTP call as an action so it runs after this mutation
+    // commits; the local rows we drop below also carry the token, so we read
+    // it first.
+    const appleAccounts = (await ctx.runQuery(components.betterAuth.adapter.findMany, {
+      model: "account",
+      where: [
+        { field: "userId", value: authUserId },
+        { field: "providerId", value: "apple", connector: "AND" },
+      ],
+      paginationOpts: { numItems: 100, cursor: null },
+    })) as { page: Array<Record<string, unknown>> };
+    for (const account of appleAccounts.page) {
+      const token = account.refreshToken;
+      if (typeof token === "string" && token.length > 0) {
+        await ctx.scheduler.runAfter(0, internal.apple.revokeRefreshToken, {
+          refreshToken: token,
+        });
+      }
+    }
 
     const pushTokens = await ctx.db
       .query("pushTokens")
