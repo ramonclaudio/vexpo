@@ -135,3 +135,15 @@ export function firstError(
   if (result.success) return null;
   return result.error.issues[0]?.message ?? "Invalid input";
 }
+
+/**
+ * Top-level field key of the first validation issue. Pair with `scrollPosition`
+ * and `id('field-<key>')` to auto-scroll the form to the failing field.
+ */
+export function firstErrorField(
+  result: { success: false; error: z.ZodError } | { success: true; data: unknown },
+): string | null {
+  if (result.success) return null;
+  const first = result.error.issues[0]?.path[0];
+  return typeof first === "string" ? first : null;
+}
