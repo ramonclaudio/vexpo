@@ -201,6 +201,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       ["expo-build-properties", { ios: { deploymentTarget: "16.4" } }],
       ["./plugins/with-pod-deployment-target", { target: "16.4" }],
       "./plugins/with-auto-signing",
+      "./plugins/with-quiet-build-warnings",
     ],
     extra: {
       ...config.extra,
