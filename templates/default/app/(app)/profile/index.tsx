@@ -698,7 +698,7 @@ export default function ProfileScreen() {
                   </Alert.Trigger>
                   <Alert.Actions>
                     <Button
-                      label="Delete Forever"
+                      label="Delete Account"
                       role="destructive"
                       onPress={handleDeleteAccount}
                     />
@@ -706,7 +706,8 @@ export default function ProfileScreen() {
                   </Alert.Actions>
                   <Alert.Message>
                     <Text modifiers={[dfont({ size: 16 })]}>
-                      This permanently deletes your account and all data. This cannot be undone.
+                      Your account is scheduled for permanent deletion in 30 days. Sign in within
+                      that window to restore it.
                     </Text>
                   </Alert.Message>
                 </Alert>
