@@ -135,14 +135,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       },
     },
     plugins: [
-      [
-        "expo-router",
-        {
-          asyncRoutes: {
-            default: "development",
-          },
-        },
-      ],
+      "expo-router",
       [
         "expo-splash-screen",
         {

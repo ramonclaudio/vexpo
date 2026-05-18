@@ -1,11 +1,3 @@
 {
-  "expo": {
-    "extra": {
-      "router": {
-        "asyncRoutes": {
-          "default": "development"
-        }
-      }
-    }
-  }
+  "expo": {}
 }

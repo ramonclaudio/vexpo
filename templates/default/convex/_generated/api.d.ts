@@ -17,10 +17,12 @@ import type * as env from "../env.js";
 import type * as errors from "../errors.js";
 import type * as functions from "../functions.js";
 import type * as http from "../http.js";
+import type * as log from "../log.js";
 import type * as pushTokens from "../pushTokens.js";
 import type * as rateLimit from "../rateLimit.js";
 import type * as users from "../users.js";
 import type * as validators from "../validators.js";
+import type * as webhook from "../webhook.js";
 
 import type {
   ApiFromModules,
@@ -38,10 +40,12 @@ declare const fullApi: ApiFromModules<{
   errors: typeof errors;
   functions: typeof functions;
   http: typeof http;
+  log: typeof log;
   pushTokens: typeof pushTokens;
   rateLimit: typeof rateLimit;
   users: typeof users;
   validators: typeof validators;
+  webhook: typeof webhook;
 }>;
 
 /**
