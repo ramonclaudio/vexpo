@@ -71,6 +71,48 @@ export default defineSchema(
       // daily cron picks up revoked + stale tokens without loading the
       // whole table.
       .index("by_revoked_updatedAt", ["revoked", "updatedAt"]),
+
+    // Apple App Attest challenges. The client requests a fresh nonce
+    // before generating an attestation or assertion; we verify the same
+    // nonce was used and expire any unused ones after the TTL so a
+    // stolen challenge can't be replayed later.
+    //
+    // Nonces are 32 bytes, base64url-encoded for transport.
+    appAttestChallenges: defineTable({
+      nonce: v.string(),
+      expiresAt: v.number(),
+      // Whether this challenge has been consumed. Single-use.
+      used: v.optional(v.boolean()),
+    })
+      .index("by_nonce", ["nonce"])
+      .index("by_expiresAt", ["expiresAt"]),
+
+    // Verified App Attest keys. Created on first `verifyAttestation` and
+    // referenced by every subsequent `verifyAssertion`. `publicKey` is
+    // the DER-encoded SubjectPublicKeyInfo, `counter` is the monotonic
+    // signCount from authenticatorData.
+    appAttestKeys: defineTable({
+      // Apple's keyId (base64-encoded SHA256 of the public key per
+      // App Attest spec).
+      keyId: v.string(),
+      // SubjectPublicKeyInfo, DER-encoded, base64url-encoded for storage.
+      publicKey: v.string(),
+      // Monotonic counter from the most recent assertion. Increments on
+      // each successful verifyAssertion. Reject any assertion with a
+      // counter not strictly greater than this.
+      counter: v.number(),
+      // Whether this key was attested with the production AAGUID. Dev
+      // attestations (`appattestdevelop`) are allowed in non-production
+      // Convex env but should never appear in a production app's
+      // signed binary.
+      environment: v.union(v.literal("development"), v.literal("production")),
+      attestedAt: v.number(),
+      // Optional: link the key to a user once they sign in. Lets the
+      // server bind subsequent assertions to a session.
+      userId: v.optional(v.id("users")),
+    })
+      .index("by_keyId", ["keyId"])
+      .index("by_user", ["userId"]),
   },
   { strictTableNameTypes: true },
 );

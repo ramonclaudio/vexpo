@@ -77,6 +77,30 @@ Apple App Store Review 5.1.1(v) requires apps that let users create accounts to 
   4. Writes an audit row to `accountDeletionAudit`
 - **`accountDeletionAudit` is the compliance trail.** One row per state transition (`requested`, `restored`, `permanent`) keyed on `authId` so the lifecycle is reconstructable after the user row is purged.
 
+### App Attest
+
+`@expo/app-integrity` + `convex/appAttest.ts` provide end-to-end cryptographic proof that an incoming request originated from an unmodified vexpo binary running on a real iOS device with a Secure Enclave. Rate limiting still slows attackers; App Attest proves they came from a real device.
+
+Protocol (per Apple's "Validating Apps That Connect to Your Server"):
+
+1. **Attestation (one-time per device).**
+   - Client calls `attestThisDevice(client)` in `lib/appAttest.ts`. The server's `internal.appAttest.issueChallenge` returns a single-use nonce TTL'd for 5 minutes.
+   - `generateKeyAsync()` creates a Secure-Enclave key. `attestKeyAsync(keyId, nonce)` produces a CBOR attestation.
+   - `internal.appAttest.verifyAttestation` walks every step of Apple's protocol: verifies the cert chain from `x5c[0]` through the intermediate to the pinned Apple App Attest Root CA, recomputes the nonce as `SHA256(authData || SHA256(challenge))` and matches it against the leaf cert's `1.2.840.113635.100.8.2` extension, hashes the leaf's public key and compares against the `credentialId` portion of `authData`, verifies the `rpIdHash` matches `SHA256(<TEAM_ID>.<BUNDLE_ID>)`, verifies the AAGUID matches the deployment environment, and verifies the initial counter is zero.
+   - On success the public key + counter are recorded in `appAttestKeys` keyed on `keyId`.
+
+2. **Assertion (per signed request).**
+   - Client calls `signRequest(client, keyId, payload)`. The server issues a fresh challenge, the device produces an assertion, and `internal.appAttest.verifyAssertion` verifies the ECDSA-P256-SHA256 signature over `SHA256(authenticatorData || SHA256(payload))` using the stored public key.
+   - The counter must strictly increase. The bump runs in a single mutation so two concurrent assertions can't both win.
+
+3. **Replay protection.** `appAttestChallenges` is single-use + TTL'd. The hourly cron `internal.appAttestStore.cleanupChallenges` sweeps expired rows.
+
+The iOS entitlement (`com.apple.developer.devicecheck.appattest-environment: production`) lives in `app.config.ts`'s `ios.entitlements`. Debug builds with Xcode attached automatically attest against the development AAGUID, so the same entitlement value works across paths.
+
+App Attest is not enforced on every mutation by default. It's a primitive to compose into the surfaces that care about anti-abuse. Wrap a Convex `httpAction` or `mutation` with a require-attestation guard that calls `internal.appAttest.verifyAssertion` against `X-App-Attest-KeyId` + `X-App-Attest-Assertion` + the request body, and reject when verification throws.
+
+https://developer.apple.com/documentation/devicecheck/validating-apps-that-connect-to-your-server
+
 ### Convex deploy keys
 
 - **Production deploy key lives in EAS env at `secret` visibility.** The `deploy_convex` job in `deploy-production.yml` pulls it via `environment: production`. Never inlined in YAML, never in workflow logs.
