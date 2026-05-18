@@ -17,6 +17,7 @@ import {
   background,
   buttonStyle,
   clipShape,
+  defaultScrollAnchorForRole,
   disabled,
   foregroundStyle,
   frame,
@@ -116,7 +117,14 @@ function ChangePasswordForm({ email }: { email: string }) {
   return (
     <Host style={{ flex: 1, backgroundColor: colors.background }}>
       <ScrollView
-        modifiers={[scrollDismissesKeyboard("interactively"), tint(colors.primary as string)]}
+        modifiers={[
+          scrollDismissesKeyboard("interactively"),
+          tint(colors.primary as string),
+          // A wrong-current-password error appears below the confirm field and
+          // pushes the Update button down. Pin the visible center so the user
+          // does not lose the field they just submitted. No-op below iOS 18.
+          defaultScrollAnchorForRole("center", "sizeChanges"),
+        ]}
       >
         <VStack
           spacing={20}
