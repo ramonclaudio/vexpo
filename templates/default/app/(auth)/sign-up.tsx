@@ -355,6 +355,7 @@ export default function SignUpScreen() {
           </VStack>
 
           <SegmentedToggle
+            accessibilityLabel="Sign in or sign up"
             value="sign-up"
             options={[
               { value: "sign-in", label: "Sign in" },

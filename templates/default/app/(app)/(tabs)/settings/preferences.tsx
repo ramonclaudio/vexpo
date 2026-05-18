@@ -10,6 +10,7 @@ import {
   Image,
 } from "@expo/ui/swift-ui";
 import {
+  accessibilityLabel,
   background,
   clipShape,
   controlSize,
@@ -84,7 +85,12 @@ export default function PreferencesScreen() {
         clipShape("capsule"),
       ]}
     >
-      <Image systemName={icon} size={18} color={colors.foreground as string} />
+      <Image
+        systemName={icon}
+        size={18}
+        color={colors.foreground as string}
+        modifiers={[accessibilityLabel("")]}
+      />
       <Text
         modifiers={[
           dfont({ size: 16, weight: "medium" }),
@@ -94,7 +100,11 @@ export default function PreferencesScreen() {
         {label}
       </Text>
       <Spacer />
-      <Toggle isOn={value} onIsOnChange={onChange} modifiers={[tint(colors.primary as string)]} />
+      <Toggle
+        isOn={value}
+        onIsOnChange={onChange}
+        modifiers={[tint(colors.primary as string), accessibilityLabel(label)]}
+      />
     </HStack>
   );
 
@@ -115,6 +125,7 @@ export default function PreferencesScreen() {
                 pickerStyle("segmented"),
                 controlSize("large"),
                 frame({ maxWidth: 10000, height: ButtonTokens.height }),
+                accessibilityLabel("Appearance"),
               ]}
               selection={INDEX_BY_MODE[mode]}
               onSelectionChange={(v) => {
@@ -135,6 +146,7 @@ export default function PreferencesScreen() {
                 pickerStyle("segmented"),
                 controlSize("large"),
                 frame({ maxWidth: 10000, height: ButtonTokens.height }),
+                accessibilityLabel("Reduce motion"),
               ]}
               selection={INDEX_BY_MOTION[motion]}
               onSelectionChange={(v) => {
