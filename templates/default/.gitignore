@@ -22,6 +22,14 @@ ios/
 AuthKey_*
 SubscriptionKey_*
 
+# EAS Update code-signing private key. The matching public cert at
+# `certs/certificate.pem` IS committed (it's bundled in the .ipa and used
+# on-device to verify OTA bundles). The private key lives only on the
+# author's machine + as an EAS file-type secret (`EAS_UPDATE_PRIVATE_KEY`).
+keys/
+private-key.pem
+*.private-key.pem
+
 # EAS (CLI state; keep workflows tracked)
 .eas/*
 !.eas/workflows/

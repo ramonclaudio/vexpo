@@ -1,3 +1,6 @@
+import { existsSync } from "node:fs";
+import { resolve } from "node:path";
+
 import type { ConfigContext, ExpoConfig } from "expo/config";
 
 import pkg from "./package.json";
@@ -86,21 +89,23 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       // build-baked assets stay in the .ipa and never download. Shrinks
       // bundle by ~95% on diff-able updates.
       assetPatternsToBeBundled: ["assets/icon.png", "assets/splash-image-*.png"],
-      // Production/Enterprise plan opt-in. Sign updates with a private key
-      // checked against the bundled certificate so a compromised CDN can't
-      // ship arbitrary JS. Generate keypair + cert via:
-      //   bunx expo-updates codesigning:generate \
-      //     --certificate-output-directory certs \
-      //     --key-output-directory ../keys \
-      //     --certificate-validity-duration-years 10 \
-      //     --certificate-common-name "Your Organization Name"
-      // Store `../keys/private-key.pem` as an EAS env file-type secret
-      // (`EAS_UPDATE_PRIVATE_KEY`) and reference it from
-      // `.eas/workflows/deploy-production.yml`'s update job via
-      // `params.private_key_path: "$EAS_UPDATE_PRIVATE_KEY"`. Then
-      // uncomment the block below.
-      // codeSigningCertificate: "./certs/certificate.pem",
-      // codeSigningMetadata: { keyid: "main", alg: "rsa-v1_5-sha256" },
+      // End-to-end OTA code signing. The cert is committed at
+      // `./certs/certificate.pem` and bundled with each .ipa; the device
+      // verifies every update against it before applying. The matching
+      // private key lives ONLY as an EAS file-type secret
+      // (`EAS_UPDATE_PRIVATE_KEY`) and never lands in the repo.
+      // Generate the keypair once with `bun run updates:gen-cert`, upload
+      // the key to EAS, and every subsequent `eas update` signs locally
+      // before publishing. A compromised CDN or EAS account cannot ship
+      // arbitrary JS. Until the cert exists the block stays off and
+      // updates ship unsigned (fine for prototyping; not for production).
+      // https://docs.expo.dev/eas-update/code-signing/
+      ...(existsSync(resolve(__dirname, "certs", "certificate.pem"))
+        ? {
+            codeSigningCertificate: "./certs/certificate.pem",
+            codeSigningMetadata: { keyid: "main", alg: "rsa-v1_5-sha256" },
+          }
+        : {}),
     },
     ios: {
       supportsTablet: false,

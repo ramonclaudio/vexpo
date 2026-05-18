@@ -85,6 +85,17 @@ jobs:
     params:
       platform: ios
       branch: production
+      # End-to-end code signing for the OTA bundle. `EAS_UPDATE_PRIVATE_KEY`
+      # is the matching private key for `templates/default/certs/certificate.pem`,
+      # stored as a production file-type secret:
+      #   eas env:create --environment production --visibility secret \
+      #     --type file --name EAS_UPDATE_PRIVATE_KEY \
+      #     --value ../keys/private-key.pem
+      # When the env var is unset (no cert generated yet), `eas update`
+      # skips signing without erroring. Run `bun run updates:gen-cert` once
+      # to wire both halves.
+      # https://docs.expo.dev/eas-update/code-signing/
+      private_key_path: "$EAS_UPDATE_PRIVATE_KEY"
 
   # Post-deploy notification with EAS Insights link. `update_ios` exposes
   # `first_update_group_id` (https://docs.expo.dev/eas/workflows/pre-packaged-jobs/#update-outputs);
