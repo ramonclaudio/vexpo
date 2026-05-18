@@ -26,6 +26,7 @@ import {
   buttonStyle,
   clipShape,
   cornerRadius,
+  defaultScrollAnchorForRole,
   foregroundStyle,
   disabled,
   keyboardType,
@@ -339,7 +340,14 @@ export default function ProfileScreen() {
 
       <Host style={{ flex: 1, backgroundColor: colors.background }}>
         <ScrollView
-          modifiers={[scrollDismissesKeyboard("interactively"), tint(colors.primary as string)]}
+          modifiers={[
+            scrollDismissesKeyboard("interactively"),
+            tint(colors.primary as string),
+            // Keep the visible center pinned when an inline error or the avatar
+            // sheet expands the form so the user doesn't jump to a new section.
+            // No-op below iOS 18.
+            defaultScrollAnchorForRole("center", "sizeChanges"),
+          ]}
         >
           <VStack
             spacing={20}
