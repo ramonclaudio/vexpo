@@ -57,7 +57,10 @@ function useUpdateLogEntries(isUpdatePending: boolean, restartCount: number) {
     (async () => {
       try {
         const all = await readLogEntries();
-        if (!cancelled) setEntries(all.slice(-5).toReversed());
+        // `.slice(-5)` already returns a fresh array, so `.reverse()` mutates
+        // that copy. `.toReversed()` is ES2023 and not in Hermes V1 yet.
+        // oxlint-disable-next-line no-array-reverse
+        if (!cancelled) setEntries(all.slice(-5).reverse());
       } catch {
         // expo-updates internal log is best-effort; quietly skip failures.
       }
