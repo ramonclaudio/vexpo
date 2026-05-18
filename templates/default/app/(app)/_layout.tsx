@@ -1,5 +1,6 @@
 import { Stack } from "expo-router";
 
+import { useAccountDeletionGuard } from "@/hooks/use-account-deletion-guard";
 import { useColors } from "@/hooks/use-theme";
 import { useReducedMotion } from "@/hooks/use-reduced-motion";
 import { FontFamily } from "@/constants/layout";
@@ -12,6 +13,7 @@ export function SuspenseFallback() {
 }
 
 export default function AppLayout() {
+  useAccountDeletionGuard();
   const colors = useColors();
   const reduceMotion = useReducedMotion();
   const headerTint = colors.foreground as string;
@@ -74,6 +76,15 @@ export default function AppLayout() {
         <Stack.Screen.Title style={titleStyle}>Sessions</Stack.Screen.Title>
         <Stack.Screen.BackButton>Settings</Stack.Screen.BackButton>
       </Stack.Screen>
+
+      <Stack.Screen
+        name="restore-account"
+        options={{
+          headerShown: false,
+          animation: reduceMotion ? "fade" : "default",
+          gestureEnabled: false,
+        }}
+      />
     </Stack>
   );
 }
