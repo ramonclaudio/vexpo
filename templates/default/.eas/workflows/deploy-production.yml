@@ -115,12 +115,15 @@ jobs:
   notify_update_published:
     name: Notify Slack with insights link
     needs: [update_ios]
-    if: ${{ needs.update_ios.outputs.first_update_group_id }}
+    # Disabled until you paste a real `webhook_url` below. Drop the `false &&`
+    # once configured. EAS workflows do not yet support interpolating
+    # `${{ env.* }}` into `webhook_url`, so the URL has to be hardcoded.
+    if: ${{ false && needs.update_ios.outputs.first_update_group_id }}
     type: slack
     params:
-      # Replace with your Slack incoming-webhook URL. EAS does not yet
-      # support reading this from EAS env (see job comment above). interpolation
-      # of `${{ env.* }}` for `webhook_url` lands in a future EAS release.
+      # Paste your Slack incoming-webhook URL from
+      # https://api.slack.com/messaging/webhooks. Leaving the placeholder will
+      # 404 once you remove the `if: false` gate above.
       webhook_url: https://hooks.slack.com/services/REPLACE/ME/HERE
       message: |
         :rocket: OTA update published to production.
