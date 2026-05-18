@@ -1,12 +1,13 @@
 import { v } from "convex/values";
 
 import { internal } from "./_generated/api";
-import { internalMutation } from "./_generated/server";
+import { internalMutation, internalQuery } from "./_generated/server";
 import { authMutation, authQuery } from "./functions";
 import { rateLimitWithThrow } from "./rateLimit";
 import { deviceTypeValidator } from "./validators";
 
 const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
+const NINETY_DAYS_MS = 90 * 24 * 60 * 60 * 1000;
 const CLEANUP_BATCH = 200;
 
 export const upsert = authMutation({
@@ -23,15 +24,28 @@ export const upsert = authMutation({
       .unique();
 
     if (existing) {
+      // Same user: refresh timestamps and clear any prior revocation. The
+      // client only re-upserts after `getExpoPushTokenAsync` succeeds, so
+      // if we get here the token is alive again.
       if (existing.userId === ctx.user._id) {
-        await ctx.db.patch(existing._id, { updatedAt: now });
+        await ctx.db.patch(existing._id, {
+          updatedAt: now,
+          lastSeenAt: now,
+          revoked: false,
+          revokedAt: undefined,
+          lastErrorCode: undefined,
+        });
         return existing._id;
       }
-      // Reassign token to current user (device changed owners)
+      // Reassign token to current user (device changed owners).
       await ctx.db.patch(existing._id, {
         userId: ctx.user._id,
         deviceType,
         updatedAt: now,
+        lastSeenAt: now,
+        revoked: false,
+        revokedAt: undefined,
+        lastErrorCode: undefined,
       });
       return existing._id;
     }
@@ -42,6 +56,7 @@ export const upsert = authMutation({
       deviceType,
       createdAt: now,
       updatedAt: now,
+      lastSeenAt: now,
     });
   },
 });
@@ -74,6 +89,10 @@ export const list = authQuery({
       deviceType: deviceTypeValidator,
       createdAt: v.number(),
       updatedAt: v.number(),
+      lastSeenAt: v.optional(v.number()),
+      revoked: v.optional(v.boolean()),
+      revokedAt: v.optional(v.number()),
+      lastErrorCode: v.optional(v.string()),
     }),
   ),
   handler: async (ctx) => {
@@ -99,20 +118,92 @@ export const removeAll = authMutation({
 });
 
 /**
- * Delete push tokens older than 30 days, in bounded batches. Reschedules
- * itself when more rows remain so we never load an unbounded set into memory.
+ * Return active (non-revoked) tokens for a user. Used by senders so a
+ * dead token doesn't cost an Expo Push API roundtrip every send.
+ */
+export const listActiveByUser = internalQuery({
+  args: { userId: v.id("users") },
+  returns: v.array(
+    v.object({
+      _id: v.id("pushTokens"),
+      token: v.string(),
+    }),
+  ),
+  handler: async (ctx, { userId }) => {
+    const rows = await ctx.db
+      .query("pushTokens")
+      .withIndex("by_user", (q) => q.eq("userId", userId))
+      .collect();
+    return rows.filter((r) => !r.revoked).map((r) => ({ _id: r._id, token: r.token }));
+  },
+});
+
+/**
+ * Tombstone tokens whose Expo Push receipts came back with a permanent
+ * error. The row sticks around for 30 days so a transient client retry
+ * doesn't resurrect a dead device, then `cleanupStale` drops it.
+ *
+ * `errorCode` is one of Expo's documented values: `DeviceNotRegistered`,
+ * `InvalidCredentials`, `MismatchSenderId`, etc. Only the permanent codes
+ * are passed here; transient errors stay active.
+ *
+ * https://docs.expo.dev/push-notifications/sending-notifications/#individual-push-notification-errors
+ */
+export const markRevoked = internalMutation({
+  args: {
+    tokenIds: v.array(v.id("pushTokens")),
+    errorCode: v.string(),
+  },
+  returns: v.number(),
+  handler: async (ctx, { tokenIds, errorCode }) => {
+    const now = Date.now();
+    let revoked = 0;
+    for (const id of tokenIds) {
+      const row = await ctx.db.get(id);
+      if (!row) continue;
+      await ctx.db.patch(id, {
+        revoked: true,
+        revokedAt: now,
+        updatedAt: now,
+        lastErrorCode: errorCode,
+      });
+      revoked++;
+    }
+    return revoked;
+  },
+});
+
+/**
+ * Daily cleanup. Drops revoked rows older than 30 days and stale rows
+ * never re-upserted in 90 days. Bounded batches; reschedules when more
+ * rows remain so we never load an unbounded set into memory.
+ *
+ * The old behavior keyed on `_creationTime`, which deleted long-lived
+ * rows even when the device was active. The correct signal is
+ * `updatedAt`, which the client touches on every successful re-upsert.
  */
 export const cleanupStale = internalMutation({
   args: {},
   returns: v.number(),
   handler: async (ctx) => {
-    const cutoff = Date.now() - THIRTY_DAYS_MS;
-    const batch = await ctx.db.query("pushTokens").order("asc").take(CLEANUP_BATCH);
-    const stale = batch.filter((t) => t._creationTime < cutoff);
-    await Promise.all(stale.map((t) => ctx.db.delete(t._id)));
+    const now = Date.now();
+    const revokedCutoff = now - THIRTY_DAYS_MS;
+    const staleCutoff = now - NINETY_DAYS_MS;
+
+    const batch = await ctx.db
+      .query("pushTokens")
+      .withIndex("by_revoked_updatedAt")
+      .order("asc")
+      .take(CLEANUP_BATCH);
+
+    const removable = batch.filter((t) =>
+      t.revoked ? t.updatedAt < revokedCutoff : t.updatedAt < staleCutoff,
+    );
+    await Promise.all(removable.map((t) => ctx.db.delete(t._id)));
+
     if (batch.length === CLEANUP_BATCH) {
       await ctx.scheduler.runAfter(0, internal.pushTokens.cleanupStale, {});
     }
-    return stale.length;
+    return removable.length;
   },
 });
