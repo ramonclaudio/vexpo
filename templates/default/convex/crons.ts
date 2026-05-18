@@ -13,6 +13,14 @@ crons.daily(
   internal.pushTokens.cleanupStale,
 );
 
+// Permanently purge soft-deleted accounts whose 30-day grace window has
+// expired. Bounded batches via `internal.users.hardDeleteExpired`.
+crons.daily(
+  "hard-delete expired account tombstones",
+  { hourUTC: 4, minuteUTC: 0 },
+  internal.users.hardDeleteExpired,
+);
+
 // The Resend component retains finalized (delivered, cancelled, bounced)
 // emails and it's our job to clear them. Run hourly to keep the emails table
 // bounded. See @convex-dev/resend README → "Data retention".

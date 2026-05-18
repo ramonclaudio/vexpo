@@ -262,6 +262,10 @@ export const authUserValidator = v.object({
   avatar: v.optional(v.id("_storage")),
   createdAt: v.number(),
   updatedAt: v.number(),
+  // Set when the user has requested account deletion. Within the 30-day
+  // grace window the user is still authenticated; the client routes
+  // these users to a "restore or continue with deletion" surface.
+  deletedAt: v.optional(v.number()),
   authUserId: v.string(),
   email: v.string(),
   name: v.string(),
