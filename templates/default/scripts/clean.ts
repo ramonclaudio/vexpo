@@ -2,7 +2,7 @@
  * vexpo clean script.
  *
  * Wipes every regenerable cache and build artifact:
- * - Project artifacts: node_modules, bun.lock, ios/, .expo/, dist/, convex/_generated/, tsconfig.tsbuildinfo, coverage/, .vitest-cache/, expo-env.d.ts, bun-error.*, *.log
+ * - Project artifacts: node_modules, ios/, .expo/, dist/, tsconfig.tsbuildinfo, coverage/, .vitest-cache/, expo-env.d.ts, bun-error.*, *.log
  * - .eas/ per-project state (keeps .eas/workflows/)
  * - .DS_Store files repo-wide
  * - $TMPDIR caches: metro-*, haste-map-*, react-*, node-compile-cache, expo-*, RN*
@@ -16,12 +16,17 @@
  * - .vexpo-manual-setup/ / .rebrand-backup/
  * - .setup-state.json (opt-in via --state)
  *
+ * Kept by default so reinstall is deterministic (opt in via --all):
+ * - bun.lock (source of truth; --frozen-lockfile when present)
+ * - convex/_generated/ (regenerated via `bunx convex codegen` after --all)
+ *
  * Then reinstalls deps via the detected package manager.
  *
  * Uses macOS `trash` for every delete so anything wiped is recoverable.
  *
  * Usage:
- *   bun run clean                full wipe + install
+ *   bun run clean                wipe caches, keep lockfile + convex codegen, frozen install
+ *   bun run clean --all          also wipe bun.lock + convex/_generated, then convex codegen
  *   bun run clean --metro        just Metro/Haste/Babel caches (fast, no reinstall)
  *   bun run clean --state        also wipe .setup-state.json (next setup re-probes everything)
  *   bun run clean --no-install   wipe everything but skip the reinstall
@@ -126,8 +131,11 @@ async function detectPackageManager(): Promise<PM> {
   return "npm";
 }
 
-function installCmdFor(pm: PM): string {
-  return `${pm} install`;
+function installCmdFor(pm: PM, frozen: boolean): string {
+  if (!frozen) return `${pm} install`;
+  // npm uses `ci` for frozen installs, every other PM has `--frozen-lockfile`.
+  if (pm === "npm") return "npm ci";
+  return `${pm} install --frozen-lockfile`;
 }
 
 const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
@@ -169,19 +177,26 @@ function section(title: string): void {
 const HELP = `${BOLD}vexpo clean${RESET}
 
 ${BOLD}Usage:${RESET}
-  ${DIM}bun run clean${RESET}                full wipe + bun install
+  ${DIM}bun run clean${RESET}                wipe caches, keep lockfile, frozen install
+  ${DIM}bun run clean --all${RESET}          also wipe bun.lock + convex/_generated
   ${DIM}bun run clean --metro${RESET}        just Metro/Haste/Babel caches
   ${DIM}bun run clean --state${RESET}        also wipe .setup-state.json
   ${DIM}bun run clean --no-install${RESET}   wipe everything but skip reinstall
   ${DIM}bun run clean --help${RESET}
 
-The full wipe removes node_modules, lockfile, ios/, .expo/, dist/,
-convex/_generated/, tsbuildinfo, coverage/, .vitest-cache/,
-expo-env.d.ts, bun-error.*, *.log, .eas/ (except workflows/),
-all .DS_Store files, $TMPDIR Metro/Haste/React/expo/RN caches,
-~/Library/Caches/CocoaPods, ~/.expo, and the Xcode DerivedData
-subfolder for this project. Never touches .env files, Apple keys,
-store.config.json, .vexpo-manual-setup/, or .rebrand-backup/.
+The default wipe removes node_modules, ios/, .expo/, dist/,
+tsbuildinfo, coverage/, .vitest-cache/, expo-env.d.ts, bun-error.*,
+*.log, .eas/ (except workflows/), all .DS_Store files, $TMPDIR
+Metro/Haste/React/expo/RN caches, ~/Library/Caches/CocoaPods, ~/.expo,
+and the Xcode DerivedData subfolder for this project. The lockfile
+and convex/_generated/ are kept so reinstall is deterministic
+(${DIM}bun install --frozen-lockfile${RESET}). Never touches .env files,
+Apple keys, store.config.json, .vexpo-manual-setup/, or .rebrand-backup/.
+
+${BOLD}--all${RESET} additionally wipes bun.lock and convex/_generated/.
+Reinstall resolves transitives fresh and ${DIM}bunx convex codegen${RESET} runs
+after install to rebuild the Convex bindings. Use when the lockfile
+is suspect or you want a true clean-slate reinstall.
 
 ${BOLD}--state${RESET} additionally wipes .setup-state.json so the next
 ${DIM}bun run setup${RESET} re-probes every phase against external services
@@ -193,13 +208,20 @@ held open. ${BOLD}convex dev${RESET} is left alone (it's your data layer, not a
 bundler); restart it manually if it misbehaves after a full wipe.
 `;
 
-let args: { metro?: boolean; state?: boolean; "no-install"?: boolean; help?: boolean };
+let args: {
+  metro?: boolean;
+  state?: boolean;
+  all?: boolean;
+  "no-install"?: boolean;
+  help?: boolean;
+};
 try {
   args = parseArgs({
     args: process.argv.slice(2),
     options: {
       metro: { type: "boolean", default: false },
       state: { type: "boolean", default: false },
+      all: { type: "boolean", default: false },
       "no-install": { type: "boolean", default: false },
       help: { type: "boolean", short: "h", default: false },
     },
@@ -273,16 +295,19 @@ async function readPkgName(): Promise<string> {
 
 const PROJECT_TARGETS = [
   "node_modules",
-  "bun.lock",
   "ios",
   ".expo",
   "dist",
-  "convex/_generated",
   "tsconfig.tsbuildinfo",
   "coverage",
   ".vitest-cache",
   "expo-env.d.ts",
 ];
+
+// Wiped only with --all. Default leaves these alone: the lockfile stays the
+// source of truth (frozen install) and convex/_generated needs a deployment
+// round-trip via `bunx convex codegen` to come back.
+const PROJECT_TARGETS_ALL = ["bun.lock", "convex/_generated"];
 
 // Globs evaluated at REPO root. bun-error.* and *.log are cheap to wipe and
 // almost never wanted across runs.
@@ -361,9 +386,10 @@ async function stepMetroCachesOnly(): Promise<void> {
   ok(`trashed ${matches.length} cache director${matches.length === 1 ? "y" : "ies"}`);
 }
 
-async function stepProjectArtifacts(): Promise<void> {
+async function stepProjectArtifacts(all: boolean): Promise<void> {
   section("Project artifacts");
-  const targets = PROJECT_TARGETS.map((t) => `${REPO}/${t}`);
+  const names = all ? [...PROJECT_TARGETS, ...PROJECT_TARGETS_ALL] : PROJECT_TARGETS;
+  const targets = names.map((t) => `${REPO}/${t}`);
   for (const pattern of PROJECT_GLOBS) {
     targets.push(...(await expandGlob(REPO, pattern)));
   }
@@ -496,10 +522,39 @@ async function stepSetupState(): Promise<void> {
 
 async function stepInstall(pm: PM): Promise<void> {
   section("Reinstall");
-  const cmd = installCmdFor(pm).split(" ");
+  // Frozen install when a lockfile is on disk: deterministic, no transitive drift.
+  // After --all the lockfile is gone and bun resolves fresh.
+  const frozen = await pathExists(`${REPO}/${lockfileFor(pm)}`);
+  const cmd = installCmdFor(pm, frozen).split(" ");
   const proc = spawn(cmd, { stdio: ["inherit", "inherit", "inherit"] });
   const code = await proc.exited;
   if (code !== 0) throw new Error(`${cmd.join(" ")} exited with code ${code}`);
+  ok(cmd.join(" "));
+}
+
+function lockfileFor(pm: PM): string {
+  if (pm === "bun") return "bun.lock";
+  if (pm === "pnpm") return "pnpm-lock.yaml";
+  if (pm === "yarn") return "yarn.lock";
+  return "package-lock.json";
+}
+
+async function stepConvexCodegen(): Promise<void> {
+  section("Convex codegen");
+  if (await pathExists(`${REPO}/convex/_generated`)) {
+    nop("convex/_generated/ present (skipped)");
+    return;
+  }
+  // No bun.lock or convex/_generated on disk after --all. `convex codegen`
+  // talks to the deployment to rebuild the TypeScript bindings; skip and warn
+  // if the env isn't wired so this never blocks a clean.
+  const cmd = ["bunx", "convex", "codegen"];
+  const proc = spawn(cmd, { stdio: ["inherit", "inherit", "inherit"] });
+  const code = await proc.exited;
+  if (code !== 0) {
+    bad(`${cmd.join(" ")} exited with code ${code} (run it manually once Convex is reachable)`);
+    return;
+  }
   ok(cmd.join(" "));
 }
 
@@ -514,11 +569,12 @@ void (async () => {
       await stepStopBundlers();
       await stepMetroCachesOnly();
     } else {
-      // Capture PM BEFORE any wipes; stepProjectArtifacts trashes the lockfile.
+      // Capture PM BEFORE any wipes; --all trashes the lockfile.
       const pm = await detectPackageManager();
       const pkgName = await readPkgName();
+      const all = args.all === true;
       await stepStopBundlers();
-      await stepProjectArtifacts();
+      await stepProjectArtifacts(all);
       await stepEasState();
       await stepDsStores();
       await stepTmpdirCaches();
@@ -528,6 +584,7 @@ void (async () => {
       if (args.state) await stepSetupState();
       if (!args["no-install"]) {
         await stepInstall(pm);
+        if (all) await stepConvexCodegen();
       } else {
         yep(`--no-install passed; skipping ${pm} install`);
       }
