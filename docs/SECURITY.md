@@ -64,6 +64,19 @@ The Better Auth routes (registered via `authComponent.registerRoutesLazy`) handl
 - **Managed credentials only.** EAS holds the distribution cert + provisioning profile + push key. `vexpo apple credentials` passes the cached ASC API key to `eas credentials:configure-build` via env vars so the wizard skips the Apple Developer login prompt, but the credentials themselves never leave EAS.
 - **ASC API key validation.** `vexpo apple asc-key` calls `GET /v1/apps` with the supplied key and rejects if Apple returns anything other than 200. A key that authenticates but lacks the right capabilities is caught at validation time, not at submit time.
 
+### Account deletion
+
+Apple App Store Review 5.1.1(v) requires apps that let users create accounts to also let them delete those accounts from within the app. vexpo ships a soft-delete + 30-day window:
+
+- **`users.deleteAccount` tombstones, doesn't purge.** Patches the user row with `deletedAt: Date.now()`, drops every Better Auth session so the device signs out, and drops push tokens so notifications stop. Credentials, account rows, Apple links all stay intact during the window.
+- **`users.restoreAccount` lifts the tombstone.** A user who signs back in within 30 days sees their `getMe` query return a row with `deletedAt` set; the client can route them to a "restore or continue with deletion" surface and call `restoreAccount` to undo.
+- **`internal.users.hardDeleteExpired` cron runs daily at 04:00 UTC.** Walks `users.by_deletedAt` in bounded batches, and for each row past the window irreversibly:
+  1. Revokes Apple Sign In refresh tokens via `internal.apple.revokeRefreshToken` (per Apple guideline 5.1.1(v): "you revoke the associated tokens when they delete their account")
+  2. Drops every Better Auth row keyed to the user (`session`, `account`, `twoFactor`, `oauthAccessToken`, `oauthConsent`, `oauthApplication`, `verification`)
+  3. Deletes the Better Auth user, which fires the `onDelete` trigger that drops the app `users` row and frees the avatar blob
+  4. Writes an audit row to `accountDeletionAudit`
+- **`accountDeletionAudit` is the compliance trail.** One row per state transition (`requested`, `restored`, `permanent`) keyed on `authId` so the lifecycle is reconstructable after the user row is purged.
+
 ### Convex deploy keys
 
 - **Production deploy key lives in EAS env at `secret` visibility.** The `deploy_convex` job in `deploy-production.yml` pulls it via `environment: production`. Never inlined in YAML, never in workflow logs.
