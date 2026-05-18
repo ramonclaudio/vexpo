@@ -77,6 +77,9 @@ jobs:
   notify:
     name: Notify Slack
     needs: [rollback]
+    # Paste a real `webhook_url` below and drop `false &&` to enable. EAS does
+    # not yet support interpolating `${{ env.* }}` into `webhook_url`.
+    if: ${{ false }}
     type: slack
     params:
       webhook_url: https://hooks.slack.com/services/REPLACE/ME/HERE

@@ -41,13 +41,16 @@ jobs:
   # link straight to App Store Connect rather than interpolating fields that
   # may not resolve.
 
+  # All four notify_* jobs ship disabled. Paste your Slack incoming-webhook URL
+  # from https://api.slack.com/messaging/webhooks into the `webhook_url:` field,
+  # then drop `false &&` from the `if:` guard to enable. EAS workflows do not
+  # yet support interpolating `${{ env.* }}` into `webhook_url`.
+
   notify_review_state:
     name: Slack notify on review state change
-    if: ${{ app_store_connect.app_version }}
+    if: ${{ false && app_store_connect.app_version }}
     type: slack
     params:
-      # `webhook_url` only accepts hardcoded strings today; EAS env-stored
-      # interpolation for this field is upcoming. Paste your URL below.
       webhook_url: https://hooks.slack.com/services/REPLACE/ME/HERE
       message: |
         App Store version state changed. App Store Connect → My Apps → App Store tab.
@@ -55,7 +58,7 @@ jobs:
 
   notify_upload_state:
     name: Slack notify on build upload
-    if: ${{ app_store_connect.build_upload }}
+    if: ${{ false && app_store_connect.build_upload }}
     type: slack
     params:
       webhook_url: https://hooks.slack.com/services/REPLACE/ME/HERE
@@ -65,7 +68,7 @@ jobs:
 
   notify_beta_state:
     name: Slack notify on external beta state
-    if: ${{ app_store_connect.external_beta }}
+    if: ${{ false && app_store_connect.external_beta }}
     type: slack
     params:
       webhook_url: https://hooks.slack.com/services/REPLACE/ME/HERE
@@ -75,7 +78,7 @@ jobs:
 
   notify_crash:
     name: Slack notify on TestFlight crash
-    if: ${{ app_store_connect.beta_feedback }}
+    if: ${{ false && app_store_connect.beta_feedback }}
     type: slack
     params:
       webhook_url: https://hooks.slack.com/services/REPLACE/ME/HERE
