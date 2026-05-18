@@ -1,5 +1,12 @@
 import { VStack, HStack, Spacer, Text } from "@expo/ui/swift-ui";
-import { background, clipShape, cornerRadius, frame, padding } from "@expo/ui/swift-ui/modifiers";
+import {
+  accessibilityLabel,
+  background,
+  clipShape,
+  cornerRadius,
+  frame,
+  padding,
+} from "@expo/ui/swift-ui/modifiers";
 
 import { Spacing } from "@/constants/layout";
 import { useColors } from "@/hooks/use-theme";
@@ -7,8 +14,13 @@ import { useColors } from "@/hooks/use-theme";
 // Skeleton placeholders for initial query loads. SwiftUI-native: filled
 // muted-color boxes laid out in the shape of the screen they're standing
 // in for. No animation. SwiftUI's `Host` doesn't ergonomically support
-// per-tick opacity tweens, and static skeletons satisfy the
-// Reduce Motion accessibility setting automatically.
+// per-tick opacity tweens, and static skeletons satisfy the Reduce Motion
+// accessibility setting trivially (nothing to suppress). The whitespace
+// `Text` inside each bar forces SwiftUI to render the framed VStack with
+// its background fill, and `accessibilityLabel("")` keeps VoiceOver from
+// landing on the empty node. `@expo/ui` does not expose
+// `accessibilityHidden(_:)`, so an empty label is the supported way to
+// take the element out of the spoken hierarchy.
 
 type BarProps = {
   width: number | "fill";
@@ -24,9 +36,10 @@ function Bar({ width, height, radius = 6 }: BarProps): React.ReactNode {
         frame(width === "fill" ? { maxWidth: Infinity, height } : { width, height }),
         background(colors.muted as string),
         cornerRadius(radius),
+        accessibilityLabel(""),
       ]}
     >
-      <Text> </Text>
+      <Text modifiers={[accessibilityLabel("")]}> </Text>
     </VStack>
   );
 }
@@ -39,9 +52,10 @@ function Circle({ size }: { size: number }): React.ReactNode {
         frame({ width: size, height: size }),
         background(colors.muted as string),
         clipShape("circle"),
+        accessibilityLabel(""),
       ]}
     >
-      <Text> </Text>
+      <Text modifiers={[accessibilityLabel("")]}> </Text>
     </VStack>
   );
 }
