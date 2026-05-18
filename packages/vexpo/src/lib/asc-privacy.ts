@@ -143,10 +143,7 @@ export function lintPrivacyConfig(config: unknown): LintIssue[] {
   return issues;
 }
 
-export async function fetchAppPrivacyDetails(
-  client: AscClient,
-  appId: string,
-): Promise<unknown> {
+export async function fetchAppPrivacyDetails(client: AscClient, appId: string): Promise<unknown> {
   return client.request("GET", `/v1/apps/${appId}/appPrivacyDetails`);
 }
 
