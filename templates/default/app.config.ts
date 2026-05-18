@@ -68,15 +68,20 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     updates: {
       enabled: !!projectId,
       checkAutomatically: "ON_LOAD",
-      fallbackToCacheTimeout: 0,
+      // Brief patience for the update server before falling back to the
+      // bundled JS. Zero blocks every cold launch indefinitely on flaky
+      // networks (hotel WiFi, captive portals). 2 seconds is enough for
+      // a fast check on good networks and a graceful timeout otherwise.
+      fallbackToCacheTimeout: 2000,
       enableBsdiffPatchSupport: true,
       ...(projectId ? { url: `https://u.expo.dev/${projectId}` } : {}),
       // `expo-channel-name` request header is required for runtime channel
-      // surfing via `Updates.setUpdateRequestHeadersOverride`. Baseline
-      // value is overwritten per-build by EAS Build (it reads the channel
-      // from the eas.json build profile). Without this baseline declared
-      // here, override calls reject with "unknown header".
-      requestHeaders: { "expo-channel-name": "production" },
+      // surfing via `Updates.setUpdateRequestHeadersOverride`. EAS Build
+      // overwrites the baseline per-build from the eas.json build profile,
+      // so the value here only matters for local dev/prebuild without an
+      // EAS profile. `development` is the safe default; a missed profile
+      // override won't accidentally pull production OTA into a dev build.
+      requestHeaders: { "expo-channel-name": "development" },
       // Only ship icon + splash with each OTA. Fonts, sounds, and other
       // build-baked assets stay in the .ipa and never download. Shrinks
       // bundle by ~95% on diff-able updates.
