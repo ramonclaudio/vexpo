@@ -283,16 +283,34 @@ export default function SignUpScreen() {
 
   const isLoading = isPending || isApplePending;
   const error = state.error ?? appleState.error ?? avatarError;
-  const usernameStatus: { text: string; color: string } | null = (() => {
+  // HIG: pair color with a non-color signal. The status row carries text +
+  // color + an SF Symbol so a colorblind user gets the same answer.
+  const usernameStatus: {
+    text: string;
+    color: string;
+    icon: "ellipsis.circle" | "checkmark.circle.fill" | "exclamationmark.circle.fill";
+  } | null = (() => {
     if (!username || !isValidUsernameFormat(username.trim().toLowerCase())) return null;
     if (isCheckingUsername) {
-      return { text: "Checking availability...", color: colors.mutedForeground as string };
+      return {
+        text: "Checking availability...",
+        color: colors.mutedForeground as string,
+        icon: "ellipsis.circle",
+      };
     }
     if (usernameAvailable === true) {
-      return { text: "Username is available", color: colors.success as string };
+      return {
+        text: "Username is available",
+        color: colors.success as string,
+        icon: "checkmark.circle.fill",
+      };
     }
     if (usernameAvailable === false) {
-      return { text: "This username is not available", color: colors.destructive as string };
+      return {
+        text: "This username is not available",
+        color: colors.destructive as string,
+        icon: "exclamationmark.circle.fill",
+      };
     }
     return null;
   })();
@@ -425,7 +443,7 @@ export default function SignUpScreen() {
                     </VStack>
                   )}
                   <Text modifiers={helperModifiers}>
-                    {pendingAvatar ? "Photo selected" : "Click to upload"}
+                    {pendingAvatar ? "Photo selected" : "Tap to upload"}
                   </Text>
                   <Spacer />
                 </HStack>
@@ -492,11 +510,19 @@ export default function SignUpScreen() {
               ]}
             />
             {usernameStatus ? (
-              <Text
-                modifiers={[dfont({ size: 13 }), foregroundStyle(usernameStatus.color as string)]}
-              >
-                {usernameStatus.text}
-              </Text>
+              <HStack spacing={6} alignment="center">
+                <Image
+                  systemName={usernameStatus.icon}
+                  size={13}
+                  color={usernameStatus.color}
+                  modifiers={[accessibilityLabel("")]}
+                />
+                <Text
+                  modifiers={[dfont({ size: 13 }), foregroundStyle(usernameStatus.color as string)]}
+                >
+                  {usernameStatus.text}
+                </Text>
+              </HStack>
             ) : (
               <Text modifiers={helperModifiers}>A unique handle others can use to find you.</Text>
             )}

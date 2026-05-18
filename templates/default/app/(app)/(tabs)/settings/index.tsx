@@ -138,7 +138,12 @@ export default function SettingsScreen() {
           </Text>
           <Spacer />
           {role !== "destructive" ? (
-            <Image systemName="chevron.right" size={13} color={colors.mutedForeground as string} />
+            <Image
+              systemName="chevron.right"
+              size={13}
+              color={colors.mutedForeground as string}
+              modifiers={[accessibilityLabel("")]}
+            />
           ) : null}
         </HStack>
       </Button>
@@ -209,6 +214,7 @@ export default function SettingsScreen() {
                 systemName="chevron.right"
                 size={13}
                 color={colors.mutedForeground as string}
+                modifiers={[accessibilityLabel("")]}
               />
             </HStack>
           </Button>

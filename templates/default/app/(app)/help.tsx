@@ -14,6 +14,7 @@ import {
   ContentUnavailableView,
 } from "@expo/ui/swift-ui";
 import {
+  accessibilityLabel,
   background,
   buttonStyle,
   clipShape,
@@ -126,7 +127,12 @@ export default function HelpScreen() {
           {label}
         </Text>
         <Spacer />
-        <Image systemName="chevron.right" size={13} color={colors.mutedForeground as string} />
+        <Image
+          systemName="chevron.right"
+          size={13}
+          color={colors.mutedForeground as string}
+          modifiers={[accessibilityLabel("")]}
+        />
       </HStack>
     </Button>
   );
@@ -229,6 +235,7 @@ export default function HelpScreen() {
                           systemName={isOpen ? "chevron.up" : "chevron.down"}
                           size={13}
                           color={colors.mutedForeground as string}
+                          modifiers={[accessibilityLabel("")]}
                         />
                       </HStack>
                       {isOpen ? (
