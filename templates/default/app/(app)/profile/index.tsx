@@ -54,6 +54,7 @@ import { Button as ButtonTokens } from "@/constants/layout";
 import { api } from "@/convex/_generated/api";
 import { authClient } from "@/lib/auth-client";
 import { haptics } from "@/lib/haptics";
+import { setNativeValue } from "@/lib/native-state";
 import { firstError, profileUpdateSchema } from "@/lib/schemas";
 import { validateBio } from "@/convex/validators";
 import { useColors } from "@/hooks/use-theme";
@@ -104,10 +105,10 @@ export default function ProfileScreen() {
   const currentKey = me ? `${me._id}:${me.updatedAt}` : null;
   useEffect(() => {
     if (!me) return;
-    nameState.value = me.name;
-    usernameState.value = me.username ?? "";
-    emailState.value = me.email;
-    bioState.value = me.bio ?? "";
+    setNativeValue(nameState, me.name);
+    setNativeValue(usernameState, me.username ?? "");
+    setNativeValue(emailState, me.email);
+    setNativeValue(bioState, me.bio ?? "");
     setName(me.name);
     setUsername(me.username ?? "");
     setEmail(me.email);
@@ -424,7 +425,7 @@ export default function ProfileScreen() {
                     placeholder="000000"
                     onTextChange={(text) => {
                       const digits = text.replace(/\D/g, "").slice(0, 6);
-                      if (digits !== text) otpCodeState.value = digits;
+                      if (digits !== text) setNativeValue(otpCodeState, digits);
                       setOtp(digits);
                     }}
                     autoFocus

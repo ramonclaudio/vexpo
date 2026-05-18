@@ -50,6 +50,7 @@ import { isReservedUsername, isValidUsernameFormat } from "@/convex/constants";
 import { authClient } from "@/lib/auth-client";
 import { assets } from "@/lib/assets";
 import { haptics } from "@/lib/haptics";
+import { setNativeValue } from "@/lib/native-state";
 import { OtpVerification, type PendingAvatar } from "@/components/auth/otp-verification";
 import { PasswordField } from "@/components/auth/password-field";
 import { SegmentedToggle } from "@/components/auth/segmented-toggle";
@@ -207,7 +208,7 @@ export default function SignUpScreen() {
     if (!parsed.success) {
       haptics.error();
       const field = firstErrorField(parsed);
-      if (field) activeField.value = `field-${field}`;
+      if (field) setNativeValue(activeField, `field-${field}`);
       return { error: firstError(parsed)! };
     }
 
