@@ -10,6 +10,7 @@ import {
   buttonStyle,
   background,
   clipShape,
+  defaultScrollAnchorForRole,
   disabled,
   keyboardType,
   onSubmit as onSubmitModifier,
@@ -244,7 +245,15 @@ export default function SignInScreen() {
   return (
     <Host style={{ flex: 1, backgroundColor: colors.background }}>
       <ScrollView
-        modifiers={[scrollDismissesKeyboard("interactively"), tint(colors.primary as string)]}
+        modifiers={[
+          scrollDismissesKeyboard("interactively"),
+          tint(colors.primary as string),
+          // Swapping the method toggle hides or shows a whole field group, the
+          // biggest single-tap size change on this screen. Pin the visible
+          // center so the user does not lose the field they were aiming for.
+          // No-op below iOS 18.
+          defaultScrollAnchorForRole("center", "sizeChanges"),
+        ]}
       >
         <VStack
           spacing={20}
