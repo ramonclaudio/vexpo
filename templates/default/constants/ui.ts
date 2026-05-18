@@ -68,10 +68,6 @@ export const Keyboard = {
   verticalOffset: 100,
 } as const;
 
-export const Accessibility = {
-  maxFontSizeMultiplier: 2,
-} as const;
-
 export const EmptyState = {
   paddingVertical: 60,
 } as const;
