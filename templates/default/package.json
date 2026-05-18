@@ -105,9 +105,6 @@
     "typescript": "^6.0.3",
     "vitest": "^4.1.5"
   },
-  "overrides": {
-    "@better-auth/passkey": "1.6.9"
-  },
   "expo": {
     "install": {
       "exclude": [

@@ -143,11 +143,6 @@ __tests__/                        Convex constants + validators + HMAC verificat
 
 Every `expo-*` package uses the same canary tag. Mismatched tags cause subtle runtime crashes.
 
-`package.json` overrides:
-
-- `@better-auth/passkey: 1.6.9` prevents better-auth from pulling SolidJS deps that break Metro.
-- `@expo/ui: 56.0.0-canary-20260506-03817f5` unifies the version across transitive deps.
-
 `react-native-reanimated 4.3.0` is intentionally ahead of the canary's expected 4.2.1 because Bun resolves `react-native-worklets@0.8.x` which needs Reanimated 4.3+. Listed in `expo.install.exclude` to silence the doctor warning.
 
 `@convex-dev/better-auth@0.12.0` is the minimum compatible with `better-auth@1.6.9`. Earlier versions peer-dep `better-auth <1.6.0` and reject the `mode` field newer better-auth adds to adapter queries, breaking signup. Currently the template installs from `patches/convex-dev-better-auth-0.12.2.tgz` until [PR #368](https://github.com/get-convex/better-auth/pull/368) merges.
