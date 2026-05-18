@@ -90,7 +90,7 @@ async function main() {
     }
   }
 
-  nextSteps(target, flags, pm);
+  if (flags.setup) nextSteps(target, flags, pm);
 }
 
 const NAME_RE = /^[a-z0-9][a-z0-9-]*$/;
