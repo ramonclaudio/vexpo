@@ -36,6 +36,7 @@ import { ProminentButton } from "@/components/ui/prominent-button";
 
 import { assets } from "@/lib/assets";
 import { haptics } from "@/lib/haptics";
+import { setNativeValue } from "@/lib/native-state";
 import { useColors, useThemedAsset } from "@/hooks/use-theme";
 import { useOnboarding } from "@/hooks/use-onboarding";
 
@@ -81,7 +82,7 @@ export default function WelcomeScreen() {
   const handleNext = useCallback(() => {
     if (step >= STEPS.length - 1) return;
     haptics.light();
-    activeID.value = STEPS[step + 1].id;
+    setNativeValue(activeID, STEPS[step + 1].id);
   }, [activeID, step]);
 
   const handlePageChange = useCallback((nextID: string | null) => {
