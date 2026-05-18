@@ -12,6 +12,7 @@ import {
   ContentUnavailableView,
 } from "@expo/ui/swift-ui";
 import {
+  accessibilityLabel,
   background,
   buttonStyle,
   clipShape,
@@ -221,6 +222,7 @@ export default function SearchScreen() {
                         systemName="chevron.right"
                         size={13}
                         color={colors.mutedForeground as string}
+                        modifiers={[accessibilityLabel("")]}
                       />
                     </HStack>
                   </Button>
