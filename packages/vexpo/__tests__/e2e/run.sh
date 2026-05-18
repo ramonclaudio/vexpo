@@ -163,6 +163,51 @@ if match_grep "$n"; then
   [ "$o1" = "$o2" ] && pass "$n" || fail "$n" "outputs diverged"
 else skip "$n" "filtered"; fi
 
+section "ASC nutrition labels"
+
+n="vexpo asc:privacy lint passes on the template scaffold"
+if match_grep "$n"; then
+  out=$(node "$CLI" asc:privacy lint "$PKG_ROOT/../../templates/default/app-store/privacy.config.json" 2>&1 | strip_ansi)
+  if echo "$out" | grep -q "ok"; then pass "$n"
+  else fail "$n" "expected ok, got: $out"; fi
+else skip "$n" "filtered"; fi
+
+n="vexpo asc:privacy lint flags an unknown category"
+if match_grep "$n"; then
+  fixture="$TMPROOT/bad-privacy.json"
+  cat > "$fixture" <<JSON
+{
+  "collectsData": true,
+  "entries": [
+    {"category": "MADE_UP", "collected": true, "usedForTracking": false, "linkedToUser": false, "purposes": ["APP_FUNCTIONALITY"]}
+  ]
+}
+JSON
+  node "$CLI" asc:privacy lint "$fixture" >/dev/null 2>&1; code=$?
+  [ $code -ne 0 ] && pass "$n" || fail "$n" "expected non-zero exit, got $code"
+else skip "$n" "filtered"; fi
+
+n="vexpo asc:accessibility lint passes on the template scaffold"
+if match_grep "$n"; then
+  out=$(node "$CLI" asc:accessibility lint "$PKG_ROOT/../../templates/default/app-store/accessibility.config.json" 2>&1 | strip_ansi)
+  if echo "$out" | grep -q "ok"; then pass "$n"
+  else fail "$n" "expected ok, got: $out"; fi
+else skip "$n" "filtered"; fi
+
+n="vexpo asc:accessibility lint flags an unknown feature"
+if match_grep "$n"; then
+  fixture="$TMPROOT/bad-a11y.json"
+  cat > "$fixture" <<JSON
+{
+  "entries": [
+    {"deviceFamily": "IPHONE", "features": {"TELEPATHIC_INPUT": "FULLY_SUPPORTS"}}
+  ]
+}
+JSON
+  node "$CLI" asc:accessibility lint "$fixture" >/dev/null 2>&1; code=$?
+  [ $code -ne 0 ] && pass "$n" || fail "$n" "expected non-zero exit, got $code"
+else skip "$n" "filtered"; fi
+
 # ─── Summary ────────────────────────────────────────────────────────────────
 
 printf "\n${C_BOLD}${C_PURPLE}Summary${C_RESET} ${C_DIM}─────────────────────────────${C_RESET}\n"

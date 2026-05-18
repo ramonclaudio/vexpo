@@ -47,7 +47,7 @@ Bun workspace at the root with `packages/*` as members. Templates intentionally 
 - Each command exports a `run<Name>(options)` function returning a numeric exit code. `cli.ts` handles `process.exit`.
 - Cross-cutting helpers (logging, prompts, state cache, proc helpers, lib clients, path expansion) under `src/lib/`.
 - Node-only. No `_run.mjs` runtime selector, the published CLI is a single ESM bundle that runs anywhere Node 20+ works.
-- Tests live in `packages/vexpo/__tests__/`: unit tests under `lib/` (vitest, 238 tests covering path / parsers / asc-api / asc-jwt / state / verify / convex-env / env-files / env-local / eas-cli / eas-env / apple-jwt / app / pkg-manager / poll), e2e under `e2e/run.sh` (10 bash tests against the built dist).
+- Tests live in `packages/vexpo/__tests__/`: unit tests under `lib/` (vitest, 250 tests covering path / parsers / asc-api / asc-jwt / asc-privacy / asc-accessibility / state / verify / convex-env / env-files / env-local / eas-cli / eas-env / apple-jwt / app / pkg-manager / poll), e2e under `e2e/run.sh` (14 bash tests against the built dist).
 
 ### Apple ASC API workarounds
 
@@ -64,7 +64,7 @@ When Apple loosens any of these, the CLI continues to work.
 
 1. Read this file, the template's `AGENTS.md`, and `README.md`.
 2. From the root: `bun run typecheck` to confirm packages compile.
-3. From the root: `bun run test:all` to run all unit + e2e tests (238 unit + 10 e2e + 29 template = 277).
+3. From the root: `bun run test:all` to run all unit + e2e tests (250 unit + 14 e2e + 29 template = 293).
 4. If touching the CLI: `bun --filter vexpo build` then `bun --filter vexpo test:e2e` to confirm the dist behaves.
 
 ## Common tasks
