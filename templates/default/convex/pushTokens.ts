@@ -3,6 +3,7 @@ import { v } from "convex/values";
 import { internal } from "./_generated/api";
 import { internalMutation } from "./_generated/server";
 import { authMutation, authQuery } from "./functions";
+import { rateLimitWithThrow } from "./rateLimit";
 import { deviceTypeValidator } from "./validators";
 
 const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
@@ -12,6 +13,7 @@ export const upsert = authMutation({
   args: { token: v.string(), deviceType: deviceTypeValidator },
   returns: v.id("pushTokens"),
   handler: async (ctx, { token, deviceType }) => {
+    await rateLimitWithThrow(ctx, "userAction", ctx.user._id.toString());
     const now = Date.now();
     // Token may belong to a different user (device transferred), so read it
     // by token first and reassign if needed.
@@ -48,6 +50,7 @@ export const remove = authMutation({
   args: { token: v.string() },
   returns: v.null(),
   handler: async (ctx, { token }) => {
+    await rateLimitWithThrow(ctx, "userAction", ctx.user._id.toString());
     const existing = await ctx.db
       .query("pushTokens")
       .withIndex("by_token", (q) => q.eq("token", token))
@@ -85,6 +88,7 @@ export const removeAll = authMutation({
   args: {},
   returns: v.null(),
   handler: async (ctx) => {
+    await rateLimitWithThrow(ctx, "userAction", ctx.user._id.toString());
     const tokens = await ctx.db
       .query("pushTokens")
       .withIndex("by_user", (q) => q.eq("userId", ctx.user._id))
