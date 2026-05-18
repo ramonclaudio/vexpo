@@ -1,0 +1,21 @@
+{
+  "$schema": "../../docs/asc-accessibility.schema.json",
+  "_comment": "Drives `vexpo asc:accessibility lint`. The starter template ships VoiceOver labels, DynamicType, reduced-motion respect, and DynamicColorIOS for high-contrast support. Audit each feature against your actual user flows before declaring FULLY_SUPPORTS in production.",
+  "entries": [
+    {
+      "deviceFamily": "IPHONE",
+      "features": {
+        "VOICE_OVER": "FULLY_SUPPORTS",
+        "VOICE_CONTROL": "FULLY_SUPPORTS",
+        "LARGER_TEXT": "FULLY_SUPPORTS",
+        "DARK_INTERFACE": "FULLY_SUPPORTS",
+        "SUFFICIENT_CONTRAST": "FULLY_SUPPORTS",
+        "DIFFERENTIATION_WITHOUT_COLOR_ALONE": "FULLY_SUPPORTS",
+        "REDUCED_MOTION": "FULLY_SUPPORTS",
+        "CAPTIONS": "NOT_APPLICABLE",
+        "AUDIO_DESCRIPTIONS": "NOT_APPLICABLE"
+      },
+      "notes": "Verify against the actual screens in your app before submission. The defaults reflect what the vexpo template ships, not what your app delivers."
+    }
+  ]
+}

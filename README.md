@@ -96,7 +96,7 @@ bunx vexpo full --dry-run  # exercises the linked CLI
 Tests:
 
 ```bash
-bun run test               # 238 unit (vexpo lib) + 29 template = 267 total
-bun run test:packages:e2e  # 10 e2e tests against the built `vexpo` CLI dist
+bun run test               # 250 unit (vexpo lib) + 29 template = 279 total
+bun run test:packages:e2e  # 14 e2e tests against the built `vexpo` CLI dist
 bun run test:all           # everything
 ```

@@ -27,6 +27,8 @@ import { runAppleJwt } from "./commands/apple/jwt.ts";
 import { runAscKey } from "./commands/apple/asc-key.ts";
 import { runEasRotationSecrets } from "./commands/apple/eas-rotation-secrets.ts";
 import { runServicesId } from "./commands/apple/services-id.ts";
+import { runAccessibilityLint, runAccessibilityShow } from "./commands/asc-accessibility.ts";
+import { runPrivacyLint, runPrivacyShow } from "./commands/asc-privacy.ts";
 import {
   runPhasedRelease,
   runSubmissionsList,
@@ -371,6 +373,43 @@ program
   .option("--state <state>", "filter by state")
   .option("--json", "JSON output", false)
   .action((options) => exitWith(runSubmissionsList(options)));
+
+/* -------------------------------------------------------- asc:privacy --- */
+// Privacy Nutrition Labels. Apple's API is read-only today; the lint
+// validates a local `app-store/privacy.config.json` against the published
+// data type + purpose enums so a stale label gets caught pre-submission.
+
+const ascPrivacy = program.command("asc:privacy").description("Privacy nutrition labels.");
+
+ascPrivacy
+  .command("show")
+  .description("Fetch the app's current privacy details from ASC.")
+  .option("--json", "JSON output", false)
+  .action((options: { json?: boolean }) => exitWith(runPrivacyShow(options)));
+
+ascPrivacy
+  .command("lint <file>")
+  .description("Validate a local privacy.config.json against Apple's enums.")
+  .action((file: string) => exitWith(runPrivacyLint(file)));
+
+/* --------------------------------------------------- asc:accessibility --- */
+// Accessibility Nutrition Labels (WWDC25, iOS 26+). Same shape as
+// asc:privacy: show pulls current state, lint validates locals.
+
+const ascA11y = program
+  .command("asc:accessibility")
+  .description("Accessibility nutrition labels (iOS 26+).");
+
+ascA11y
+  .command("show")
+  .description("Fetch the app's current accessibility declarations.")
+  .option("--json", "JSON output", false)
+  .action((options: { json?: boolean }) => exitWith(runAccessibilityShow(options)));
+
+ascA11y
+  .command("lint <file>")
+  .description("Validate a local accessibility.config.json against Apple's enums.")
+  .action((file: string) => exitWith(runAccessibilityLint(file)));
 
 /* ----------------------------------------------------------- testflight --- */
 // TestFlight beta groups + testers. eas-cli stops at upload; ASC API
