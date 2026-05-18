@@ -202,9 +202,9 @@ export default function HelpScreen() {
                       spacing={isOpen ? 8 : 0}
                       modifiers={[
                         frame({ maxWidth: 10000 }),
+                        padding({ horizontal: 20, vertical: 12 }),
                         background(colors.muted as string),
                         cornerRadius(20),
-                        padding({ horizontal: 20, vertical: 12 }),
                         onTapGesture(() => {
                           haptics.selection();
                           setExpanded((m) => ({ ...m, [item.question]: !m[item.question] }));

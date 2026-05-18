@@ -141,9 +141,9 @@ export default function SessionsScreen() {
                 alignment="center"
                 modifiers={[
                   frame({ maxWidth: 10000 }),
+                  padding({ horizontal: 20, vertical: 14 }),
                   background(colors.muted as string),
                   cornerRadius(20),
-                  padding({ horizontal: 20, vertical: 14 }),
                 ]}
               >
                 <VStack alignment="leading" spacing={2}>
