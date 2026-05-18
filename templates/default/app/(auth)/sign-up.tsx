@@ -443,7 +443,7 @@ export default function SignUpScreen() {
                     </VStack>
                   )}
                   <Text modifiers={helperModifiers}>
-                    {pendingAvatar ? "Photo selected" : "Click to upload"}
+                    {pendingAvatar ? "Photo selected" : "Tap to upload"}
                   </Text>
                   <Spacer />
                 </HStack>
