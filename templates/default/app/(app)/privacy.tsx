@@ -12,6 +12,7 @@ import {
   Toggle,
 } from "@expo/ui/swift-ui";
 import {
+  accessibilityLabel,
   background,
   buttonStyle,
   clipShape,
@@ -139,7 +140,7 @@ export default function PrivacyScreen() {
                 haptics.selection();
                 setAnalyticsEnabled(v);
               }}
-              modifiers={[tint(colors.primary as string)]}
+              modifiers={[tint(colors.primary as string), accessibilityLabel("Share analytics")]}
             />
           </HStack>
 
