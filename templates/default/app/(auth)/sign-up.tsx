@@ -21,6 +21,7 @@ import {
 import {
   autocorrectionDisabled,
   foregroundStyle,
+  defaultScrollAnchorForRole,
   disabled,
   keyboardType,
   submitLabel,
@@ -323,6 +324,10 @@ export default function SignUpScreen() {
           scrollDismissesKeyboard("interactively"),
           tint(colors.primary as string),
           scrollPosition(activeField, { anchor: "top" }),
+          // Anchor the visible center on size changes so a username-availability
+          // line appearing or a dynamic-type bump doesn't shift the field the
+          // user is reading. No-op below iOS 18.
+          defaultScrollAnchorForRole("center", "sizeChanges"),
         ]}
       >
         <VStack
