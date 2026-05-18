@@ -278,7 +278,7 @@ The system uses `@expo/ui/swift-ui` primitives exclusively for native rendering.
 | `LoadingScreen`             | Brand-icon + spinner, themed by appearance                                    | Suspense fallback                  |
 | `ErrorBoundary`             | Top-level crash boundary with brand recovery UI                               | Wraps each route segment           |
 | `ConvexError`               | Maps Convex errors to user-readable copy                                      | Used in error displays             |
-| `Skeleton` / `SkeletonLine` | Animated loading placeholders, respect Reduce Motion                          | Profile loading, list loading      |
+| `SkeletonProfile` / `SkeletonSessions` | Static loading placeholders. No animation, so nothing to suppress under Reduce Motion. Filler bars carry an empty `accessibilityLabel` so VoiceOver skips the placeholder shapes. | Profile loading, sessions loading |
 | `StatusText`                | `ErrorText` + `SuccessText` with accessibility announcements                  | Form feedback                      |
 
 ### Custom hooks (in `hooks/`)
