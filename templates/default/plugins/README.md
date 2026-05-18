@@ -14,9 +14,10 @@ Pins `IPHONEOS_DEPLOYMENT_TARGET` to the same minimum across every Pod target. W
 
 ## `with-quiet-build-warnings.js`
 
-Suppresses two Xcode warnings that fire every build but carry no signal:
+Silences one Xcode warning: `Script has ambiguous dependencies causing it to run on every build` for `[Expo Dev Launcher] Strip Local Network Keys for Release`. Sets `alwaysOutOfDate = "1"` on the phase, which is Xcode 15+'s explicit opt-in for "yes, this script intentionally runs every build, don't warn."
 
-- `Script has ambiguous dependencies causing it to run on every build` from `[Expo Dev Launcher] Strip Local Network Keys for Release`. Sets `alwaysOutOfDate = 1` on the phase, which is Xcode 15+'s explicit opt-in for "yes, this script intentionally runs every build." Open upstream issue in `expo-dev-launcher`.
-- `ld: warning: ignoring duplicate libraries: '-lc++'` from Xcode 16's linker when `-lc++` shows up twice in `OTHER_LDFLAGS` (Pods inject it; the app target picks it up from the default C++ runtime link). Adds `-Wl,-no_warn_duplicate_libraries` to the app target and to every Pod target's `OTHER_LDFLAGS`, Apple's recommended flag for exactly this case.
+Targeted: only this one phase, only this one warning. Other output-less script phases still surface their own warnings; build-time errors and linker output are untouched.
 
-Drop the plugin from `app.config.ts` if either warning ever gets fixed upstream.
+Open upstream issue in `expo-dev-launcher`'s `withDevLauncher.ts`. Drop the plugin when the upstream phase ships with the flag set.
+
+`ld: warning: ignoring duplicate libraries: '-lc++'` is intentionally NOT suppressed. Apple's flag for it (`-Wl,-no_warn_duplicate_libraries`) hides every "duplicate libraries" warning, not just `-lc++`. One cosmetic log line per build is a fair price for keeping the broader linker signal intact.
