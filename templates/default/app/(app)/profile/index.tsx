@@ -15,6 +15,7 @@ import {
   Spacer,
   Image,
   RNHostView,
+  Alert,
   ConfirmationDialog,
   ProgressView,
   useNativeState,
@@ -654,13 +655,12 @@ export default function ProfileScreen() {
                   </ConfirmationDialog.Message>
                 </ConfirmationDialog>
 
-                <ConfirmationDialog
+                <Alert
                   title="Delete account?"
                   isPresented={deleteAccountConfirm}
                   onIsPresentedChange={setDeleteAccountConfirm}
-                  titleVisibility="visible"
                 >
-                  <ConfirmationDialog.Trigger>
+                  <Alert.Trigger>
                     <Button
                       modifiers={[
                         buttonStyle("plain"),
@@ -686,21 +686,21 @@ export default function ProfileScreen() {
                         Delete account
                       </Text>
                     </Button>
-                  </ConfirmationDialog.Trigger>
-                  <ConfirmationDialog.Actions>
+                  </Alert.Trigger>
+                  <Alert.Actions>
                     <Button
                       label="Delete Forever"
                       role="destructive"
                       onPress={handleDeleteAccount}
                     />
                     <Button label="Cancel" role="cancel" />
-                  </ConfirmationDialog.Actions>
-                  <ConfirmationDialog.Message>
+                  </Alert.Actions>
+                  <Alert.Message>
                     <Text modifiers={[dfont({ size: 16 })]}>
                       This permanently deletes your account and all data. This cannot be undone.
                     </Text>
-                  </ConfirmationDialog.Message>
-                </ConfirmationDialog>
+                  </Alert.Message>
+                </Alert>
               </>
             )}
           </VStack>
