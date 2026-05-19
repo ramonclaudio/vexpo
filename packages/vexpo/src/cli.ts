@@ -330,8 +330,10 @@ env
 // ASC API direct access for endpoints eas-cli doesn't expose: TestFlight
 // beta groups + testers, customer review responses, sandbox testers, version
 // state + phased rollout, privacy + accessibility nutrition labels. EAS's
-// own `integrations:asc:*` topic (status/connect/disconnect) is run directly
-// via `bunx eas integrations:asc:*` per the design principle at the top.
+// own `integrations:asc:*` topic is not surfaced as a public `vexpo`
+// command; `vexpo full` orchestrates `eas integrations:asc:connect`
+// internally by spawning it with EXPO_ASC_API_KEY_* env vars pre-set
+// (same pattern `vexpo apple credentials` uses).
 
 const ascVersion = program.command("asc:version").description("App Store version inspection.");
 

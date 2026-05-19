@@ -162,16 +162,13 @@ export async function runEas(options: EasOptions): Promise<number> {
     line();
     note(`${BOLD}Next, eas-cli (we don't replace these)${RESET}`);
     note(
-      `  ${BOLD}bunx eas credentials -p ios${RESET}            dist cert + profile + push key + ASC API key`,
-    );
-    note(
-      `  ${BOLD}bunx eas integrations:asc:connect${RESET}      link the EAS project to its ASC app (interactive)`,
+      `  ${BOLD}bunx eas credentials -p ios${RESET}     dist cert + profile + push key + ASC API key`,
     );
     note(`  ${BOLD}bunx eas build -p ios --profile production${RESET}`);
     note(
       `  ${BOLD}bunx eas submit -p ios --profile production${RESET}  (auto-creates App Store record)`,
     );
-    note(`  ${BOLD}bunx eas metadata:push${RESET}                 push store.config.json`);
+    note(`  ${BOLD}bunx eas metadata:push${RESET}          push store.config.json`);
     note(
       `  ${BOLD}bunx eas workflow:run .eas/workflows/<file>${RESET}  trigger a workflow locally`,
     );

@@ -26,6 +26,7 @@ export type StepName =
   | "apple-sign-in"
   | "apple-services-id"
   | "apple-credentials"
+  | "apple-asc-link"
   | "apple-eas-rotation-secrets"
   | "asc-key"
   | "eas"
