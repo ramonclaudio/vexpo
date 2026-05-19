@@ -11,11 +11,48 @@
 
 import { existsSync } from "node:fs";
 
+import { bundleIdFallback } from "../../lib/app.ts";
+import { envList as easEnvList } from "../../lib/eas-env.ts";
 import { BOLD, RESET, askYesNo, bad, line, nop, note, ok, section, yep } from "../../lib/output.ts";
 import { expandTilde } from "../../lib/path.ts";
 import { dlx } from "../../lib/pkg-manager.ts";
 import { spawn } from "../../lib/proc.ts";
 import { load as loadState, recordStep } from "../../lib/state.ts";
+
+/**
+ * The template's `app.config.ts` ships with
+ * `const BUNDLE_ID = process.env.EXPO_PUBLIC_APP_BUNDLE_ID ?? \`com.example.${pkg.name}\`;`.
+ * If the rebrand wizard hasn't been run AND production EAS env doesn't carry
+ * `EXPO_PUBLIC_APP_BUNDLE_ID`, eas-cli resolves the bundle id to this
+ * placeholder and silently registers it on the user's Apple Developer team
+ * (e.g. `com.example.vexpo`). The dist cert + provisioning profile end up
+ * bound to a bundle id the app will never actually ship under. Refuse before
+ * we get there.
+ */
+async function resolveBundleId(profile: string): Promise<{
+  source: "app.config.ts" | "EAS env" | null;
+  value: string | null;
+  templatePlaceholder: boolean;
+}> {
+  const fromConfig = await bundleIdFallback();
+  if (fromConfig && !fromConfig.startsWith("com.example.")) {
+    return { source: "app.config.ts", value: fromConfig, templatePlaceholder: false };
+  }
+  try {
+    const env = await easEnvList(profile as "production" | "preview" | "development");
+    const fromEnv = env.get("EXPO_PUBLIC_APP_BUNDLE_ID");
+    if (fromEnv && !fromEnv.startsWith("com.example.")) {
+      return { source: "EAS env", value: fromEnv, templatePlaceholder: false };
+    }
+  } catch {
+    // eas-cli not reachable; fall through to placeholder warning.
+  }
+  return {
+    source: fromConfig ? "app.config.ts" : null,
+    value: fromConfig,
+    templatePlaceholder: true,
+  };
+}
 
 export type CredentialsOptions = {
   profile?: string;
@@ -54,6 +91,25 @@ export async function runAppleCredentials(options: CredentialsOptions): Promise<
   note(`  issuerId: ${BOLD}${asc.issuerId}${RESET}`);
   note(`  keyId:    ${BOLD}${asc.keyId}${RESET}`);
   note(`  .p8:      ${BOLD}${asc.p8Path}${RESET}`);
+
+  const bundle = await resolveBundleId(profile);
+  if (bundle.templatePlaceholder) {
+    line();
+    bad("template bundle id detected, refusing to register placeholder credentials");
+    note(
+      bundle.value
+        ? `  app.config.ts still defaults to ${BOLD}${bundle.value}${RESET}`
+        : `  could not resolve a bundle id from app.config.ts`,
+    );
+    note(`  EAS env (${profile}) does not set EXPO_PUBLIC_APP_BUNDLE_ID either`);
+    line();
+    note("fix by running the rebrand wizard, which bakes your bundle id into app.config.ts:");
+    note(`  ${BOLD}bunx vexpo rebrand${RESET}`);
+    note("alternatively, push your local env to EAS before running this step:");
+    note(`  ${BOLD}bunx eas env:push --environment ${profile}${RESET}`);
+    return 1;
+  }
+  ok(`bundle id: ${BOLD}${bundle.value}${RESET} (from ${bundle.source})`);
 
   line();
   note("eas-cli's credentials wizard is interactive (no non-interactive path).");
