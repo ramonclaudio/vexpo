@@ -45,16 +45,16 @@
     "updates:gen-cert": "node scripts/gen-update-cert.mjs"
   },
   "dependencies": {
-    "@better-auth/expo": "1.6.9",
+    "@better-auth/expo": "1.6.11",
     "@convex-dev/better-auth": "0.12.2",
     "@convex-dev/rate-limiter": "^0.3.2",
-    "@convex-dev/resend": "^0.2.3",
+    "@convex-dev/resend": "^0.2.4",
     "@expo/app-integrity": "^55.0.13",
     "@expo/ui": "~56.0.8",
-    "better-auth": "1.6.9",
+    "better-auth": "1.6.11",
     "cbor-x": "^1.6.4",
-    "convex": "^1.37.0",
-    "convex-helpers": "^0.1.116",
+    "convex": "^1.39.1",
+    "convex-helpers": "^0.1.118",
     "expo": "56.0.0-preview.13",
     "expo-apple-authentication": "~56.0.3",
     "expo-application": "~56.0.3",
@@ -98,15 +98,15 @@
   },
   "devDependencies": {
     "@ramonclaudio/vexpo": "^0.1.0",
-    "@types/node": "^25.6.0",
+    "@types/node": "^25.9.0",
     "@types/react": "~19.2.14",
-    "@vitest/ui": "^4.1.5",
-    "convex-test": "^0.0.51",
-    "oxfmt": "^0.48.0",
-    "oxlint": "^1.63.0",
-    "tsx": "^4.21.0",
+    "@vitest/ui": "^4.1.6",
+    "convex-test": "^0.0.53",
+    "oxfmt": "^0.51.0",
+    "oxlint": "^1.66.0",
+    "tsx": "^4.22.3",
     "typescript": "^6.0.3",
-    "vitest": "^4.1.5"
+    "vitest": "^4.1.6"
   },
   "expo": {
     "doctor": {
