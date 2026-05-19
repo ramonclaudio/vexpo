@@ -121,7 +121,6 @@ describe("runAscConnect", () => {
       action: "status",
       project: "@testuser/testapp",
       status: "not-connected",
-      appStoreConnectApp: null,
     });
     readOneSpy.mockResolvedValueOnce("com.vexpo.vexpo");
 
@@ -155,7 +154,6 @@ describe("runAscConnect", () => {
       action: "status",
       project: "@testuser/testapp",
       status: "not-connected",
-      appStoreConnectApp: null,
     });
     readOneSpy.mockResolvedValueOnce("com.vexpo.vexpo");
 
@@ -170,7 +168,6 @@ describe("runAscConnect", () => {
       action: "status",
       project: "@testuser/testapp",
       status: "not-connected",
-      appStoreConnectApp: null,
     });
     // overwrite state with no asc-key record
     await save({ schemaVersion: 1, steps: {}, audit: [] });
@@ -185,7 +182,6 @@ describe("runAscConnect", () => {
       action: "status",
       project: "@testuser/testapp",
       status: "not-connected",
-      appStoreConnectApp: null,
     });
     readOneSpy.mockResolvedValueOnce(undefined);
 
@@ -220,7 +216,6 @@ describe("runAscConnect", () => {
       action: "status",
       project: "@testuser/testapp",
       status: "not-connected",
-      appStoreConnectApp: null,
     });
     readOneSpy.mockResolvedValueOnce("com.vexpo.vexpo");
     spawnSpy.mockReturnValueOnce({

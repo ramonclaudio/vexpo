@@ -29,9 +29,27 @@ afterEach(() => {
   vi.clearAllMocks();
 });
 
-// Fixtures lifted from eas-cli's own buildJsonOutput function at
-// packages/eas-cli/src/integrations/asc/utils.ts. Locking the contract here
-// catches schema drift the moment an eas-cli release rotates field names.
+// Fixtures match the OBSERVED `eas integrations:asc:status --json` output
+// at eas-cli v19.0.0, captured 2026-05-19 by running the command against
+// this project. Differs from `buildJsonOutput`'s return shape because
+// `sanitizeValue` strips `null` fields before stdout. Locking the contract
+// here catches schema drift the moment an eas-cli release changes either
+// the source shape or the sanitizer's behavior.
+
+// Empirical capture (2026-05-19, eas-cli@19.0.0, ramonclaudio/vexpo):
+//   { "action": "status",
+//     "project": "@ramonclaudio/vexpo",
+//     "status": "not-connected" }
+// Note: `appStoreConnectApp` is absent, not `null`.
+const disconnectedFixture: AscStatus = {
+  action: "status",
+  project: "@testuser/testapp",
+  status: "not-connected",
+};
+
+// Synthesized from `buildJsonOutput` plus `sanitizeValue`'s null-stripping
+// behavior. `name` and `bundleIdentifier` are present when Apple returns
+// them non-null (the common case for any real app).
 const connectedFixture: AscStatus = {
   action: "status",
   project: "@testuser/testapp",
@@ -45,18 +63,13 @@ const connectedFixture: AscStatus = {
   },
 };
 
-const disconnectedFixture: AscStatus = {
-  action: "status",
-  project: "@testuser/testapp",
-  status: "not-connected",
-  appStoreConnectApp: null,
-};
-
+// Invalid = revoked or rejected ASC API key. Shape mirrors disconnected
+// since `buildInvalidJsonOutput` also passes `appStoreConnectApp: null`
+// which the sanitizer strips.
 const invalidFixture: AscStatus = {
   action: "status",
   project: "test-project-id",
   status: "invalid",
-  appStoreConnectApp: null,
 };
 
 describe("ascStatus", () => {
@@ -71,23 +84,44 @@ describe("ascStatus", () => {
     runSpy.mockResolvedValue({ code: 0, stdout: JSON.stringify(connectedFixture), stderr: "" });
     const status = await ascStatus();
     expect(status.status).toBe("connected");
-    expect(status.appStoreConnectApp).not.toBeNull();
+    expect(status.appStoreConnectApp).toBeDefined();
     expect(status.appStoreConnectApp?.bundleIdentifier).toBe("com.test.app");
     expect(status.appStoreConnectApp?.ascAppIdentifier).toBe("1234567890");
     expect(status.appStoreConnectApp?.id).toBe("asc-app-link-id");
   });
 
-  it("parses a 'not-connected' response with appStoreConnectApp=null", async () => {
+  it("parses a 'not-connected' response (appStoreConnectApp absent)", async () => {
     runSpy.mockResolvedValue({ code: 0, stdout: JSON.stringify(disconnectedFixture), stderr: "" });
     const status = await ascStatus();
     expect(status.status).toBe("not-connected");
-    expect(status.appStoreConnectApp).toBeNull();
+    expect(status.appStoreConnectApp).toBeUndefined();
   });
 
-  it("parses an 'invalid' response (revoked or rejected ASC API key)", async () => {
+  it("parses an 'invalid' response (appStoreConnectApp absent)", async () => {
     runSpy.mockResolvedValue({ code: 0, stdout: JSON.stringify(invalidFixture), stderr: "" });
     const status = await ascStatus();
     expect(status.status).toBe("invalid");
+    expect(status.appStoreConnectApp).toBeUndefined();
+  });
+
+  it("tolerates appStoreConnectApp=null if eas-cli ever stops sanitizing", async () => {
+    // sanitizeValue currently strips null fields. If a future eas-cli release
+    // disables that pass, our `&& status.appStoreConnectApp` check still
+    // works because null is falsy. This test pins that behavior.
+    runSpy.mockResolvedValue({
+      code: 0,
+      stdout: JSON.stringify({
+        action: "status",
+        project: "@testuser/testapp",
+        status: "not-connected",
+        appStoreConnectApp: null,
+      }),
+      stderr: "",
+    });
+    const status = (await ascStatus()) as unknown as AscStatus & {
+      appStoreConnectApp: null | AscStatus["appStoreConnectApp"];
+    };
+    expect(status.status).toBe("not-connected");
     expect(status.appStoreConnectApp).toBeNull();
   });
 
