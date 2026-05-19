@@ -2,20 +2,38 @@
  * `vexpo asc connect`. Internal step run by `vexpo full`, not exposed as a
  * standalone public command (no entry in `cli.ts`). Spawns
  * `eas integrations:asc:connect --bundle-id <bundle>` with `EXPO_ASC_API_KEY_*`
- * env vars pre-set from the cached `asc-key` state. Same orchestration pattern
- * `vexpo apple credentials` uses with `eas credentials:configure-build`.
+ * env vars pre-set from the cached `asc-key` state.
  *
- * Why not pass `--api-key-id`: that flag matches against EAS's *uploaded* key
- * resources, not Apple-side key identifiers. Passing the cached 10-char Apple
- * key id (e.g. "3SBKJXPM27") fails with `No App Store Connect API key found
- * with Apple key identifier ...` when the key hasn't been uploaded to EAS yet,
- * which is the common case on a fresh project. The env vars let the wizard
- * upload the key on its own, then link the app, both inside the same spawn.
+ * Why not pass `--api-key-id`: that flag is the Apple-side 10-char key id
+ * (e.g. "3SBKJXPM27"), and eas-cli looks it up against its *uploaded* key
+ * resources. Passing the cached id when no key is uploaded fails with
+ * `No App Store Connect API key found with Apple key identifier ...`, which
+ * is the common case on a fresh project. Dropping the flag lets the wizard
+ * generate-or-pick a key itself.
  *
- * The wizard still prompts once when no key is uploaded yet ("Use existing /
- * Set up new"). eas-cli owns the upload-and-link state; vexpo doesn't mirror
- * it. Skips entirely when `eas integrations:asc:status` already reports the
- * project as linked.
+ * What the env vars actually do: `AppStoreApi` in eas-cli reads
+ * `hasAscEnvVars()` in its constructor and sets `defaultAuthenticationMode`
+ * to `API_KEY` when set, `USER` otherwise. So with the env vars set, when
+ * the wizard reaches `generateAscApiKeyAsync` and needs to authenticate to
+ * Apple to create a new ASC API key, it uses our cached key for that auth
+ * instead of prompting for Apple ID + password. The env vars do NOT auto-
+ * fill the wizard's manual paste prompts (path / keyId / issuerId) -
+ * those are only reached if the user declines the auto-generate offer.
+ *
+ * Common path (zero uploaded EAS keys, accept defaults):
+ *   1. "Generate a new App Store Connect API Key?" -> Y (default)
+ *   2. "Select role: ADMIN / APP_MANAGER" -> ADMIN (default)
+ *   3. Maybe "Select app" if multiple match --bundle-id (rare)
+ *
+ * Side effect: creates a SECOND ASC API key on Apple, separate from the
+ * "master" key cached in vexpo state. This is intentional separation: the
+ * master key stays out of EAS's control (used for direct ASC API calls in
+ * `vexpo apple services-id`, `vexpo apple jwt`, etc.), the EAS-managed key
+ * is owned by EAS for build/submit/metadata.
+ *
+ * Idempotency: skips entirely when `eas integrations:asc:status` already
+ * reports `status === "connected"`. Status type mirrors `buildJsonOutput`
+ * in `expo/eas-cli` (`packages/eas-cli/src/integrations/asc/utils.ts`).
  */
 
 import { existsSync } from "node:fs";
@@ -52,12 +70,14 @@ export async function runAscConnect(opts: { force?: boolean } = {}): Promise<num
   if (!opts.force) {
     try {
       const status = await ascStatus();
-      if (status.connected) {
-        const label = status.ascApp?.bundleId ?? status.ascApp?.id ?? "ok";
+      if (status.status === "connected" && status.appStoreConnectApp) {
+        const label =
+          status.appStoreConnectApp.bundleIdentifier ?? status.appStoreConnectApp.ascAppIdentifier;
         nop(`already connected (${label})`);
         await recordStep("apple-asc-link", {
-          ascAppId: status.ascApp?.id,
-          bundleId: status.ascApp?.bundleId,
+          ascAppId: status.appStoreConnectApp.ascAppIdentifier,
+          ascAppEasId: status.appStoreConnectApp.id,
+          bundleId: status.appStoreConnectApp.bundleIdentifier,
           connectedAt: new Date().toISOString(),
         });
         return 0;
@@ -86,9 +106,11 @@ export async function runAscConnect(opts: { force?: boolean } = {}): Promise<num
   ok(`bundle id: ${BOLD}${bundleId}${RESET}`);
 
   line();
-  note("spawning `eas integrations:asc:connect`. Wizard prompts once when no");
-  note("key is uploaded yet (Use existing / Set up new key). EXPO_ASC_API_KEY_*");
-  note("env vars are pre-set so the credential paste step auto-fills.");
+  note("spawning `eas integrations:asc:connect`. Most likely flow:");
+  note("  1. Press Y to generate a new ASC API key (default)");
+  note("  2. Press Enter to accept ADMIN role (default)");
+  note("EXPO_ASC_API_KEY_* env vars are set so eas-cli uses our cached key");
+  note("for the Apple auth step, no Apple ID + password prompt.");
 
   if (!process.stdin.isTTY) {
     yep("non-TTY: skipping interactive wizard");
