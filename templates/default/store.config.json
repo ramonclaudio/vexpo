@@ -40,7 +40,7 @@
       "lastName": "YOUR_LAST_NAME",
       "email": "reviewer@example.com",
       "phone": "+15555555555",
-      "notes": "Run `bunx vexpo rebrand` (or `bunx vexpo full`) before submitting. The wizard replaces every placeholder in this file with your fork's real values.",
+      "notes": "Run `npx vexpo rebrand` (or `npx vexpo full`) before submitting. The wizard replaces every placeholder in this file with your fork's real values.",
       "demoUsername": "review@example.com",
       "demoPassword": "REPLACE_BEFORE_SUBMIT"
     },

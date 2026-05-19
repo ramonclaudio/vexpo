@@ -114,11 +114,11 @@ export const createAuth = (ctx: GenericCtx<DataModel>) =>
     emailAndPassword: {
       enabled: true,
       // Email verification is gated on the `REQUIRE_EMAIL_VERIFICATION`
-      // Convex env var. The lite-mode setup (`bunx vexpo lite`) leaves it
+      // Convex env var. The lite-mode setup (`npx vexpo lite`) leaves it
       // unset (default `false`) so sign-up creates verified accounts
       // immediately and the user can sign in without an OTP. No Resend
       // configuration needed to get up and running on the iOS Simulator.
-      // `bunx vexpo full` flips this to `true` when it provisions Resend.
+      // `npx vexpo full` flips this to `true` when it provisions Resend.
       // Production runs with verification on.
       requireEmailVerification: env.requireEmailVerification,
       minPasswordLength: 10,
@@ -325,7 +325,7 @@ export const getEnabledProviders = query({
 
 /**
  * Rotate JWKS keys for JWT signing.
- * Run with: bunx convex run auth:rotateKeys
+ * Run with: npx convex run auth:rotateKeys
  */
 export const rotateKeys = internalAction({
   args: {},

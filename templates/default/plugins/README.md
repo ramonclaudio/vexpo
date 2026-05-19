@@ -6,4 +6,4 @@ Forces automatic code signing for the Xcode project during local `prebuild`. Set
 
 No-ops when `EAS_BUILD` is set, so EAS continues to use the provisioning profile from the build credentials.
 
-Use: local `bun run ios` on a physical device without juggling provisioning profiles in Xcode.
+Use: local `npm run ios` on a physical device without juggling provisioning profiles in Xcode.

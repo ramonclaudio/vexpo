@@ -9,10 +9,6 @@ concurrency:
   cancel_in_progress: true
   group: ${{ workflow.filename }}-${{ github.ref }}
 
-defaults:
-  tools:
-    bun: latest
-
 jobs:
   precheck:
     name: Precheck
@@ -22,11 +18,11 @@ jobs:
       - uses: eas/checkout
       - uses: eas/install_node_modules
       - name: Typecheck
-        run: bun run typecheck
+        run: npm run typecheck
       - name: Lint
-        run: bun run lint
+        run: npm run lint
       - name: Test
-        run: bun run test
+        run: npm run test
 
   deploy_convex:
     name: Deploy Convex
@@ -43,7 +39,7 @@ jobs:
       - uses: eas/checkout
       - uses: eas/install_node_modules
       - name: Deploy Convex backend
-        run: bunx convex deploy
+        run: npx convex deploy
 
   fingerprint:
     name: Fingerprint
@@ -92,7 +88,7 @@ jobs:
       #     --type file --name EAS_UPDATE_PRIVATE_KEY \
       #     --value ../keys/private-key.pem
       # When the env var is unset (no cert generated yet), `eas update`
-      # skips signing without erroring. Run `bun run updates:gen-cert` once
+      # skips signing without erroring. Run `npm run updates:gen-cert` once
       # to wire both halves.
       # https://docs.expo.dev/eas-update/code-signing/
       private_key_path: "$EAS_UPDATE_PRIVATE_KEY"
@@ -121,7 +117,7 @@ jobs:
         run: |
           GROUP="${{ needs.update_ios.outputs.first_update_group_id }}"
           echo "Update group: $GROUP"
-          bunx eas-cli update:insights "$GROUP" --json --non-interactive || true
+          npx eas-cli update:insights "$GROUP" --json --non-interactive || true
 
   notify_update_published:
     name: Notify Slack with insights link

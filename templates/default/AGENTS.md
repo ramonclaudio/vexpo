@@ -44,7 +44,7 @@ hand. These are conventions, not magic.
 
 - **Convex functions**: every query/mutation needs both server-side
   validators and matching client types. The `convex/_generated/` directory is
-  the contract. Run `bunx convex codegen` after schema or function changes.
+  the contract. Run `npx convex codegen` after schema or function changes.
 - **HTTP routes** (`convex/http.ts`): every public endpoint must use
   `convex/webhook.ts` `withWebhook()` factory for HMAC verification + body
   cap + structured logging, or document why it doesn't. Inbound webhooks are
@@ -55,15 +55,15 @@ hand. These are conventions, not magic.
   `APPLE_KEY_ID`, `APPLE_SERVICES_ID`, `CONVEX_DEPLOY_KEY`).
 - **Push notifications**: only work on a physical device. iOS Simulator does
   not deliver APNs. Don't try to test push flows in the simulator.
-- **`store.config.json`**: ships with placeholder values. `bunx vexpo
+- **`store.config.json`**: ships with placeholder values. `npx vexpo
 rebrand` fills them in. App Review will reject builds with placeholder
   contact info.
 
 ## When in doubt
 
-- Run `bunx vexpo doctor` to check that `.env.local`, Convex env, EAS env,
+- Run `npx vexpo doctor` to check that `.env.local`, Convex env, EAS env,
   and `app.config.ts` agree.
-- Use `bunx eas <subcommand>` for canonical EAS operations. **Don't reinvent
+- Use `npx eas <subcommand>` for canonical EAS operations. **Don't reinvent
   EAS.** That's the vexpo design principle.
 - Read `SETUP.md` for the long-form orchestration walkthrough.
 

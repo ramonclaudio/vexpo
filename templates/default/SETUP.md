@@ -1,16 +1,16 @@
 # Setup reference
 
-Long-form companion to the README. Walks every phase `bunx vexpo full` runs, the prompts you'll see, env-var alternatives for non-interactive runs (CI), recovery paths, and what state ends up where.
+Long-form companion to the README. Walks every phase `npx vexpo full` runs, the prompts you'll see, env-var alternatives for non-interactive runs (CI), recovery paths, and what state ends up where.
 
-The orchestrator is the published [`vexpo` CLI](https://www.npmjs.com/package/vexpo) (run via `bunx vexpo lite` (dev) or `bunx vexpo full` (TestFlight-ready)). `package.json` exposes every phase as a `bunx vexpo <phase-name>` shortcut. State lives in `.setup-state.json` (gitignored), `.env.local` (gitignored), Convex deployment env (server-side), and EAS project env (per-environment, with secret-visibility entries powering the JWT rotation cron).
+The orchestrator is the published [`vexpo` CLI](https://www.npmjs.com/package/vexpo) (run via `npx vexpo lite` (dev) or `npx vexpo full` (TestFlight-ready)). `package.json` exposes every phase as a `npx vexpo <phase-name>` shortcut. State lives in `.setup-state.json` (gitignored), `.env.local` (gitignored), Convex deployment env (server-side), and EAS project env (per-environment, with secret-visibility entries powering the JWT rotation cron).
 
 ## TL;DR
 
 ```bash
 git clone <repo-url> my-app
 cd my-app
-bun install
-bunx vexpo full
+npm install
+npx vexpo full
 ```
 
 Plan ~30 minutes if your accounts already exist, ~60-90 if you're enrolling in the Apple Developer Program for the first time.
@@ -19,13 +19,13 @@ Plan ~30 minutes if your accounts already exist, ~60-90 if you're enrolling in t
 
 vexpo has three entry points:
 
-| Mode              | Command               | When                                                                                                             |
-| ----------------- | --------------------- | ---------------------------------------------------------------------------------------------------------------- |
-| Lite (dev)        | `bunx vexpo lite`     | Greenfield, dev-mode shortcut. Provisions Convex + Better Auth only. ~60 seconds to the iOS Simulator.           |
-| Full (TestFlight) | `bunx vexpo full`     | Greenfield, production setup. Walks signups, provisions Resend + Apple + EAS, signs JWTs, rebrands.              |
-| Env sync          | `bunx vexpo env push` | You already have all values in `.env.local` + `.env.prod`: just push them to Convex env and EAS env. No signups. |
+| Mode              | Command              | When                                                                                                             |
+| ----------------- | -------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| Lite (dev)        | `npx vexpo lite`     | Greenfield, dev-mode shortcut. Provisions Convex + Better Auth only. ~60 seconds to the iOS Simulator.           |
+| Full (TestFlight) | `npx vexpo full`     | Greenfield, production setup. Walks signups, provisions Resend + Apple + EAS, signs JWTs, rebrands.              |
+| Env sync          | `npx vexpo env push` | You already have all values in `.env.local` + `.env.prod`: just push them to Convex env and EAS env. No signups. |
 
-`bunx vexpo env push` reads `.env.local` (dev) and `.env.prod` or `.env.production` (prod), classifies each key by destination, and pushes to Convex env and EAS env. Per-file confirmation, fingerprint diff on overwrites, no provisioning. Secret-visibility EAS env vars (rotation cron) need `eas env:create --visibility secret` and the command prints the exact invocations when it sees those keys.
+`npx vexpo env push` reads `.env.local` (dev) and `.env.prod` or `.env.production` (prod), classifies each key by destination, and pushes to Convex env and EAS env. Per-file confirmation, fingerprint diff on overwrites, no provisioning. Secret-visibility EAS env vars (rotation cron) need `eas env:create --visibility secret` and the command prints the exact invocations when it sees those keys.
 
 Pick `env push` when:
 
@@ -40,10 +40,10 @@ Pick `lite` for the 60-second simulator path with no Apple Developer account or 
 
 All modes accept `--dry-run`. Print every action the script would take, then exit without touching anything.
 
-| Command                         | Output                                                                                                |
-| ------------------------------- | ----------------------------------------------------------------------------------------------------- |
-| `bunx vexpo full --dry-run`     | One block per phase: action (`run`/`skip (cached)`/`run (interactive)`), summary list of what it does |
-| `bunx vexpo env push --dry-run` | Per-source-file plan: every key, every destination, with `create`/`update`/`noop` status + diff       |
+| Command                        | Output                                                                                                |
+| ------------------------------ | ----------------------------------------------------------------------------------------------------- |
+| `npx vexpo full --dry-run`     | One block per phase: action (`run`/`skip (cached)`/`run (interactive)`), summary list of what it does |
+| `npx vexpo env push --dry-run` | Per-source-file plan: every key, every destination, with `create`/`update`/`noop` status + diff       |
 
 Use it to:
 
@@ -54,24 +54,24 @@ Use it to:
 
 `--dry-run` does not hit the network for verification, doesn't prompt for credentials, doesn't write state. It only reads what already exists locally and prints the plan.
 
-## What `bunx vexpo full` does
+## What `npx vexpo full` does
 
-The orchestrator runs the following phases in order, skipping any that are cached fresh in `.setup-state.json`. Each phase is also runnable standalone via `bunx vexpo <phase-name>`.
+The orchestrator runs the following phases in order, skipping any that are cached fresh in `.setup-state.json`. Each phase is also runnable standalone via `npx vexpo <phase-name>`.
 
-| Phase | Command                                 | Layer | What it does                                                                                                   |
-| ----- | --------------------------------------- | ----- | -------------------------------------------------------------------------------------------------------------- |
-| 0     | `bunx vexpo accounts`                   | meta  | Apple Developer / Expo / Convex / Resend signup confirmation                                                   |
-| 1     | `bunx vexpo rebrand`                    | ours  | Replace template defaults (interactive, only if forking)                                                       |
-| 2     | `bunx vexpo convex`                     | ours  | Provision Convex deployment, write `.env.local`                                                                |
-| 3     | `bunx vexpo better-auth`                | ours  | Generate `BETTER_AUTH_SECRET`, push `SITE_URL`, `APP_NAME`                                                     |
-| 4     | `bunx vexpo resend`                     | ours  | Resend sending key + webhook (manual: DNS records at registrar)                                                |
-| 5     | `bunx vexpo review-account`             | ours  | Seed App Review demo account on Convex                                                                         |
-| 6     | `bunx vexpo full` (EAS phase)           | eas   | Thin wrapper: `eas init` + `eas env:push` from `.env.local`                                                    |
-| 7     | `bunx vexpo apple asc-key`              | ours  | Validate ASC API key against ASC `/v1/apps` (no upload)                                                        |
-| 7.5   | `bunx vexpo apple credentials`          | ours  | Wraps `eas credentials -p ios`. Pre-passes cached ASC creds, EAS auto-generates dist cert + profile + push key |
-| 8     | `bunx vexpo apple services-id`          | ours  | Attach SIWA capability via ASC API (manual: create the Services ID itself)                                     |
-| 9     | `bunx vexpo apple jwt`                  | ours  | Sign SIWA ES256 client_secret JWT, push to Convex env                                                          |
-| 10    | `bunx vexpo apple eas-rotation-secrets` | ours  | Push the 5 EAS production secrets the JWT rotation cron needs                                                  |
+| Phase | Command                                | Layer | What it does                                                                                                   |
+| ----- | -------------------------------------- | ----- | -------------------------------------------------------------------------------------------------------------- |
+| 0     | `npx vexpo accounts`                   | meta  | Apple Developer / Expo / Convex / Resend signup confirmation                                                   |
+| 1     | `npx vexpo rebrand`                    | ours  | Replace template defaults (interactive, only if forking)                                                       |
+| 2     | `npx vexpo convex`                     | ours  | Provision Convex deployment, write `.env.local`                                                                |
+| 3     | `npx vexpo better-auth`                | ours  | Generate `BETTER_AUTH_SECRET`, push `SITE_URL`, `APP_NAME`                                                     |
+| 4     | `npx vexpo resend`                     | ours  | Resend sending key + webhook (manual: DNS records at registrar)                                                |
+| 5     | `npx vexpo review-account`             | ours  | Seed App Review demo account on Convex                                                                         |
+| 6     | `npx vexpo full` (EAS phase)           | eas   | Thin wrapper: `eas init` + `eas env:push` from `.env.local`                                                    |
+| 7     | `npx vexpo apple asc-key`              | ours  | Validate ASC API key against ASC `/v1/apps` (no upload)                                                        |
+| 7.5   | `npx vexpo apple credentials`          | ours  | Wraps `eas credentials -p ios`. Pre-passes cached ASC creds, EAS auto-generates dist cert + profile + push key |
+| 8     | `npx vexpo apple services-id`          | ours  | Attach SIWA capability via ASC API (manual: create the Services ID itself)                                     |
+| 9     | `npx vexpo apple jwt`                  | ours  | Sign SIWA ES256 client_secret JWT, push to Convex env                                                          |
+| 10    | `npx vexpo apple eas-rotation-secrets` | ours  | Push the 5 EAS production secrets the JWT rotation cron needs                                                  |
 
 Phases marked "manual" pause the CLI while you do something a Resend dashboard or Apple Developer portal can't be automated through. The CLI prints exact instructions and waits for you to press Enter.
 
@@ -85,7 +85,7 @@ eas submit -p ios --profile production    # auto-creates the App Store record on
 
 We don't reinvent any of those, `eas-cli` owns the iOS platform layer end-to-end. The EAS init phase is a thin wrapper that does `eas init` + `eas env:push` because the orchestrator wants one entry point for the env mirror. You can run those two commands directly and skip our wrapper entirely.
 
-## Phase 0: Accounts (`bunx vexpo accounts`)
+## Phase 0: Accounts (`npx vexpo accounts`)
 
 Splits "things you bring" from "things vexpo signs you up for":
 
@@ -100,25 +100,25 @@ For both, the script asks "do you have this?" and prints links if you don't. If 
 
 ### Instant signups (we walk you through)
 
-| Account | Validation                                                  |
-| ------- | ----------------------------------------------------------- |
-| Convex  | `~/.convex/config.json` exists after `bunx convex login`    |
-| Expo    | `bunx eas whoami` returns a username after `bunx eas login` |
-| Resend  | `RESEND_FULL_ACCESS_KEY` env probes 200 on `/api-keys`      |
+| Account | Validation                                                |
+| ------- | --------------------------------------------------------- |
+| Convex  | `~/.convex/config.json` exists after `npx convex login`   |
+| Expo    | `npx eas whoami` returns a username after `npx eas login` |
+| Resend  | `RESEND_FULL_ACCESS_KEY` env probes 200 on `/api-keys`    |
 
 Each opens the signup page (free-tier accounts, instant), then runs the corresponding CLI login. For Resend, paste a full-access key into the env once: `export RESEND_FULL_ACCESS_KEY=re_...` (the script also prompts interactively if absent). The key is never persisted by vexpo, it's used to provision a scoped sending key + webhook, then forgotten.
 
 ### What you'll be prompted for in later phases
 
-| Phase                      | What it needs from you                                                                                                                                                        |
-| -------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `bunx vexpo apple asc-key` | App Store Connect API key (issuer ID, key ID, .p8), created at [appstoreconnect.apple.com/access/integrations/api](https://appstoreconnect.apple.com/access/integrations/api) |
-| `bunx vexpo apple jwt`     | Sign In with Apple key (key ID, .p8), created at [developer.apple.com/account/resources/authkeys/list](https://developer.apple.com/account/resources/authkeys/list)           |
-| DNS records                | Added by you at your registrar after `bunx vexpo resend`. Resend's dashboard shows them and verifies. We don't automate this.                                                 |
+| Phase                     | What it needs from you                                                                                                                                                        |
+| ------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `npx vexpo apple asc-key` | App Store Connect API key (issuer ID, key ID, .p8), created at [appstoreconnect.apple.com/access/integrations/api](https://appstoreconnect.apple.com/access/integrations/api) |
+| `npx vexpo apple jwt`     | Sign In with Apple key (key ID, .p8), created at [developer.apple.com/account/resources/authkeys/list](https://developer.apple.com/account/resources/authkeys/list)           |
+| DNS records               | Added by you at your registrar after `npx vexpo resend`. Resend's dashboard shows them and verifies. We don't automate this.                                                  |
 
-Skip the whole phase: `bunx vexpo full  # (accounts walk only runs with --new)`.
+Skip the whole phase: `npx vexpo full  # (accounts walk only runs with --new)`.
 
-## Phase 1: Rebrand (`bunx vexpo rebrand`)
+## Phase 1: Rebrand (`npx vexpo rebrand`)
 
 Interactive wizard for forks. Detects template defaults like `com.example.vexpo`, `slug: "vexpo"`, `scheme: "vexpo"`. Prompts for:
 
@@ -140,9 +140,9 @@ Edits:
 
 Backups land in `.rebrand-backup/<timestamp>/` before any write. Idempotent: re-runs detect "already rebranded" via state and skip unless `--force` is passed.
 
-Skip: `bunx vexpo full --skip-rebrand`. Or pre-detect by reading from `.env.local` (`EXPO_PUBLIC_APP_BUNDLE_ID`). If it differs from `com.example.vexpo`, the orchestrator marks the step `cached`.
+Skip: `npx vexpo full --skip-rebrand`. Or pre-detect by reading from `.env.local` (`EXPO_PUBLIC_APP_BUNDLE_ID`). If it differs from `com.example.vexpo`, the orchestrator marks the step `cached`.
 
-## Phase 2: Convex (`bunx vexpo convex`)
+## Phase 2: Convex (`npx vexpo convex`)
 
 Provisions a fresh Convex deployment (or connects to an existing one). Writes:
 
@@ -151,15 +151,15 @@ Provisions a fresh Convex deployment (or connects to an existing one). Writes:
 
 Prompts for the iOS bundle ID (reverse DNS, e.g. `com.yourname.myapp`) and your 10-character Apple Team ID (in Apple Developer → Membership). Both can be provided non-interactively via `EXPO_PUBLIC_APP_BUNDLE_ID` and `EXPO_PUBLIC_APPLE_TEAM_ID` env vars.
 
-`--fresh` wipes `.env.local` and reprovisions a brand new deployment. `--local` runs against `bunx convex dev --local` (self-hosted backend).
+`--fresh` wipes `.env.local` and reprovisions a brand new deployment. `--local` runs against `npx convex dev --local` (self-hosted backend).
 
-## Phase 3: Better Auth (`bunx vexpo better-auth`)
+## Phase 3: Better Auth (`npx vexpo better-auth`)
 
 Generates a 32-byte base64 `BETTER_AUTH_SECRET`. Sets `SITE_URL`, `APP_NAME` on Convex. No prompts, no env required.
 
 If `BETTER_AUTH_SECRET` is already set on Convex, the script preserves it.
 
-## Phase 4: Resend (`bunx vexpo resend`)
+## Phase 4: Resend (`npx vexpo resend`)
 
 Prompts once for a Resend full-access key (or reads `RESEND_FULL_ACCESS_KEY`). Picks a verified domain (or the first one if there's only one). Creates:
 
@@ -180,7 +180,7 @@ This is the one thing that gates real email sending. Until the domain is verifie
 
 The webhook subscribes to 9 events: `email.sent`, `email.delivered`, `email.delivery_delayed`, `email.bounced`, `email.complained`, `email.failed`, `email.suppressed`, `email.opened`, `email.clicked`. The 4 actionable failure events (`bounced`, `complained`, `suppressed`, `failed`) tell you when a user's address is dead. `convex/email.ts` logs them with `console.warn` and you extend `handleEmailEvent` to flag the user account if you want to stop retrying. `opened` and `clicked` only fire when per-email tracking is enabled (we don't enable it by default, toggle on individual sends if you want it).
 
-`bunx vexpo doctor` confirms the webhook subscription includes all 4 actionable events. If you ever drop one accidentally, re-run `bunx vexpo resend` to refresh.
+`npx vexpo doctor` confirms the webhook subscription includes all 4 actionable events. If you ever drop one accidentally, re-run `npx vexpo resend` to refresh.
 
 ### Sign In with Apple + Hide My Email (Apple Private Email Relay)
 
@@ -193,7 +193,7 @@ Resend authenticates via SPF + DKIM by default, which is what Apple wants. So on
 
 Apple imposes a 100/day limit per relay address, but that's a per-user cap, not a per-app one.
 
-## Phase 5: Review account (`bunx vexpo review-account`)
+## Phase 5: Review account (`npx vexpo review-account`)
 
 Reads `apple.review.demoUsername` / `demoPassword` from `store.config.json`. Creates the user via Better Auth's signup flow, then flips `emailVerified: true` directly via the adapter so Apple's reviewer doesn't see an OTP prompt.
 
@@ -201,13 +201,13 @@ Pass `--email` / `--password` to override the values from `store.config.json`. S
 
 ## Phase 6: EAS (auto, no standalone command, runs as part of `vexpo full`)
 
-Runs `eas init` (creates the project, or links to an existing one) and writes `extra.eas.projectId` to `app.json`. Mirrors every `EXPO_PUBLIC_*` from `.env.local` to EAS env across `production`, `preview`, and `development` environments using `bunx eas env:create --visibility plaintext`.
+Runs `eas init` (creates the project, or links to an existing one) and writes `extra.eas.projectId` to `app.json`. Mirrors every `EXPO_PUBLIC_*` from `.env.local` to EAS env across `production`, `preview`, and `development` environments using `npx eas env:create --visibility plaintext`.
 
 Pass `--skip-init` to only mirror env, `--skip-env` to only init.
 
 After this, `expo prebuild` and `eas build` both find the right project + env. The `extra.eas.projectId` write also enables `app.config.ts → updates.url`.
 
-## Phase 7: ASC API key (`bunx vexpo apple asc-key`)
+## Phase 7: ASC API key (`npx vexpo apple asc-key`)
 
 The App Store Connect API key is needed for `eas submit` (and for vexpo's Phase 8 Services ID provisioning). The first key has to be created in the ASC web UI, there's no bootstrap path because you can't authenticate the API without already having a key.
 
@@ -222,13 +222,13 @@ Then prompts for issuer ID, key ID, and `.p8` path. Validates by signing an ES25
 
 Records `{issuerId, keyId, p8Path, validatedAt}` in `.setup-state.json`. The .p8 file itself stays where you put it, vexpo never copies it.
 
-Env-var skip: `APPLE_ASC_ISSUER_ID=... APPLE_ASC_KEY_ID=... APPLE_ASC_P8_PATH=/path/to/AuthKey_X.p8 bunx vexpo apple asc-key`.
+Env-var skip: `APPLE_ASC_ISSUER_ID=... APPLE_ASC_KEY_ID=... APPLE_ASC_P8_PATH=/path/to/AuthKey_X.p8 npx vexpo apple asc-key`.
 
-Re-validate cached creds without re-prompting: `bunx vexpo apple asc-key --revalidate`.
+Re-validate cached creds without re-prompting: `npx vexpo apple asc-key --revalidate`.
 
-## Phase 7.5: EAS iOS credentials (`bunx vexpo apple credentials`)
+## Phase 7.5: EAS iOS credentials (`npx vexpo apple credentials`)
 
-`bunx vexpo apple credentials` wraps the eas-cli wizard. With our env-var pre-passing (`EXPO_ASC_API_KEY_PATH`, `EXPO_ASC_KEY_ID`, `EXPO_ASC_ISSUER_ID`), the wizard skips Apple Developer login entirely. You walk through ~6 Y/n prompts (each "Generate new" or "Use existing"), each takes 1-2 seconds. Apple's API does the actual work server-side.
+`npx vexpo apple credentials` wraps the eas-cli wizard. With our env-var pre-passing (`EXPO_ASC_API_KEY_PATH`, `EXPO_ASC_KEY_ID`, `EXPO_ASC_ISSUER_ID`), the wizard skips Apple Developer login entirely. You walk through ~6 Y/n prompts (each "Generate new" or "Use existing"), each takes 1-2 seconds. Apple's API does the actual work server-side.
 
 What the wizard sets up:
 
@@ -239,11 +239,11 @@ What the wizard sets up:
 
 All credentials are stored encrypted on EAS infrastructure. Subsequent `eas build` + `eas submit` runs are non-interactive.
 
-Standalone: `bunx vexpo apple credentials [-e <profile>]`.
+Standalone: `npx vexpo apple credentials [-e <profile>]`.
 
-Bypass entirely: `bunx eas credentials -p ios` runs the wizard directly. The vexpo wrapper just pre-passes the cached ASC creds.
+Bypass entirely: `npx eas credentials -p ios` runs the wizard directly. The vexpo wrapper just pre-passes the cached ASC creds.
 
-## Phase 8: Sign In with Apple Services ID (`bunx vexpo apple services-id`)
+## Phase 8: Sign In with Apple Services ID (`npx vexpo apple services-id`)
 
 The Services ID is a separate `BundleId` resource (with `platform: "SERVICES"`) used by your backend to identify the OAuth client to Apple. EAS doesn't manage these. The regular bundle ID it provisions is for the iOS app itself, not the OAuth backend.
 
@@ -282,7 +282,7 @@ Apple may ask you to upload an `apple-developer-domain-association.txt` to verif
 
 After saving, return to the CLI and press Enter. The CLI re-lists, finds the Services ID, attaches the capability via API, and continues to Phase 9.
 
-## Phase 9: Apple Sign In JWT (`bunx vexpo apple jwt`)
+## Phase 9: Apple Sign In JWT (`npx vexpo apple jwt`)
 
 Signs an ES256 `client_secret` JWT (180-day expiry, Apple's max) from a Sign In with Apple `.p8` file. Writes:
 
@@ -299,15 +299,15 @@ Prompts:
 
 Records `{servicesId, teamId, keyId, p8Path, signedAt, expiresAt}` in state.
 
-Env-var skip: `APPLE_SERVICES_ID=... APPLE_TEAM_ID=... APPLE_KEY_ID=... APPLE_P8_PATH=/path/to/AuthKey_X.p8 bunx vexpo apple jwt`.
+Env-var skip: `APPLE_SERVICES_ID=... APPLE_TEAM_ID=... APPLE_KEY_ID=... APPLE_P8_PATH=/path/to/AuthKey_X.p8 npx vexpo apple jwt`.
 
-Rotate without re-prompting IDs: `bunx vexpo apple jwt --rotate`.
+Rotate without re-prompting IDs: `npx vexpo apple jwt --rotate`.
 
 ### JWT rotation
 
-Apple caps `client_secret` JWTs at 180 days. The `.eas/workflows/rotate-apple-jwt.yml` cron fires every 90 days, signs a fresh JWT, and pushes it to your prod Convex deployment. Runs on EAS infrastructure with all secrets read from EAS env (production, secret visibility), no GitHub repo secrets needed. Set up once, never think about it again. Manual fallback: `bunx vexpo apple jwt --rotate`.
+Apple caps `client_secret` JWTs at 180 days. The `.eas/workflows/rotate-apple-jwt.yml` cron fires every 90 days, signs a fresh JWT, and pushes it to your prod Convex deployment. Runs on EAS infrastructure with all secrets read from EAS env (production, secret visibility), no GitHub repo secrets needed. Set up once, never think about it again. Manual fallback: `npx vexpo apple jwt --rotate`.
 
-## Phase 10: EAS rotation secrets (`bunx vexpo apple eas-rotation-secrets`)
+## Phase 10: EAS rotation secrets (`npx vexpo apple eas-rotation-secrets`)
 
 Pushes the 5 EAS production secrets the rotation cron needs. The orchestrator runs this last. It's also a standalone command.
 
@@ -322,8 +322,8 @@ Pushes the 5 EAS production secrets the rotation cron needs. The orchestrator ru
 The 4 Apple secrets get pulled automatically. `CONVEX_DEPLOY_KEY` is prompted because the CLI can't generate Convex deploy keys, you create it once in the Convex dashboard and paste it back.
 
 ```bash
-bunx vexpo apple eas-rotation-secrets           # interactive
-bunx vexpo apple eas-rotation-secrets --force   # overwrite existing values
+npx vexpo apple eas-rotation-secrets           # interactive
+npx vexpo apple eas-rotation-secrets --force   # overwrite existing values
 ```
 
 If you'd rather run the raw `eas env:create` calls yourself:
@@ -336,26 +336,26 @@ eas env:create --name APPLE_SERVICES_ID     --value <value>                   --
 eas env:create --name CONVEX_DEPLOY_KEY     --value <prod-deploy-key>         --environment production --visibility secret
 ```
 
-`bunx vexpo doctor --channel prod` lists which of the 5 are present (names appear, values stay opaque since they're secret visibility).
+`npx vexpo doctor --channel prod` lists which of the 5 are present (names appear, values stay opaque since they're secret visibility).
 
-## What `bunx vexpo full` does NOT do
+## What `npx vexpo full` does NOT do
 
 These are explicit non-goals, EAS or third parties already handle them well:
 
-- **iOS distribution cert / provisioning profile / push notification key (.p8)** are EAS-owned. We wrap the `eas credentials -p ios` wizard via `bunx vexpo apple credentials` so the orchestrator records that it ran, but eas-cli does the work.
+- **iOS distribution cert / provisioning profile / push notification key (.p8)** are EAS-owned. We wrap the `eas credentials -p ios` wizard via `npx vexpo apple credentials` so the orchestrator records that it ran, but eas-cli does the work.
 - **iOS bundle ID for the app**, EAS auto-creates on first `eas credentials -p ios` if it doesn't exist.
 - **iOS capability sync**, EAS auto-syncs from `ios.entitlements` (which `app.config.ts` populates from `usesAppleSignIn: true`, `expo-notifications`, `associatedDomains`, etc.) on every `eas build`.
 - **App Store Connect app record**, `eas submit` auto-creates on first run from `app.config.ts → name` + `package.json → name`.
 - **Apple Developer account creation**, manual signup, $99/yr, identity verification, 2FA.
 
-## Lite-mode env sync (`bunx vexpo env push`)
+## Lite-mode env sync (`npx vexpo env push`)
 
 ```bash
-bunx vexpo env push                              # interactive (per-file confirm)
-bunx vexpo env push --force                      # overwrite without prompting
-bunx vexpo env push --dry-run                    # show plan, don't apply
-bunx vexpo env push --local-file foo             # override .env.local path
-bunx vexpo env push --prod-file foo              # override .env.prod path
+npx vexpo env push                              # interactive (per-file confirm)
+npx vexpo env push --force                      # overwrite without prompting
+npx vexpo env push --dry-run                    # show plan, don't apply
+npx vexpo env push --local-file foo             # override .env.local path
+npx vexpo env push --prod-file foo              # override .env.prod path
 ```
 
 Lite mode reads source files and pushes values to remote destinations. Zero provisioning, no API calls beyond `convex env set --from-file` and `eas env:push --path`.
@@ -415,7 +415,7 @@ Secret-visibility EAS env vars (`APPLE_P8_PRIVATE_KEY`, `CONVEX_DEPLOY_KEY`) are
 ### When NOT to use lite mode
 
 - You don't have all the values yet. Lite mode doesn't generate `BETTER_AUTH_SECRET`, doesn't sign Apple JWTs, doesn't create Resend keys. Use full mode for first setup.
-- You haven't run `eas init` yet. Lite mode pushes to EAS env but won't init the project, run full mode or `bunx eas init && bunx eas env:push --path .env.local` once first.
+- You haven't run `eas init` yet. Lite mode pushes to EAS env but won't init the project, run full mode or `npx eas init && npx eas env:push --path .env.local` once first.
 
 ### Example flow
 
@@ -423,27 +423,27 @@ Move a working app to a new machine:
 
 ```bash
 # On the old machine:
-bunx convex env list > /tmp/dev-env
-bunx convex env list --prod > /tmp/prod-env
+npx convex env list > /tmp/dev-env
+npx convex env list --prod > /tmp/prod-env
 # Edit each into .env.local / .env.prod with the values you want carried over.
 
 # On the new machine:
 git clone <repo>
 cd <repo>
-bun install
-bunx vexpo env push           # syncs from those files
-bunx eas credentials -p ios  # re-uploads cert / profile / keys
-bun run convex:dev
-bun run ios
+npm install
+npx vexpo env push           # syncs from those files
+npx eas credentials -p ios  # re-uploads cert / profile / keys
+npm run convex:dev
+npm run ios
 ```
 
-## Verification (`bunx vexpo doctor`)
+## Verification (`npx vexpo doctor`)
 
 ```bash
-bunx vexpo doctor                    # verify dev (default)
-bunx vexpo doctor --channel prod     # verify prod (Convex --prod env)
-bunx vexpo doctor --json             # machine-readable output
-bunx vexpo doctor --strict           # exit non-zero on warnings
+npx vexpo doctor                    # verify dev (default)
+npx vexpo doctor --channel prod     # verify prod (Convex --prod env)
+npx vexpo doctor --json             # machine-readable output
+npx vexpo doctor --strict           # exit non-zero on warnings
 ```
 
 Runs a battery of checks that auth-test each credential and cross-reference the values across `.env.local`, Convex env, EAS env, GitHub secrets, and `app.config.ts`. Lite mode runs the same battery automatically after sync (skip with `--no-verify`). Results are grouped by category:
@@ -464,38 +464,38 @@ Each check has a severity:
 - `fail`, broken (JWT expired, bundle ID mismatch between local and Convex, Resend API key rejected).
 - `skip`, can't be checked (no `.env.prod`, ASC creds not cached, EAS not signed in).
 
-Exit status: `0` for ok+warn, `1` if any fail, `1` for warn under `--strict`. Run after every `bunx vexpo env push` to confirm nothing drifted, in CI to catch credential rotation issues, or after a `bunx vexpo apple jwt --rotate` to confirm the new JWT is signed correctly.
+Exit status: `0` for ok+warn, `1` if any fail, `1` for warn under `--strict`. Run after every `npx vexpo env push` to confirm nothing drifted, in CI to catch credential rotation issues, or after a `npx vexpo apple jwt --rotate` to confirm the new JWT is signed correctly.
 
 The check that catches the most real-world bugs: `apple/jwt-iss-matches`. Apple JWTs are easy to sign with the wrong Team ID, happens when you reuse a `.p8` from another project. Verify catches it instantly.
 
 ## Iterating: post-setup commands
 
 ```bash
-bun run convex:dev                                              # T1: Convex functions
-bun run ios                                                     # T2: prebuild + simulator
+npm run convex:dev                                              # T1: Convex functions
+npm run ios                                                     # T2: prebuild + simulator
 
-bunx eas build -p ios --profile production                      # production iOS build
-bunx eas submit -p ios --profile production                     # auto-creates the App Store record on first run
-bun run eas:tf                                                  # build + auto-submit to TestFlight
-bunx eas metadata:push                                          # push store.config.json to App Store Connect
-bunx eas credentials -p ios                                     # manage iOS dist cert / profile / keys
+npx eas build -p ios --profile production                      # production iOS build
+npx eas submit -p ios --profile production                     # auto-creates the App Store record on first run
+npm run eas:tf                                                  # build + auto-submit to TestFlight
+npx eas metadata:push                                          # push store.config.json to App Store Connect
+npx eas credentials -p ios                                     # manage iOS dist cert / profile / keys
 ```
 
 EAS Workflows (`.eas/workflows/`) automate these for you on push to `main`, push tag `v*`, push to `beta/*`, on PR, and on `eas workflow:run`.
 
 ## Recovery: rotating things
 
-| Thing                      | Command                                                            |
-| -------------------------- | ------------------------------------------------------------------ |
-| Convex deployment          | `bunx vexpo full --fresh`                                          |
-| Better Auth secret         | `bunx vexpo better-auth --force`                                   |
-| Resend key + webhook       | `bunx vexpo resend`                                                |
-| Apple Sign In JWT (manual) | `bunx vexpo apple jwt --rotate`                                    |
-| Apple Sign In JWT (auto)   | EAS Workflows → `rotate-apple-jwt` → Run                           |
-| ASC API key                | `bunx vexpo apple asc-key` (re-runs validation)                    |
-| EAS env mirror             | `bunx eas init && bunx eas env:push --path .env.local --skip-init` |
-| EAS rotation secrets       | `bunx vexpo apple eas-rotation-secrets --force`                    |
-| State cache                | `trash .setup-state.json`                                          |
+| Thing                      | Command                                                          |
+| -------------------------- | ---------------------------------------------------------------- |
+| Convex deployment          | `npx vexpo full --fresh`                                         |
+| Better Auth secret         | `npx vexpo better-auth --force`                                  |
+| Resend key + webhook       | `npx vexpo resend`                                               |
+| Apple Sign In JWT (manual) | `npx vexpo apple jwt --rotate`                                   |
+| Apple Sign In JWT (auto)   | EAS Workflows → `rotate-apple-jwt` → Run                         |
+| ASC API key                | `npx vexpo apple asc-key` (re-runs validation)                   |
+| EAS env mirror             | `npx eas init && npx eas env:push --path .env.local --skip-init` |
+| EAS rotation secrets       | `npx vexpo apple eas-rotation-secrets --force`                   |
+| State cache                | `trash .setup-state.json`                                        |
 
 ## Recovery: things break
 
@@ -503,20 +503,20 @@ EAS Workflows (`.eas/workflows/`) automate these for you on push to `main`, push
 
 ```
 trash .setup-state.json
-bunx vexpo full --no-state          # full live re-probe
+npx vexpo full --no-state          # full live re-probe
 ```
 
 `.env.local` deleted, but Convex deployment still exists:
 
 ```
-bunx eas env:pull --environment development          # pulls EXPO_PUBLIC_*
+npx eas env:pull --environment development          # pulls EXPO_PUBLIC_*
 echo "CONVEX_DEPLOYMENT=dev:happy-frog-123" >> .env.local
 ```
 
-`bun run ios` fails with provisioning profile errors:
+`npm run ios` fails with provisioning profile errors:
 
 ```
-bunx eas credentials -p ios       # interactive wizard, regenerate cert/profile
+npx eas credentials -p ios       # interactive wizard, regenerate cert/profile
 ```
 
 Resend domain unverified or DNS records changed:
@@ -526,8 +526,8 @@ Open `https://resend.com/domains/<id>`. Resend shows what's missing. Add the rec
 ASC API key revoked or replaced:
 
 ```
-bunx vexpo apple asc-key             # validates cached, prompts for new on failure
-bunx eas credentials -p ios       # re-upload to EAS
+npx vexpo apple asc-key             # validates cached, prompts for new on failure
+npx eas credentials -p ios       # re-upload to EAS
 ```
 
 ## CI
@@ -535,8 +535,8 @@ bunx eas credentials -p ios       # re-upload to EAS
 Use `--no-state` to ignore the local state cache. Provide every interactive value via env. The orchestrator runs in non-TTY mode and skips any step that would prompt without env-var fallbacks.
 
 ```yaml
-- run: bun install
-- run: bunx vexpo full --no-state --skip-rebrand
+- run: npm install
+- run: npx vexpo full --no-state --skip-rebrand
   env:
     EXPO_PUBLIC_APP_BUNDLE_ID: com.yourname.myapp
     EXPO_PUBLIC_APPLE_TEAM_ID: ABCDE12345
@@ -553,16 +553,16 @@ Use `--no-state` to ignore the local state cache. Provide every interactive valu
 
 ## Files
 
-| Path                                | Purpose                                                | Source of truth                                                                    |
-| ----------------------------------- | ------------------------------------------------------ | ---------------------------------------------------------------------------------- |
-| `.env.local`                        | Public env (build-time + Convex URL)                   | written by setup                                                                   |
-| `.setup-state.json`                 | Per-step verifyAt cache (gitignored)                   | written by setup, read by orchestrator                                             |
-| Convex env (`bunx convex env list`) | Server-side secrets                                    | written by setup                                                                   |
-| EAS env (`bunx eas env:list`)       | Build-time env per environment + rotation cron secrets | written by the EAS phase of `vexpo full` + `bunx vexpo apple eas-rotation-secrets` |
-| `app.config.ts`                     | Expo app config (reads `.env.local`)                   | edited by rebrand                                                                  |
-| `app.json`                          | Static `eas.projectId`                                 | written by `eas init`                                                              |
-| `store.config.json`                 | App Store metadata + review contact                    | edited by rebrand, gitignored                                                      |
-| `package.json`                      | Project metadata                                       | edited by rebrand                                                                  |
+| Path                               | Purpose                                                | Source of truth                                                                   |
+| ---------------------------------- | ------------------------------------------------------ | --------------------------------------------------------------------------------- |
+| `.env.local`                       | Public env (build-time + Convex URL)                   | written by setup                                                                  |
+| `.setup-state.json`                | Per-step verifyAt cache (gitignored)                   | written by setup, read by orchestrator                                            |
+| Convex env (`npx convex env list`) | Server-side secrets                                    | written by setup                                                                  |
+| EAS env (`npx eas env:list`)       | Build-time env per environment + rotation cron secrets | written by the EAS phase of `vexpo full` + `npx vexpo apple eas-rotation-secrets` |
+| `app.config.ts`                    | Expo app config (reads `.env.local`)                   | edited by rebrand                                                                 |
+| `app.json`                         | Static `eas.projectId`                                 | written by `eas init`                                                             |
+| `store.config.json`                | App Store metadata + review contact                    | edited by rebrand, gitignored                                                     |
+| `package.json`                     | Project metadata                                       | edited by rebrand                                                                 |
 
 ## State schema
 
@@ -605,8 +605,8 @@ Atomic writes via `tmp + rename`. Schema mismatches fail-loud, `setup` will refu
 
 | Class                 | Lives in                                                       | Rotates                                                   |
 | --------------------- | -------------------------------------------------------------- | --------------------------------------------------------- |
-| `BETTER_AUTH_SECRET`  | Convex env                                                     | rotate via `bunx vexpo better-auth --force`               |
-| Resend sending key    | Convex env (`RESEND_API_KEY`)                                  | `bunx vexpo resend` deletes the named key + recreates     |
+| `BETTER_AUTH_SECRET`  | Convex env                                                     | rotate via `npx vexpo better-auth --force`                |
+| Resend sending key    | Convex env (`RESEND_API_KEY`)                                  | `npx vexpo resend` deletes the named key + recreates      |
 | Resend webhook secret | Convex env (`RESEND_WEBHOOK_SECRET`)                           | rotated alongside the key                                 |
 | Apple Sign In JWT     | Convex env (`APPLE_CLIENT_SECRET`)                             | 180-day max, auto-rotated by EAS Workflows cron every 90d |
 | Apple Sign In `.p8`   | EAS env `APPLE_P8_PRIVATE_KEY` (secret visibility, production) | rotate the key in Apple Developer Console                 |

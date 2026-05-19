@@ -17,20 +17,21 @@
  * - .setup-state.json (opt-in via --state)
  *
  * Kept by default so reinstall is deterministic (opt in via --all):
- * - bun.lock (source of truth; --frozen-lockfile when present)
- * - convex/_generated/ (regenerated via `bunx convex codegen` after --all)
+ * - package-lock.json / bun.lock / yarn.lock (lockfile; `npm ci` or
+ *   `<pm> install --frozen-lockfile` when present)
+ * - convex/_generated/ (regenerated via `npx convex codegen` after --all)
  *
  * Then reinstalls deps via the detected package manager.
  *
  * Uses macOS `trash` for every delete so anything wiped is recoverable.
  *
  * Usage:
- *   bun run clean                wipe caches, keep lockfile + convex codegen, frozen install
- *   bun run clean --all          also wipe bun.lock + convex/_generated, then convex codegen
- *   bun run clean --metro        just Metro/Haste/Babel caches (fast, no reinstall)
- *   bun run clean --state        also wipe .setup-state.json (next setup re-probes everything)
- *   bun run clean --no-install   wipe everything but skip the reinstall
- *   bun run clean --help
+ *   npm run clean                wipe caches, keep lockfile + convex codegen, frozen install
+ *   npm run clean --all          also wipe lockfile + convex/_generated, then convex codegen
+ *   npm run clean --metro        just Metro/Haste/Babel caches (fast, no reinstall)
+ *   npm run clean --state        also wipe .setup-state.json (next setup re-probes everything)
+ *   npm run clean --no-install   wipe everything but skip the reinstall
+ *   npm run clean --help
  */
 
 import { spawn as nodeSpawn } from "node:child_process";
@@ -177,12 +178,12 @@ function section(title: string): void {
 const HELP = `${BOLD}vexpo clean${RESET}
 
 ${BOLD}Usage:${RESET}
-  ${DIM}bun run clean${RESET}                wipe caches, keep lockfile, frozen install
-  ${DIM}bun run clean --all${RESET}          also wipe bun.lock + convex/_generated
-  ${DIM}bun run clean --metro${RESET}        just Metro/Haste/Babel caches
-  ${DIM}bun run clean --state${RESET}        also wipe .setup-state.json
-  ${DIM}bun run clean --no-install${RESET}   wipe everything but skip reinstall
-  ${DIM}bun run clean --help${RESET}
+  ${DIM}npm run clean${RESET}                wipe caches, keep lockfile, frozen install
+  ${DIM}npm run clean --all${RESET}          also wipe lockfile + convex/_generated
+  ${DIM}npm run clean --metro${RESET}        just Metro/Haste/Babel caches
+  ${DIM}npm run clean --state${RESET}        also wipe .setup-state.json
+  ${DIM}npm run clean --no-install${RESET}   wipe everything but skip reinstall
+  ${DIM}npm run clean --help${RESET}
 
 The default wipe removes node_modules, ios/, .expo/, dist/,
 tsbuildinfo, coverage/, .vitest-cache/, expo-env.d.ts, bun-error.*,
@@ -190,16 +191,16 @@ tsbuildinfo, coverage/, .vitest-cache/, expo-env.d.ts, bun-error.*,
 Metro/Haste/React/expo/RN caches, ~/Library/Caches/CocoaPods, ~/.expo,
 and the Xcode DerivedData subfolder for this project. The lockfile
 and convex/_generated/ are kept so reinstall is deterministic
-(${DIM}bun install --frozen-lockfile${RESET}). Never touches .env files,
+(${DIM}npm ci${RESET}). Never touches .env files,
 Apple keys, store.config.json, .vexpo-manual-setup/, or .rebrand-backup/.
 
-${BOLD}--all${RESET} additionally wipes bun.lock and convex/_generated/.
-Reinstall resolves transitives fresh and ${DIM}bunx convex codegen${RESET} runs
+${BOLD}--all${RESET} additionally wipes the lockfile and convex/_generated/.
+Reinstall resolves transitives fresh and ${DIM}npx convex codegen${RESET} runs
 after install to rebuild the Convex bindings. Use when the lockfile
 is suspect or you want a true clean-slate reinstall.
 
 ${BOLD}--state${RESET} additionally wipes .setup-state.json so the next
-${DIM}bun run setup${RESET} re-probes every phase against external services
+${DIM}npm run setup${RESET} re-probes every phase against external services
 (slower, but the cure when state has drifted from reality).
 
 Bundlers (Metro, expo CLI, react-native start, Watchman) are stopped
@@ -306,8 +307,8 @@ const PROJECT_TARGETS = [
 
 // Wiped only with --all. Default leaves these alone: the lockfile stays the
 // source of truth (frozen install) and convex/_generated needs a deployment
-// round-trip via `bunx convex codegen` to come back.
-const PROJECT_TARGETS_ALL = ["bun.lock", "convex/_generated"];
+// round-trip via `npx convex codegen` to come back.
+const PROJECT_TARGETS_ALL = ["bun.lock", "package-lock.json", "convex/_generated"];
 
 // Globs evaluated at REPO root. bun-error.* and *.log are cheap to wipe and
 // almost never wanted across runs.
@@ -517,7 +518,7 @@ async function stepSetupState(): Promise<void> {
     return;
   }
   await trashPaths([path]);
-  ok("trashed .setup-state.json (next `bun run setup` re-probes every phase)");
+  ok("trashed .setup-state.json (next `npm run setup` re-probes every phase)");
 }
 
 async function stepInstall(pm: PM): Promise<void> {
@@ -548,7 +549,7 @@ async function stepConvexCodegen(): Promise<void> {
   // No bun.lock or convex/_generated on disk after --all. `convex codegen`
   // talks to the deployment to rebuild the TypeScript bindings; skip and warn
   // if the env isn't wired so this never blocks a clean.
-  const cmd = ["bunx", "convex", "codegen"];
+  const cmd = ["npx", "convex", "codegen"];
   const proc = spawn(cmd, { stdio: ["inherit", "inherit", "inherit"] });
   const code = await proc.exited;
   if (code !== 0) {

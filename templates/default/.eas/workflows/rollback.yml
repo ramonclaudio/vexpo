@@ -43,10 +43,6 @@ concurrency:
   cancel_in_progress: false
   group: ${{ workflow.filename }}-${{ inputs.branch }}
 
-defaults:
-  tools:
-    bun: latest
-
 jobs:
   rollback:
     name: Roll back ${{ inputs.branch }} (${{ inputs.type }})
@@ -61,13 +57,13 @@ jobs:
           MSG_ARG=""
           if [ -n "$MSG" ]; then MSG_ARG="--message \"$MSG\""; fi
           if [ "${{ inputs.type }}" = "embedded" ]; then
-            eval bunx eas-cli update:roll-back-to-embedded \
+            eval npx eas-cli update:roll-back-to-embedded \
               --branch "${{ inputs.branch }}" \
               --platform ios \
               --non-interactive \
               $MSG_ARG
           else
-            eval bunx eas-cli update:republish \
+            eval npx eas-cli update:republish \
               --branch "${{ inputs.branch }}" \
               --platform ios \
               --non-interactive \
