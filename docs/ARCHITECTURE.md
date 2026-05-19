@@ -36,8 +36,6 @@ Auth has more sharp edges than people remember when they start. Session rotation
 
 Better Auth is the smallest auth surface we found that covers the full list, in TypeScript, with adapters for any database. `@convex-dev/better-auth` is the official Convex adapter. It stores Better Auth's tables in a Convex component and exposes Better Auth's HTTP routes through Convex's router.
 
-The current shipping version has a Hermes V1 async-bridge race condition we fixed upstream as [PR #368](https://github.com/get-convex/better-auth/pull/368). See [`UPSTREAM.md`](./UPSTREAM.md). Until that merges, the template installs from `patches/convex-dev-better-auth-0.12.2.tgz`.
-
 What we don't use: `@better-auth/stripe` (pulls SolidJS deps that break Metro). For payments use `@convex-dev/stripe` or roll your own webhook handler on top of `convex/webhook.ts`.
 
 ## Why EAS top-to-bottom
@@ -67,10 +65,12 @@ EAS is Expo's CI/CD-and-infra layer for native apps. Vexpo wires every product:
       "name": "convex",
       "completedAt": "2026-05-11T14:00:00Z",
       "verifyAt": "2026-05-11T14:00:00Z",
-      "outputs": { "deployment": "happy-frog-123" }
-    }
+      "outputs": { "deployment": "happy-frog-123" },
+    },
   },
-  "audit": [/* last 50 invocations */]
+  "audit": [
+    /* last 50 invocations */
+  ],
 }
 ```
 

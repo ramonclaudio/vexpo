@@ -101,7 +101,7 @@ bun run test                   vitest run
 bun run test:watch             vitest
 bun run fp                     Print Expo fingerprint hash
 bun run fp:diff                Diff fingerprint vs base ref
-bun run upgrade                expo install expo@canary && expo install --fix
+bun run upgrade                expo install expo@next && expo install --fix
 bun run upgrade:stable         expo install expo@latest && expo install --fix
 ```
 
@@ -141,8 +141,6 @@ __tests__/                        Convex constants + validators + HMAC verificat
 
 ## Version pinning
 
-Every `expo-*` package uses the same canary tag. Mismatched tags cause subtle runtime crashes.
+Every `expo-*` package tracks the same SDK 56 preview tag. Mismatched tags cause subtle runtime crashes. `bun run upgrade` runs `expo install expo@next && expo install --fix` to roll all of them forward together.
 
-`react-native-reanimated 4.3.0` is intentionally ahead of the canary's expected 4.2.1 because Bun resolves `react-native-worklets@0.8.x` which needs Reanimated 4.3+. Listed in `expo.install.exclude` to silence the doctor warning.
-
-`@convex-dev/better-auth@0.12.0` is the minimum compatible with `better-auth@1.6.9`. Earlier versions peer-dep `better-auth <1.6.0` and reject the `mode` field newer better-auth adds to adapter queries, breaking signup. Currently the template installs from `patches/convex-dev-better-auth-0.12.2.tgz` until [PR #368](https://github.com/get-convex/better-auth/pull/368) merges.
+`@convex-dev/better-auth@0.12.0` is the minimum compatible with `better-auth@1.6.9`. Earlier versions peer-dep `better-auth <1.6.0` and reject the `mode` field newer better-auth adds to adapter queries, breaking signup. The template pins `0.12.2`.
