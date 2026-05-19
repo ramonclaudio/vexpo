@@ -282,7 +282,7 @@ async function liveCheckAscLink(): Promise<boolean> {
   try {
     const { ascStatus } = await import("../lib/eas-integrations.ts");
     const status = await ascStatus();
-    return Boolean(status.connected);
+    return status.status === "connected";
   } catch {
     return false;
   }

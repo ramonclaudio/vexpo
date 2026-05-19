@@ -4,18 +4,25 @@
  * idempotency skip. No write helpers: `runAscConnect` spawns eas-cli directly
  * with `EXPO_ASC_API_KEY_*` env vars pre-set, the same orchestration pattern
  * `vexpo apple credentials` uses with `eas credentials:configure-build`.
+ *
+ * Type mirrors `buildJsonOutput` in `expo/eas-cli`:
+ * `packages/eas-cli/src/integrations/asc/utils.ts`.
  */
 
 import { easJson } from "./eas-cli.ts";
 
 export type AscStatus = {
-  connected: boolean;
-  ascApp?: {
-    id?: string;
-    bundleId?: string;
-    name?: string;
+  action: string;
+  project: string;
+  status: "connected" | "not-connected" | "invalid";
+  appStoreConnectApp: null | {
+    id: string;
+    ascAppIdentifier: string;
+    name: string | null;
+    bundleIdentifier: string | null;
+    appleUrl: string;
   };
-} & Record<string, unknown>;
+};
 
 export async function ascStatus(): Promise<AscStatus> {
   return easJson<AscStatus>(["integrations:asc:status"]);
