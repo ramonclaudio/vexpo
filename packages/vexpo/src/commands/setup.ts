@@ -313,6 +313,25 @@ async function liveCheckLocalEnv(): Promise<boolean> {
   ].every((k) => env.has(k));
 }
 
+// Minimum eas-cli version with `integrations:asc:connect` support
+// (added in eas-cli 18.9.0 via expo/eas-cli#3558). Older versions abort
+// `vexpo full` mid-flow with `command integrations:asc:connect not found`.
+const MIN_EAS_CLI = [18, 9, 0] as const;
+
+function parseSemver(s: string): [number, number, number] | null {
+  const m = /^(\d+)\.(\d+)\.(\d+)/.exec(s);
+  if (!m) return null;
+  return [Number(m[1]), Number(m[2]), Number(m[3])];
+}
+
+function semverLt(a: readonly number[], b: readonly number[]): boolean {
+  for (let i = 0; i < 3; i++) {
+    if ((a[i] ?? 0) < (b[i] ?? 0)) return true;
+    if ((a[i] ?? 0) > (b[i] ?? 0)) return false;
+  }
+  return false;
+}
+
 async function stepPrerequisites(): Promise<void> {
   section("Prerequisites");
   if (process.platform !== "darwin") yep(`expected darwin, got ${process.platform}`);
@@ -323,8 +342,26 @@ async function stepPrerequisites(): Promise<void> {
   else yep("Xcode not detected (install from Mac App Store)");
 
   const [easV, convexV] = await Promise.all([easCliVersion(), convexCliVersion()]);
-  if (easV) ok(`eas-cli ${easV}`);
-  else nop("eas-cli not on PATH (bunx will fetch on demand)");
+  if (easV) {
+    const parsed = parseSemver(easV);
+    if (parsed && semverLt(parsed, MIN_EAS_CLI)) {
+      // Lite mode skips Apple + EAS entirely (`computeScope`), so an old
+      // eas-cli is harmless. Only enforce the minimum when scope.eas runs.
+      if (options.lite) {
+        yep(`eas-cli ${easV} predates 18.9.0 (lite mode skips eas-cli; no upgrade needed yet)`);
+      } else {
+        bad(`eas-cli ${easV} is too old (need >= ${MIN_EAS_CLI.join(".")})`);
+        throw new Error(
+          `eas-cli ${easV} predates \`integrations:asc:connect\` (added in ${MIN_EAS_CLI.join(".")}). ` +
+            `upgrade with \`npm install -g eas-cli@latest\` and re-run.`,
+        );
+      }
+    } else {
+      ok(`eas-cli ${easV}`);
+    }
+  } else {
+    nop("eas-cli not on PATH (bunx will fetch on demand)");
+  }
   if (convexV) ok(`convex ${convexV}`);
   else nop("convex CLI not on PATH (bunx will fetch on demand)");
 
