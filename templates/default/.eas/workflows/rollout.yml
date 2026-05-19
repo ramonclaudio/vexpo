@@ -59,14 +59,14 @@ jobs:
       - name: Roll out
         run: |
           if [ "${{ inputs.action }}" = "publish" ]; then
-            bunx eas-cli update \
+            npx eas-cli update \
               --branch "${{ inputs.branch }}" \
               --platform ios \
               --rollout-percentage "${{ inputs.percentage }}" \
               --non-interactive \
               --message "Rollout publish @ ${{ inputs.percentage }}%"
           else
-            bunx eas-cli update:edit \
+            npx eas-cli update:edit \
               --branch "${{ inputs.branch }}" \
               --rollout-percentage "${{ inputs.percentage }}" \
               --non-interactive

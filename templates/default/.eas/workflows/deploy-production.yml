@@ -43,7 +43,11 @@ jobs:
       - uses: eas/checkout
       - uses: eas/install_node_modules
       - name: Deploy Convex backend
-        run: bunx convex deploy
+        # `npx` over `bunx` because EAS Build's `linux-medium` runner has node
+        # + npm in PATH after `eas/install_node_modules` but not the `bunx`
+        # shim. `bun run` (used in precheck) works because that's a bun
+        # subcommand; `bunx` is a separate shim that may not be installed.
+        run: npx convex deploy
 
   fingerprint:
     name: Fingerprint
@@ -121,7 +125,7 @@ jobs:
         run: |
           GROUP="${{ needs.update_ios.outputs.first_update_group_id }}"
           echo "Update group: $GROUP"
-          bunx eas-cli update:insights "$GROUP" --json --non-interactive || true
+          npx eas-cli update:insights "$GROUP" --json --non-interactive || true
 
   notify_update_published:
     name: Notify Slack with insights link
