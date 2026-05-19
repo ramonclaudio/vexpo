@@ -20,6 +20,7 @@ import {
   buttonStyle,
   clipShape,
   cornerRadius,
+  defaultScrollAnchor,
   foregroundStyle,
   frame,
   padding,
@@ -46,9 +47,11 @@ const RELEASE_TYPE_LABELS: Record<number, string> = {
   [ApplicationReleaseType.APP_STORE]: "App Store",
 };
 
-// Surface the last 5 expo-updates log entries so bsdiff patch success,
-// signature failures, and runtime-version mismatches are visible at
-// runtime. Refetches on every update lifecycle transition.
+// Surface the last hour of expo-updates log entries so bsdiff patch success,
+// signature failures, and runtime-version mismatches are visible at runtime.
+// Chronological order, newest at the bottom of a bounded scrollable card
+// anchored via defaultScrollAnchor("bottom"). Refetches on every update
+// lifecycle transition.
 function useUpdateLogEntries(isUpdatePending: boolean, restartCount: number) {
   const [entries, setEntries] = useState<UpdatesLogEntry[]>([]);
   useEffect(() => {
@@ -57,10 +60,7 @@ function useUpdateLogEntries(isUpdatePending: boolean, restartCount: number) {
     (async () => {
       try {
         const all = await readLogEntries();
-        // `.slice(-5)` already returns a fresh array, so `.reverse()` mutates
-        // that copy. `.toReversed()` is ES2023 and not in Hermes V1 yet.
-        // oxlint-disable-next-line no-array-reverse
-        if (!cancelled) setEntries(all.slice(-5).reverse());
+        if (!cancelled) setEntries(all);
       } catch {
         // expo-updates internal log is best-effort; quietly skip failures.
       }
@@ -287,15 +287,19 @@ export default function DebugScreen() {
                   />
                 ) : null}
                 {updateLog.length > 0 ? (
-                  <InfoCard>
-                    {updateLog.map((entry) => (
-                      <InfoRow
-                        key={`${entry.timestamp}-${entry.code}`}
-                        label={entry.level.toUpperCase()}
-                        value={`${entry.code}: ${entry.message}`}
-                      />
-                    ))}
-                  </InfoCard>
+                  // upstream expo/expo#43914: defaultScrollAnchor("bottom") anchors
+                  // the log view to the newest entry, the standard log-tail UX.
+                  <ScrollView modifiers={[frame({ height: 240 }), defaultScrollAnchor("bottom")]}>
+                    <InfoCard>
+                      {updateLog.map((entry) => (
+                        <InfoRow
+                          key={`${entry.timestamp}-${entry.code}`}
+                          label={entry.level.toUpperCase()}
+                          value={`${entry.code}: ${entry.message}`}
+                        />
+                      ))}
+                    </InfoCard>
+                  </ScrollView>
                 ) : null}
               </VStack>
             ) : null}
@@ -374,6 +378,9 @@ function UpdateActionButton({
         buttonStyle("plain"),
         frame({ maxWidth: 10000 }),
         background(colors.muted as string),
+        // upstream expo/expo#43158: capsule (and ellipse) were silently rendering
+        // as a rectangle before. The fix wires the ShapeType enum through both
+        // ClipShapeModifier and MaskModifier.
         clipShape("capsule"),
       ]}
       onPress={onPress}

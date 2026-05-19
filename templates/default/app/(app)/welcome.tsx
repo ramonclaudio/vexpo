@@ -116,7 +116,9 @@ export default function WelcomeScreen() {
           showsIndicators={false}
           modifiers={[
             frame({ maxWidth: 10000, maxHeight: 10000 }),
+            // upstream expo/expo#43955: scrollTargetBehavior("paging") + scrollTargetLayout()
             scrollTargetBehavior("paging"),
+            // upstream expo/expo#44652: scrollPosition + id() for two-way binding
             scrollPosition(activeID, { anchor: "center", onChange: handlePageChange }),
           ]}
         >

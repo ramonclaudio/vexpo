@@ -251,7 +251,7 @@ export default function SignInScreen() {
           // Swapping the method toggle hides or shows a whole field group, the
           // biggest single-tap size change on this screen. Pin the visible
           // center so the user does not lose the field they were aiming for.
-          // No-op below iOS 18.
+          // No-op below iOS 18. Ships via upstream expo/expo#43923.
           defaultScrollAnchorForRole("center", "sizeChanges"),
         ]}
       >
@@ -323,6 +323,7 @@ export default function SignInScreen() {
                     ...inputModifiers,
                     keyboardType("email-address"),
                     autocorrectionDisabled(),
+                    // upstream expo/expo#44547 + #44548: keyboard shift + autofill semantics
                     textInputAutocapitalization("never"),
                     textContentType("username"),
                     disabled(isLoading),
