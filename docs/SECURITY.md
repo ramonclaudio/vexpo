@@ -39,7 +39,7 @@ The Better Auth routes (registered via `authComponent.registerRoutesLazy`) handl
 
 ### OTA updates
 
-- **`runtimeVersion: { policy: "fingerprint" }`.** A native change forces a fresh build. OTAs can never load against an incompatible binary.
+- **`runtimeVersion: "1.0.0"` (manual).** A native change forces a fresh build only if you bump the string by hand. The `{ policy: "fingerprint" }` policy is the safer design (automatic enforcement, no manual step) but currently fails across local-vs-EAS due to upstream non-determinism in `expo-modules-jsi`'s `prepare_command` and bun-version-sensitive autolinking. Until that's fixed, the safety contract relies on developer discipline: bump the string when you ship native code.
 - **End-to-end code signing is wired.** `app.config.ts` detects `certs/certificate.pem` at config-eval time and turns on `codeSigningCertificate` / `codeSigningMetadata` automatically. `.eas/workflows/deploy-production.yml`'s `update_ios` job passes `private_key_path: "$EAS_UPDATE_PRIVATE_KEY"` so `eas update` signs locally before publish. Two one-time steps activate it:
   1. Generate the keypair:
      ```bash

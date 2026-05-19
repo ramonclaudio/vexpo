@@ -64,7 +64,16 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     scheme: "vexpo",
     icon: "./assets/icon.png",
     ...(EXPO_OWNER ? { owner: EXPO_OWNER } : {}),
-    runtimeVersion: { policy: "fingerprint" },
+    // Manual runtime version. The `fingerprint` policy is fragile across machines
+    // when packages mutate themselves during `pod install` (e.g. `expo-modules-jsi`'s
+    // `prepare_command` stamps `Products/` with machine-specific stubs) AND when
+    // local bun differs from EAS Build's bun version. Both produced reproducible
+    // 'Runtime version calculated on local machine not equal to runtime version
+    // calculated during build' failures on this project. Bump this string by hand
+    // when you ship a native code change (anything touching iOS native modules,
+    // plugins, or build config). OTA updates require this string to match between
+    // the build and the update.
+    runtimeVersion: "1.0.0",
     developmentClient: {
       silentLaunch: true,
     },
