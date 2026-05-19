@@ -70,7 +70,6 @@ import { runAscKey } from "./apple/asc-key.ts";
 import { runEasRotationSecrets } from "./apple/eas-rotation-secrets.ts";
 import { runAppleJwt } from "./apple/jwt.ts";
 import { runServicesId } from "./apple/services-id.ts";
-import { runAscConnect } from "./asc.ts";
 import { runBetterAuth } from "./better-auth.ts";
 import { runConvex } from "./convex.ts";
 import { runEas } from "./eas.ts";
@@ -216,10 +215,6 @@ const STEP_TTL_HOURS: Record<StepName, number> = {
   "apple-sign-in": 24,
   // EAS credentials don't drift; once configured, they stay until you rotate.
   "apple-credentials": Infinity,
-  // ASC project link via `eas integrations:asc:connect`. Live-checked through
-  // `eas integrations:asc:status` so the cache TTL is short. drift would
-  // mean someone disconnected via the EAS dashboard.
-  "apple-asc-link": 24,
   // No cache for the rotation secrets phase. EAS env state is the source of
   // truth, and the secrets list query takes ~1s.
   "apple-eas-rotation-secrets": 0,
@@ -278,16 +273,6 @@ async function liveCheckEas(): Promise<boolean> {
   );
 }
 
-async function liveCheckAscLink(): Promise<boolean> {
-  try {
-    const { ascStatus } = await import("../lib/eas-integrations.ts");
-    const status = await ascStatus();
-    return Boolean(status.connected);
-  } catch {
-    return false;
-  }
-}
-
 async function liveCheckRotationSecrets(): Promise<boolean> {
   const projectId = await projectIdFromAppJson();
   if (!projectId) return false;
@@ -313,25 +298,6 @@ async function liveCheckLocalEnv(): Promise<boolean> {
   ].every((k) => env.has(k));
 }
 
-// Minimum eas-cli version with `integrations:asc:connect` support
-// (added in eas-cli 18.9.0 via expo/eas-cli#3558). Older versions abort
-// `vexpo full` mid-flow with `command integrations:asc:connect not found`.
-const MIN_EAS_CLI = [18, 9, 0] as const;
-
-function parseSemver(s: string): [number, number, number] | null {
-  const m = /^(\d+)\.(\d+)\.(\d+)/.exec(s);
-  if (!m) return null;
-  return [Number(m[1]), Number(m[2]), Number(m[3])];
-}
-
-function semverLt(a: readonly number[], b: readonly number[]): boolean {
-  for (let i = 0; i < 3; i++) {
-    if ((a[i] ?? 0) < (b[i] ?? 0)) return true;
-    if ((a[i] ?? 0) > (b[i] ?? 0)) return false;
-  }
-  return false;
-}
-
 async function stepPrerequisites(): Promise<void> {
   section("Prerequisites");
   if (process.platform !== "darwin") yep(`expected darwin, got ${process.platform}`);
@@ -342,26 +308,8 @@ async function stepPrerequisites(): Promise<void> {
   else yep("Xcode not detected (install from Mac App Store)");
 
   const [easV, convexV] = await Promise.all([easCliVersion(), convexCliVersion()]);
-  if (easV) {
-    const parsed = parseSemver(easV);
-    if (parsed && semverLt(parsed, MIN_EAS_CLI)) {
-      // Lite mode skips Apple + EAS entirely (`computeScope`), so an old
-      // eas-cli is harmless. Only enforce the minimum when scope.eas runs.
-      if (options.lite) {
-        yep(`eas-cli ${easV} predates 18.9.0 (lite mode skips eas-cli; no upgrade needed yet)`);
-      } else {
-        bad(`eas-cli ${easV} is too old (need >= ${MIN_EAS_CLI.join(".")})`);
-        throw new Error(
-          `eas-cli ${easV} predates \`integrations:asc:connect\` (added in ${MIN_EAS_CLI.join(".")}). ` +
-            `upgrade with \`npm install -g eas-cli@latest\` and re-run.`,
-        );
-      }
-    } else {
-      ok(`eas-cli ${easV}`);
-    }
-  } else {
-    nop("eas-cli not on PATH (bunx will fetch on demand)");
-  }
+  if (easV) ok(`eas-cli ${easV}`);
+  else nop("eas-cli not on PATH (bunx will fetch on demand)");
   if (convexV) ok(`convex ${convexV}`);
   else nop("convex CLI not on PATH (bunx will fetch on demand)");
 
@@ -394,7 +342,6 @@ async function stepProbe(): Promise<{
   );
   rows.set("apple-sign-in", await shouldRun("apple-sign-in", () => liveCheckApple(convex)));
   rows.set("apple-credentials", await shouldRun("apple-credentials", async () => false));
-  rows.set("apple-asc-link", await shouldRun("apple-asc-link", liveCheckAscLink));
   rows.set(
     "apple-eas-rotation-secrets",
     await shouldRun("apple-eas-rotation-secrets", liveCheckRotationSecrets),
@@ -433,17 +380,15 @@ async function stepProbe(): Promise<{
                   ? "Sign In JWT"
                   : key === "apple-credentials"
                     ? "EAS iOS credentials"
-                    : key === "apple-asc-link"
-                      ? "EAS ↔ ASC link"
-                      : key === "apple-eas-rotation-secrets"
-                        ? "EAS rotation secrets"
-                        : key === "eas"
-                          ? "EAS project + env"
-                          : key === "rebrand"
-                            ? "Rebrand"
-                            : key === "accounts"
-                              ? "Accounts"
-                              : key;
+                    : key === "apple-eas-rotation-secrets"
+                      ? "EAS rotation secrets"
+                      : key === "eas"
+                        ? "EAS project + env"
+                        : key === "rebrand"
+                          ? "Rebrand"
+                          : key === "accounts"
+                            ? "Accounts"
+                            : key;
     line(`  ${BOLD}${label.padEnd(w)}${RESET}  ${mark(row.status)}`);
   }
   line(
@@ -622,17 +567,6 @@ async function describePhase(
           "after this, every `eas build` + `eas submit` works without further prompts",
         ],
       };
-    case "apple-asc-link":
-      return {
-        step,
-        label: "setup:asc:connect",
-        action: cached && !options.force ? "skip (already connected)" : "run (non-interactive)",
-        details: [
-          "wraps `eas integrations:asc:connect` to link the EAS project to its ASC app",
-          "fills --api-key-id from cached asc-key state, --bundle-id from .env.local",
-          "after this, `eas submit` skips ASC app discovery (faster + non-interactive)",
-        ],
-      };
     case "apple-eas-rotation-secrets":
       return {
         step,
@@ -667,7 +601,6 @@ async function printDryRunPlan(probe: {
       ? [
           "asc-key",
           "apple-credentials",
-          "apple-asc-link",
           "apple-services-id",
           "apple-sign-in",
           "apple-eas-rotation-secrets",
@@ -967,7 +900,6 @@ const STEP_RUNNERS: Record<string, StepRunner> = {
   "vexpo apple services-id": () => runServicesId({}),
   "vexpo apple jwt": () => runAppleJwt({}),
   "vexpo apple eas-rotation-secrets": () => runEasRotationSecrets({}),
-  "vexpo asc connect": () => runAscConnect({}),
   "vexpo eas": () => runEas({}),
   "vexpo review-account": () => runReviewAccount({}),
 };
@@ -1271,18 +1203,11 @@ export async function runSetup(opts: SetupOptions): Promise<number> {
         nop("vexpo apple credentials cached");
       }
 
-      // Phase 7a.6: link the EAS project to the ASC app via the uploaded API
-      // key. Without this, every `eas submit` re-discovers the ASC app on the
-      // fly. Idempotent: skips when EAS already reports as connected.
-      if (options.force || probe.needs.get("apple-asc-link")) {
-        await maybeRunStep(
-          "vexpo asc connect",
-          "Link the EAS project to its ASC app now?",
-          "apple-asc-link",
-        );
-      } else {
-        nop("vexpo asc connect cached");
-      }
+      // ASC app linking (`eas integrations:asc:connect`) is intentionally not
+      // orchestrated here. eas-cli's wizard handles the create-or-pick flow
+      // cleanly when invoked directly; wrapping it added no value and broke
+      // when the cached Apple key id didn't match an uploaded EAS key. The
+      // post-EAS "Next, eas-cli" printout points users at the command.
 
       if (options.force || probe.needs.get("apple-services-id")) {
         await maybeRunStep(
@@ -1320,7 +1245,6 @@ export async function runSetup(opts: SetupOptions): Promise<number> {
         "apple-sign-in",
         "apple-services-id",
         "apple-credentials",
-        "apple-asc-link",
         "asc-key",
         "apple-eas-rotation-secrets",
       );

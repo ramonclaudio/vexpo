@@ -327,9 +327,11 @@ env
   );
 
 /* ------------------------------------------------------------------ asc --- */
-// ASC API direct access for endpoints eas-cli doesn't expose. The
-// EAS integrations:asc:* subset (status, connect) is wrapped here so
-// the same `vexpo` CLI handles both EAS-bridge and ASC-direct.
+// ASC API direct access for endpoints eas-cli doesn't expose: TestFlight
+// beta groups + testers, customer review responses, sandbox testers, version
+// state + phased rollout, privacy + accessibility nutrition labels. EAS's
+// own `integrations:asc:*` topic (status/connect/disconnect) is run directly
+// via `bunx eas integrations:asc:*` per the design principle at the top.
 
 const ascVersion = program.command("asc:version").description("App Store version inspection.");
 

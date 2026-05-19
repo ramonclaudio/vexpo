@@ -93,7 +93,9 @@ bunx eas env [...]                # env:push, env:pull, env:get, env:delete, env
 bunx eas integrations:asc [...]   # status, connect, disconnect
 ```
 
-`vexpo full` orchestrates `eas init`, `eas env:push`, `eas credentials:configure-build`, and `eas integrations:asc:connect` internally as setup steps, none are exposed as standalone `vexpo` commands. That's `eas-cli`'s surface.
+`vexpo full` orchestrates `eas init`, `eas env:push`, and `eas credentials -p ios` (via `eas credentials:configure-build`) internally as setup steps, none are exposed as standalone `vexpo` commands. The ASC API key flows through to the credentials wizard via `EXPO_ASC_API_KEY_PATH` / `EXPO_ASC_KEY_ID` / `EXPO_ASC_ISSUER_ID` env vars so the wizard skips the "do you have an ASC key?" prompt.
+
+`eas integrations:asc:connect` is intentionally NOT orchestrated by `vexpo full`. eas-cli's wizard handles the create-or-pick-key flow cleanly when invoked directly; wrapping it from vexpo added no value and broke when the cached Apple key id didn't match an uploaded EAS key. `vexpo full` prints the command at the end as one of the post-setup steps the user runs themselves.
 
 ## Architecture
 
