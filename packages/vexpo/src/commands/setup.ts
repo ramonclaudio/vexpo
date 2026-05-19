@@ -60,6 +60,7 @@ import {
   clearAll,
   isStepFresh,
   load as loadState,
+  recordStep,
   type StepName,
 } from "../lib/state.ts";
 
@@ -247,6 +248,16 @@ async function shouldRun(step: StepName, liveCheck: () => Promise<boolean>): Pro
     return { step, label: step, status: "cached" };
   }
   const live = await liveCheck();
+  if (live && !options.dryRun && !options.plan && !options.noState) {
+    // Upsert a state entry so subsequent probes find this step cached and the
+    // final summary shows "ok" instead of "-". Without this, any step whose
+    // runner is never invoked (because the live check confirmed completion)
+    // appears blank in the summary even though it's correctly configured.
+    // Gated on !dryRun + !plan + !noState because those modes are explicitly
+    // read-only previews; mutating state.json from a preview would be a
+    // surprise.
+    await recordStep(step, { source: "live-check" });
+  }
   return { step, label: step, status: live ? "live" : "missing" };
 }
 
@@ -1039,15 +1050,25 @@ async function printSummary(useLocal: boolean, elapsedMs: number): Promise<void>
     "EXPO_PUBLIC_APP_BUNDLE_ID",
     "EXPO_PUBLIC_APPLE_TEAM_ID",
   ];
+  // Mirrors the phase order in the orchestrator + the dry-run plan. Includes
+  // every step the full-mode flow visits (and review-account, which is opt-in
+  // via prompt). Steps appear in this list even if they weren't explicitly
+  // run, because `shouldRun` upserts state when a live check passes so the
+  // summary can show "ok" instead of "-" for steps that were validated but
+  // never needed a runner.
   const stateKeys: StepName[] = [
     "accounts",
     "rebrand",
     "convex",
     "better-auth",
     "resend",
+    "review-account",
     "asc-key",
+    "apple-credentials",
+    "apple-asc-link",
     "apple-services-id",
     "apple-sign-in",
+    "apple-eas-rotation-secrets",
     "eas",
   ];
 
@@ -1109,7 +1130,7 @@ export async function runSetup(opts: SetupOptions): Promise<number> {
     if (!options.dryRun && !options.plan && !options.noState) {
       const existing = await loadState();
       const concurrent = checkConcurrentRun(existing);
-      if (concurrent.stale) {
+      if (concurrent.active && concurrent.otherPid !== undefined) {
         yep(
           `another vexpo run (pid ${concurrent.otherPid}) touched .setup-state.json recently; if you're not running in another terminal, ignore this`,
         );
