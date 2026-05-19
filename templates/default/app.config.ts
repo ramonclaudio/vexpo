@@ -64,16 +64,18 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     scheme: "vexpo",
     icon: "./assets/icon.png",
     ...(EXPO_OWNER ? { owner: EXPO_OWNER } : {}),
-    // Manual runtime version. The `fingerprint` policy is fragile across machines
-    // when packages mutate themselves during `pod install` (e.g. `expo-modules-jsi`'s
-    // `prepare_command` stamps `Products/` with machine-specific stubs) AND when
-    // local bun differs from EAS Build's bun version. Both produced reproducible
-    // 'Runtime version calculated on local machine not equal to runtime version
-    // calculated during build' failures on this project. Bump this string by hand
-    // when you ship a native code change (anything touching iOS native modules,
-    // plugins, or build config). OTA updates require this string to match between
-    // the build and the update.
-    runtimeVersion: "1.0.0",
+    // Fingerprint runtime version policy. The hash auto-bumps when native code
+    // changes, so OTA updates are never sent to incompatible binaries. Drift
+    // sources between local and EAS Build are pinned out via `.fingerprintignore`
+    // (machine-specific Products/ stubs from `expo-modules-jsi`'s pod install
+    // prepare_command, and the bun-version-sensitive autolinking metadata in
+    // reanimated/worklets). If you upgrade Expo SDK and the patterns become
+    // stale, update `.fingerprintignore` rather than reverting to manual.
+    //
+    // Canonical deploy path: `bunx eas workflow:run .eas/workflows/deploy-production.yml`
+    // which runs the entire build (incl. fingerprint computation) on EAS infra,
+    // eliminating the local-vs-EAS asymmetry entirely.
+    runtimeVersion: { policy: "fingerprint" },
     developmentClient: {
       silentLaunch: true,
     },
