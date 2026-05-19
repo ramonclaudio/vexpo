@@ -70,7 +70,6 @@ import { runAscKey } from "./apple/asc-key.ts";
 import { runEasRotationSecrets } from "./apple/eas-rotation-secrets.ts";
 import { runAppleJwt } from "./apple/jwt.ts";
 import { runServicesId } from "./apple/services-id.ts";
-import { runAscConnect } from "./asc.ts";
 import { runBetterAuth } from "./better-auth.ts";
 import { runConvex } from "./convex.ts";
 import { runEas } from "./eas.ts";
@@ -216,10 +215,6 @@ const STEP_TTL_HOURS: Record<StepName, number> = {
   "apple-sign-in": 24,
   // EAS credentials don't drift; once configured, they stay until you rotate.
   "apple-credentials": Infinity,
-  // ASC project link via `eas integrations:asc:connect`. Live-checked through
-  // `eas integrations:asc:status` so the cache TTL is short. drift would
-  // mean someone disconnected via the EAS dashboard.
-  "apple-asc-link": 24,
   // No cache for the rotation secrets phase. EAS env state is the source of
   // truth, and the secrets list query takes ~1s.
   "apple-eas-rotation-secrets": 0,
@@ -276,16 +271,6 @@ async function liveCheckEas(): Promise<boolean> {
   return ["EXPO_PUBLIC_CONVEX_URL", "EXPO_PUBLIC_CONVEX_SITE_URL", "EXPO_PUBLIC_SITE_URL"].every(
     (k) => eas.has(k),
   );
-}
-
-async function liveCheckAscLink(): Promise<boolean> {
-  try {
-    const { ascStatus } = await import("../lib/eas-integrations.ts");
-    const status = await ascStatus();
-    return Boolean(status.connected);
-  } catch {
-    return false;
-  }
 }
 
 async function liveCheckRotationSecrets(): Promise<boolean> {
@@ -357,7 +342,6 @@ async function stepProbe(): Promise<{
   );
   rows.set("apple-sign-in", await shouldRun("apple-sign-in", () => liveCheckApple(convex)));
   rows.set("apple-credentials", await shouldRun("apple-credentials", async () => false));
-  rows.set("apple-asc-link", await shouldRun("apple-asc-link", liveCheckAscLink));
   rows.set(
     "apple-eas-rotation-secrets",
     await shouldRun("apple-eas-rotation-secrets", liveCheckRotationSecrets),
@@ -396,17 +380,15 @@ async function stepProbe(): Promise<{
                   ? "Sign In JWT"
                   : key === "apple-credentials"
                     ? "EAS iOS credentials"
-                    : key === "apple-asc-link"
-                      ? "EAS ↔ ASC link"
-                      : key === "apple-eas-rotation-secrets"
-                        ? "EAS rotation secrets"
-                        : key === "eas"
-                          ? "EAS project + env"
-                          : key === "rebrand"
-                            ? "Rebrand"
-                            : key === "accounts"
-                              ? "Accounts"
-                              : key;
+                    : key === "apple-eas-rotation-secrets"
+                      ? "EAS rotation secrets"
+                      : key === "eas"
+                        ? "EAS project + env"
+                        : key === "rebrand"
+                          ? "Rebrand"
+                          : key === "accounts"
+                            ? "Accounts"
+                            : key;
     line(`  ${BOLD}${label.padEnd(w)}${RESET}  ${mark(row.status)}`);
   }
   line(
@@ -585,17 +567,6 @@ async function describePhase(
           "after this, every `eas build` + `eas submit` works without further prompts",
         ],
       };
-    case "apple-asc-link":
-      return {
-        step,
-        label: "setup:asc:connect",
-        action: cached && !options.force ? "skip (already connected)" : "run (non-interactive)",
-        details: [
-          "wraps `eas integrations:asc:connect` to link the EAS project to its ASC app",
-          "fills --api-key-id from cached asc-key state, --bundle-id from .env.local",
-          "after this, `eas submit` skips ASC app discovery (faster + non-interactive)",
-        ],
-      };
     case "apple-eas-rotation-secrets":
       return {
         step,
@@ -630,7 +601,6 @@ async function printDryRunPlan(probe: {
       ? [
           "asc-key",
           "apple-credentials",
-          "apple-asc-link",
           "apple-services-id",
           "apple-sign-in",
           "apple-eas-rotation-secrets",
@@ -930,7 +900,6 @@ const STEP_RUNNERS: Record<string, StepRunner> = {
   "vexpo apple services-id": () => runServicesId({}),
   "vexpo apple jwt": () => runAppleJwt({}),
   "vexpo apple eas-rotation-secrets": () => runEasRotationSecrets({}),
-  "vexpo asc connect": () => runAscConnect({}),
   "vexpo eas": () => runEas({}),
   "vexpo review-account": () => runReviewAccount({}),
 };
@@ -1234,19 +1203,6 @@ export async function runSetup(opts: SetupOptions): Promise<number> {
         nop("vexpo apple credentials cached");
       }
 
-      // Phase 7a.6: link the EAS project to the ASC app via the uploaded API
-      // key. Without this, every `eas submit` re-discovers the ASC app on the
-      // fly. Idempotent: skips when EAS already reports as connected.
-      if (options.force || probe.needs.get("apple-asc-link")) {
-        await maybeRunStep(
-          "vexpo asc connect",
-          "Link the EAS project to its ASC app now?",
-          "apple-asc-link",
-        );
-      } else {
-        nop("vexpo asc connect cached");
-      }
-
       if (options.force || probe.needs.get("apple-services-id")) {
         await maybeRunStep(
           "vexpo apple services-id",
@@ -1283,7 +1239,6 @@ export async function runSetup(opts: SetupOptions): Promise<number> {
         "apple-sign-in",
         "apple-services-id",
         "apple-credentials",
-        "apple-asc-link",
         "asc-key",
         "apple-eas-rotation-secrets",
       );

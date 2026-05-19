@@ -90,10 +90,9 @@ bunx eas fingerprint [...]
 bunx eas device [...]             # list, create, view, rename, delete
 bunx eas metadata [...]
 bunx eas env [...]                # env:push, env:pull, env:get, env:delete, env:create, env:list
-bunx eas integrations:asc [...]   # status, connect, disconnect
 ```
 
-`vexpo full` orchestrates `eas init`, `eas env:push`, `eas credentials:configure-build`, and `eas integrations:asc:connect` internally as setup steps, none are exposed as standalone `vexpo` commands. That's `eas-cli`'s surface.
+`vexpo full` orchestrates `eas init`, `eas env:push`, and `eas credentials:configure-build` internally as setup steps, none are exposed as standalone `vexpo` commands. That's `eas-cli`'s surface. ASC API key upload happens inside `eas credentials -p ios` (we pass it via `EXPO_ASC_API_KEY_PATH` / `EXPO_ASC_KEY_ID` / `EXPO_ASC_ISSUER_ID` env vars). `eas integrations:asc` was removed in eas-cli 18.
 
 ## Architecture
 

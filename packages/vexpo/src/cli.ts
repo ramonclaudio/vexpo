@@ -4,7 +4,7 @@
 // the job, vexpo doesn't wrap it. Users should reach for `eas` for the
 // canonical platform surface (init, build, update, submit, deploy, channel,
 // branch, webhook, workflow, fingerprint, device, account, credentials,
-// integrations:asc, etc.) and use `vexpo` only for the things `eas` doesn't do:
+// etc.) and use `vexpo` only for the things `eas` doesn't do:
 //
 //   1. Setup orchestration (probe state, run missing phases, idempotency)
 //   2. Cross-source drift detection (`vexpo doctor`)
@@ -16,7 +16,7 @@
 // Everything else: use `bunx eas <subcommand>` directly. The README
 // documents the canonical eas-cli flow for build / update / submit /
 // deploy / channel / branch / webhook / workflow / fingerprint / metadata
-// / credentials / integrations:asc.
+// / credentials.
 
 import { Command } from "commander";
 
@@ -327,9 +327,8 @@ env
   );
 
 /* ------------------------------------------------------------------ asc --- */
-// ASC API direct access for endpoints eas-cli doesn't expose. The
-// EAS integrations:asc:* subset (status, connect) is wrapped here so
-// the same `vexpo` CLI handles both EAS-bridge and ASC-direct.
+// ASC API direct access for endpoints eas-cli doesn't expose
+// (version inspection, privacy + accessibility nutrition labels, etc.).
 
 const ascVersion = program.command("asc:version").description("App Store version inspection.");
 
