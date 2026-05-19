@@ -54,6 +54,7 @@ The Better Auth routes (registered via `authComponent.registerRoutesLazy`) handl
      ```
 
   Once both are in place, every OTA bundle is signed with the private key during `eas update` and verified on-device against the bundled certificate before install. A compromised CDN or EAS account cannot ship arbitrary JS. If the env var is unset (cert not yet generated), `eas update` skips signing without erroring.
+
 - **Gradual rollouts.** `rollout.yml` workflow publishes new updates at controlled percentages (5% → 25% → 100%). A broken update reaches a fraction of users, not all of them.
 - **Rollback workflows.** `rollback.yml` runs `update:republish` or `update:roll-back-to-embedded` non-interactively in CI.
 
@@ -119,19 +120,18 @@ If a developer's machine is taken, what does the attacker learn?
 - **`.setup-state.json`**: IDs and timestamps. No secrets. They can see the project's Convex deployment name and Apple Team ID, but those alone don't authenticate as the developer.
 - **`.env.local`, `.env.prod`**: these DO contain secrets. `.gitignored`. Developer is expected to manage the same way they'd manage any local credentials.
 - **`.p8` files**: these DO contain private keys. `.gitignored`. Live outside the repo (suggested location: `~/Library/Application Support/vexpo/keys/`).
-- **`patches/` directory**: ships PR #368 as a `.tgz`. Public, no secrets inside.
 
 ## Secret rotation
 
-| Secret | Rotation cadence | How |
-|---|---|---|
-| Apple SIWA `client_secret` JWT | Every 90 days | Automated via `rotate-apple-jwt.yml` EAS Workflow cron |
-| Convex production deploy key | When suspected compromise | `bunx convex auth` → revoke + reissue |
-| Apple distribution cert | Annual (Apple's choice) | `eas credentials -p ios` interactive flow |
-| Apple APNs push key | When suspected compromise | Apple Developer Portal → Keys → Revoke + Create |
-| ASC API key | When suspected compromise | App Store Connect → Users and Access → Keys → Revoke + Create |
-| `EAS_WEBHOOK_SECRET` | When suspected compromise | `bunx eas webhook:update --id <id> --secret <new>` + `bunx convex env set EAS_WEBHOOK_SECRET <new>` |
-| `RESEND_WEBHOOK_SECRET` | When suspected compromise | Resend dashboard → reissue + `bunx convex env set RESEND_WEBHOOK_SECRET <new>` |
+| Secret                         | Rotation cadence          | How                                                                                                 |
+| ------------------------------ | ------------------------- | --------------------------------------------------------------------------------------------------- |
+| Apple SIWA `client_secret` JWT | Every 90 days             | Automated via `rotate-apple-jwt.yml` EAS Workflow cron                                              |
+| Convex production deploy key   | When suspected compromise | `bunx convex auth` → revoke + reissue                                                               |
+| Apple distribution cert        | Annual (Apple's choice)   | `eas credentials -p ios` interactive flow                                                           |
+| Apple APNs push key            | When suspected compromise | Apple Developer Portal → Keys → Revoke + Create                                                     |
+| ASC API key                    | When suspected compromise | App Store Connect → Users and Access → Keys → Revoke + Create                                       |
+| `EAS_WEBHOOK_SECRET`           | When suspected compromise | `bunx eas webhook:update --id <id> --secret <new>` + `bunx convex env set EAS_WEBHOOK_SECRET <new>` |
+| `RESEND_WEBHOOK_SECRET`        | When suspected compromise | Resend dashboard → reissue + `bunx convex env set RESEND_WEBHOOK_SECRET <new>`                      |
 
 The Apple SIWA JWT is the only one with automated rotation because it's the only one Apple's API will sign on our behalf. The others require human-in-the-loop rotation by Apple's design.
 

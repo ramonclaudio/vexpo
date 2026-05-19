@@ -67,10 +67,6 @@ Common patterns:
 - **Update rolled out to wrong runtime version.** Roll back via `.eas/workflows/rollback.yml` with `embedded`. Then investigate.
 - **Native code change shipped without a build bump.** Fingerprint should have caught this. Check `eas build:list --platform ios --status finished --limit 5` and confirm the running binary's fingerprint matches the published update.
 
-### `useConvexAuth.isAuthenticated` never flips to true after sign-in
-
-You're hitting the Hermes V1 async-bridge race fixed by [PR #368](https://github.com/get-convex/better-auth/pull/368). The template ships the patched build via `patches/convex-dev-better-auth-0.12.2.tgz`. If you upgraded `@convex-dev/better-auth` past 0.12.2 and the patch hasn't merged upstream, repair by reverting the version pin and re-running `bun install --force`.
-
 ### `eas update` succeeds but devices don't pick up the new bundle
 
 Check, in order:
