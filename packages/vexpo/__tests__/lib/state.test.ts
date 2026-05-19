@@ -228,7 +228,7 @@ describe("verifyOrInvalidate", () => {
 });
 
 describe("checkConcurrentRun", () => {
-  it("flags a stale write from a different pid", () => {
+  it("reports active=true with otherPid when a different pid wrote recently", () => {
     const state: SetupState = {
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
@@ -237,11 +237,11 @@ describe("checkConcurrentRun", () => {
       audit: [],
     };
     const result = checkConcurrentRun(state);
-    expect(result.stale).toBe(false);
+    expect(result.active).toBe(true);
     expect(result.otherPid).toBe(process.pid + 1);
   });
 
-  it("ignores writes older than the warn window", () => {
+  it("reports active=false for writes older than the warn window", () => {
     const state: SetupState = {
       createdAt: new Date(Date.now() - 60_000).toISOString(),
       updatedAt: new Date(Date.now() - 60_000).toISOString(),
@@ -249,10 +249,12 @@ describe("checkConcurrentRun", () => {
       steps: {},
       audit: [],
     };
-    expect(checkConcurrentRun(state).stale).toBe(true);
+    const result = checkConcurrentRun(state);
+    expect(result.active).toBe(false);
+    expect(result.otherPid).toBeUndefined();
   });
 
-  it("ignores writes from the same pid", () => {
+  it("reports active=false for writes from the same pid", () => {
     const state: SetupState = {
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
@@ -260,7 +262,40 @@ describe("checkConcurrentRun", () => {
       steps: {},
       audit: [],
     };
-    expect(checkConcurrentRun(state).stale).toBe(true);
+    const result = checkConcurrentRun(state);
+    expect(result.active).toBe(false);
+    expect(result.otherPid).toBeUndefined();
+  });
+
+  it("reports active=false when lastPid is undefined (corrupted state)", () => {
+    // Regression: an older vexpo run wrote a state with lastPid missing.
+    // checkConcurrentRun used to treat `undefined !== 0 && undefined !== pid`
+    // as truthy and returned `otherPid: undefined`, which the consumer then
+    // interpolated as the string "undefined" in the warning message.
+    const state: SetupState = {
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      lastPid: undefined as any,
+      steps: {},
+      audit: [],
+    };
+    const result = checkConcurrentRun(state);
+    expect(result.active).toBe(false);
+    expect(result.otherPid).toBeUndefined();
+  });
+
+  it("reports active=false when lastPid is 0 (initial state placeholder)", () => {
+    const state: SetupState = {
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      lastPid: 0,
+      steps: {},
+      audit: [],
+    };
+    const result = checkConcurrentRun(state);
+    expect(result.active).toBe(false);
+    expect(result.otherPid).toBeUndefined();
   });
 });
 

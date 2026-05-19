@@ -179,13 +179,18 @@ export async function verifyOrInvalidate(name: StepName, verify: VerifyFn): Prom
   return true;
 }
 
-export function checkConcurrentRun(state: SetupState): { stale: boolean; otherPid?: number } {
+export function checkConcurrentRun(state: SetupState): { active: boolean; otherPid?: number } {
   const updated = new Date(state.updatedAt).getTime();
   const ageMs = Date.now() - updated;
-  if (ageMs < PID_WARN_WINDOW_MS && state.lastPid !== 0 && state.lastPid !== process.pid) {
-    return { stale: false, otherPid: state.lastPid };
+  const hasOtherPid =
+    typeof state.lastPid === "number" &&
+    Number.isFinite(state.lastPid) &&
+    state.lastPid !== 0 &&
+    state.lastPid !== process.pid;
+  if (ageMs < PID_WARN_WINDOW_MS && hasOtherPid) {
+    return { active: true, otherPid: state.lastPid };
   }
-  return { stale: true };
+  return { active: false };
 }
 
 export function fingerprint(value: string): string {
