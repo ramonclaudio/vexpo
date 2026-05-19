@@ -106,9 +106,11 @@ export async function runAscConnect(opts: { force?: boolean } = {}): Promise<num
   ok(`bundle id: ${BOLD}${bundleId}${RESET}`);
 
   line();
-  note("spawning `eas integrations:asc:connect`. Wizard prompts once when no");
-  note("key is uploaded yet (Use existing / Set up new key). EXPO_ASC_API_KEY_*");
-  note("env vars are pre-set so the credential paste step auto-fills.");
+  note("spawning `eas integrations:asc:connect`. Most likely flow:");
+  note("  1. Press Y to generate a new ASC API key (default)");
+  note("  2. Press Enter to accept ADMIN role (default)");
+  note("EXPO_ASC_API_KEY_* env vars are set so eas-cli uses our cached key");
+  note("for the Apple auth step, no Apple ID + password prompt.");
 
   if (!process.stdin.isTTY) {
     yep("non-TTY: skipping interactive wizard");
