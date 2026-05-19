@@ -2,6 +2,8 @@
 
 Expo SDK 56 + Convex + Better Auth + Resend, wired end-to-end for iOS. Native SwiftUI via `@expo/ui/swift-ui`, email + password + email OTP + Apple Sign In, APNs push, Universal Links, profile + active sessions with avatar uploads and device-by-device revocation. EAS for the whole build surface: 10 workflows, fingerprint-gated OTA-or-build, TestFlight, rollback, rollout, ASC events, and the Apple Sign In JWT rotation cron.
 
+A lot of the SwiftUI modifiers the template reaches for, `clipShape("capsule")`, `defaultScrollAnchorForRole`, `scrollTargetBehavior`, `scrollPosition`, `textInputAutocapitalization`, `textContentType`, the `Alert` component, are upstream PRs we wrote and got merged into `expo/expo`. Full ledger in [`../../docs/UPSTREAM.md`](../../docs/UPSTREAM.md).
+
 ## Quick start
 
 ```bash
@@ -137,6 +139,7 @@ __tests__/                        Convex constants + validators + HMAC verificat
 
 - [`SETUP.md`](./SETUP.md). Every setup phase with full prompts, env-var alternatives for non-interactive runs, recovery paths.
 - [`DESIGN.md`](./DESIGN.md). Color palette, typography, spacing, radius ladder, materials, the SwiftUI primitives + custom composition surface.
+- [`../../docs/UPSTREAM.md`](../../docs/UPSTREAM.md). Every upstream PR powering the template: `@expo/ui/swift-ui` modifiers, `expo-modules-core` fixes, `expo-tools` resolution, CI workflow guards.
 - [`AGENTS.md`](./AGENTS.md). Guidance for AI coding agents working in this codebase.
 
 ## Version pinning

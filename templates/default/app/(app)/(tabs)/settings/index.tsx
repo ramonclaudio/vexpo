@@ -283,6 +283,7 @@ export default function SettingsScreen() {
               </ConfirmationDialog.Message>
             </ConfirmationDialog>
 
+            {/* upstream expo/expo#45700: Alert component, SwiftUI .alert(...) on iOS 15+ */}
             <Alert
               title="Delete account?"
               isPresented={showDeleteAccount}
