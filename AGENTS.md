@@ -64,7 +64,7 @@ When Apple loosens any of these, the CLI continues to work.
 
 1. Read this file, the template's `AGENTS.md`, and `README.md`.
 2. From the root: `bun run typecheck` to confirm packages compile.
-3. From the root: `bun run test:all` to run all unit + e2e tests (250 unit + 14 e2e + 29 template = 293).
+3. From the root: `bun run test:all` to run all unit + e2e tests (250 unit + 14 e2e + 34 template = 298).
 4. If touching the CLI: `bun --filter vexpo build` then `bun --filter vexpo test:e2e` to confirm the dist behaves.
 
 ## Common tasks

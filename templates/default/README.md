@@ -146,4 +146,4 @@ __tests__/                        Convex constants + validators + HMAC verificat
 
 Every `expo-*` package tracks the same SDK 56 preview tag. Mismatched tags cause subtle runtime crashes. `bun run upgrade` runs `expo install expo@next && expo install --fix` to roll all of them forward together.
 
-`@convex-dev/better-auth@0.12.0` is the minimum compatible with `better-auth@1.6.9`. Earlier versions peer-dep `better-auth <1.6.0` and reject the `mode` field newer better-auth adds to adapter queries, breaking signup. The template pins `0.12.2`.
+`@convex-dev/better-auth@0.12.0` is the minimum compatible with `better-auth@1.6.x` (peer-dep range is `>=1.6.9 <1.7.0`). Earlier versions peer-dep `better-auth <1.6.0` and reject the `mode` field newer better-auth adds to adapter queries, breaking signup. The template pins `better-auth@1.6.11` + `@convex-dev/better-auth@0.12.2`.
