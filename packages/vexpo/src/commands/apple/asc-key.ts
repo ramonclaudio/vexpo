@@ -23,7 +23,6 @@
 import { access } from "node:fs/promises";
 
 import { validate as validateAsc, type AscCredentials } from "../../lib/asc-api.ts";
-import { ascStatus } from "../../lib/eas-integrations.ts";
 import { expandTilde } from "../../lib/path.ts";
 import {
   BOLD,
@@ -110,19 +109,6 @@ async function readEnvCreds(): Promise<AscCredentials | null> {
   return { issuerId, keyId, privateKey: { path: p8Path } };
 }
 
-/**
- * Returns "connected" / "disconnected" / "unknown" by asking eas-cli. Used
- * as a fast-path during --revalidate to avoid resigning a JWT we just signed.
- */
-async function easAscStatus(): Promise<"connected" | "disconnected" | "unknown"> {
-  try {
-    const status = await ascStatus();
-    return status.connected ? "connected" : "disconnected";
-  } catch {
-    return "unknown";
-  }
-}
-
 async function readStateCreds(): Promise<AscCredentials | null> {
   const state = await load();
   const rec = state.steps["asc-key"];
@@ -147,29 +133,12 @@ export async function runAscKey(options: AscKeyOptions): Promise<number> {
         return 1;
       }
 
-      // Defer to EAS when the project is already linked. `integrations:asc:status`
-      // hits the same ASC endpoints we would, but does it through EAS so a
-      // server-side rotation/revocation surfaces here without us re-signing.
-      const easSays = await easAscStatus();
-      if (easSays === "connected") {
-        ok("cached key valid (verified via `eas integrations:asc:status`)");
-        await recordStep("asc-key", {
-          issuerId: cached.issuerId,
-          keyId: cached.keyId,
-          p8Path: "path" in cached.privateKey ? cached.privateKey.path : undefined,
-        });
-        return 0;
-      }
-
       const result = await validateAsc(cached);
       if (!result.ok) {
         bad(`cached key invalid: ${result.reason}`);
         return 1;
       }
       ok(`cached key still valid (${result.appCount} app${result.appCount === 1 ? "" : "s"})`);
-      if (easSays === "disconnected") {
-        note("EAS reports no ASC link; run `vexpo asc connect` to wire it up");
-      }
       await recordStep("asc-key", {
         issuerId: cached.issuerId,
         keyId: cached.keyId,

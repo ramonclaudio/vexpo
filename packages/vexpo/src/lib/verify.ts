@@ -594,30 +594,6 @@ async function verifyEas(ctx: VerifyContext): Promise<Check[]> {
     checks.push(skip("eas", "diagnostics", "eas-cli not available"));
   }
 
-  // ASC integration link. Newer EAS-native path for connecting an EAS project
-  // to an App Store Connect app via API key. Doesn't replace the `apple
-  // asc-key` flow but it's worth knowing whether EAS can drive submit /
-  // metadata directly instead of going through the credentials wizard.
-  try {
-    const { ascStatus } = await import("./eas-integrations.ts");
-    const asc = await ascStatus();
-    if (asc.connected) {
-      const label = asc.ascApp?.bundleId ?? asc.ascApp?.id ?? "ok";
-      checks.push(ok("eas", "asc-integration", String(label)));
-    } else {
-      checks.push(
-        warn(
-          "eas",
-          "asc-integration",
-          "no ASC integration on EAS",
-          "run `vexpo asc connect` to link",
-        ),
-      );
-    }
-  } catch {
-    checks.push(skip("eas", "asc-integration", "eas integrations:asc:status unavailable"));
-  }
-
   const envs: Array<"production" | "preview" | "development"> = [
     "production",
     "preview",
