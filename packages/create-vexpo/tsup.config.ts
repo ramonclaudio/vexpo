@@ -101,10 +101,6 @@ export default defineConfig({
         if (SKIP_DIRS.some((s) => path.includes(`/${s}/`) || path.endsWith(`/${s}`))) {
           return false;
         }
-        // Preserve `patches/`. the template's `package.json` ships a `file:`
-        // dependency on a tarball there (the `@convex-dev/better-auth` PR #368
-        // patch). The `\.tgz$` SKIP_BASENAME would otherwise strip it.
-        if (path.includes("/patches/")) return true;
         const base = path.slice(path.lastIndexOf("/") + 1);
         if (SKIP_BASENAME_PATTERNS.some((re) => re.test(base))) return false;
         return true;
