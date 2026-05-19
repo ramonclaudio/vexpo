@@ -865,9 +865,29 @@ const LITE_AUTO_LABELS = new Set<string>([
   "BETTER_AUTH_SECRET generation",
 ]);
 
-function isComplete(result: { needs: Map<string, boolean>; install: boolean }): boolean {
+export function isComplete(result: { needs: Map<string, boolean>; install: boolean }): boolean {
   if (result.install) return false;
-  for (const required of ["convex", "better-auth", "resend", "apple-sign-in", "eas"] as const) {
+  // Mirrors the full-mode phase order from `printDryRunPlan` and the
+  // orchestrator loop. Every phase that `vexpo full` invokes in default
+  // scope (i.e. excluding `accounts` and `review-account`, which are
+  // opt-in / standalone) must appear here, otherwise a step missing from
+  // the cache will exit early through the "everything is configured" gate.
+  // Original 5-entry list missed `apple-asc-link`, `apple-credentials`,
+  // `apple-services-id`, `apple-eas-rotation-secrets`, `asc-key`, and
+  // `rebrand`. Bug surfaced when apple-asc-link was the only missing step.
+  for (const required of [
+    "rebrand",
+    "convex",
+    "better-auth",
+    "resend",
+    "asc-key",
+    "apple-credentials",
+    "apple-asc-link",
+    "apple-services-id",
+    "apple-sign-in",
+    "apple-eas-rotation-secrets",
+    "eas",
+  ] as const) {
     if (result.needs.get(required)) return false;
   }
   return true;
