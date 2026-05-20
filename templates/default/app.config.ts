@@ -46,11 +46,16 @@ export default ({ config }: ConfigContext): ExpoConfig => {
   // from `config.extra?.eas?.projectId` picks that up without hand-editing
   // this file.
   //
-  // Fallback: `process.env.EAS_PROJECT_ID`. EAS Build auto-injects this on the
-  // worker; locally you can set it in `.env.local` to keep the committed
-  // `app.json` clean (no `eas init` mutation on every test run). The fallback
-  // also unblocks fresh forks that want to skip the `eas init` prompt and
-  // declare their project id via env instead.
+  // Fallback: `process.env.EAS_PROJECT_ID`. Useful when the var is in the
+  // parent process env at eas-cli invocation time — e.g. shell export, direnv
+  // auto-load, or an eas.json profile `env` entry. Note that eas-cli itself
+  // does NOT auto-load `.env.local` for projectId resolution (it spawns
+  // `expo config` with `EXPO_NO_DOTENV=1` to keep config eval deterministic),
+  // so dropping `EAS_PROJECT_ID` into `.env.local` alone won't skip the
+  // `Configure this project?` prompt on a fresh checkout. The fallback DOES
+  // help vexpo's own CLI commands (which load `.env.local` themselves) and
+  // any tooling that pre-populates process.env before invoking expo/eas.
+  // See `README.md` for the recommended direnv-based local setup.
   const projectId =
     (config.extra as { eas?: { projectId?: string } } | undefined)?.eas?.projectId ??
     process.env.EAS_PROJECT_ID;
