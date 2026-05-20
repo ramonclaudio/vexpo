@@ -111,7 +111,7 @@ https://developer.apple.com/documentation/devicecheck/validating-apps-that-conne
 
 - The root `.github/workflows/check.yml` declares `permissions: contents: read` explicitly. Default GitHub Actions permissions are broad. We narrow to read-only.
 - The release workflow (`.github/workflows/release.yml`) is the only workflow requesting write scopes (`contents: write` for the GitHub release, `id-token: write` for npm provenance). Tag push triggers it, no PR can.
-- `--frozen-lockfile` on every install step. A PR that changes a transitive dep version doesn't sneak through.
+- `npm ci` on every install step (equivalent to a frozen-lockfile flag — fails if `package-lock.json` is out of sync with `package.json`). A PR that changes a transitive dep version doesn't sneak through.
 
 ### Developer machine compromise
 
