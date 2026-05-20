@@ -7,7 +7,7 @@ Guidance for AI coding agents working in this repository. Complements the README
 Monorepo for vexpo: a one-shot Expo + Convex + Better Auth + Resend starter targeting iOS. Three pieces:
 
 - `packages/create-vexpo`: npm scaffolder, ~200 lines. Runs as `npm create @ramonclaudio/vexpo@latest my-app`. Copies `templates/default/`, rewrites `package.json` (project name, version, removes monorepo metadata, swaps the `vexpo` workspace ref for the published version), installs dependencies via the detected package manager (sniffed from `npm_config_user_agent`; defaults to `npm`), inits git.
-- `packages/vexpo`: operational CLI. Runs as `vexpo <subcommand>` from inside a scaffolded project. Deliberately small: doesn't wrap what `eas` already does well. Surfaces only the things `eas-cli` doesn't do: two-mode setup orchestration (`lite`, `full`) with standalone phases (`accounts`, `rebrand`, `review-account`, `convex`, `better-auth`, `resend`), cross-source drift detection (`doctor`), Apple-side work `eas-cli` doesn't expose (`apple {asc-key, credentials, services-id, jwt, eas-rotation-secrets}`), ASC API endpoints `eas-cli` doesn't expose (`testflight`, `reviews`, `sandbox`, `asc:version`, `asc:submissions`), and multi-destination env sync (`env push`). Commander-based tree, ~400 lines of CLI wiring on top of ~3000 lines of orchestration logic in `src/lib/` and `src/commands/`.
+- `packages/vexpo`: operational CLI. Runs as `vexpo <subcommand>` from inside a scaffolded project. Deliberately small: doesn't wrap what `eas` already does well. Surfaces only the things `eas-cli` doesn't do: two-mode setup orchestration (`lite`, `full`) with standalone phases (`accounts`, `rebrand`, `review-account`, `convex`, `better-auth`, `resend`), cross-source drift detection (`doctor`), Apple-side work `eas-cli` doesn't expose (`apple {asc-key, credentials, services-id, jwt, eas-rotation-secrets}`), ASC API endpoints `eas-cli` doesn't expose (`testflight`, `reviews`, `sandbox`, `asc:version`, `asc:submissions`, `asc:privacy`, `asc:accessibility`), and multi-destination env sync (`env push`). Commander-based tree, around 600 lines of CLI wiring on top of around 9.5k lines of orchestration logic in `src/lib/` and `src/commands/`.
 - `templates/default/`: the Expo SDK 56 + Convex + Better Auth app that gets copied. Production-ready: real auth, real push, real OTA, real App Store submission. Standalone (its own `package-lock.json`, `node_modules`), not a workspace member.
 
 npm workspace at the root with `packages/*` as members. Templates intentionally stay outside the workspace because Expo's hoisting expectations don't survive npm's workspace install layout. The `vexpo` CLI links into the template via `npm link` for monorepo dev (`npm run link:dev`).
@@ -47,7 +47,7 @@ npm workspace at the root with `packages/*` as members. Templates intentionally 
 - Each command exports a `run<Name>(options)` function returning a numeric exit code. `cli.ts` handles `process.exit`.
 - Cross-cutting helpers (logging, prompts, state cache, proc helpers, lib clients, path expansion) under `src/lib/`.
 - Node-only. No `_run.mjs` runtime selector, the published CLI is a single ESM bundle that runs anywhere Node 20+ works.
-- Tests live in `packages/vexpo/__tests__/`: unit tests under `lib/` (vitest, 250 tests covering path / parsers / asc-api / asc-jwt / asc-privacy / asc-accessibility / state / verify / convex-env / env-files / env-local / eas-cli / eas-env / apple-jwt / app / pkg-manager / poll), e2e under `e2e/run.sh` (14 bash tests against the built dist).
+- Tests live in `packages/vexpo/__tests__/`: 291 vitest unit tests across `lib/` (17 files: app, apple-jwt, asc-accessibility, asc-api, asc-jwt, asc-privacy, convex-env, eas-cli, eas-env, eas-integrations, env-files, env-local, path, pkg-manager, poll, state, verify) and `commands/` (2 files: asc, setup-is-complete), plus 14 bash e2e tests in `e2e/run.sh` against the built dist.
 
 ### Apple ASC API workarounds
 
@@ -72,9 +72,8 @@ When Apple loosens any of these, the CLI continues to work.
 - **Build all packages**: `npm run build` from the root.
 - **Run the template locally**: `npm run template:dev`.
 - **Test the full pipeline**: `npm run test:all` from the root.
-- **Test the scaffolder end-to-end**: `npm run build -w @ramonclaudio/create-vexpo && cd /tmp && trash test-app 2>/dev/null. Node /path/to/packages/create-vexpo/dist/index.js test-app --no-install --no-git -y && cd test-app && npm install && npx vexpo full --dry-run`.
+- **Test the scaffolder end-to-end**: `npm run build -w @ramonclaudio/create-vexpo && cd /tmp && trash test-app 2>/dev/null && node /path/to/packages/create-vexpo/dist/index.js test-app --no-install --no-git -y && cd test-app && npm install && npx vexpo full --dry-run`.
 - **Add a new vexpo subcommand**: Create `packages/vexpo/src/commands/<name>.ts` exporting `run<Name>(options)`, register in `packages/vexpo/src/cli.ts`, add an e2e test in `__tests__/e2e/run.sh`.
-- **Update both lib copies**: There aren't two anymore. The lib lives at `packages/vexpo/src/lib/` and is the only copy. Done.
 
 ## Not appropriate
 
