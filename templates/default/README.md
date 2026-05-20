@@ -116,7 +116,8 @@ app/                              Expo Router screens
   (auth)/                         Sign in, sign up, forgot/reset password
   (app)/                          Authenticated screens
     (tabs)/                       Tab navigation
-    welcome.tsx, profile.tsx, sessions.tsx, debug.tsx, ...
+    welcome.tsx, sessions.tsx, debug.tsx, ...
+    profile/                      Profile screens (index.tsx + change-password.tsx)
   +native-intent.tsx              Deep link validation
   +not-found.tsx                  404 fallback
 components/                       Reusable UI
