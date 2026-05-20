@@ -19,16 +19,17 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: oven-sh/setup-bun@v2
+      - uses: actions/setup-node@v4
         with:
-          bun-version: latest
-      - run: bun install --frozen-lockfile
-      - run: bun --filter '*' typecheck
-      - run: bun run lint
-      - run: bun run format:check
-      - run: bun --filter '*' build
-      - run: bun --filter '*' test
-      - run: bun --filter '@ramonclaudio/vexpo' test:e2e
+          node-version: "20"
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run lint
+      - run: npm run format:check
+      - run: npm run build
+      - run: npm run test:packages
+      - run: npm run test:packages:e2e
 
   template:
     name: template (typecheck, lint, format, test)
@@ -38,14 +39,16 @@ jobs:
         working-directory: templates/default
     steps:
       - uses: actions/checkout@v4
-      - uses: oven-sh/setup-bun@v2
+      - uses: actions/setup-node@v4
         with:
-          bun-version: latest
-      # `@ramonclaudio/vexpo` is now on npm, so the template installs directly
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: templates/default/package-lock.json
+      # `@ramonclaudio/vexpo` is on npm, so the template installs directly
       # without needing the monorepo's `link:dev` plumbing. This also exercises
-      # the customer journey: a fresh `bun install` resolves vexpo from npm.
-      - run: bun install --frozen-lockfile
-      - run: bun run typecheck
-      - run: bun run lint
-      - run: bun run format:check
-      - run: bun run test
+      # the customer journey: a fresh `npm ci` resolves vexpo from npm.
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run lint
+      - run: npm run format:check
+      - run: npm run test

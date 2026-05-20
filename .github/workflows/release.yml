@@ -27,16 +27,13 @@ jobs:
           ref: ${{ inputs.tag || github.ref }}
           fetch-depth: 0
 
-      - uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: latest
-
       - uses: actions/setup-node@v4
         with:
           node-version: "20"
           registry-url: https://registry.npmjs.org
+          cache: npm
 
-      - run: bun install --frozen-lockfile
+      - run: npm ci
 
       - name: Verify tag matches package versions
         run: |
@@ -51,9 +48,9 @@ jobs:
             fi
           done
 
-      - run: bun --filter '*' typecheck
-      - run: bun --filter '*' build
-      - run: bun --filter '*' test
+      - run: npm run typecheck
+      - run: npm run build
+      - run: npm run test:packages
 
       # `--access public` and `--provenance` are configured in each
       # package's `publishConfig` block, so the CLI doesn't need the flags.

@@ -54,7 +54,7 @@ export async function runEasRotationSecrets(options: RotationSecretsOptions): Pr
     existing = await envList("production");
   } catch (err) {
     bad(`could not list EAS production env: ${err instanceof Error ? err.message : err}`);
-    note("run `bunx eas login` and `bunx eas init` first");
+    note("run `npx eas login` and `npx eas init` first");
     return 1;
   }
 

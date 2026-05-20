@@ -6,10 +6,10 @@
  * and we record the projectId in `.setup-state.json` so the probe knows EAS
  * is set up without re-shelling. If you'd rather skip the wrapper:
  *
- *     bunx eas init
- *     bunx eas env:push --path .env.local --environment development --force
- *     bunx eas env:push --path .env.prod  --environment production --force
- *     bunx eas env:push --path .env.prod  --environment preview    --force
+ *     npx eas init
+ *     npx eas env:push --path .env.local --environment development --force
+ *     npx eas env:push --path .env.prod  --environment production --force
+ *     npx eas env:push --path .env.prod  --environment preview    --force
  *
  * What we explicitly do NOT do:
  *   - iOS dist cert / profile / push key / ASC API key upload  → eas credentials
@@ -55,7 +55,7 @@ export async function runEas(options: EasOptions): Promise<number> {
   try {
     const cli = await checkCli();
     if (!cli.ok) {
-      bad("eas CLI not available. install with `bun add -g eas-cli`");
+      bad("eas CLI not available. install with `npm install -g eas-cli`");
       return 1;
     }
     ok(`eas-cli ${cli.version}`);
@@ -63,7 +63,7 @@ export async function runEas(options: EasOptions): Promise<number> {
     const who = await whoami();
     if (!who) {
       if (!process.stdin.isTTY) {
-        bad("non-TTY: run `bunx eas login` then re-run");
+        bad("non-TTY: run `npx eas login` then re-run");
         return 1;
       }
       yep("not signed in to Expo");
@@ -162,16 +162,14 @@ export async function runEas(options: EasOptions): Promise<number> {
     line();
     note(`${BOLD}Next, eas-cli (we don't replace these)${RESET}`);
     note(
-      `  ${BOLD}bunx eas credentials -p ios${RESET}     dist cert + profile + push key + ASC API key`,
+      `  ${BOLD}npx eas credentials -p ios${RESET}     dist cert + profile + push key + ASC API key`,
     );
-    note(`  ${BOLD}bunx eas build -p ios --profile production${RESET}`);
+    note(`  ${BOLD}npx eas build -p ios --profile production${RESET}`);
     note(
-      `  ${BOLD}bunx eas submit -p ios --profile production${RESET}  (auto-creates App Store record)`,
+      `  ${BOLD}npx eas submit -p ios --profile production${RESET}  (auto-creates App Store record)`,
     );
-    note(`  ${BOLD}bunx eas metadata:push${RESET}          push store.config.json`);
-    note(
-      `  ${BOLD}bunx eas workflow:run .eas/workflows/<file>${RESET}  trigger a workflow locally`,
-    );
+    note(`  ${BOLD}npx eas metadata:push${RESET}          push store.config.json`);
+    note(`  ${BOLD}npx eas workflow:run .eas/workflows/<file>${RESET}  trigger a workflow locally`);
     line();
     note(`${BOLD}Stack-specific (ours, not eas-cli's)${RESET}`);
     note(`  ${BOLD}vexpo apple asc-key${RESET}        validate ASC API key against /v1/apps`);

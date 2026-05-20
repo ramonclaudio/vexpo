@@ -9,7 +9,7 @@
  *   Expo                     → logged-in CLI (free tier)
  *   Resend                   → full-access API key in env (free tier)
  *
- * For Convex/Expo, the official CLIs (`bunx convex login` / `bunx eas login`)
+ * For Convex/Expo, the official CLIs (`npx convex login` / `npx eas login`)
  * handle auth lazily. they prompt when first invoked. We offer to run
  * them now if the user wants to front-load auth, but it's not required.
  *
@@ -170,7 +170,7 @@ async function walkDomain(): Promise<{ ready: boolean }> {
     lines: [
       `${BOLD}what:${RESET}   a domain you control DNS for`,
       `${BOLD}where:${RESET}  any registrar (Cloudflare, GoDaddy, Route 53, Namecheap, Vercel, …)`,
-      `${BOLD}notes:${RESET}  after \`bunx vexpo resend\`, you'll add SPF/DKIM/DMARC records at your registrar`,
+      `${BOLD}notes:${RESET}  after \`npx vexpo resend\`, you'll add SPF/DKIM/DMARC records at your registrar`,
       "        Resend's dashboard shows them and verifies. vexpo doesn't automate this.",
       "vexpo doesn't register domains for you.",
     ],
@@ -196,12 +196,12 @@ async function walkConvex(): Promise<void> {
     lines: [
       `${BOLD}what:${RESET}   logged-in Convex CLI session`,
       `${BOLD}where:${RESET}  free tier at dashboard.convex.dev (instant signup)`,
-      `${BOLD}how:${RESET}    \`bunx convex login\` (browser-based OAuth)`,
+      `${BOLD}how:${RESET}    \`npx convex login\` (browser-based OAuth)`,
     ],
     urls: [{ label: "dashboard", url: "https://dashboard.convex.dev" }],
   });
   if (!process.stdin.isTTY) {
-    bad("non-TTY: run `bunx convex login` then re-run");
+    bad("non-TTY: run `npx convex login` then re-run");
     return;
   }
   if (await askYesNo(`Run \`${dlx()} convex login\` now?`, false)) {
@@ -212,7 +212,7 @@ async function walkConvex(): Promise<void> {
     if ((await statusConvex()).status === "ok") ok("Convex authenticated");
     else fail("still not signed in");
   } else {
-    nop("`bunx convex login` will prompt automatically when `bunx vexpo convex` runs");
+    nop("`npx convex login` will prompt automatically when `npx vexpo convex` runs");
   }
 }
 
@@ -227,7 +227,7 @@ async function walkExpo(): Promise<void> {
     lines: [
       `${BOLD}what:${RESET}   logged-in EAS CLI session`,
       `${BOLD}where:${RESET}  free tier at expo.dev/signup (instant signup)`,
-      `${BOLD}how:${RESET}    \`bunx eas login\` (browser-based OAuth)`,
+      `${BOLD}how:${RESET}    \`npx eas login\` (browser-based OAuth)`,
     ],
     urls: [
       { label: "signup", url: "https://expo.dev/signup" },
@@ -235,7 +235,7 @@ async function walkExpo(): Promise<void> {
     ],
   });
   if (!process.stdin.isTTY) {
-    bad("non-TTY: run `bunx eas login` then re-run");
+    bad("non-TTY: run `npx eas login` then re-run");
     return;
   }
   if (await askYesNo(`Run \`${dlx()} eas login\` now?`, false)) {
@@ -245,7 +245,7 @@ async function walkExpo(): Promise<void> {
     if (after.status === "ok") ok(`signed in as ${after.detail}`);
     else fail("still not signed in");
   } else {
-    nop("`bunx eas login` will prompt automatically when the EAS phase of `bunx vexpo full` runs");
+    nop("`npx eas login` will prompt automatically when the EAS phase of `npx vexpo full` runs");
   }
 }
 
@@ -262,14 +262,14 @@ async function walkResend(): Promise<void> {
       `${BOLD}where:${RESET}  free tier at resend.com (instant signup)`,
       `${BOLD}how:${RESET}    Create API Key → Permission: ${BOLD}Full Access${RESET} → copy → export`,
       `${BOLD}notes:${RESET}  used once to provision a scoped sending key, then discarded.`,
-      "        `bunx vexpo resend` will prompt for it interactively if env isn't set.",
+      "        `npx vexpo resend` will prompt for it interactively if env isn't set.",
     ],
     urls: [
       { label: "signup", url: "https://resend.com/signup" },
       { label: "API keys", url: "https://resend.com/api-keys" },
     ],
   });
-  nop("`bunx vexpo resend` handles the key prompt. Nothing to do here");
+  nop("`npx vexpo resend` handles the key prompt. Nothing to do here");
 }
 
 export async function runAccounts(options: AccountsOptions): Promise<number> {
@@ -322,7 +322,7 @@ export async function runAccounts(options: AccountsOptions): Promise<number> {
       `                           where: ${DIM}https://developer.apple.com/account/resources/authkeys/list${RESET}`,
     );
     note(
-      `${BOLD}DNS records${RESET}                added at your registrar after \`bunx vexpo resend\``,
+      `${BOLD}DNS records${RESET}                added at your registrar after \`npx vexpo resend\``,
     );
     note(`                           Resend dashboard shows them + verifies them`);
 

@@ -86,9 +86,9 @@ vexpo/
 For working on the CLI itself:
 
 ```bash
-bun install                # install package + workspace deps
-bun run link:dev           # build vexpo + `bun link` it into templates/default
-bun --filter vexpo dev     # tsup watch mode on the CLI source
+npm install                # install package + workspace deps
+npm run link:dev           # build vexpo + `npm link` it into templates/default
+npm run dev -w @ramonclaudio/vexpo     # tsup watch mode on the CLI source
 cd templates/default
 npx vexpo full --dry-run  # exercises the linked CLI
 ```
@@ -96,9 +96,9 @@ npx vexpo full --dry-run  # exercises the linked CLI
 Tests:
 
 ```bash
-bun run test               # 291 unit (vexpo lib) + 34 template = 325 total
-bun run test:packages:e2e  # 14 e2e tests against the built `vexpo` CLI dist
-bun run test:all           # everything
+npm run test               # 291 unit (vexpo lib) + 34 template = 325 total
+npm run test:packages:e2e  # 14 e2e tests against the built `vexpo` CLI dist
+npm run test:all           # everything
 ```
 
 ### Testing `eas build` against `templates/default`

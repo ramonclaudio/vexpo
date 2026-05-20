@@ -24,7 +24,7 @@ SKIPPED=0
 FAILS=()
 
 if [ ! -f "$CLI" ]; then
-  echo "build vexpo first: bun --filter vexpo build" >&2
+  echo "build vexpo first: npm run build -w @ramonclaudio/vexpo" >&2
   exit 1
 fi
 

@@ -81,7 +81,7 @@ const OTP_COPY: Record<OTPType, { subject: string; heading: string; body: string
  * inside the `sendVerificationOTP` callback in convex/auth.ts.
  *
  * In test mode (dev default), logs the OTP to the Convex deployment console
- * instead of calling Resend. Read it from `bunx convex dev` output or the
+ * instead of calling Resend. Read it from `npx convex dev` output or the
  * deployment logs in the Convex dashboard. Production sets RESEND_TEST_MODE
  * to "false" and sends real emails.
  */

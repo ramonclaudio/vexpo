@@ -1,6 +1,6 @@
 /**
  * Admin actions for fixture / review accounts. Internal-only, never exposed
- * to client code. Run via `bunx convex run admin:<fn>` (or your PM's dlx).
+ * to client code. Run via `npx convex run admin:<fn>` (or your PM's dlx).
  */
 
 import { v } from "convex/values";
@@ -85,7 +85,7 @@ export const createReviewAccount = internalAction({
 
 /**
  * Reset a rate-limit bucket. Run from the dashboard:
- * `bunx convex run admin:resetRateLimit '{"name":"avatarUpload","key":"<userId>"}'`
+ * `npx convex run admin:resetRateLimit '{"name":"avatarUpload","key":"<userId>"}'`
  * Omit `key` to reset the shared bucket.
  */
 export const resetRateLimit = internalMutation({

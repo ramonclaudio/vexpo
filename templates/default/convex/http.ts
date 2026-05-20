@@ -51,9 +51,9 @@ http.route({
 // EAS Build / Submit webhook receiver.
 //
 // Wire it up once with:
-//   bunx eas webhook:create --event BUILD  --url https://<your-deployment>.convex.site/eas-webhook --secret <strong-secret>
-//   bunx eas webhook:create --event SUBMIT --url https://<your-deployment>.convex.site/eas-webhook --secret <strong-secret>
-//   bunx convex env set EAS_WEBHOOK_SECRET <strong-secret>
+//   npx eas webhook:create --event BUILD  --url https://<your-deployment>.convex.site/eas-webhook --secret <strong-secret>
+//   npx eas webhook:create --event SUBMIT --url https://<your-deployment>.convex.site/eas-webhook --secret <strong-secret>
+//   npx convex env set EAS_WEBHOOK_SECRET <strong-secret>
 //
 // Per https://docs.expo.dev/eas/webhooks/, EAS signs every POST with
 // HMAC-SHA1 in `expo-signature: sha1=<hex>`. The factory below handles

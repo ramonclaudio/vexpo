@@ -192,7 +192,7 @@ export async function runAscKey(options: AscKeyOptions): Promise<number> {
     note(
       `${BOLD}This step is purely validation${RESET} ${DIM}- EAS still needs the same key uploaded:${RESET}`,
     );
-    note(`  ${BOLD}bunx eas credentials -p ios${RESET}`);
+    note(`  ${BOLD}npx eas credentials -p ios${RESET}`);
     note(`  → Build Credentials → 'Use existing App Store Connect API Key'`);
     note(`  → 'Set up a new key' if no existing match, paste:`);
     note(`     issuer=${creds.issuerId}, keyId=${creds.keyId}`);

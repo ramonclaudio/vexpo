@@ -2,9 +2,9 @@
 /**
  * One-shot setup for OTA update code signing.
  *
- *   bun run updates:gen-cert -- --name "Acme Inc."
+ *   npm run updates:gen-cert -- --name "Acme Inc."
  *
- * Wraps `bunx expo-updates codesigning:generate` with vexpo's conventions:
+ * Wraps `npx expo-updates codesigning:generate` with vexpo's conventions:
  *   - cert goes to `./certs/certificate.pem` (committed; verified on-device)
  *   - private key goes to `../keys/private-key.pem` (NOT committed; lives
  *     as an EAS file-type env var in CI)
@@ -51,7 +51,7 @@ if (existsSync(CERT)) {
 const commonName = await resolveCommonName(flagValue);
 
 const result = spawnSync(
-  "bunx",
+  "npx",
   [
     "expo-updates",
     "codesigning:generate",
@@ -78,7 +78,7 @@ console.log(`   eas env:create --environment production --visibility secret \\`)
 console.log(`     --type file --name EAS_UPDATE_PRIVATE_KEY --value ${KEY}`);
 console.log(`3. Keep ${KEY} off committed surface. The .gitignore already covers it.`);
 console.log(
-  `4. The next \`expo prebuild\` picks up the cert automatically. Run \`bun run prebuild\`.`,
+  `4. The next \`expo prebuild\` picks up the cert automatically. Run \`npm run prebuild\`.`,
 );
 
 async function resolveCommonName(provided) {

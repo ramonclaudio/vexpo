@@ -32,7 +32,7 @@ async function main() {
     .argument("[directory]", "project directory name")
     .option("--no-install", "skip installing dependencies")
     .option("--no-git", "skip git init")
-    .option("--no-setup", "skip the `bunx vexpo lite` / `bunx vexpo full` prompt after install")
+    .option("--no-setup", "skip the `npx vexpo lite` / `npx vexpo full` prompt after install")
     .option("-y, --yes", "accept defaults, skip prompts")
     .version(pkg.version, "-v, --version")
     .parse();
@@ -187,7 +187,7 @@ function detectPackageManager(): PM {
   if (ua.startsWith("pnpm")) return "pnpm";
   if (ua.startsWith("yarn")) return "yarn";
   if (ua.startsWith("npm")) return "npm";
-  return "bun";
+  return "npm";
 }
 
 function intro(): void {
@@ -203,12 +203,12 @@ function nextSteps(target: string, flags: Flags, pm: PM): void {
   if (!flags.install) console.log(kleur.gray(`  ${pm} install`));
   console.log(
     kleur.gray(
-      `  bunx vexpo lite     ${kleur.dim("# dev mode: Convex + Better Auth, 60s to simulator")}`,
+      `  npx vexpo lite     ${kleur.dim("# dev mode: Convex + Better Auth, 60s to simulator")}`,
     ),
   );
   console.log(
     kleur.gray(
-      `  bunx vexpo full     ${kleur.dim("# real setup: TestFlight-ready (add --new if you're new)")}`,
+      `  npx vexpo full     ${kleur.dim("# real setup: TestFlight-ready (add --new if you're new)")}`,
     ),
   );
   console.log();

@@ -25,7 +25,7 @@ export const env = {
   },
   // Email verification policy. Default `false` (minimal-tier setup, no Resend
   // configured). sign-up creates verified-immediately accounts so the user
-  // can sign in without ever seeing an OTP. `bunx vexpo full` flips
+  // can sign in without ever seeing an OTP. `npx vexpo full` flips
   // this to `true` on the Convex env when it provisions Resend.
   requireEmailVerification: bool("REQUIRE_EMAIL_VERIFICATION", false),
 } as const;
