@@ -52,7 +52,15 @@ export async function resolveProjectId(): Promise<string | null> {
   try {
     const { readOne } = await import("./env-local.ts");
     const fromFile = await readOne("EAS_PROJECT_ID");
-    if (fromFile && fromFile.length > 0) return fromFile;
+    if (fromFile && fromFile.length > 0) {
+      // Export to `process.env` so subprocess invocations of `eas-cli`
+      // (e.g. `eas project:info`, `eas env:list`) inherit the value when
+      // they evaluate the project's `app.config.ts`. Without this, the
+      // resolution chain only helps vexpo's own state — subprocesses spawn
+      // with the parent shell's env and miss the `.env.local` source.
+      process.env.EAS_PROJECT_ID = fromFile;
+      return fromFile;
+    }
   } catch {
     // ignore .env.local read failures, just return null
   }

@@ -136,4 +136,25 @@ describe("resolveProjectId / .env.local source", () => {
     await writeFile(".env.local", "OTHER_KEY=foo\nEAS_PROJECT_ID=correct\nMORE=bar\n");
     expect(await resolveProjectId()).toBe("correct");
   });
+
+  it("exports the .env.local value to process.env for subprocess inheritance", async () => {
+    await writeFile(".env.local", "EAS_PROJECT_ID=from-dotenv-export\n");
+    expect(process.env.EAS_PROJECT_ID).toBeUndefined();
+    expect(await resolveProjectId()).toBe("from-dotenv-export");
+    // Side effect: subsequent subprocess spawns (e.g. eas project:info) now
+    // see the value via the inherited environment.
+    expect(process.env.EAS_PROJECT_ID).toBe("from-dotenv-export");
+  });
+
+  it("does not overwrite process.env when app.json wins", async () => {
+    await writeFile(
+      "app.json",
+      JSON.stringify({ expo: { extra: { eas: { projectId: "from-json" } } } }),
+    );
+    await writeFile(".env.local", "EAS_PROJECT_ID=from-dotenv\n");
+    expect(process.env.EAS_PROJECT_ID).toBeUndefined();
+    expect(await resolveProjectId()).toBe("from-json");
+    // We didn't reach the .env.local branch, so process.env stays untouched.
+    expect(process.env.EAS_PROJECT_ID).toBeUndefined();
+  });
 });
