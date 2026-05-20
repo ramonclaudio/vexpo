@@ -360,11 +360,11 @@ Lite mode reads source files and pushes values to remote destinations. Zero prov
 
 ### Source files
 
-| File              | Channel | Default destinations                                    |
-| ----------------- | ------- | ------------------------------------------------------- |
-| `.env.local`      | dev     | Convex dev env, EAS development env                     |
-| `.env.prod`       | prod    | Convex prod env, EAS production+preview                 |
-| `.env.production` | prod    | (used if `.env.prod` is absent)                         |
+| File              | Channel | Default destinations                    |
+| ----------------- | ------- | --------------------------------------- |
+| `.env.local`      | dev     | Convex dev env, EAS development env     |
+| `.env.prod`       | prod    | Convex prod env, EAS production+preview |
+| `.env.production` | prod    | (used if `.env.prod` is absent)         |
 
 Override paths with `--local-file` / `--prod-file`. Both files are optional, lite mode runs with whatever it finds.
 
