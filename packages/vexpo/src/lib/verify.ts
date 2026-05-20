@@ -21,7 +21,7 @@ import { envMap as convexEnvMap, type ConvexTarget } from "./convex-env.ts";
 import {
   diagnostics as easDiagnostics,
   envList as easEnvList,
-  projectIdFromAppJson,
+  resolveProjectId,
   projectInfo as easProjectInfo,
   whoami as easWhoami,
 } from "./eas-env.ts";
@@ -515,9 +515,9 @@ async function verifyEas(ctx: VerifyContext): Promise<Check[]> {
   const checks: Check[] = [];
   let projectId: string | null = null;
   try {
-    projectId = await projectIdFromAppJson();
+    projectId = await resolveProjectId();
   } catch {
-    checks.push(skip("eas", "project-id", "couldn't read app.json"));
+    checks.push(skip("eas", "project-id", "couldn't resolve projectId"));
     return checks;
   }
   if (!projectId) {
@@ -530,7 +530,9 @@ async function verifyEas(ctx: VerifyContext): Promise<Check[]> {
       checks.push(skip("eas", "project-id", "lite mode (run `bunx vexpo full` to init EAS)"));
       return checks;
     }
-    checks.push(fail("eas", "project-id", "no projectId in app.json"));
+    checks.push(
+      fail("eas", "project-id", "no projectId in app.json, EAS_PROJECT_ID env, or .env.local"),
+    );
     return checks;
   }
   checks.push(ok("eas", "project-id", projectId));
@@ -562,7 +564,7 @@ async function verifyEas(ctx: VerifyContext): Promise<Check[]> {
           fail(
             "eas",
             "project-info",
-            `app.json projectId (${projectId}) doesn't match resolved project (${info.id})`,
+            `local projectId (${projectId}) doesn't match resolved project (${info.id})`,
             "run `vexpo eas` to re-link",
           ),
         );

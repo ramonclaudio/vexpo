@@ -26,7 +26,7 @@ import {
   ensureChannels,
   envPush,
   init,
-  projectIdFromAppJson,
+  resolveProjectId,
   whoami,
 } from "../lib/eas-env.ts";
 import { BOLD, RESET, askYesNo, bad, line, nop, note, ok, section, yep } from "../lib/output.ts";
@@ -82,7 +82,7 @@ export async function runEas(options: EasOptions): Promise<number> {
       ok(`signed in as ${BOLD}${who}${RESET}`);
     }
 
-    let projectId = await projectIdFromAppJson();
+    let projectId = await resolveProjectId();
     if (!options.skipInit) {
       if (projectId) {
         ok(`EAS project linked: ${projectId}`);

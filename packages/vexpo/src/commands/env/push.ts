@@ -26,7 +26,7 @@ import {
 import {
   envList as easEnvList,
   envPush as easEnvPush,
-  projectIdFromAppJson,
+  resolveProjectId,
   type EasEnvironment,
 } from "../../lib/eas-env.ts";
 import {
@@ -85,7 +85,7 @@ type RemoteState = {
 };
 
 async function readRemoteState(): Promise<RemoteState> {
-  const projectId = await projectIdFromAppJson();
+  const projectId = await resolveProjectId();
   const hasEasProject = !!projectId;
 
   const [convexDev, convexProd, easDev, easPreview, easProd] = await Promise.all([

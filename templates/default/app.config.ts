@@ -226,6 +226,20 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     extra: {
       ...config.extra,
       support: SUPPORT,
+      // Inject the resolved projectId so eas-cli commands that read
+      // `extra.eas.projectId` directly (e.g. `eas project:info`) see the
+      // env-var fallback too, not just `updates.url`. Existing
+      // `config.extra.eas` keys (if any) survive the merge. Stripped from
+      // the fingerprint hash via `ExpoConfigEASProject` in
+      // `fingerprint.config.js`.
+      ...(projectId
+        ? {
+            eas: {
+              ...((config.extra as { eas?: Record<string, unknown> } | undefined)?.eas ?? {}),
+              projectId,
+            },
+          }
+        : {}),
     },
     experiments: {
       typedRoutes: true,
