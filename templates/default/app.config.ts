@@ -95,7 +95,17 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       silentLaunch: true,
     },
     updates: {
-      enabled: !!projectId,
+      // Always `true` — must NOT depend on `projectId` resolution because the
+      // fingerprint runtime version policy hashes this field and the local +
+      // worker environments can disagree on projectId (local may resolve via
+      // `EAS_PROJECT_ID` env, worker may not). `ExpoConfigEASProject` in
+      // `fingerprint.config.js` already strips `extra.eas` and `updates.url`,
+      // but NOT `updates.enabled` — so flipping this based on projectId would
+      // diverge the hash and fail `CONFIGURE_EXPO_UPDATES`. If projectId
+      // happens to be missing at runtime, expo-updates fails silently on the
+      // check (same effective behavior as `enabled: false`), so leaving this
+      // true unconditionally is safe.
+      enabled: true,
       checkAutomatically: "ON_LOAD",
       // Brief patience for the update server before falling back to the
       // bundled JS. Zero blocks every cold launch indefinitely on flaky
