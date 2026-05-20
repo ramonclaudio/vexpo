@@ -19,9 +19,9 @@ Convex provides all of these as one product. Building the equivalent from scratc
 What we give up by choosing Convex:
 
 - The query language is JavaScript, not SQL. No PostgREST-style ad hoc analytics.
-- Schema migrations are append-only. Renaming a field is a multi-deploy dance.
-- Convex's at-rest storage cost is high vs raw Postgres at scale. We re-evaluate above a million MAU.
-- The function execution budget caps a single handler at 1 second (queries and mutations) or 10 minutes (actions). Long jobs go to EAS Workflows.
+- Schema changes that rename or retype fields need a union-transition + backfill across two deploys.
+- Convex's at-rest storage cost is higher than self-managed Postgres at very large scale. We re-evaluate above a million MAU.
+- The function execution budget caps user-code execution at 1 second per query/mutation (database IO not counted in that 1s) or 10 minutes for actions. Long jobs go to EAS Workflows.
 
 What we get:
 
@@ -36,7 +36,7 @@ Auth has more sharp edges than people remember when they start. Session rotation
 
 Better Auth is the smallest auth surface we found that covers the full list, in TypeScript, with adapters for any database. `@convex-dev/better-auth` is the official Convex adapter. It stores Better Auth's tables in a Convex component and exposes Better Auth's HTTP routes through Convex's router.
 
-What we don't use: `@better-auth/stripe` (pulls SolidJS deps that break Metro). For payments use `@convex-dev/stripe` or roll your own webhook handler on top of `convex/webhook.ts`.
+What we don't use: `@better-auth/stripe`. For payments use `@convex-dev/stripe` (Convex-native) or roll your own webhook handler on top of `convex/webhook.ts`.
 
 ## Why EAS top-to-bottom
 
