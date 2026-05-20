@@ -87,6 +87,7 @@
     "expo-updates": "~56.0.12",
     "expo-web-browser": "~56.0.4",
     "react": "19.2.3",
+    "react-dom": "19.2.3",
     "react-native": "0.85.3",
     "react-native-gesture-handler": "~2.31.2",
     "react-native-keyboard-controller": "1.21.6",
@@ -107,6 +108,9 @@
     "tsx": "^4.22.3",
     "typescript": "^6.0.3",
     "vitest": "^4.1.6"
+  },
+  "overrides": {
+    "react-dom": "19.2.3"
   },
   "expo": {
     "doctor": {
