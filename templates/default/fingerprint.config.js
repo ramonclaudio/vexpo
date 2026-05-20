@@ -4,6 +4,14 @@ const config = {
     "ExpoConfigVersions",
     "ExpoConfigRuntimeVersionIfString",
     "PackageJsonAndroidAndIosScriptsIfNotContainRun",
+    // EAS project metadata isn't native code, just an identifier for where
+    // OTA updates publish to. The `extra.eas.projectId` field reaches the
+    // resolved config either via `app.json` (after `eas init`) or via the
+    // `EAS_PROJECT_ID` env fallback in `app.config.ts`. Skipping it here keeps
+    // the fingerprint stable when those sources disagree (e.g. a fresh fork
+    // sets the env var before running `eas init`, or a multi-account setup
+    // resolves to a different project id locally vs on EAS Build).
+    "ExpoConfigEASProject",
   ],
   // Switch the react-native autolinking source from `expo-modules-autolinking`
   // to `@react-native-community/cli`. The default expo variant emits per-package

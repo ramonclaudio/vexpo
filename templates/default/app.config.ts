@@ -41,11 +41,19 @@ const SUPPORT = {
 };
 
 export default ({ config }: ConfigContext): ExpoConfig => {
-  // `eas init` writes `extra.eas.projectId` into app.json. The static config
-  // is merged into our return value via `...config`, so reading from
-  // `config.extra?.eas?.projectId` here picks up the EAS project id without
-  // hand-editing this file every time `eas init` runs.
-  const projectId = (config.extra as { eas?: { projectId?: string } } | undefined)?.eas?.projectId;
+  // Primary source: `eas init` writes `extra.eas.projectId` into app.json, and
+  // the static config is merged into our return value via `...config`. Reading
+  // from `config.extra?.eas?.projectId` picks that up without hand-editing
+  // this file.
+  //
+  // Fallback: `process.env.EAS_PROJECT_ID`. EAS Build auto-injects this on the
+  // worker; locally you can set it in `.env.local` to keep the committed
+  // `app.json` clean (no `eas init` mutation on every test run). The fallback
+  // also unblocks fresh forks that want to skip the `eas init` prompt and
+  // declare their project id via env instead.
+  const projectId =
+    (config.extra as { eas?: { projectId?: string } } | undefined)?.eas?.projectId ??
+    process.env.EAS_PROJECT_ID;
 
   return {
     ...config,
