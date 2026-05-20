@@ -78,7 +78,7 @@ Check, in order:
 
 ### Apple Sign In stops working overnight
 
-The SIWA `client_secret` JWT expired. Apple caps it at 180 days. Vexpo rotates every 90 via `.eas/workflows/rotate-apple-jwt.yml` cron. If the cron didn't fire:
+The SIWA `client_secret` JWT expired. Apple caps it at 180 days. vexpo rotates every 90 via `.eas/workflows/rotate-apple-jwt.yml` cron. If the cron didn't fire:
 
 1. Open EAS Dashboard → Workflows → Rotate Apple Sign In JWT. Look for the last successful run timestamp.
 2. If older than 180 days: trigger manually via `npx eas workflow:run .eas/workflows/rotate-apple-jwt.yml`.
@@ -155,7 +155,7 @@ To trace a single user-reported issue: ask the user for the `X-Request-Id` respo
 
 ## When to call a human
 
-Vexpo isn't fully self-healing. The cases where you need to wake someone up:
+vexpo isn't fully self-healing. The cases where you need to wake someone up:
 
 - **All inbound traffic to Convex is failing.** Check Convex's status page, then escalate to Convex support.
 - **EAS Workflows are stuck for hours with no new runs starting.** Check EAS's status page.

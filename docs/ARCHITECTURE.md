@@ -1,6 +1,6 @@
 # Architecture
 
-Vexpo is three pieces that ship together: a scaffolder (`create-vexpo`), an operational CLI (`vexpo`), and a production-wired iOS app (`templates/default`). This doc walks the decisions that shaped each, with the trade-offs that made them the right call.
+vexpo is three pieces that ship together: a scaffolder (`create-vexpo`), an operational CLI (`vexpo`), and a production-wired iOS app (`templates/default`). This doc walks the decisions that shaped each, with the trade-offs that made them the right call.
 
 ## Why Convex, not Postgres + Redis + a Node service
 
@@ -40,7 +40,7 @@ What we don't use: `@better-auth/stripe` (pulls SolidJS deps that break Metro). 
 
 ## Why EAS top-to-bottom
 
-EAS is Expo's CI/CD-and-infra layer for native apps. Vexpo wires every product:
+EAS is Expo's CI/CD-and-infra layer for native apps. vexpo wires every product:
 
 - **EAS Build**: four iOS build profiles (`development`, `development:simulator`, `development:device`, `production`) with per-profile caching of `node_modules` and `ios/Pods`. The `production` profile uses `autoIncrement: true` with `appVersionSource: "remote"` so EAS owns the build number.
 - **EAS Update**: `runtimeVersion: { policy: "fingerprint" }` so OTA bundles are automatically tied to native compatibility. Out of the box on SDK 56 the policy fails `CONFIGURE_EXPO_UPDATES` with a `Runtime version calculated on local machine not equal to runtime version calculated during build` error — `expo-modules-autolinking` emits per-package directory hashes for `react-native-reanimated` and `react-native-worklets` (tagged `rncoreAutolinkingIos`) that drift between developer machines and EAS Build's worker even with identical npm lockfile + node version, and `expo-modules-jsi/apple/` drifts from a combination of pod install's `prepare_command` stubs and the autolinker output. Two knobs make it stable in this template: `fingerprint.config.js` sets `useRNCoreAutolinkingFromExpo: false` (switches the autolinker source to `@react-native-community/cli`, consolidating reanimated/worklets into one content-addressed `expoAutolinkingConfig:ios` JSON source), and `.fingerprintignore` excludes `node_modules/expo-modules-jsi/apple/**`. Real native version bumps still flip the fingerprint via package.json + the autolinking JSON, so the safety contract holds. Drop both knobs when upstream fixes the autolinker determinism. `assetPatternsToBeBundled` limits OTA payload to icon + splash. `enableBsdiffPatchSupport: true` because the runtime cost of bsdiff is negligible relative to the bandwidth savings on incremental updates.
@@ -94,7 +94,7 @@ This is the same pattern as a Terraform plan/apply with a state lock. We use it 
 2. **Cross-source drift detection**: `doctor`. Auth-checks every credential, confirms IDs match across `.env.local` / Convex env / EAS env / `app.config.ts`. No `eas-cli` equivalent.
 3. **Apple-side work `eas-cli` doesn't do**: `apple jwt` (SIWA ES256 signing), `apple services-id` (ASC API + manual web walk), `apple asc-key` (validate against `/v1/apps`), `apple eas-rotation-secrets` (push the 5 secrets the JWT cron needs). `apple credentials` itself wraps `eas credentials:configure-build` with the cached ASC API key passed through env vars so the wizard skips the Apple Developer login prompt. Managed EAS Credentials is the only path.
 4. **ASC API endpoints `eas-cli` doesn't expose**: `testflight groups`, `testflight testers`, `testflight invite/remove/whats-new`, `reviews list/unanswered/respond`, `sandbox list/create/delete`, `asc:version list/view/phased`, `asc:submissions`.
-5. **Multi-destination env sync**: `env push` reads `.env.local` + `.env.prod`, pushes to Convex + EAS env in one pass. Each EAS env command exists separately. Vexpo's win is the cross-destination orchestration.
+5. **Multi-destination env sync**: `env push` reads `.env.local` + `.env.prod`, pushes to Convex + EAS env in one pass. Each EAS env command exists separately. vexpo's win is the cross-destination orchestration.
 
 Categories one through five are vexpo's value. Everything else routes to `eas`. `vexpo full` does NOT invoke `eas build`. When provisioning completes, it prints the canonical `eas build -p ios --profile production --auto-submit-with-profile testflight` command for the user to run.
 

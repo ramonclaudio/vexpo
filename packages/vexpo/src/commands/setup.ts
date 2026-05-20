@@ -1339,7 +1339,7 @@ export async function runSetup(opts: SetupOptions): Promise<number> {
     await printSummary(!!options.local, performance.now() - startedAtPerf);
 
     // After full provisioning, print the canonical TestFlight build command.
-    // Vexpo doesn't invoke `eas build` itself. that's EAS's command and
+    // vexpo doesn't invoke `eas build` itself. that's EAS's command and
     // the user runs it when they're ready (after reviewing the build profile,
     // checking Apple's review status, etc.). Lite mode skips this hint.
     if (!options.lite && !options.dryRun) {
