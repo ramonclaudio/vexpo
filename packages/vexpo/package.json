@@ -46,8 +46,8 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:e2e": "bun run build && __tests__/e2e/run.sh",
-    "test:all": "bun run test && bun run test:e2e"
+    "test:e2e": "npm run build && __tests__/e2e/run.sh",
+    "test:all": "npm run test && npm run test:e2e"
   },
   "dependencies": {
     "commander": "^14.0.3",
