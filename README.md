@@ -100,3 +100,26 @@ bun run test               # 250 unit (vexpo lib) + 34 template = 284 total
 bun run test:packages:e2e  # 14 e2e tests against the built `vexpo` CLI dist
 bun run test:all           # everything
 ```
+
+### Testing `eas build` against `templates/default`
+
+The committed `templates/default/app.json` is `{ "expo": {} }` — no `projectId`. Forks run `eas init` once and commit their own. For testing in this repo without committing your `projectId`, eas-cli needs it in process env at invocation time, because eas-cli sets `EXPO_NO_DOTENV=1` when evaluating `app.config.ts` for projectId resolution (intentional, for build determinism). `.env.local` alone won't be loaded by eas-cli for that step.
+
+Two ways to give eas-cli the value without committing it:
+
+```bash
+# A) one-shot shell export per session
+export $(grep '^EAS_PROJECT_ID=' templates/default/.env.local)
+cd templates/default && npx eas build -p ios --profile production
+
+# B) direnv (auto-loads on cd; recommended)
+brew install direnv                                # if not installed
+echo 'dotenv .env.local' > templates/default/.envrc
+direnv allow templates/default
+# every subsequent `cd templates/default` exports .env.local automatically
+cd templates/default && npx eas build -p ios --profile production
+```
+
+Without either, the first `eas build` of a fresh checkout will prompt "Configure this project?", write `projectId` into `app.json`, and you'll need to stash it before committing.
+
+`npx vexpo doctor`, `vexpo setup`, and `vexpo env push` all read `.env.local` directly, so they work without shell-loading.
