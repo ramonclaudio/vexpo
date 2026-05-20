@@ -47,7 +47,7 @@ npm workspace at the root with `packages/*` as members. Templates intentionally 
 - Each command exports a `run<Name>(options)` function returning a numeric exit code. `cli.ts` handles `process.exit`.
 - Cross-cutting helpers (logging, prompts, state cache, proc helpers, lib clients, path expansion) under `src/lib/`.
 - Node-only. No `_run.mjs` runtime selector, the published CLI is a single ESM bundle that runs anywhere Node 20+ works.
-- Tests live in `packages/vexpo/__tests__/`: unit tests under `lib/` (vitest, 250 tests covering path / parsers / asc-api / asc-jwt / asc-privacy / asc-accessibility / state / verify / convex-env / env-files / env-local / eas-cli / eas-env / apple-jwt / app / pkg-manager / poll), e2e under `e2e/run.sh` (14 bash tests against the built dist).
+- Tests live in `packages/vexpo/__tests__/`: 291 vitest unit tests across `lib/` (17 files: app, apple-jwt, asc-accessibility, asc-api, asc-jwt, asc-privacy, convex-env, eas-cli, eas-env, eas-integrations, env-files, env-local, path, pkg-manager, poll, state, verify) and `commands/` (2 files: asc, setup-is-complete), plus 14 bash e2e tests in `e2e/run.sh` against the built dist.
 
 ### Apple ASC API workarounds
 
