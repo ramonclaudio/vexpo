@@ -91,7 +91,7 @@ export type SetupOptions = {
    * Convex deployment + Better Auth secret + bundle id prompt. No Apple
    * Developer account, no domain, no EAS, no Resend, no rebrand. Email
    * verification stays off (sign-up auto-verifies, no OTP). ~60 seconds
-   * from clone to `bun run ios`.
+   * from clone to `npm run ios`.
    */
   lite?: boolean;
   /**
@@ -335,12 +335,12 @@ async function stepPrerequisites(): Promise<void> {
 
   const [easV, convexV] = await Promise.all([easCliVersion(), convexCliVersion()]);
   if (easV) ok(`eas-cli ${easV}`);
-  else nop("eas-cli not on PATH (bunx will fetch on demand)");
+  else nop("eas-cli not on PATH (npx will fetch on demand)");
   if (convexV) ok(`convex ${convexV}`);
-  else nop("convex CLI not on PATH (bunx will fetch on demand)");
+  else nop("convex CLI not on PATH (npx will fetch on demand)");
 
   if (await convexIsLoggedIn()) ok("Convex auth detected");
-  else yep("not signed in to Convex (`bunx vexpo accounts` will prompt)");
+  else yep("not signed in to Convex (`npx vexpo accounts` will prompt)");
 }
 
 async function stepProbe(): Promise<{
@@ -421,7 +421,7 @@ async function stepProbe(): Promise<{
     line(`  ${BOLD}${label.padEnd(w)}${RESET}  ${mark(row.status)}`);
   }
   line(
-    `  ${BOLD}${"Review account".padEnd(w)}${RESET}  ${DIM}unknown (run \`bunx vexpo review-account\` to seed)${RESET}`,
+    `  ${BOLD}${"Review account".padEnd(w)}${RESET}  ${DIM}unknown (run \`npx vexpo review-account\` to seed)${RESET}`,
   );
 
   const needs = new Map<string, boolean>();
@@ -556,7 +556,7 @@ async function describePhase(
         details: [
           "validates an ASC API key against ASC's GET /v1/apps before EAS uses it",
           "we do NOT upload to EAS. that's `eas credentials`. We only validate + cache",
-          "cache (issuer, keyId, p8 path) in state.json so `bunx vexpo apple services-id` can reuse",
+          "cache (issuer, keyId, p8 path) in state.json so `npx vexpo apple services-id` can reuse",
           "fast-fail: catches a bad key in <1s instead of waiting for an EAS build to fail",
         ],
       };
@@ -653,7 +653,7 @@ async function printDryRunPlan(probe: {
   section("Dry run plan");
   if (options.fresh)
     note(
-      `${YELLOW}--fresh${RESET}: would wipe .setup-state.json + node_modules + ios/ + bun.lock + build artifacts before reprovisioning`,
+      `${YELLOW}--fresh${RESET}: would wipe .setup-state.json + node_modules + ios/ + package-lock.json + build artifacts before reprovisioning`,
     );
   if (options.force) note(`${YELLOW}--force${RESET}: would re-run every step regardless of cache`);
   if (probe.install) note(`would run install (no node_modules)`);
@@ -676,7 +676,7 @@ async function printDryRunPlan(probe: {
   );
   line();
   note(`drop ${DIM}--dry-run${RESET} to actually do it`);
-  note(`single-phase: ${DIM}bunx vexpo <phase>${RESET} (e.g. ${DIM}bunx vexpo resend${RESET})`);
+  note(`single-phase: ${DIM}npx vexpo <phase>${RESET} (e.g. ${DIM}npx vexpo resend${RESET})`);
 }
 
 /**
@@ -810,7 +810,7 @@ function printJourneyPlan(lite: boolean): void {
   if (lite) {
     section("Setup journey (lite)");
     line(
-      `  ${DIM}Lite mode provisions only what the iOS Simulator needs. No Apple Developer account, no domain, no Resend, no EAS account. ~60 seconds from start to \`bun run ios\`.${RESET}`,
+      `  ${DIM}Lite mode provisions only what the iOS Simulator needs. No Apple Developer account, no domain, no Resend, no EAS account. ~60 seconds from start to \`npm run ios\`.${RESET}`,
     );
     line();
     line(`  ${BOLD}${GREEN}Auto${RESET} ${DIM}(CLI does it, no input needed)${RESET}`);
@@ -909,6 +909,7 @@ async function stepCleanup(fresh: boolean): Promise<void> {
   const tmpdir = process.env.TMPDIR ?? "/tmp";
   const targets = [
     "node_modules",
+    "package-lock.json",
     "bun.lock",
     "ios",
     ".expo",
@@ -995,7 +996,7 @@ function printShipNextSteps(): void {
   line(`  Run this when you're ready:`);
   line();
   line(
-    `  ${BOLD}bunx eas build -p ios --profile production --auto-submit-with-profile testflight${RESET}`,
+    `  ${BOLD}npx eas build -p ios --profile production --auto-submit-with-profile testflight${RESET}`,
   );
   line();
   line(
@@ -1105,7 +1106,7 @@ async function printSummary(useLocal: boolean, elapsedMs: number): Promise<void>
 
   line(`\n  ${GREEN}ok${RESET}   setup complete in ${(elapsedMs / 1000).toFixed(2)}s`);
   line(
-    `\n  next: ${BOLD}${useLocal ? "bunx convex dev --local" : "bun run convex:dev"}${RESET} ${DIM}then${RESET} ${BOLD}bun run ios${RESET}\n`,
+    `\n  next: ${BOLD}${useLocal ? "npx convex dev --local" : "npm run convex:dev"}${RESET} ${DIM}then${RESET} ${BOLD}npm run ios${RESET}\n`,
   );
 }
 

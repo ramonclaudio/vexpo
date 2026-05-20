@@ -13,7 +13,7 @@
 //      customer review responses, sandbox testers, version state)
 //   5. Multi-destination env sync (Convex + EAS together)
 //
-// Everything else: use `bunx eas <subcommand>` directly. The README
+// Everything else: use `npx eas <subcommand>` directly. The README
 // documents the canonical eas-cli flow for build / update / submit /
 // deploy / channel / branch / webhook / workflow / fingerprint / metadata
 // / credentials / integrations:asc.

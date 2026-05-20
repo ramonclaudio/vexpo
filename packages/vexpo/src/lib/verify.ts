@@ -221,7 +221,7 @@ async function verifyResend(ctx: VerifyContext): Promise<Check[]> {
     // auto-verifies, no Resend needed. Skip rather than fail.
     const requireEmailVerification = env.get("REQUIRE_EMAIL_VERIFICATION");
     if (!requireEmailVerification || requireEmailVerification === "false") {
-      checks.push(skip("resend", "api-key-set", "lite mode (run `bunx vexpo full` to provision)"));
+      checks.push(skip("resend", "api-key-set", "lite mode (run `npx vexpo full` to provision)"));
       return checks;
     }
     checks.push(fail("resend", "api-key-set", `RESEND_API_KEY not set on Convex (${ctx.channel})`));
@@ -338,7 +338,7 @@ async function verifyResend(ctx: VerifyContext): Promise<Check[]> {
             "resend",
             "webhook-events",
             `webhook missing ${missing.join(", ")}`,
-            "re-run `bunx vexpo resend` to refresh subscription",
+            "re-run `npx vexpo resend` to refresh subscription",
           ),
         );
     }
@@ -444,7 +444,7 @@ async function verifyApple(ctx: VerifyContext): Promise<Check[]> {
                 "apple",
                 "services-id-exists",
                 `${servicesId} not found in App Store Connect`,
-                "run `bunx vexpo apple services-id` to provision it",
+                "run `npx vexpo apple services-id` to provision it",
               ),
             );
         } catch (e) {
@@ -502,7 +502,7 @@ async function verifyApple(ctx: VerifyContext): Promise<Check[]> {
     }
   } else {
     checks.push(
-      skip("apple", "asc-key-valid", "no cached ASC creds (run `bunx vexpo apple asc-key`)"),
+      skip("apple", "asc-key-valid", "no cached ASC creds (run `npx vexpo apple asc-key`)"),
     );
   }
 
@@ -527,7 +527,7 @@ async function verifyEas(ctx: VerifyContext): Promise<Check[]> {
     const env = ctx.channel === "prod" ? ctx.convexProdEnv : ctx.convexEnv;
     const requireEmailVerification = env.get("REQUIRE_EMAIL_VERIFICATION");
     if (!requireEmailVerification || requireEmailVerification === "false") {
-      checks.push(skip("eas", "project-id", "lite mode (run `bunx vexpo full` to init EAS)"));
+      checks.push(skip("eas", "project-id", "lite mode (run `npx vexpo full` to init EAS)"));
       return checks;
     }
     checks.push(
@@ -545,7 +545,7 @@ async function verifyEas(ctx: VerifyContext): Promise<Check[]> {
     return checks;
   }
   if (!who) {
-    checks.push(warn("eas", "signed-in", "not signed in (run `bunx eas login`)"));
+    checks.push(warn("eas", "signed-in", "not signed in (run `npx eas login`)"));
     return checks;
   }
   checks.push(ok("eas", "signed-in", who));
@@ -618,7 +618,7 @@ async function verifyEas(ctx: VerifyContext): Promise<Check[]> {
           "eas",
           `env-${env}`,
           `missing ${missing.join(", ")}`,
-          "run `bunx vexpo full` to init EAS + mirror env",
+          "run `npx vexpo full` to init EAS + mirror env",
         ),
       );
 

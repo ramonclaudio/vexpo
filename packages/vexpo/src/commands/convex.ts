@@ -44,7 +44,7 @@ export async function runConvex(options: ConvexOptions): Promise<number> {
     if (!(await isLoggedIn())) {
       yep("not signed in to Convex");
       await helpAndWait({
-        body: "Sign up free and run `bunx convex login` in another terminal:",
+        body: "Sign up free and run `npx convex login` in another terminal:",
         urls: [
           { label: "Convex sign-up", url: "https://convex.dev" },
           { label: "Convex dashboard", url: "https://dashboard.convex.dev" },

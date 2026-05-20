@@ -104,9 +104,9 @@ export async function runAppleCredentials(options: CredentialsOptions): Promise<
     note(`  EAS env (${profile}) does not set EXPO_PUBLIC_APP_BUNDLE_ID either`);
     line();
     note("fix by running the rebrand wizard, which bakes your bundle id into app.config.ts:");
-    note(`  ${BOLD}bunx vexpo rebrand${RESET}`);
+    note(`  ${BOLD}npx vexpo rebrand${RESET}`);
     note("alternatively, push your local env to EAS before running this step:");
-    note(`  ${BOLD}bunx eas env:push --environment ${profile}${RESET}`);
+    note(`  ${BOLD}npx eas env:push --environment ${profile}${RESET}`);
     return 1;
   }
   ok(`bundle id: ${BOLD}${bundle.value}${RESET} (from ${bundle.source})`);
@@ -125,7 +125,7 @@ export async function runAppleCredentials(options: CredentialsOptions): Promise<
   line();
   if (process.stdin.isTTY) {
     if (!(await askYesNo(`Run \`eas credentials -p ios -e ${profile}\` now?`, true))) {
-      nop("skipped (run `bunx eas credentials -p ios` later)");
+      nop("skipped (run `npx eas credentials -p ios` later)");
       return 0;
     }
   } else {
@@ -165,6 +165,6 @@ export async function runAppleCredentials(options: CredentialsOptions): Promise<
 
   line();
   ok("EAS credentials configured");
-  yep(`next: ${BOLD}bun run eas:dev:device${RESET} to build the dev client on a registered device`);
+  yep(`next: ${BOLD}npm run eas:dev:device${RESET} to build the dev client on a registered device`);
   return 0;
 }

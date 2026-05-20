@@ -6,11 +6,11 @@ Guidance for AI coding agents working in this repository. Complements the README
 
 Monorepo for vexpo: a one-shot Expo + Convex + Better Auth + Resend starter targeting iOS. Three pieces:
 
-- `packages/create-vexpo`: npm scaffolder, ~200 lines. Runs as `npm create @ramonclaudio/vexpo@latest my-app`. Copies `templates/default/`, rewrites `package.json` (project name, version, removes monorepo metadata, swaps the `vexpo` workspace ref for the published version), runs `bun install`, inits git.
+- `packages/create-vexpo`: npm scaffolder, ~200 lines. Runs as `npm create @ramonclaudio/vexpo@latest my-app`. Copies `templates/default/`, rewrites `package.json` (project name, version, removes monorepo metadata, swaps the `vexpo` workspace ref for the published version), installs dependencies via the detected package manager (sniffed from `npm_config_user_agent`; defaults to `npm`), inits git.
 - `packages/vexpo`: operational CLI. Runs as `vexpo <subcommand>` from inside a scaffolded project. Deliberately small: doesn't wrap what `eas` already does well. Surfaces only the things `eas-cli` doesn't do: two-mode setup orchestration (`lite`, `full`) with standalone phases (`accounts`, `rebrand`, `review-account`, `convex`, `better-auth`, `resend`), cross-source drift detection (`doctor`), Apple-side work `eas-cli` doesn't expose (`apple {asc-key, credentials, services-id, jwt, eas-rotation-secrets}`), ASC API endpoints `eas-cli` doesn't expose (`testflight`, `reviews`, `sandbox`, `asc:version`, `asc:submissions`), and multi-destination env sync (`env push`). Commander-based tree, ~400 lines of CLI wiring on top of ~3000 lines of orchestration logic in `src/lib/` and `src/commands/`.
-- `templates/default/`: the Expo SDK 56 + Convex + Better Auth app that gets copied. Production-ready: real auth, real push, real OTA, real App Store submission. Standalone (its own `bun.lock`, `node_modules`), not a workspace member.
+- `templates/default/`: the Expo SDK 56 + Convex + Better Auth app that gets copied. Production-ready: real auth, real push, real OTA, real App Store submission. Standalone (its own `package-lock.json`, `node_modules`), not a workspace member.
 
-Bun workspace at the root with `packages/*` as members. Templates intentionally stay outside the workspace because Expo's hoisting expectations don't survive bun's workspace install layout. The `vexpo` CLI links into the template via `bun link` for monorepo dev (`bun run link:dev`).
+npm workspace at the root with `packages/*` as members. Templates intentionally stay outside the workspace because Expo's hoisting expectations don't survive npm's workspace install layout. The `vexpo` CLI links into the template via `npm link` for monorepo dev (`npm run link:dev`).
 
 ## Conventions
 
@@ -24,11 +24,11 @@ Bun workspace at the root with `packages/*` as members. Templates intentionally 
 
 ### Monorepo (root)
 
-- Bun workspace, members are `packages/*` only. Single `bun.lock` at the root for those. Template has its own lockfile.
+- npm workspace, members are `packages/*` only. Single `package-lock.json` at the root for those. Template has its own lockfile.
 - TypeScript references via per-package `tsconfig.json` extending the root.
 - ESM only. `"type": "module"` everywhere.
 - Package builds via tsup. No webpack, no rollup directly.
-- For monorepo dev, run `bun run link:dev` once. After that, `cd templates/default && npx vexpo lite` (or `full`) resolves through the linked `vexpo` binary.
+- For monorepo dev, run `npm run link:dev` once. After that, `cd templates/default && npx vexpo lite` (or `full`) resolves through the linked `vexpo` binary.
 
 ### Template (`templates/default/`)
 
@@ -63,16 +63,16 @@ When Apple loosens any of these, the CLI continues to work.
 ## Before making changes
 
 1. Read this file, the template's `AGENTS.md`, and `README.md`.
-2. From the root: `bun run typecheck` to confirm packages compile.
-3. From the root: `bun run test:all` to run all unit + e2e tests (291 unit + 14 e2e + 34 template = 339).
-4. If touching the CLI: `bun --filter vexpo build` then `bun --filter vexpo test:e2e` to confirm the dist behaves.
+2. From the root: `npm run typecheck` to confirm packages compile.
+3. From the root: `npm run test:all` to run all unit + e2e tests (291 unit + 14 e2e + 34 template = 339).
+4. If touching the CLI: `npm run build -w @ramonclaudio/vexpo` then `npm run test:e2e -w @ramonclaudio/vexpo` to confirm the dist behaves.
 
 ## Common tasks
 
-- **Build all packages**: `bun --filter '*' build` from the root.
-- **Run the template locally**: `bun run template:dev`.
-- **Test the full pipeline**: `bun run test:all` from the root.
-- **Test the scaffolder end-to-end**: `bun --filter create-vexpo build && cd /tmp && trash test-app 2>/dev/null. Node /path/to/packages/create-vexpo/dist/index.js test-app --no-install --no-git -y && cd test-app && npm install && npx vexpo full --dry-run`.
+- **Build all packages**: `npm run build` from the root.
+- **Run the template locally**: `npm run template:dev`.
+- **Test the full pipeline**: `npm run test:all` from the root.
+- **Test the scaffolder end-to-end**: `npm run build -w @ramonclaudio/create-vexpo && cd /tmp && trash test-app 2>/dev/null. Node /path/to/packages/create-vexpo/dist/index.js test-app --no-install --no-git -y && cd test-app && npm install && npx vexpo full --dry-run`.
 - **Add a new vexpo subcommand**: Create `packages/vexpo/src/commands/<name>.ts` exporting `run<Name>(options)`, register in `packages/vexpo/src/cli.ts`, add an e2e test in `__tests__/e2e/run.sh`.
 - **Update both lib copies**: There aren't two anymore. The lib lives at `packages/vexpo/src/lib/` and is the only copy. Done.
 
