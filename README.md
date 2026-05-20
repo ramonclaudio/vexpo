@@ -59,7 +59,8 @@ vexpo/
 ├── packages/
 │   ├── create-vexpo/      # npm scaffolder (`npm create @ramonclaudio/vexpo@latest`)
 │   └── vexpo/             # operational CLI (`npx vexpo <subcommand>`)
-└── templates/default/     # the Expo + Convex + Better Auth app
+├── templates/default/     # the Expo + Convex + Better Auth app
+└── docs/                  # ARCHITECTURE, SECURITY, OPERATIONS, UPSTREAM
 ```
 
 `create-vexpo` copies `templates/default/` into a fresh directory, rewrites `package.json`, runs `npm install`, inits git. `vexpo` ships as a devDependency, so `npx vexpo` resolves to the local pinned version.
@@ -96,7 +97,7 @@ npx vexpo full --dry-run  # exercises the linked CLI
 Tests:
 
 ```bash
-npm run test               # 291 unit (vexpo lib) + 34 template = 325 total
+npm run test               # 291 unit (vexpo) + 34 template = 325 total
 npm run test:packages:e2e  # 14 e2e tests against the built `vexpo` CLI dist
 npm run test:all           # everything
 ```
