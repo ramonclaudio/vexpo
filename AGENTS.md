@@ -72,9 +72,8 @@ When Apple loosens any of these, the CLI continues to work.
 - **Build all packages**: `npm run build` from the root.
 - **Run the template locally**: `npm run template:dev`.
 - **Test the full pipeline**: `npm run test:all` from the root.
-- **Test the scaffolder end-to-end**: `npm run build -w @ramonclaudio/create-vexpo && cd /tmp && trash test-app 2>/dev/null. Node /path/to/packages/create-vexpo/dist/index.js test-app --no-install --no-git -y && cd test-app && npm install && npx vexpo full --dry-run`.
+- **Test the scaffolder end-to-end**: `npm run build -w @ramonclaudio/create-vexpo && cd /tmp && trash test-app 2>/dev/null && node /path/to/packages/create-vexpo/dist/index.js test-app --no-install --no-git -y && cd test-app && npm install && npx vexpo full --dry-run`.
 - **Add a new vexpo subcommand**: Create `packages/vexpo/src/commands/<name>.ts` exporting `run<Name>(options)`, register in `packages/vexpo/src/cli.ts`, add an e2e test in `__tests__/e2e/run.sh`.
-- **Update both lib copies**: There aren't two anymore. The lib lives at `packages/vexpo/src/lib/` and is the only copy. Done.
 
 ## Not appropriate
 
