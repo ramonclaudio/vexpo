@@ -32,7 +32,7 @@ import {
 } from "../lib/convex-env.ts";
 import {
   envList as easEnvList,
-  projectIdFromAppJson,
+  resolveProjectId,
   version as easCliVersion,
 } from "../lib/eas-env.ts";
 import { ENV_FILE, readAll } from "../lib/env-local.ts";
@@ -281,7 +281,7 @@ async function liveCheckApple(env?: Map<string, string>): Promise<boolean> {
 }
 
 async function liveCheckEas(): Promise<boolean> {
-  const projectId = await projectIdFromAppJson();
+  const projectId = await resolveProjectId();
   if (!projectId) return false;
   const eas = await easEnvList("production").catch(() => new Map<string, string>());
   return ["EXPO_PUBLIC_CONVEX_URL", "EXPO_PUBLIC_CONVEX_SITE_URL", "EXPO_PUBLIC_SITE_URL"].every(
@@ -300,7 +300,7 @@ async function liveCheckAscLink(): Promise<boolean> {
 }
 
 async function liveCheckRotationSecrets(): Promise<boolean> {
-  const projectId = await projectIdFromAppJson();
+  const projectId = await resolveProjectId();
   if (!projectId) return false;
   const eas = await easEnvList("production").catch(() => new Map<string, string>());
   return [
@@ -1017,7 +1017,7 @@ async function printSummary(useLocal: boolean, elapsedMs: number): Promise<void>
   section("Summary");
   const [localEnv, convexEnv] = await Promise.all([readAll(), convexEnvMap()]);
   const easEnv = await easEnvList("production").catch(() => new Map<string, string>());
-  const projectId = await projectIdFromAppJson();
+  const projectId = await resolveProjectId();
   const state = await loadState();
 
   const localKeys = [

@@ -20,23 +20,44 @@ export async function whoami(): Promise<string | null> {
   return text ? text.split("\n")[0].trim() : null;
 }
 
-export async function projectIdFromAppJson(): Promise<string | null> {
+/**
+ * Resolves the EAS project id from the same source chain `app.config.ts` uses
+ * in the template default, so doctor + setup + env push agree with what
+ * `eas build` will actually use at config eval time.
+ *
+ * Source order:
+ *   1. `app.json` -> `expo.extra.eas.projectId` (written by `eas init`)
+ *   2. `process.env.EAS_PROJECT_ID` (shell override; also auto-injected by
+ *      EAS Build on the worker)
+ *   3. `.env.local` -> `EAS_PROJECT_ID` (the canonical place to set this
+ *      locally without mutating the committed `app.json`)
+ *
+ * Empty strings are treated as "not set" at every step.
+ */
+export async function resolveProjectId(): Promise<string | null> {
   try {
-    try {
-      await access("app.json");
-    } catch {
-      return null;
-    }
+    await access("app.json");
     const json = JSON.parse(await readFile("app.json", "utf8")) as {
       expo?: { extra?: { eas?: { projectId?: string } } };
     };
-    // Treat empty string as "not set". `?? null` would let an empty string
-    // through, which is never a valid EAS projectId.
     const value = json.expo?.extra?.eas?.projectId;
-    return value && value.length > 0 ? value : null;
+    if (value && value.length > 0) return value;
   } catch {
-    return null;
+    // fall through; app.json absent / malformed / missing the key
   }
+
+  const fromProcess = process.env.EAS_PROJECT_ID;
+  if (fromProcess && fromProcess.length > 0) return fromProcess;
+
+  try {
+    const { readOne } = await import("./env-local.ts");
+    const fromFile = await readOne("EAS_PROJECT_ID");
+    if (fromFile && fromFile.length > 0) return fromFile;
+  } catch {
+    // ignore .env.local read failures, just return null
+  }
+
+  return null;
 }
 
 export async function envList(
@@ -148,7 +169,7 @@ export async function envPush(opts: {
  * prompt entirely. Otherwise create a fresh project.
  */
 export async function init(): Promise<{ ok: boolean; projectId?: string }> {
-  const existing = await projectIdFromAppJson();
+  const existing = await resolveProjectId();
   const argv = existing
     ? [dlx(), "eas", "init", "--non-interactive", "--force", "--id", existing]
     : [dlx(), "eas", "init", "--non-interactive", "--force"];
@@ -158,7 +179,7 @@ export async function init(): Promise<{ ok: boolean; projectId?: string }> {
     stderr: "inherit",
   });
   if ((await proc.exited) !== 0) return { ok: false };
-  const id = await projectIdFromAppJson();
+  const id = await resolveProjectId();
   return { ok: !!id, projectId: id ?? undefined };
 }
 
