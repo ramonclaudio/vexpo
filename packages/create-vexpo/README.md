@@ -10,7 +10,7 @@ Scaffold a new [vexpo](https://github.com/ramonclaudio/vexpo) project: Expo SDK 
 ```bash
 npm create @ramonclaudio/vexpo@latest my-app
 # or
-bunx @ramonclaudio/create-vexpo@latest my-app
+npx @ramonclaudio/create-vexpo@latest my-app
 ```
 
 After scaffold:

@@ -540,7 +540,7 @@ export default function ProfileScreen() {
                   <Text modifiers={helperModifiers}>
                     {emailFeatures
                       ? "Changing your email requires verifying the new address with a 6-digit code."
-                      : "Email change requires Resend setup. Run `bunx vexpo full` to enable."}
+                      : "Email change requires Resend setup. Run `npx vexpo full` to enable."}
                   </Text>
                 </VStack>
 

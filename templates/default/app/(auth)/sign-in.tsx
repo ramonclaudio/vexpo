@@ -67,7 +67,7 @@ export default function SignInScreen() {
   const providers = useQuery(api.auth.getEnabledProviders);
   const showApple = appleAvailable && providers?.apple === true;
   // Email features (OTP sign-in, password reset) require the Convex env to
-  // have `REQUIRE_EMAIL_VERIFICATION=true` (set by `bunx vexpo full`).
+  // have `REQUIRE_EMAIL_VERIFICATION=true` (set by `npx vexpo full`).
   // Until then, hide them so users don't hit a code-was-logged-to-console
   // dead end. Email + password sign-up/sign-in remains available.
   const emailFeatures = providers?.emailFeatures === true;
