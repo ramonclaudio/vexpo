@@ -201,9 +201,7 @@ Pass `--email` / `--password` to override the values from `store.config.json`. S
 
 ## Phase 6: EAS (auto, no standalone command, runs as part of `vexpo full`)
 
-Runs `eas init` (creates the project, or links to an existing one) and writes `extra.eas.projectId` to `app.json`. Mirrors every `EXPO_PUBLIC_*` from `.env.local` to EAS env across `production`, `preview`, and `development` environments using `npx eas env:create --visibility plaintext`.
-
-Pass `--skip-init` to only mirror env, `--skip-env` to only init.
+Runs `eas init` (creates the project, or links to an existing one) and writes `extra.eas.projectId` to `app.json`. Mirrors every `EXPO_PUBLIC_*` from `.env.local` to the EAS `development` environment using `npx eas env:create --visibility plaintext`. Prod and preview values come from `.env.prod` via `vexpo env push`, which routes to `["production", "preview"]`.
 
 After this, `expo prebuild` and `eas build` both find the right project + env. The `extra.eas.projectId` write also enables `app.config.ts → updates.url`.
 
@@ -365,7 +363,7 @@ Lite mode reads source files and pushes values to remote destinations. Zero prov
 | File              | Channel | Default destinations                                    |
 | ----------------- | ------- | ------------------------------------------------------- |
 | `.env.local`      | dev     | Convex dev env, EAS development env                     |
-| `.env.prod`       | prod    | Convex prod env, EAS production+preview, GitHub secrets |
+| `.env.prod`       | prod    | Convex prod env, EAS production+preview                 |
 | `.env.production` | prod    | (used if `.env.prod` is absent)                         |
 
 Override paths with `--local-file` / `--prod-file`. Both files are optional, lite mode runs with whatever it finds.
@@ -374,21 +372,23 @@ Override paths with `--local-file` / `--prod-file`. Both files are optional, lit
 
 Each known env-var has a fixed routing in `vexpo`'s env-files module ([source](https://github.com/ramonclaudio/vexpo/blob/main/packages/vexpo/src/lib/env-files.ts)):
 
-| Source key                              | Convex (dev)      | Convex (prod)     | EAS env               | GitHub secret                   |
-| --------------------------------------- | ----------------- | ----------------- | --------------------- | ------------------------------- |
-| `EXPO_PUBLIC_*`                         | n/a               | n/a               | dev (or prod+preview) | n/a                             |
-| `BETTER_AUTH_SECRET`                    | dev               | prod              | n/a                   | n/a                             |
-| `RESEND_API_KEY`                        | dev               | prod              | n/a                   | n/a                             |
-| `RESEND_WEBHOOK_SECRET`                 | dev               | prod              | n/a                   | n/a                             |
-| `RESEND_TEST_MODE`, `EMAIL_FROM`        | dev               | prod              | n/a                   | n/a                             |
-| `APP_NAME`, `SITE_URL`, `APP_BUNDLE_ID` | dev               | prod              | n/a                   | n/a                             |
-| `APPLE_CLIENT_ID`                       | dev               | prod              | n/a                   | n/a                             |
-| `APPLE_CLIENT_SECRET`                   | dev               | prod              | n/a                   | n/a                             |
-| `APPLE_TEAM_ID`                         | dev               | prod              | n/a                   | prod only                       |
-| `APPLE_KEY_ID`                          | dev               | prod              | n/a                   | prod only                       |
-| `APPLE_SERVICES_ID`                     | `APPLE_CLIENT_ID` | `APPLE_CLIENT_ID` | n/a                   | `APPLE_SERVICES_ID` (prod only) |
-| `APPLE_P8_PRIVATE_KEY`                  | n/a               | n/a               | n/a                   | prod only                       |
-| `CONVEX_DEPLOY_KEY`                     | n/a               | n/a               | n/a                   | prod only                       |
+| Source key                              | Convex (dev)      | Convex (prod)     | EAS env               |
+| --------------------------------------- | ----------------- | ----------------- | --------------------- |
+| `EXPO_PUBLIC_*`                         | n/a               | n/a               | dev (or prod+preview) |
+| `BETTER_AUTH_SECRET`                    | dev               | prod              | n/a                   |
+| `RESEND_API_KEY`                        | dev               | prod              | n/a                   |
+| `RESEND_WEBHOOK_SECRET`                 | dev               | prod              | n/a                   |
+| `RESEND_TEST_MODE`, `EMAIL_FROM`        | dev               | prod              | n/a                   |
+| `APP_NAME`, `SITE_URL`, `APP_BUNDLE_ID` | dev               | prod              | n/a                   |
+| `APPLE_CLIENT_ID`                       | dev               | prod              | n/a                   |
+| `APPLE_CLIENT_SECRET`                   | dev               | prod              | n/a                   |
+| `APPLE_TEAM_ID`                         | dev               | prod              | n/a                   |
+| `APPLE_KEY_ID`                          | dev               | prod              | n/a                   |
+| `APPLE_SERVICES_ID`                     | `APPLE_CLIENT_ID` | `APPLE_CLIENT_ID` | n/a                   |
+| `APPLE_P8_PRIVATE_KEY`                  | n/a               | n/a               | n/a                   |
+| `CONVEX_DEPLOY_KEY`                     | n/a               | n/a               | n/a                   |
+
+The five rotation-cron secrets (`APPLE_TEAM_ID`, `APPLE_KEY_ID`, `APPLE_SERVICES_ID`, `APPLE_P8_PRIVATE_KEY`, `CONVEX_DEPLOY_KEY`) live in EAS env at `secret` visibility but `vexpo env push` does not write them — run `npx vexpo apple eas-rotation-secrets` once to push the full set.
 
 Notes:
 
