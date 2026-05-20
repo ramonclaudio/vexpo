@@ -462,7 +462,7 @@ export async function runEnvPush(options: EnvPushOptions): Promise<number> {
 
 function printVerifyResults(checks: Check[]): void {
   const w = Math.max(...checks.map((c) => c.name.length));
-  const order = ["files", "convex", "resend", "apple", "eas", "github", "coherence"] as const;
+  const order = ["files", "convex", "resend", "apple", "eas", "coherence"] as const;
   const grouped = new Map<string, Check[]>();
   for (const c of checks) {
     if (!grouped.has(c.category)) grouped.set(c.category, []);

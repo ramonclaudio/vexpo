@@ -72,7 +72,7 @@ Apple App Store Review 5.1.1(v) requires apps that let users create accounts to 
 - **`users.deleteAccount` tombstones, doesn't purge.** Patches the user row with `deletedAt: Date.now()`, drops every Better Auth session so the device signs out, and drops push tokens so notifications stop. Credentials, account rows, Apple links all stay intact during the window.
 - **`users.restoreAccount` lifts the tombstone.** A user who signs back in within 30 days sees their `getMe` query return a row with `deletedAt` set; the client can route them to a "restore or continue with deletion" surface and call `restoreAccount` to undo.
 - **`internal.users.hardDeleteExpired` cron runs daily at 04:00 UTC.** Walks `users.by_deletedAt` in bounded batches, and for each row past the window irreversibly:
-  1. Revokes Apple Sign In refresh tokens via `internal.apple.revokeRefreshToken` (per Apple guideline 5.1.1(v): "you revoke the associated tokens when they delete their account")
+  1. Revokes Apple Sign In refresh tokens via `internal.apple.revokeRefreshToken`. Apple guideline 5.1.1(v) requires in-app account deletion; their [Offering account deletion in your app](https://developer.apple.com/support/offering-account-deletion-in-your-app/) support page adds: "Apps that support Sign in with Apple should use the Sign in with Apple REST API to revoke user tokens."
   2. Drops every Better Auth row keyed to the user (`session`, `account`, `twoFactor`, `oauthAccessToken`, `oauthConsent`, `oauthApplication`, `verification`)
   3. Deletes the Better Auth user, which fires the `onDelete` trigger that drops the app `users` row and frees the avatar blob
   4. Writes an audit row to `accountDeletionAudit`
@@ -111,7 +111,7 @@ https://developer.apple.com/documentation/devicecheck/validating-apps-that-conne
 
 - The root `.github/workflows/check.yml` declares `permissions: contents: read` explicitly. Default GitHub Actions permissions are broad. We narrow to read-only.
 - The release workflow (`.github/workflows/release.yml`) is the only workflow requesting write scopes (`contents: write` for the GitHub release, `id-token: write` for npm provenance). Tag push triggers it, no PR can.
-- `--frozen-lockfile` on every install step. A PR that changes a transitive dep version doesn't sneak through.
+- `npm ci` on every install step (equivalent to a frozen-lockfile flag — fails if `package-lock.json` is out of sync with `package.json`). A PR that changes a transitive dep version doesn't sneak through.
 
 ### Developer machine compromise
 

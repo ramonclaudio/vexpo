@@ -141,7 +141,7 @@ export const bumpCounter = internalMutation({
 });
 
 /**
- * Daily sweep of expired App Attest challenges. Bounded batches, same
+ * Hourly sweep of expired App Attest challenges. Bounded batches, same
  * pattern as `pushTokens.cleanupStale`.
  */
 export const cleanupChallenges = internalMutation({

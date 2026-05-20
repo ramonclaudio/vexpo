@@ -44,7 +44,7 @@ State is cached in `.setup-state.json` so re-runs are fast. `npx vexpo doctor` a
 
 **Native UI.** Every screen renders SwiftUI through `@expo/ui/swift-ui`. Forms, lists, sections, segmented controls, sheets, alerts, dynamic colors, system materials. Liquid Glass on iOS 26+ via `expo-glass-effect`, UIVisualEffectView blur fallback on iOS 16.4-25 via `expo-blur`. DynamicColorIOS for every palette token (auto-adapts to dark mode + the Increase Contrast accessibility setting). SF Symbols via `expo-symbols`. Haptics, dynamic type, VoiceOver labels, reduced motion respected. Many of the SwiftUI modifiers the template reaches for, `clipShape("capsule")`, `defaultScrollAnchorForRole`, `scrollTargetBehavior`, `scrollPosition`, `textInputAutocapitalization`, `textContentType`, the `Alert` component, ship via upstream PRs we wrote and got merged into `expo/expo`. Full ledger in [`docs/UPSTREAM.md`](./docs/UPSTREAM.md).
 
-**Auth.** Email + password + email OTP via Better Auth (`@convex-dev/better-auth`). Apple Sign In via Apple's official `AppleAuthenticationButton` (HIG-compliant BLACK/WHITE theme-aware styling). SIWA Services ID JWT signing (ES256, 180-day expiry, auto-rotated every 90 days by EAS Workflows cron). Active sessions screen with device-by-device revocation. Profile editing with avatar uploads to Convex storage. Rate limiting on every endpoint via `@convex-dev/rate-limiter`.
+**Auth.** Email + password + email OTP via Better Auth (`@convex-dev/better-auth`). Apple Sign In via Apple's official `AppleAuthenticationButton` (HIG-compliant, BLACK in dark mode and WHITE in light; the third HIG style, `WHITE_OUTLINE`, isn't used here). SIWA Services ID JWT signing (ES256, 180-day expiry, auto-rotated every 90 days by EAS Workflows cron). Active sessions screen with device-by-device revocation via `listSessions` + `revokeSession`. Profile editing with avatar uploads to Convex storage. Rate limiting on every endpoint via `@convex-dev/rate-limiter`.
 
 **Push + Universal Links.** APNs push via `expo-notifications` with token registration on sign-in. Apple Universal Links served from Convex's HTTP router (AASA at `/.well-known/apple-app-site-association`).
 
@@ -59,7 +59,8 @@ vexpo/
 ├── packages/
 │   ├── create-vexpo/      # npm scaffolder (`npm create @ramonclaudio/vexpo@latest`)
 │   └── vexpo/             # operational CLI (`npx vexpo <subcommand>`)
-└── templates/default/     # the Expo + Convex + Better Auth app
+├── templates/default/     # the Expo + Convex + Better Auth app
+└── docs/                  # ARCHITECTURE, SECURITY, OPERATIONS, UPSTREAM
 ```
 
 `create-vexpo` copies `templates/default/` into a fresh directory, rewrites `package.json`, runs `npm install`, inits git. `vexpo` ships as a devDependency, so `npx vexpo` resolves to the local pinned version.
@@ -96,7 +97,7 @@ npx vexpo full --dry-run  # exercises the linked CLI
 Tests:
 
 ```bash
-npm run test               # 291 unit (vexpo lib) + 34 template = 325 total
+npm run test               # 291 unit (vexpo) + 34 template = 325 total
 npm run test:packages:e2e  # 14 e2e tests against the built `vexpo` CLI dist
 npm run test:all           # everything
 ```

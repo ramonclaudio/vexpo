@@ -38,9 +38,9 @@ Long-form walkthrough with every prompt, every env-var alternative, and recovery
 ## What's wired up
 
 - Convex backend with reactive queries, storage, real-time sync, and `@convex-dev/rate-limiter` on every application mutation. Auth-route rate limits ship via Better Auth at the HTTP layer.
-- Better Auth via `@convex-dev/better-auth` (sessions, accounts, devices)
+- Better Auth via `@convex-dev/better-auth` (sessions, accounts; per-device revocation via `session.userAgent`)
 - Resend via `@convex-dev/resend` for OTP, password reset, change-email, with webhook delivery events
-- Apple Sign In via Apple's official `AppleAuthenticationButton`, HIG-compliant BLACK/WHITE theme-aware, SIWA Services ID + ES256 JWT signing (180-day expiry, auto-rotated every 90 days)
+- Apple Sign In via Apple's official `AppleAuthenticationButton`, HIG-compliant (BLACK in dark mode, WHITE in light; `WHITE_OUTLINE` isn't used), SIWA Services ID + ES256 JWT signing (180-day expiry, auto-rotated every 90 days)
 - APNs push via `expo-notifications` with token registration on sign-in
 - Apple Universal Links from Convex's HTTP router (AASA at `/.well-known/apple-app-site-association`)
 - Profile editing with avatar uploads to Convex storage
@@ -116,7 +116,8 @@ app/                              Expo Router screens
   (auth)/                         Sign in, sign up, forgot/reset password
   (app)/                          Authenticated screens
     (tabs)/                       Tab navigation
-    welcome.tsx, profile.tsx, sessions.tsx, debug.tsx, ...
+    welcome.tsx, sessions.tsx, debug.tsx, ...
+    profile/                      Profile screens (index.tsx + change-password.tsx)
   +native-intent.tsx              Deep link validation
   +not-found.tsx                  404 fallback
 components/                       Reusable UI
