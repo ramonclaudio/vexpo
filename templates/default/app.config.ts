@@ -235,7 +235,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       ...(projectId
         ? {
             eas: {
-              ...((config.extra as { eas?: Record<string, unknown> } | undefined)?.eas ?? {}),
+              ...(config.extra as { eas?: Record<string, unknown> } | undefined)?.eas,
               projectId,
             },
           }
