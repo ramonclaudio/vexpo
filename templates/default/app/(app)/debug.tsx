@@ -16,6 +16,7 @@ import {
   ProgressView,
 } from "@expo/ui/swift-ui";
 import {
+  accessibilityLabel,
   background,
   buttonStyle,
   clipShape,
@@ -23,6 +24,7 @@ import {
   defaultScrollAnchor,
   foregroundStyle,
   frame,
+  mask,
   padding,
   progressViewStyle,
   scrollDismissesKeyboard,
@@ -345,6 +347,33 @@ export default function DebugScreen() {
               </InfoCard>
             </VStack>
 
+            <VStack spacing={8} alignment="leading" modifiers={[frame({ maxWidth: Infinity })]}>
+              <Text modifiers={sectionLabelModifiers}>SHAPES</Text>
+              <Text
+                modifiers={[
+                  dfont({ size: 13 }),
+                  foregroundStyle(colors.mutedForeground as string),
+                  padding({ horizontal: 8 }),
+                ]}
+              >
+                upstream expo/expo#43158. Pre-fix, `clipShape` and `mask` silently rendered capsule
+                and ellipse as a rectangle.
+              </Text>
+              <InfoCard>
+                <VStack
+                  spacing={16}
+                  alignment="leading"
+                  modifiers={[
+                    padding({ horizontal: 16, vertical: 16 }),
+                    frame({ maxWidth: 10000 }),
+                  ]}
+                >
+                  <ShapeRow mode="clip" colors={colors} dfont={dfont} />
+                  <ShapeRow mode="mask" colors={colors} dfont={dfont} />
+                </VStack>
+              </InfoCard>
+            </VStack>
+
             <HStack modifiers={[frame({ maxWidth: 10000 }), padding({ top: 8 })]}>
               <Spacer />
               <Text
@@ -360,6 +389,75 @@ export default function DebugScreen() {
     </>
   );
 }
+
+const SHAPE_NAMES = ["rectangle", "circle", "capsule", "ellipse", "roundedRectangle"] as const;
+type ShapeName = (typeof SHAPE_NAMES)[number];
+
+function ShapeRow({
+  mode,
+  colors,
+  dfont,
+}: {
+  mode: "clip" | "mask";
+  colors: ReturnType<typeof useColors>;
+  dfont: ReturnType<typeof useDynamicFont>;
+}): React.ReactNode {
+  return (
+    <VStack alignment="leading" spacing={8} modifiers={[frame({ maxWidth: 10000 })]}>
+      <Text
+        modifiers={[
+          dfont({ size: 12, weight: "semibold", design: "monospaced" }),
+          foregroundStyle(colors.mutedForeground as string),
+        ]}
+      >
+        {mode === "clip" ? "clipShape" : "mask"}
+      </Text>
+      <HStack spacing={10} alignment="top">
+        {SHAPE_NAMES.map((shape) => (
+          <ShapeTile key={shape} shape={shape} mode={mode} colors={colors} dfont={dfont} />
+        ))}
+      </HStack>
+    </VStack>
+  );
+}
+
+function ShapeTile({
+  shape,
+  mode,
+  colors,
+  dfont,
+}: {
+  shape: ShapeName;
+  mode: "clip" | "mask";
+  colors: ReturnType<typeof useColors>;
+  dfont: ReturnType<typeof useDynamicFont>;
+}): React.ReactNode {
+  return (
+    <VStack alignment="center" spacing={6}>
+      <VStack
+        modifiers={[
+          frame({ width: 56, height: 32 }),
+          background(colors.primary as string),
+          mode === "mask" ? mask(shape) : clipShape(shape),
+          accessibilityLabel(""),
+        ]}
+      >
+        <Text modifiers={[accessibilityLabel("")]}> </Text>
+      </VStack>
+      <Text modifiers={[dfont({ size: 10 }), foregroundStyle(colors.mutedForeground as string)]}>
+        {SHAPE_SHORT[shape]}
+      </Text>
+    </VStack>
+  );
+}
+
+const SHAPE_SHORT: Record<ShapeName, string> = {
+  rectangle: "rect",
+  circle: "circle",
+  capsule: "capsule",
+  ellipse: "ellipse",
+  roundedRectangle: "rounded",
+};
 
 function UpdateActionButton({
   label,

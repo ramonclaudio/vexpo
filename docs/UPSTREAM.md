@@ -10,7 +10,9 @@ A lot of what the template uses landed upstream in PRs we wrote and got merged i
 
 Without this, `clipShape("capsule")` rendered as a rectangle. vexpo uses the capsule shape for the rounded primary buttons, the privacy and help screen header chips, the active-session revoke buttons, and the OTA "Download & install" button.
 
-Used in `templates/default/app/(app)/debug.tsx:377`, `templates/default/app/(app)/privacy.tsx:60`, `templates/default/app/(app)/help.tsx:108`, `templates/default/app/(app)/(tabs)/settings/index.tsx`.
+The debug screen carries a `SHAPES` section that renders all five `ShapeType` cases (`rectangle`, `circle`, `capsule`, `ellipse`, `roundedRectangle`) twice, once through `clipShape` and once through `mask`. Pre-fix, the capsule and ellipse tiles in both rows rendered as rectangles.
+
+Used in `templates/default/app/(app)/debug.tsx:351` (SHAPES showcase) and `templates/default/app/(app)/debug.tsx:462` (OTA action button), `templates/default/app/(app)/privacy.tsx:60`, `templates/default/app/(app)/help.tsx:108`, `templates/default/app/(app)/(tabs)/settings/index.tsx`.
 
 ### [`expo/expo#43228`](https://github.com/expo/expo/pull/43228). Per-axis `scaleEffect`
 
