@@ -35,7 +35,7 @@ npx vexpo full --new   # same + Apple/Convex/Expo/Resend signup walkthrough
 | `[directory]`   | Project directory name (positional). Defaults to `my-vexpo-app` with `-y`, otherwise prompts. |
 | `--no-install`  | Skip running `<pm> install` after copying the template.                                       |
 | `--no-git`      | Skip `git init` after install.                                                                |
-| `--no-setup`    | Skip the post-install `npx vexpo lite` / `npx vexpo full` prompt.                           |
+| `--no-setup`    | Skip the post-install `npx vexpo lite` / `npx vexpo full` prompt.                             |
 | `-y, --yes`     | Accept defaults, skip prompts.                                                                |
 | `-v, --version` | Print version, exit.                                                                          |
 
