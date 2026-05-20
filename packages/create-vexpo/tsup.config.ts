@@ -94,6 +94,18 @@ export default defineConfig({
       /^bun-error\./,
       /\.tgz$/,
       /\.log$/,
+      // Non-canonical lockfiles. The template's lockfile is `package-lock.json`
+      // (npm). If a contributor accidentally runs `bun install` / `pnpm install`
+      // / `yarn install` in `templates/default/`, the resulting lockfile must
+      // NOT ship in the scaffolder tarball — two lockfiles in the same project
+      // confuse package managers and CI.
+      /^bun\.lock$/,
+      /^bun\.lockb$/,
+      /^pnpm-lock\.yaml$/,
+      /^yarn\.lock$/,
+      // Editor / vexpo-author backup files. We've seen `*.yml.bak` accumulate
+      // in `templates/default/.eas/workflows/` after migrations; never ship.
+      /\.bak$/,
     ];
     await cp(src, dest, {
       recursive: true,

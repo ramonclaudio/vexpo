@@ -12,15 +12,15 @@ Needs macOS + Xcode, a [Convex](https://convex.dev) account (free tier), and Bun
 npm create @ramonclaudio/vexpo@latest my-app
 cd my-app
 
-bunx vexpo lite         # 60-second path: Convex + Better Auth, simulator-ready
-bunx vexpo lite --new   # same, plus a Convex signup walkthrough if you don't have one
+npx vexpo lite         # 60-second path: Convex + Better Auth, simulator-ready
+npx vexpo lite --new   # same, plus a Convex signup walkthrough if you don't have one
 ```
 
 Then in two terminals:
 
 ```bash
-bun run convex:dev      # terminal 1
-bun run ios             # terminal 2
+npm run convex:dev      # terminal 1
+npm run ios             # terminal 2
 ```
 
 Lite mode skips Apple / EAS / Resend entirely. `REQUIRE_EMAIL_VERIFICATION` is off on Convex so sign-up auto-verifies, the user lands in the app with one tap, and the UI hides the OTP / password-reset / change-email flows that need Resend to work.
@@ -28,15 +28,15 @@ Lite mode skips Apple / EAS / Resend entirely. `REQUIRE_EMAIL_VERIFICATION` is o
 When you're ready to ship, swap `lite` for `full`:
 
 ```bash
-bunx vexpo full         # provisions Resend, Apple Sign In, EAS, rebrand wizard
-bunx vexpo full --new   # same, plus walks Apple / Convex / Expo / Resend signups
+npx vexpo full         # provisions Resend, Apple Sign In, EAS, rebrand wizard
+npx vexpo full --new   # same, plus walks Apple / Convex / Expo / Resend signups
 ```
 
-`full` jumps straight into provisioning: writes `.env.local`, sets Convex env vars (including `REQUIRE_EMAIL_VERIFICATION=true` once Resend is wired), validates the ASC API key, signs the Apple Sign In JWT, runs `eas init` and `eas env:push`, prompts the rebrand wizard. Prints the `eas build -p ios --profile production --auto-submit-with-profile testflight` command at the end. vexpo doesn't run it for you. You run `bunx eas build` when you're ready.
+`full` jumps straight into provisioning: writes `.env.local`, sets Convex env vars (including `REQUIRE_EMAIL_VERIFICATION=true` once Resend is wired), validates the ASC API key, signs the Apple Sign In JWT, runs `eas init` and `eas env:push`, prompts the rebrand wizard. Prints the `eas build -p ios --profile production --auto-submit-with-profile testflight` command at the end. vexpo doesn't run it for you. You run `npx eas build` when you're ready.
 
 `full --new` is for first-time users coming in cold. Convex and Expo signups happen via their CLIs' browser-based OAuth. Resend signup is a browser-open + paste-API-key flow (Resend has no signup API). Apple Developer Program is the only signup vexpo can't automate at all. Apple requires identity verification, payment, and 24-48h review. That step pauses the orchestrator while you complete enrollment.
 
-State is cached in `.setup-state.json` so re-runs are fast. `bunx vexpo doctor` auth-checks every credential against the real service (Resend `/api-keys`, ASC `/v1/apps`, Apple JWT decoded for kid/iss/sub/expiry) and cross-references the bundle ID, team ID, and Services ID across `.env.local`, Convex env, EAS env, and `app.config.ts`. Catches "wrong .p8 from another project" or ".env.prod copied from a different fork" in seconds.
+State is cached in `.setup-state.json` so re-runs are fast. `npx vexpo doctor` auth-checks every credential against the real service (Resend `/api-keys`, ASC `/v1/apps`, Apple JWT decoded for kid/iss/sub/expiry) and cross-references the bundle ID, team ID, and Services ID across `.env.local`, Convex env, EAS env, and `app.config.ts`. Catches "wrong .p8 from another project" or ".env.prod copied from a different fork" in seconds.
 
 ## What's in the box
 
@@ -58,11 +58,11 @@ State is cached in `.setup-state.json` so re-runs are fast. `bunx vexpo doctor` 
 vexpo/
 ├── packages/
 │   ├── create-vexpo/      # npm scaffolder (`npm create @ramonclaudio/vexpo@latest`)
-│   └── vexpo/             # operational CLI (`bunx vexpo <subcommand>`)
+│   └── vexpo/             # operational CLI (`npx vexpo <subcommand>`)
 └── templates/default/     # the Expo + Convex + Better Auth app
 ```
 
-`create-vexpo` copies `templates/default/` into a fresh directory, rewrites `package.json`, runs `bun install`, inits git. `vexpo` ships as a devDependency, so `bunx vexpo` resolves to the local pinned version.
+`create-vexpo` copies `templates/default/` into a fresh directory, rewrites `package.json`, runs `npm install`, inits git. `vexpo` ships as a devDependency, so `npx vexpo` resolves to the local pinned version.
 
 ## Pre-reqs
 
@@ -90,13 +90,13 @@ bun install                # install package + workspace deps
 bun run link:dev           # build vexpo + `bun link` it into templates/default
 bun --filter vexpo dev     # tsup watch mode on the CLI source
 cd templates/default
-bunx vexpo full --dry-run  # exercises the linked CLI
+npx vexpo full --dry-run  # exercises the linked CLI
 ```
 
 Tests:
 
 ```bash
-bun run test               # 250 unit (vexpo lib) + 34 template = 284 total
+bun run test               # 291 unit (vexpo lib) + 34 template = 325 total
 bun run test:packages:e2e  # 14 e2e tests against the built `vexpo` CLI dist
 bun run test:all           # everything
 ```
@@ -105,21 +105,26 @@ bun run test:all           # everything
 
 The committed `templates/default/app.json` is `{ "expo": {} }` — no `projectId`. Forks run `eas init` once and commit their own. For testing in this repo without committing your `projectId`, eas-cli needs it in process env at invocation time, because eas-cli sets `EXPO_NO_DOTENV=1` when evaluating `app.config.ts` for projectId resolution (intentional, for build determinism). `.env.local` alone won't be loaded by eas-cli for that step.
 
-Two ways to give eas-cli the value without committing it:
+Once-per-session shell export, no tools to install:
 
 ```bash
-# A) one-shot shell export per session
-export $(grep '^EAS_PROJECT_ID=' templates/default/.env.local)
-cd templates/default && npx eas build -p ios --profile production
-
-# B) direnv (auto-loads on cd; recommended)
-brew install direnv                                # if not installed
-echo 'dotenv .env.local' > templates/default/.envrc
-direnv allow templates/default
-# every subsequent `cd templates/default` exports .env.local automatically
-cd templates/default && npx eas build -p ios --profile production
+cd templates/default
+export $(grep '^EAS_PROJECT_ID=' .env.local)
+npx eas build -p ios --profile production --auto-submit-with-profile testflight
 ```
 
-Without either, the first `eas build` of a fresh checkout will prompt "Configure this project?", write `projectId` into `app.json`, and you'll need to stash it before committing.
+The new shell only retains the value for that session. Open a new terminal and you'll need to re-run the `export` before testing. That's the trade-off for no external dependencies.
+
+If you'd rather auto-load on `cd`, [direnv](https://direnv.net) handles it:
+
+```bash
+brew install direnv                                # if not installed; add `eval "$(direnv hook zsh)"` to your shell rc
+echo 'dotenv .env.local' > templates/default/.envrc
+direnv allow templates/default
+```
+
+Then every subsequent `cd templates/default` exports `.env.local` automatically.
+
+Without either path, the first `eas build` of a fresh checkout prompts "Configure this project?", writes `projectId` into `app.json`, and you'll need to stash it before committing.
 
 `npx vexpo doctor`, `vexpo setup`, and `vexpo env push` all read `.env.local` directly, so they work without shell-loading.

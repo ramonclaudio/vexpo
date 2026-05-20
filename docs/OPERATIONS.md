@@ -81,19 +81,19 @@ Check, in order:
 The SIWA `client_secret` JWT expired. Apple caps it at 180 days. Vexpo rotates every 90 via `.eas/workflows/rotate-apple-jwt.yml` cron. If the cron didn't fire:
 
 1. Open EAS Dashboard → Workflows → Rotate Apple Sign In JWT. Look for the last successful run timestamp.
-2. If older than 180 days: trigger manually via `bunx eas workflow:run .eas/workflows/rotate-apple-jwt.yml`.
-3. If the manual trigger also fails: the `APPLE_P8_PRIVATE_KEY` or `APPLE_TEAM_ID` EAS env vars are stale. Re-push with `bunx vexpo apple eas-rotation-secrets`.
+2. If older than 180 days: trigger manually via `npx eas workflow:run .eas/workflows/rotate-apple-jwt.yml`.
+3. If the manual trigger also fails: the `APPLE_P8_PRIVATE_KEY` or `APPLE_TEAM_ID` EAS env vars are stale. Re-push with `npx vexpo apple eas-rotation-secrets`.
 
 ### `convex deploy` fails with "deploy key invalid"
 
 The production deploy key was rotated externally or revoked. Get a fresh one from the Convex dashboard → Settings → Deploy keys → Generate new. Push to EAS env:
 
 ```bash
-bunx eas env:create --name CONVEX_DEPLOY_KEY \
+npx eas env:create --name CONVEX_DEPLOY_KEY \
   --value "<new>" --environment production --visibility secret
 ```
 
-Or via `bunx vexpo apple eas-rotation-secrets` which prompts for the deploy key interactively.
+Or via `npx vexpo apple eas-rotation-secrets` which prompts for the deploy key interactively.
 
 ### Resend webhook delivery events stop landing
 
@@ -108,10 +108,10 @@ Filter on `event:"webhook.bad_signature"`. Common causes:
 
 - `EAS_WEBHOOK_SECRET` Convex env var doesn't match what was supplied to `eas webhook:create`. Reissue both sides:
   ```bash
-  bunx eas webhook:update --id <id> --secret <new>
-  bunx convex env set EAS_WEBHOOK_SECRET <new>
+  npx eas webhook:update --id <id> --secret <new>
+  npx convex env set EAS_WEBHOOK_SECRET <new>
   ```
-- A different EAS project is sending to your webhook URL by mistake. Confirm via `bunx eas webhook:list`.
+- A different EAS project is sending to your webhook URL by mistake. Confirm via `npx eas webhook:list`.
 
 ### Convex function p95 spike
 
@@ -124,21 +124,21 @@ The Convex dashboard shows per-function p50/p95/p99. If `users:listUsers` or `se
 
 ```bash
 # Find the last 10 production updates with their adoption %
-bunx eas update:list --branch production --limit 10 --json | \
+npx eas update:list --branch production --limit 10 --json | \
   jq '.[] | {group: .group, message, rollout: .rolloutPercentage, date: .createdAt}'
 
 # Find OTA crash signature on a specific update group
-bunx eas update:view <groupId> --json | jq '.metrics'
+npx eas update:view <groupId> --json | jq '.metrics'
 
 # List all currently active EAS builds (in case one stuck the queue)
-bunx eas build:list --status in-progress
+npx eas build:list --status in-progress
 
 # Query Convex logs for failed HTTP webhook signatures in the last hour
 # (paste into the Convex dashboard logs panel, narrow by time)
 event:"webhook.bad_signature"
 
 # Verify the Apple SIWA JWT cron's last fire was within 90 days
-bunx eas workflow:runs --workflow rotate-apple-jwt.yml --limit 5
+npx eas workflow:runs --workflow rotate-apple-jwt.yml --limit 5
 ```
 
 ## Logs
