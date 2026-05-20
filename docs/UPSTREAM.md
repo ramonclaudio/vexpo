@@ -95,9 +95,9 @@ vexpo's debug screen reads the `expo-updates` log via `readLogEntries()` (see `t
 
 ### [`expo/expo#45403`](https://github.com/expo/expo/pull/45403). Resolve scoped packages by name when directory differs
 
-`getPackageByName` looked for `packages/<name>/package.json`, which misses for `@expo/ui` (lives at `packages/expo-ui/`) and `@expo/app-integrity` (at `packages/expo-app-integrity/`). When the path lookup missed, `Workspace.getInfoAsync` recorded an empty `workspacePeerDependencies` for those packages, so `updateWorkspaceProjects` never rewrote `workspace:*` to the canary version. Result: canary tarballs shipped with `peerDependencies.expo: "workspace:*"` literal. Bun and npm error out on `EUNSUPPORTEDPROTOCOL`. Same root cause as #44412 at a different call site the earlier fix didn't reach.
+`getPackageByName` looked for `packages/<name>/package.json`, which misses for `@expo/ui` (lives at `packages/expo-ui/`) and `@expo/app-integrity` (at `packages/expo-app-integrity/`). When the path lookup missed, `Workspace.getInfoAsync` recorded an empty `workspacePeerDependencies` for those packages, so `updateWorkspaceProjects` never rewrote `workspace:*` to the published version. Result: published tarballs shipped with `peerDependencies.expo: "workspace:*"` literal. Bun and npm error out on `EUNSUPPORTEDPROTOCOL`. Same root cause as #44412 at a different call site the earlier fix didn't reach.
 
-vexpo runs on Expo SDK 56 preview and `expo install`-ed `@expo/ui` early in the SDK 56 cycle when canary tarballs still leaked `workspace:*`. Before this fix, `bunx expo install @expo/ui` on a fresh canary project failed with `Workspace dependency "expo" not found`.
+vexpo runs on Expo SDK 56 preview and `expo install`-ed `@expo/ui` early in the cycle when the published tarballs still leaked `workspace:*`. Before this fix, `npx expo install @expo/ui` on a fresh SDK 56 project failed with `Workspace dependency "expo" not found`.
 
 ## CI workflows
 
