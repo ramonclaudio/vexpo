@@ -21,7 +21,7 @@ What we give up by choosing Convex:
 - The query language is JavaScript, not SQL. No PostgREST-style ad hoc analytics.
 - Schema migrations are append-only. Renaming a field is a multi-deploy dance.
 - Convex's at-rest storage cost is high vs raw Postgres at scale. We re-evaluate above a million MAU.
-- The function execution budget caps a single handler at 1 minute (queries) or 10 minutes (actions). Long jobs go to EAS Workflows.
+- The function execution budget caps a single handler at 1 second (queries and mutations) or 10 minutes (actions). Long jobs go to EAS Workflows.
 
 What we get:
 
@@ -42,7 +42,7 @@ What we don't use: `@better-auth/stripe` (pulls SolidJS deps that break Metro). 
 
 EAS is Expo's CI/CD-and-infra layer for native apps. vexpo wires every product:
 
-- **EAS Build**: four iOS build profiles (`development`, `development:simulator`, `development:device`, `production`) with per-profile caching of `node_modules` and `ios/Pods`. The `production` profile uses `autoIncrement: true` with `appVersionSource: "remote"` so EAS owns the build number.
+- **EAS Build**: four iOS build profiles (`development`, `development:simulator`, `development:device`, `production`) with `node_modules` and `ios/Pods` cached on the `development` and `production` top-level profiles (simulator and device inherit via `extends`). The `production` profile uses `autoIncrement: true` with `appVersionSource: "remote"` (set globally in `eas.json`'s `cli`) so EAS owns the build number.
 - **EAS Update**: `runtimeVersion: { policy: "fingerprint" }` so OTA bundles are automatically tied to native compatibility. Out of the box on SDK 56 the policy fails `CONFIGURE_EXPO_UPDATES` with a `Runtime version calculated on local machine not equal to runtime version calculated during build` error — `expo-modules-autolinking` emits per-package directory hashes for `react-native-reanimated` and `react-native-worklets` (tagged `rncoreAutolinkingIos`) that drift between developer machines and EAS Build's worker even with identical npm lockfile + node version, and `expo-modules-jsi/apple/` drifts from a combination of pod install's `prepare_command` stubs and the autolinker output. Two knobs make it stable in this template: `fingerprint.config.js` sets `useRNCoreAutolinkingFromExpo: false` (switches the autolinker source to `@react-native-community/cli`, consolidating reanimated/worklets into one content-addressed `expoAutolinkingConfig:ios` JSON source), and `.fingerprintignore` excludes `node_modules/expo-modules-jsi/apple/**`. Real native version bumps still flip the fingerprint via package.json + the autolinking JSON, so the safety contract holds. Drop both knobs when upstream fixes the autolinker determinism. `assetPatternsToBeBundled` limits OTA payload to icon + splash. `enableBsdiffPatchSupport: true` because the runtime cost of bsdiff is negligible relative to the bandwidth savings on incremental updates.
 - **EAS Submit + Metadata**: `metadataPath: "./store.config.json"` on every submit profile. The template `npm run metadata:push` script chains `eas metadata:lint && eas metadata:push` so shape errors are caught before they reach App Store Connect.
 - **EAS Workflows**: ten workflows under `.eas/workflows/`. The pattern that matters: every deploy-style workflow runs `fingerprint` → `get-build` → `build OR update`. Native changes trigger a build, JS changes trigger an OTA. The cost difference is ~15 minutes vs ~30 seconds.
@@ -100,9 +100,9 @@ Categories one through five are vexpo's value. Everything else routes to `eas`. 
 
 ## Performance characteristics
 
-- **AASA endpoint**: 200 bytes of JSON, served from Convex's HTTP router. `Cache-Control: public, max-age=3600` plus `ETag` so warm callers pay only the round-trip. Apple's on-device AASA cache means each install hits this exactly once per fingerprint generation.
+- **AASA endpoint**: 200 bytes of JSON, served from Convex's HTTP router. `Cache-Control: public, max-age=3600, must-revalidate` plus `ETag` so warm callers pay only the round-trip. Apple's on-device AASA cache means each install hits this exactly once per fingerprint generation.
 - **OTA bundle size**: ~600 KB minified + brotli for a typical screen tree. With `enableBsdiffPatchSupport: true`, incremental updates land at 10-30 KB on devices that already have the previous bundle.
-- **Push token rotation**: `pushTokens.ts` table is keyed by `(authId, token)` with an updated-at index. Tokens older than 30 days get pruned by `crons.ts`. Convex query cost is constant. The cron runs in ~50ms even with 100k users.
+- **Push token rotation**: `pushTokens` table keyed by `userId` with indexes `by_user`, `by_token`, and `by_revoked_updatedAt` (the cleanup cron walks the last one). Revoked tokens get hard-deleted 30 days after revocation by `crons.ts`. Convex query cost is constant. The cron runs in ~50ms even with 100k users.
 - **Setup orchestrator**: `vexpo full` on a fresh project takes ~30 minutes hands-on (mostly Apple Developer Portal manual steps), then ~2 days wall-clock for Apple's identity verification. Re-running on a configured project short-circuits via the state cache in ~3 seconds.
 
 ## What's deliberately not solved
