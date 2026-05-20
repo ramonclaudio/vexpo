@@ -39,7 +39,7 @@ The Better Auth routes (registered via `authComponent.registerRoutesLazy`) handl
 
 ### OTA updates
 
-- **`runtimeVersion: "1.0.0"` (manual).** A native change forces a fresh build only if you bump the string by hand. The `{ policy: "fingerprint" }` policy is the safer design (automatic enforcement, no manual step) but currently fails across local-vs-EAS due to upstream non-determinism in `expo-modules-jsi`'s `prepare_command` and bun-version-sensitive autolinking. Until that's fixed, the safety contract relies on developer discipline: bump the string when you ship native code.
+- **`runtimeVersion: { policy: "fingerprint" }`.** A native change automatically forces a fresh build because the hash auto-bumps. OTAs can never load against an incompatible binary, no manual version-bump discipline required. Two upstream-non-determinism workarounds make the policy stable on this stack: `fingerprint.config.js` sets `useRNCoreAutolinkingFromExpo: false` (so reanimated/worklets hash via the autolinker's JSON output rather than per-directory), and `.fingerprintignore` excludes `node_modules/expo-modules-jsi/apple/**` (skips the pod-install-stamped `Products/` stubs). Real version bumps still flip the fingerprint via package.json + the `expoAutolinkingConfig:ios` JSON, so safety holds.
 - **End-to-end code signing is wired.** `app.config.ts` detects `certs/certificate.pem` at config-eval time and turns on `codeSigningCertificate` / `codeSigningMetadata` automatically. `.eas/workflows/deploy-production.yml`'s `update_ios` job passes `private_key_path: "$EAS_UPDATE_PRIVATE_KEY"` so `eas update` signs locally before publish. Two one-time steps activate it:
   1. Generate the keypair:
      ```bash
