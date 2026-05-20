@@ -8,10 +8,6 @@ concurrency:
   cancel_in_progress: true
   group: ${{ workflow.filename }}-${{ github.ref }}
 
-defaults:
-  tools:
-    bun: latest
-
 jobs:
   precheck:
     name: Precheck
@@ -21,11 +17,11 @@ jobs:
       - uses: eas/checkout
       - uses: eas/install_node_modules
       - name: Typecheck
-        run: bun run typecheck
+        run: npm run typecheck
       - name: Lint
-        run: bun run lint
+        run: npm run lint
       - name: Test
-        run: bun run test
+        run: npm run test
 
   build_ios:
     name: Build iOS

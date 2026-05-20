@@ -7,7 +7,7 @@ import pkg from "./package.json";
 
 const IS_DEV = process.env.APP_VARIANT === "development";
 
-// Identity comes from .env.local (written by `bun run setup:convex`). Fallbacks
+// Identity comes from .env.local (written by `npm run setup:convex`). Fallbacks
 // keep `expo prebuild` from crashing on a fresh checkout, but a real build
 // requires real values.
 const BUNDLE_ID = process.env.EXPO_PUBLIC_APP_BUNDLE_ID ?? `com.example.${pkg.name}`;
@@ -103,7 +103,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       // verifies every update against it before applying. The matching
       // private key lives ONLY as an EAS file-type secret
       // (`EAS_UPDATE_PRIVATE_KEY`) and never lands in the repo.
-      // Generate the keypair once with `bun run updates:gen-cert`, upload
+      // Generate the keypair once with `npm run updates:gen-cert`, upload
       // the key to EAS, and every subsequent `eas update` signs locally
       // before publishing. A compromised CDN or EAS account cannot ship
       // arbitrary JS. Until the cert exists the block stays off and

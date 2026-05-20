@@ -1,6 +1,6 @@
 # scripts
 
-Build and maintenance scripts. Setup orchestration lives in the published `vexpo` CLI (run via `bunx vexpo`), not here.
+Build and maintenance scripts. Setup orchestration lives in the published `vexpo` CLI (run via `npx vexpo`), not here.
 
 ## What's in this directory
 
@@ -17,13 +17,13 @@ Anything else (preflight checks, env validation, version bumps) lives in the `ve
 Use the `vexpo` CLI:
 
 ```bash
-bunx vexpo lite               # dev-mode setup (Convex + Better Auth only)
-bunx vexpo full               # full provisioning to TestFlight-ready
-bunx vexpo doctor             # cross-source drift detection
-bunx vexpo env push           # sync from .env.local + .env.prod to Convex/EAS
-bunx vexpo apple asc-key      # validate ASC API key
-bunx vexpo apple services-id  # attach SIWA capability to App ID
-bunx vexpo apple jwt          # sign client_secret JWT, push to Convex
+npx vexpo lite               # dev-mode setup (Convex + Better Auth only)
+npx vexpo full               # full provisioning to TestFlight-ready
+npx vexpo doctor             # cross-source drift detection
+npx vexpo env push           # sync from .env.local + .env.prod to Convex/EAS
+npx vexpo apple asc-key      # validate ASC API key
+npx vexpo apple services-id  # attach SIWA capability to App ID
+npx vexpo apple jwt          # sign client_secret JWT, push to Convex
 ```
 
 Version bumps run through `eas build:version:set` / `eas build:version:sync` (`appVersionSource: "remote"` in `eas.json` puts EAS in charge of the version).
