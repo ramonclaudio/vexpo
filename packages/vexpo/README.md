@@ -5,11 +5,11 @@
 
 Operational CLI for [vexpo](https://github.com/ramonclaudio/vexpo) projects: Expo + Convex + Better Auth + Resend, end-to-end iOS. Provisions the stack, validates every credential, keeps env values in sync across `.env.local` / Convex env / EAS env, and exposes the App Store Connect API endpoints `eas-cli` doesn't.
 
-Scaffolded by [`create-vexpo`](https://www.npmjs.com/package/create-vexpo) into your project's devDependencies. Invoke via `bunx vexpo`.
+Scaffolded by [`create-vexpo`](https://www.npmjs.com/package/create-vexpo) into your project's devDependencies. Invoke via `npx vexpo`.
 
 ## Design rule: don't reinvent EAS
 
-If `eas <subcommand>` is the canonical answer, the recipe is `bunx eas <subcommand>`, not `vexpo`. This CLI only surfaces what `eas-cli` doesn't do: setup orchestration, cross-source drift detection, Apple SIWA work, and the App Store Connect API endpoints that aren't in `eas-cli`. Wrapping every `eas` command would add no value over `eas-cli` itself, expand the maintenance surface, and signal a lack of trust in the platform.
+If `eas <subcommand>` is the canonical answer, the recipe is `npx eas <subcommand>`, not `vexpo`. This CLI only surfaces what `eas-cli` doesn't do: setup orchestration, cross-source drift detection, Apple SIWA work, and the App Store Connect API endpoints that aren't in `eas-cli`. Wrapping every `eas` command would add no value over `eas-cli` itself, expand the maintenance surface, and signal a lack of trust in the platform.
 
 ## Setup
 
@@ -76,24 +76,24 @@ vexpo asc:submissions                        List review submissions
 For canonical EAS surface, use `eas` directly. Wrapping these would add no value over `eas-cli` itself.
 
 ```bash
-bunx eas init                     # EAS project init
-bunx eas build [...]              # builds, list, view, cancel, delete, download, run, resign
-bunx eas submit
-bunx eas update [...]             # publish OTAs, --rollout-percentage, etc.
-bunx eas update:list / update:view / update:edit / update:rollback / update:republish
-bunx eas channel [...]            # CRUD + rollouts + insights
-bunx eas branch [...]             # CRUD
-bunx eas deploy [...]             # EAS Hosting
-bunx eas webhook [...]            # BUILD/SUBMIT webhook CRUD
-bunx eas workflow [...]           # run, validate, logs, cancel
-bunx eas fingerprint [...]
-bunx eas device [...]             # list, create, view, rename, delete
-bunx eas metadata [...]
-bunx eas env [...]                # env:push, env:pull, env:get, env:delete, env:create, env:list
-bunx eas integrations:asc [...]   # status, connect, disconnect
+npx eas init                     # EAS project init
+npx eas build [...]              # builds, list, view, cancel, delete, download, run, resign
+npx eas submit
+npx eas update [...]             # publish OTAs, --rollout-percentage, etc.
+npx eas update:list / update:view / update:edit / update:rollback / update:republish
+npx eas channel [...]            # CRUD + rollouts + insights
+npx eas branch [...]             # CRUD
+npx eas deploy [...]             # EAS Hosting
+npx eas webhook [...]            # BUILD/SUBMIT webhook CRUD
+npx eas workflow [...]           # run, validate, logs, cancel
+npx eas fingerprint [...]
+npx eas device [...]             # list, create, view, rename, delete
+npx eas metadata [...]
+npx eas env [...]                # env:push, env:pull, env:get, env:delete, env:create, env:list
+npx eas integrations:asc [...]   # status, connect, disconnect
 ```
 
-`vexpo full` orchestrates `eas init`, `eas env:push`, `eas credentials -p ios` (via `eas credentials:configure-build`), and `eas integrations:asc:connect` internally as setup steps, none are exposed as standalone `vexpo` commands. The ASC API key flows through to both wizards via `EXPO_ASC_API_KEY_PATH` / `EXPO_ASC_KEY_ID` / `EXPO_ASC_ISSUER_ID` env vars pre-set from the cached `asc-key` state, so eas-cli auto-fills the credential paste step.
+`vexpo full` orchestrates `eas init`, `eas env:push`, `eas credentials -p ios` (via `eas credentials:configure-build`), and `eas integrations:asc:connect` internally as setup steps, none are exposed as standalone `vexpo` commands. The ASC API key flows through to both wizards via `EXPO_ASC_API_KEY_PATH` / `EXPO_ASC_KEY_ID` / `EXPO_ASC_ISSUER_ID` env vars pre-set from the cached `asc-key` state. These env vars set `AppStoreApi.defaultAuthenticationMode = API_KEY` inside eas-cli, so when the wizard reaches the Apple auth step during ASC key generation, it uses our cached key instead of prompting for Apple ID + password. The manual paste step doesn't auto-fill — the wizard skips it by auto-generating the key instead.
 
 Earlier vexpo versions passed `--api-key-id <apple-key-id>` to `integrations:asc:connect`. That flag matches against EAS's uploaded key resources, not Apple-side identifiers, so it failed with `No App Store Connect API key found with Apple key identifier ...` whenever the key hadn't been uploaded to EAS yet (the common case on fresh projects). The current orchestration drops the flag and relies on the env vars + the wizard's "Create new or use existing" prompt instead.
 

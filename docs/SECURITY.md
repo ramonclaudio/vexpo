@@ -43,7 +43,7 @@ The Better Auth routes (registered via `authComponent.registerRoutesLazy`) handl
 - **End-to-end code signing is wired.** `app.config.ts` detects `certs/certificate.pem` at config-eval time and turns on `codeSigningCertificate` / `codeSigningMetadata` automatically. `.eas/workflows/deploy-production.yml`'s `update_ios` job passes `private_key_path: "$EAS_UPDATE_PRIVATE_KEY"` so `eas update` signs locally before publish. Two one-time steps activate it:
   1. Generate the keypair:
      ```bash
-     bun run updates:gen-cert -- --name "Your Organization Name"
+     npm run updates:gen-cert -- --name "Your Organization Name"
      ```
      Writes `certs/certificate.pem` (commit it) and `../keys/private-key.pem` (do not commit).
   2. Upload the private key to EAS as a file-type secret:
@@ -126,12 +126,12 @@ If a developer's machine is taken, what does the attacker learn?
 | Secret                         | Rotation cadence          | How                                                                                                 |
 | ------------------------------ | ------------------------- | --------------------------------------------------------------------------------------------------- |
 | Apple SIWA `client_secret` JWT | Every 90 days             | Automated via `rotate-apple-jwt.yml` EAS Workflow cron                                              |
-| Convex production deploy key   | When suspected compromise | `bunx convex auth` → revoke + reissue                                                               |
+| Convex production deploy key   | When suspected compromise | `npx convex auth` → revoke + reissue                                                               |
 | Apple distribution cert        | Annual (Apple's choice)   | `eas credentials -p ios` interactive flow                                                           |
 | Apple APNs push key            | When suspected compromise | Apple Developer Portal → Keys → Revoke + Create                                                     |
 | ASC API key                    | When suspected compromise | App Store Connect → Users and Access → Keys → Revoke + Create                                       |
-| `EAS_WEBHOOK_SECRET`           | When suspected compromise | `bunx eas webhook:update --id <id> --secret <new>` + `bunx convex env set EAS_WEBHOOK_SECRET <new>` |
-| `RESEND_WEBHOOK_SECRET`        | When suspected compromise | Resend dashboard → reissue + `bunx convex env set RESEND_WEBHOOK_SECRET <new>`                      |
+| `EAS_WEBHOOK_SECRET`           | When suspected compromise | `npx eas webhook:update --id <id> --secret <new>` + `npx convex env set EAS_WEBHOOK_SECRET <new>` |
+| `RESEND_WEBHOOK_SECRET`        | When suspected compromise | Resend dashboard → reissue + `npx convex env set RESEND_WEBHOOK_SECRET <new>`                      |
 
 The Apple SIWA JWT is the only one with automated rotation because it's the only one Apple's API will sign on our behalf. The others require human-in-the-loop rotation by Apple's design.
 

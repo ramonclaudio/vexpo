@@ -28,7 +28,7 @@ Bun workspace at the root with `packages/*` as members. Templates intentionally 
 - TypeScript references via per-package `tsconfig.json` extending the root.
 - ESM only. `"type": "module"` everywhere.
 - Package builds via tsup. No webpack, no rollup directly.
-- For monorepo dev, run `bun run link:dev` once. After that, `cd templates/default && bunx vexpo lite` (or `full`) resolves through the linked `vexpo` binary.
+- For monorepo dev, run `bun run link:dev` once. After that, `cd templates/default && npx vexpo lite` (or `full`) resolves through the linked `vexpo` binary.
 
 ### Template (`templates/default/`)
 
@@ -39,7 +39,7 @@ Bun workspace at the root with `packages/*` as members. Templates intentionally 
 - Native SwiftUI primitives via `@expo/ui/swift-ui`. Material translucency via `expo-glass-effect` (iOS 26+) + `expo-blur` fallback.
 - EAS Workflows for all CI/CD: dev builds, PR previews with `github-comment`, Maestro E2E, deploy-on-push, TestFlight, App Store Connect events, JWT rotation cron.
 - GitHub Actions only for general-purpose checks (typecheck, lint, format, tests, fingerprint diff).
-- Setup is a one-shot CLI concern (`bunx vexpo lite` / `bunx vexpo full`), not a `package.json` script. The template only ships runtime scripts (dev, ios, convex:_, eas:_, test, lint, etc.).
+- Setup is a one-shot CLI concern (`npx vexpo lite` / `npx vexpo full`), not a `package.json` script. The template only ships runtime scripts (dev, ios, convex:_, eas:_, test, lint, etc.).
 
 ### Operational CLI (`packages/vexpo/`)
 
@@ -64,7 +64,7 @@ When Apple loosens any of these, the CLI continues to work.
 
 1. Read this file, the template's `AGENTS.md`, and `README.md`.
 2. From the root: `bun run typecheck` to confirm packages compile.
-3. From the root: `bun run test:all` to run all unit + e2e tests (250 unit + 14 e2e + 34 template = 298).
+3. From the root: `bun run test:all` to run all unit + e2e tests (291 unit + 14 e2e + 34 template = 339).
 4. If touching the CLI: `bun --filter vexpo build` then `bun --filter vexpo test:e2e` to confirm the dist behaves.
 
 ## Common tasks
@@ -72,7 +72,7 @@ When Apple loosens any of these, the CLI continues to work.
 - **Build all packages**: `bun --filter '*' build` from the root.
 - **Run the template locally**: `bun run template:dev`.
 - **Test the full pipeline**: `bun run test:all` from the root.
-- **Test the scaffolder end-to-end**: `bun --filter create-vexpo build && cd /tmp && trash test-app 2>/dev/null. Node /path/to/packages/create-vexpo/dist/index.js test-app --no-install --no-git -y && cd test-app && bun install && bunx vexpo full --dry-run`.
+- **Test the scaffolder end-to-end**: `bun --filter create-vexpo build && cd /tmp && trash test-app 2>/dev/null. Node /path/to/packages/create-vexpo/dist/index.js test-app --no-install --no-git -y && cd test-app && npm install && npx vexpo full --dry-run`.
 - **Add a new vexpo subcommand**: Create `packages/vexpo/src/commands/<name>.ts` exporting `run<Name>(options)`, register in `packages/vexpo/src/cli.ts`, add an e2e test in `__tests__/e2e/run.sh`.
 - **Update both lib copies**: There aren't two anymore. The lib lives at `packages/vexpo/src/lib/` and is the only copy. Done.
 
