@@ -64,16 +64,20 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     scheme: "vexpo",
     icon: "./assets/icon.png",
     ...(EXPO_OWNER ? { owner: EXPO_OWNER } : {}),
-    // Manual runtime version. The `fingerprint` policy is fragile across machines
-    // when packages mutate themselves during `pod install` (e.g. `expo-modules-jsi`'s
-    // `prepare_command` stamps `Products/` with machine-specific stubs) AND when
-    // local bun differs from EAS Build's bun version. Both produced reproducible
-    // 'Runtime version calculated on local machine not equal to runtime version
-    // calculated during build' failures on this project. Bump this string by hand
-    // when you ship a native code change (anything touching iOS native modules,
-    // plugins, or build config). OTA updates require this string to match between
-    // the build and the update.
-    runtimeVersion: "1.0.0",
+    // Fingerprint policy: a native change auto-bumps the runtime hash so OTA
+    // updates never load against an incompatible binary. The policy is fragile
+    // out of the box on Expo SDK 56 — three sources hash differently between
+    // developer machines and EAS Build's worker even with identical npm
+    // lockfile + node version. Two levers in this template pin the drift:
+    //   - `fingerprint.config.js` -> `useRNCoreAutolinkingFromExpo: false`
+    //     consolidates reanimated/worklets autolinking into one content-
+    //     addressed JSON source
+    //   - `.fingerprintignore` -> `node_modules/expo-modules-jsi/apple/**`
+    //     skips the package dir whose `prepare_command` stamps machine-
+    //     specific stubs during pod install
+    // Together they make `eas build` and local `npx @expo/fingerprint` agree.
+    // Drop both knobs once upstream fixes the autolinker determinism.
+    runtimeVersion: { policy: "fingerprint" },
     developmentClient: {
       silentLaunch: true,
     },
