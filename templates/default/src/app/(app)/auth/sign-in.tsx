@@ -288,7 +288,7 @@ export default function SignInScreen() {
               { value: "sign-up", label: "Sign up" },
             ]}
             onChange={(v) => {
-              if (v === "sign-up") router.replace("/sign-up");
+              if (v === "sign-up") router.replace("/auth/sign-up");
             }}
           />
 
@@ -353,7 +353,7 @@ export default function SignInScreen() {
                   ]}
                   onPress={() => {
                     haptics.light();
-                    router.push("/forgot-password");
+                    router.push("/auth/forgot-password");
                   }}
                 />
               )}
@@ -400,7 +400,7 @@ export default function SignInScreen() {
                   ]}
                   onPress={() => {
                     haptics.light();
-                    router.push("/forgot-password");
+                    router.push("/auth/forgot-password");
                   }}
                 />
               )}

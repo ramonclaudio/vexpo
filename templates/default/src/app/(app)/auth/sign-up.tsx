@@ -380,7 +380,7 @@ export default function SignUpScreen() {
               { value: "sign-up", label: "Sign up" },
             ]}
             onChange={(v) => {
-              if (v === "sign-in") router.replace("/sign-in");
+              if (v === "sign-in") router.replace("/auth/sign-in");
             }}
           />
 

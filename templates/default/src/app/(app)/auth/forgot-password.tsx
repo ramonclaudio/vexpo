@@ -53,7 +53,7 @@ export default function ForgotPasswordScreen() {
   // mode, but a deeplinked navigation could still land here.
   useEffect(() => {
     if (providers !== undefined && providers.emailFeatures === false) {
-      router.replace("/sign-in");
+      router.replace("/auth/sign-in");
     }
   }, [providers]);
 
@@ -80,7 +80,7 @@ export default function ForgotPasswordScreen() {
       }
       haptics.success();
       announce("Reset code sent");
-      router.push({ pathname: "/reset-password", params: { email: parsed.data.email } });
+      router.push({ pathname: "/auth/reset-password", params: { email: parsed.data.email } });
       return {};
     } catch {
       haptics.error();

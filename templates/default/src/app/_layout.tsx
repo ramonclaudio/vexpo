@@ -17,7 +17,6 @@ import { useColorScheme, useColors } from "@/hooks/use-theme";
 import { useReducedMotion } from "@/hooks/use-reduced-motion";
 import { useNotifications } from "@/hooks/use-notifications";
 import { useNavigationTracking } from "@/hooks/use-navigation-tracking";
-import { useDeepLinkHandler } from "@/hooks/use-deep-link";
 import { OfflineBanner } from "@/components/ui/offline-banner";
 import { UpdateBanner } from "@/components/ui/update-banner";
 import { LoadingScreen } from "@/components/ui/loading-screen";
@@ -50,11 +49,9 @@ export default function RootLayout() {
 }
 
 function RootNavigator() {
-  // Routing reads Better Auth directly. Convex queries authenticate through
-  // `BetterAuthConvexProvider` (see `lib/convex-auth.tsx` for the why).
-  const { data: session, isPending } = authClient.useSession();
-  const isAuthenticated = !!session?.session;
-  const isLoading = isPending;
+  // Splash gates on both auth resolution and asset load. Auth gating itself
+  // lives in `(app)/_layout.tsx` so `(app)` stays mounted under the auth modal.
+  const { isPending } = authClient.useSession();
   const colorScheme = useColorScheme();
   const colors = useColors();
   const reduceMotion = useReducedMotion();
@@ -62,13 +59,10 @@ function RootNavigator() {
 
   useNotifications();
   useNavigationTracking();
-  useDeepLinkHandler();
 
   useEffect(() => {
-    if (!isLoading && assets) {
-      SplashScreen.hideAsync();
-    }
-  }, [isLoading, assets]);
+    if (!isPending && assets) SplashScreen.hideAsync();
+  }, [isPending, assets]);
 
   return (
     <GestureHandlerRootView style={{ flex: 1, backgroundColor: colors.background as string }}>
@@ -82,12 +76,7 @@ function RootNavigator() {
               contentStyle: { backgroundColor: colors.background as string },
             }}
           >
-            <Stack.Protected guard={!isAuthenticated}>
-              <Stack.Screen name="(auth)" />
-            </Stack.Protected>
-            <Stack.Protected guard={isAuthenticated}>
-              <Stack.Screen name="(app)" />
-            </Stack.Protected>
+            <Stack.Screen name="(app)" />
             <Stack.Screen name="+not-found" />
           </Stack>
           <StatusBar style="auto" />

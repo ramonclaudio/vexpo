@@ -16,10 +16,16 @@ export const DeepLinkRoutes = {
   "/about": "/help",
   "/help": "/help",
   "/privacy": "/privacy",
-  "/sign-in": "/sign-in",
-  "/sign-up": "/sign-up",
-  "/forgot-password": "/forgot-password",
-  "/reset-password": "/reset-password",
+  "/auth/sign-in": "/auth/sign-in",
+  "/auth/sign-up": "/auth/sign-up",
+  "/auth/forgot-password": "/auth/forgot-password",
+  "/auth/reset-password": "/auth/reset-password",
+  // Aliases for older deep-link shapes captured by Universal Links or
+  // notifications before the auth modal restructure.
+  "/sign-in": "/auth/sign-in",
+  "/sign-up": "/auth/sign-up",
+  "/forgot-password": "/auth/forgot-password",
+  "/reset-password": "/auth/reset-password",
   "/linked": "/linked",
 } as const satisfies Record<string, Href>;
 
