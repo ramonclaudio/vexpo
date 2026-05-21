@@ -1,58 +1,57 @@
-import { Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { Host, Text } from "@expo/ui/swift-ui";
+import { foregroundStyle } from "@expo/ui/swift-ui/modifiers";
 
 import { Material } from "@/components/ui/material";
 import { useNetwork } from "@/hooks/use-network";
-import { Spacing, FontSize, FontFamily } from "@/constants/layout";
+import { Spacing, FontSize } from "@/constants/layout";
 import { Radius } from "@/constants/theme";
 import { ZIndex } from "@/constants/ui";
 import { useColors } from "@/hooks/use-theme";
+import { useDynamicFont } from "@/lib/dynamic-font";
 
 // HIG: notification banners overlay the navigation layer with a translucent
-// material so context behind the alert remains visible.
+// material so context behind the alert remains visible. `Material` carries
+// positioning, the live-region announcement, and the chrome surface in one
+// shot. The visible label renders through `Host` so it uses SwiftUI's text
+// system and respects Dynamic Type.
 export function OfflineBanner() {
   const { isOffline } = useNetwork();
   const insets = useSafeAreaInsets();
   const colors = useColors();
+  const dfont = useDynamicFont();
 
   if (!isOffline) return null;
 
   return (
-    <View
+    <Material
       accessibilityLiveRegion="assertive"
       accessibilityRole="alert"
+      variant="chrome"
+      tintColor={colors.destructive as string}
       style={{
         position: "absolute",
-        top: 0,
-        left: 0,
-        right: 0,
+        top: insets.top + Spacing.xs,
+        left: Spacing.md,
+        right: Spacing.md,
         zIndex: ZIndex.offlineBanner,
-        paddingTop: insets.top,
+        borderRadius: Radius.full,
+        overflow: "hidden",
+        paddingVertical: Spacing.sm,
+        paddingHorizontal: Spacing.lg,
+        alignItems: "center",
       }}
     >
-      <Material
-        variant="chrome"
-        tintColor={colors.destructive as string}
-        style={{
-          marginHorizontal: Spacing.md,
-          marginTop: Spacing.xs,
-          borderRadius: Radius.full,
-          overflow: "hidden",
-          paddingVertical: Spacing.sm,
-          paddingHorizontal: Spacing.lg,
-          alignItems: "center",
-        }}
-      >
+      <Host matchContents>
         <Text
-          style={{
-            fontSize: FontSize.md,
-            fontFamily: FontFamily.semiBold,
-            color: colors.destructiveForeground as string,
-          }}
+          modifiers={[
+            dfont({ size: FontSize.md, weight: "semibold" }),
+            foregroundStyle(colors.destructiveForeground as string),
+          ]}
         >
           You&apos;re offline
         </Text>
-      </Material>
-    </View>
+      </Host>
+    </Material>
   );
 }

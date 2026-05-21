@@ -18,9 +18,8 @@
 
 import { router } from "expo-router";
 import { useActionState, useState } from "react";
-import { View } from "react-native";
 import { Image as ExpoImage } from "expo-image";
-import { Button, Host, Text, VStack } from "@expo/ui/swift-ui";
+import { Button, Host, Spacer, Text, VStack } from "@expo/ui/swift-ui";
 import {
   background,
   buttonStyle,
@@ -87,14 +86,22 @@ export default function RestoreAccountScreen() {
   };
 
   if (!me) {
-    return <View style={{ flex: 1, backgroundColor: colors.background as string }} />;
+    return (
+      <Host style={{ flex: 1, backgroundColor: colors.background }}>
+        <Spacer />
+      </Host>
+    );
   }
 
   // `deletedAt` cleared while we were mounting (e.g. another device
   // already restored). Route the user away.
   if (!me.deletedAt) {
     router.replace("/");
-    return <View style={{ flex: 1, backgroundColor: colors.background as string }} />;
+    return (
+      <Host style={{ flex: 1, backgroundColor: colors.background }}>
+        <Spacer />
+      </Host>
+    );
   }
 
   const permanentDeleteAt = new Date(me.deletedAt + ACCOUNT_DELETION_GRACE_MS);

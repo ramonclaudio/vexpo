@@ -12,6 +12,7 @@ import {
   Image,
   Text,
   ContentUnavailableView,
+  DisclosureGroup,
 } from "@expo/ui/swift-ui";
 import {
   accessibilityLabel,
@@ -21,7 +22,6 @@ import {
   cornerRadius,
   foregroundStyle,
   frame,
-  onTapGesture,
   padding,
   tint,
 } from "@expo/ui/swift-ui/modifiers";
@@ -58,6 +58,10 @@ export default function HelpScreen() {
   const [searchText, setSearchText] = useState("");
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [emailError, setEmailError] = useState<string | null>(null);
+  const toggleExpanded = (question: string, next: boolean) => {
+    haptics.selection();
+    setExpanded((m) => ({ ...m, [question]: next }));
+  };
 
   const filteredFaq = searchText
     ? FAQ_ITEMS.filter(
@@ -199,58 +203,34 @@ export default function HelpScreen() {
                 >
                   FREQUENTLY ASKED
                 </Text>
-                {filteredFaq.map((item) => {
-                  const isOpen = !!expanded[item.question];
-                  return (
-                    <VStack
-                      key={item.question}
-                      alignment="leading"
-                      spacing={isOpen ? 8 : 0}
-                      modifiers={[
-                        frame({ maxWidth: 10000 }),
-                        padding({ horizontal: 20, vertical: 12 }),
-                        background(colors.muted as string),
-                        cornerRadius(20),
-                        onTapGesture(() => {
-                          haptics.selection();
-                          setExpanded((m) => ({ ...m, [item.question]: !m[item.question] }));
-                        }),
-                      ]}
+                {filteredFaq.map((item) => (
+                  <VStack
+                    key={item.question}
+                    alignment="leading"
+                    modifiers={[
+                      frame({ maxWidth: 10000 }),
+                      padding({ horizontal: 20, vertical: 4 }),
+                      background(colors.muted as string),
+                      cornerRadius(20),
+                    ]}
+                  >
+                    <DisclosureGroup
+                      label={item.question}
+                      isExpanded={!!expanded[item.question]}
+                      onIsExpandedChange={(v) => toggleExpanded(item.question, v)}
                     >
-                      <HStack
-                        spacing={12}
-                        alignment="center"
-                        modifiers={[frame({ maxWidth: 10000 })]}
+                      <Text
+                        modifiers={[
+                          dfont({ size: 14 }),
+                          foregroundStyle(colors.mutedForeground as string),
+                          padding({ vertical: 8 }),
+                        ]}
                       >
-                        <Text
-                          modifiers={[
-                            dfont({ size: 15, weight: "medium" }),
-                            foregroundStyle(colors.foreground as string),
-                          ]}
-                        >
-                          {item.question}
-                        </Text>
-                        <Spacer />
-                        <Image
-                          systemName={isOpen ? "chevron.up" : "chevron.down"}
-                          size={13}
-                          color={colors.mutedForeground as string}
-                          modifiers={[accessibilityLabel("")]}
-                        />
-                      </HStack>
-                      {isOpen ? (
-                        <Text
-                          modifiers={[
-                            dfont({ size: 14 }),
-                            foregroundStyle(colors.mutedForeground as string),
-                          ]}
-                        >
-                          {item.answer}
-                        </Text>
-                      ) : null}
-                    </VStack>
-                  );
-                })}
+                        {item.answer}
+                      </Text>
+                    </DisclosureGroup>
+                  </VStack>
+                ))}
               </VStack>
             )}
           </VStack>

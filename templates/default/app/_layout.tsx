@@ -3,7 +3,6 @@ import { Stack, ThemeProvider as NavigationThemeProvider } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
 import { Suspense, useEffect } from "react";
-import { View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
 import "react-native-reanimated";
@@ -72,29 +71,28 @@ function RootNavigator() {
   }, [isLoading, assets]);
 
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
+    <GestureHandlerRootView style={{ flex: 1, backgroundColor: colors.background as string }}>
       <KeyboardProvider>
         <NavigationThemeProvider value={colorScheme === "dark" ? NavigationDark : NavigationLight}>
-          <View style={{ flex: 1, backgroundColor: colors.background as string }}>
-            <Stack
-              screenOptions={{
-                headerShown: false,
-                animation: reduceMotion ? "fade" : "default",
-                animationDuration: reduceMotion ? 150 : undefined,
-              }}
-            >
-              <Stack.Protected guard={!isAuthenticated}>
-                <Stack.Screen name="(auth)" />
-              </Stack.Protected>
-              <Stack.Protected guard={isAuthenticated}>
-                <Stack.Screen name="(app)" />
-              </Stack.Protected>
-              <Stack.Screen name="+not-found" />
-            </Stack>
-            <StatusBar style="auto" />
-            <OfflineBanner />
-            <UpdateBanner />
-          </View>
+          <Stack
+            screenOptions={{
+              headerShown: false,
+              animation: reduceMotion ? "fade" : "default",
+              animationDuration: reduceMotion ? 150 : undefined,
+              contentStyle: { backgroundColor: colors.background as string },
+            }}
+          >
+            <Stack.Protected guard={!isAuthenticated}>
+              <Stack.Screen name="(auth)" />
+            </Stack.Protected>
+            <Stack.Protected guard={isAuthenticated}>
+              <Stack.Screen name="(app)" />
+            </Stack.Protected>
+            <Stack.Screen name="+not-found" />
+          </Stack>
+          <StatusBar style="auto" />
+          <OfflineBanner />
+          <UpdateBanner />
         </NavigationThemeProvider>
       </KeyboardProvider>
     </GestureHandlerRootView>

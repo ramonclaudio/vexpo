@@ -69,6 +69,8 @@ function deviceLabel(userAgent?: string | null): string {
 export default function SessionsScreen() {
   const dfont = useDynamicFont();
   const colors = useColors();
+  const { data: current } = authClient.useSession();
+  const currentToken = current?.session?.token ?? null;
   const [sessions, setSessions] = useState<SessionRow[] | null>(null);
   const [revoking, setRevoking] = useState<string | null>(null);
   const [confirmToken, setConfirmToken] = useState<string | null>(null);
@@ -134,76 +136,98 @@ export default function SessionsScreen() {
             >
               ACTIVE SESSIONS
             </Text>
-            {sessions.map((s) => (
-              <HStack
-                key={s.id}
-                spacing={12}
-                alignment="center"
-                modifiers={[
-                  frame({ maxWidth: 10000 }),
-                  padding({ horizontal: 20, vertical: 14 }),
-                  background(colors.muted as string),
-                  cornerRadius(20),
-                ]}
-              >
-                <VStack alignment="leading" spacing={2}>
-                  <Text modifiers={[dfont({ size: 16, weight: "semibold" }), textSelection(true)]}>
-                    {deviceLabel(s.userAgent)}
-                  </Text>
-                  <Text
-                    modifiers={[
-                      dfont({ size: 13 }),
-                      foregroundStyle(colors.mutedForeground as string),
-                      textSelection(true),
-                    ]}
-                  >
-                    {s.ipAddress ?? "Unknown IP"} · {formatRelative(s.createdAt)}
-                  </Text>
-                </VStack>
-                <Spacer />
-                <Alert
-                  title="Revoke this session?"
-                  isPresented={confirmToken === s.token}
-                  onIsPresentedChange={(v) => setConfirmToken(v ? s.token : null)}
+            {sessions.map((s) => {
+              const isCurrent = s.token === currentToken;
+              return (
+                <HStack
+                  key={s.id}
+                  spacing={12}
+                  alignment="center"
+                  modifiers={[
+                    frame({ maxWidth: 10000 }),
+                    padding({ horizontal: 20, vertical: 14 }),
+                    background(colors.muted as string),
+                    cornerRadius(20),
+                  ]}
                 >
-                  <Alert.Trigger>
-                    <Button
-                      modifiers={[buttonStyle("plain")]}
-                      onPress={() => {
-                        haptics.warning();
-                        setConfirmToken(s.token);
-                      }}
-                    >
+                  <VStack alignment="leading" spacing={2}>
+                    <HStack spacing={8} alignment="center">
                       <Text
-                        modifiers={[
-                          dfont({ size: 14, weight: "medium" }),
-                          foregroundStyle(colors.destructive as string),
-                        ]}
+                        modifiers={[dfont({ size: 16, weight: "semibold" }), textSelection(true)]}
                       >
-                        Revoke
+                        {deviceLabel(s.userAgent)}
                       </Text>
-                    </Button>
-                  </Alert.Trigger>
-                  <Alert.Actions>
-                    <Button
-                      label="Revoke"
-                      role="destructive"
-                      onPress={() => {
-                        setConfirmToken(null);
-                        void revoke(s.token);
-                      }}
-                    />
-                    <Button label="Cancel" role="cancel" />
-                  </Alert.Actions>
-                  <Alert.Message>
-                    <Text modifiers={[dfont({ size: 16 })]}>
-                      Signing out {deviceLabel(s.userAgent)} ends the session everywhere it is
-                      active.
+                      {isCurrent ? (
+                        <Text
+                          modifiers={[
+                            dfont({ size: 11, weight: "semibold" }),
+                            foregroundStyle(colors.primaryForeground as string),
+                            padding({ horizontal: 8, vertical: 2 }),
+                            background(colors.primary as string),
+                            cornerRadius(8),
+                          ]}
+                        >
+                          This device
+                        </Text>
+                      ) : null}
+                    </HStack>
+                    <Text
+                      modifiers={[
+                        dfont({ size: 13 }),
+                        foregroundStyle(colors.mutedForeground as string),
+                        textSelection(true),
+                      ]}
+                    >
+                      {s.ipAddress ?? "Unknown IP"} · {formatRelative(s.createdAt)}
                     </Text>
-                  </Alert.Message>
-                </Alert>
-              </HStack>
-            ))}
+                  </VStack>
+                  <Spacer />
+                  {isCurrent ? null : (
+                    <Alert
+                      title="Revoke this session?"
+                      isPresented={confirmToken === s.token}
+                      onIsPresentedChange={(v) => setConfirmToken(v ? s.token : null)}
+                    >
+                      <Alert.Trigger>
+                        <Button
+                          modifiers={[buttonStyle("plain")]}
+                          onPress={() => {
+                            haptics.warning();
+                            setConfirmToken(s.token);
+                          }}
+                        >
+                          <Text
+                            modifiers={[
+                              dfont({ size: 14, weight: "medium" }),
+                              foregroundStyle(colors.destructive as string),
+                            ]}
+                          >
+                            Revoke
+                          </Text>
+                        </Button>
+                      </Alert.Trigger>
+                      <Alert.Actions>
+                        <Button
+                          label="Revoke"
+                          role="destructive"
+                          onPress={() => {
+                            setConfirmToken(null);
+                            void revoke(s.token);
+                          }}
+                        />
+                        <Button label="Cancel" role="cancel" />
+                      </Alert.Actions>
+                      <Alert.Message>
+                        <Text modifiers={[dfont({ size: 16 })]}>
+                          Signing out {deviceLabel(s.userAgent)} ends the session everywhere it is
+                          active.
+                        </Text>
+                      </Alert.Message>
+                    </Alert>
+                  )}
+                </HStack>
+              );
+            })}
             {revoking ? (
               <Text
                 modifiers={[

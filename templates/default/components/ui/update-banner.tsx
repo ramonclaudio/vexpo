@@ -1,16 +1,27 @@
-import { Pressable, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { Button, Host, Text } from "@expo/ui/swift-ui";
+import {
+  accessibilityHint,
+  accessibilityLabel,
+  buttonStyle,
+  contentShape,
+  disabled as disabledModifier,
+  foregroundStyle,
+  padding,
+  shapes,
+} from "@expo/ui/swift-ui/modifiers";
 
 import { Material } from "@/components/ui/material";
 import { useAppUpdates } from "@/hooks/use-updates";
-import { Spacing, FontSize, FontFamily } from "@/constants/layout";
+import { Spacing, FontSize } from "@/constants/layout";
 import { Radius } from "@/constants/theme";
 import { ZIndex } from "@/constants/ui";
 import { useColors } from "@/hooks/use-theme";
+import { useDynamicFont } from "@/lib/dynamic-font";
 
-// In-app surface for the EAS Update lifecycle. Mirrors the OfflineBanner
-// pattern (translucent material overlaying the nav layer per HIG) and is
-// only visible while the update state machine is doing something the user
+// In-app surface for the EAS Update lifecycle. Mirrors `OfflineBanner`
+// (translucent material overlaying the nav layer per HIG) and is only
+// visible while the update state machine is doing something the user
 // would want to see:
 //
 //   - downloading      progress %, no tap target. auto-applies on finish
@@ -19,11 +30,12 @@ import { useColors } from "@/hooks/use-theme";
 //
 // `isUpdatePending` (downloaded, awaiting reload) is handled by the
 // `useAppUpdates` hook (auto-reload with reload screen), so we don't
-// surface it here. the splash-screen overlay does the visual work.
+// surface it here. The splash-screen overlay does the visual work.
 export function UpdateBanner() {
   const updates = useAppUpdates();
   const insets = useSafeAreaInsets();
   const colors = useColors();
+  const dfont = useDynamicFont();
 
   const showProgress = updates.isDownloading;
   const showError = !!updates.downloadError;
@@ -40,43 +52,39 @@ export function UpdateBanner() {
   const label = showError ? "Update failed. Tap to retry." : `Updating${pct}`;
 
   return (
-    <View
+    <Material
       accessibilityLiveRegion="polite"
       accessibilityRole="alert"
+      variant="chrome"
+      tintColor={tint}
       style={{
         position: "absolute",
-        bottom: 0,
-        left: 0,
-        right: 0,
+        bottom: insets.bottom + Spacing.xs,
+        left: Spacing.md,
+        right: Spacing.md,
         zIndex: ZIndex.updateBanner,
-        paddingBottom: insets.bottom,
+        borderRadius: Radius.full,
+        overflow: "hidden",
+        alignItems: "center",
       }}
     >
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel={label}
-        accessibilityHint={showError ? "Re-attempts the update download" : undefined}
-        disabled={!showError}
-        onPress={showError ? () => updates.downloadAndApply() : undefined}
-      >
-        <Material
-          variant="chrome"
-          tintColor={tint}
-          style={{
-            marginHorizontal: Spacing.md,
-            marginBottom: Spacing.xs,
-            borderRadius: Radius.full,
-            overflow: "hidden",
-            paddingVertical: Spacing.sm,
-            paddingHorizontal: Spacing.lg,
-            alignItems: "center",
-          }}
+      <Host matchContents>
+        <Button
+          modifiers={[
+            buttonStyle("plain"),
+            padding({ vertical: Spacing.sm, horizontal: Spacing.lg }),
+            contentShape(shapes.rectangle()),
+            disabledModifier(!showError),
+            accessibilityLabel(label),
+            ...(showError ? [accessibilityHint("Re-attempts the update download")] : []),
+          ]}
+          onPress={showError ? () => updates.downloadAndApply() : () => {}}
         >
-          <Text style={{ fontSize: FontSize.md, fontFamily: FontFamily.semiBold, color: fg }}>
+          <Text modifiers={[dfont({ size: FontSize.md, weight: "semibold" }), foregroundStyle(fg)]}>
             {label}
           </Text>
-        </Material>
-      </Pressable>
-    </View>
+        </Button>
+      </Host>
+    </Material>
   );
 }
