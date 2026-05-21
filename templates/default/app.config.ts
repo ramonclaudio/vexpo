@@ -192,7 +192,13 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       },
     },
     plugins: [
-      "expo-router",
+      [
+        "expo-router",
+        {
+          sitemap: false,
+          headOrigin: process.env.EXPO_PUBLIC_HEAD_ORIGIN,
+        },
+      ],
       [
         "expo-splash-screen",
         {
