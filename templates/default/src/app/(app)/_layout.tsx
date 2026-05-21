@@ -106,7 +106,24 @@ export default function AppLayout() {
           }}
         />
 
-        <Stack.Screen name="profile" options={{ headerShown: false }} />
+        <Stack.Screen name="profile/index" options={{ headerShown: true }}>
+          <Stack.Header transparent />
+          <Stack.Screen.Title style={titleStyle}>Profile</Stack.Screen.Title>
+          <Stack.Screen.BackButton>Settings</Stack.Screen.BackButton>
+        </Stack.Screen>
+
+        {/*
+          Password change is a transient task — full slide-up modal matches
+          Apple Settings.app, gives the user clear "modal mode" semantics.
+        */}
+        <Stack.Screen
+          name="profile/change-password"
+          options={{ headerShown: true, presentation: "modal" }}
+        >
+          <Stack.Header transparent />
+          <Stack.Screen.Title style={titleStyle}>Password</Stack.Screen.Title>
+          <Stack.Screen.BackButton>Profile</Stack.Screen.BackButton>
+        </Stack.Screen>
 
         <Stack.Screen name="sessions" options={{ headerShown: true }}>
           <Stack.Header transparent />
