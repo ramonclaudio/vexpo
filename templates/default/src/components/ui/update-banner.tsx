@@ -57,6 +57,7 @@ export function UpdateBanner() {
       accessibilityRole="alert"
       variant="chrome"
       tintColor={tint}
+      isInteractive={showError}
       style={{
         position: "absolute",
         bottom: insets.bottom + Spacing.xs,

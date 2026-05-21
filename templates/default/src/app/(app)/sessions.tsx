@@ -18,6 +18,7 @@ import {
   frame,
   multilineTextAlignment,
   padding,
+  refreshable,
   textSelection,
   tint,
 } from "@expo/ui/swift-ui/modifiers";
@@ -122,7 +123,7 @@ export default function SessionsScreen() {
           description="You have no other active sessions."
         />
       ) : (
-        <ScrollView modifiers={[tint(colors.primary as string)]}>
+        <ScrollView modifiers={[tint(colors.primary as string), refreshable(load)]}>
           <VStack
             spacing={12}
             alignment="leading"
