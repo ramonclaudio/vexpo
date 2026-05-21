@@ -1,7 +1,8 @@
 import { Stack } from "expo-router";
+import { useQuery } from "convex/react";
 
+import { api } from "@/convex/_generated/api";
 import { authClient } from "@/lib/auth-client";
-import { useAccountDeletionGuard } from "@/hooks/use-account-deletion-guard";
 import { useDeepLinkHandler } from "@/hooks/use-deep-link";
 import { useColors } from "@/hooks/use-theme";
 import { useReducedMotion } from "@/hooks/use-reduced-motion";
@@ -23,7 +24,12 @@ export default function AppLayout() {
   const { data: session } = authClient.useSession();
   const isAuthenticated = !!session?.session;
 
-  useAccountDeletionGuard();
+  // Soft-delete state. Skipped while unauthed because Convex queries need a
+  // live JWT; the auth modal renders behind a separate Stack.Protected and
+  // doesn't care about deletion.
+  const me = useQuery(api.users.getMe, isAuthenticated ? {} : "skip");
+  const isAccountDeleted = !!me?.deletedAt;
+
   useDeepLinkHandler();
 
   const colors = useColors();
@@ -43,7 +49,7 @@ export default function AppLayout() {
         animationDuration: reduceMotion ? 150 : 300,
       }}
     >
-      <Stack.Protected guard={isAuthenticated}>
+      <Stack.Protected guard={isAuthenticated && !isAccountDeleted}>
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
 
         {/*
@@ -124,10 +130,15 @@ export default function AppLayout() {
           <Stack.Screen.BackButton>Settings</Stack.Screen.BackButton>
         </Stack.Screen>
 
-        {/*
-          Soft-delete intercept. Non-dismissable modal makes the modal
-          semantic explicit, replaces the previous gestureEnabled-false push.
-        */}
+      </Stack.Protected>
+
+      {/*
+        Soft-delete intercept. Lives in its own Stack.Protected so the entire
+        authed tree above un-mounts when `deletedAt` is set, and re-mounts
+        when the user restores. Replaces the imperative router.replace from
+        the old useAccountDeletionGuard hook.
+      */}
+      <Stack.Protected guard={isAuthenticated && isAccountDeleted}>
         <Stack.Screen
           name="restore-account"
           options={{

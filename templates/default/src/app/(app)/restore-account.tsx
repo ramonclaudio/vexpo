@@ -2,8 +2,9 @@
  * Restore-or-confirm surface for the account-deletion window.
  *
  * Reachable only when `getMe` returns a user with `deletedAt` set. The
- * (app) layout's `useAccountDeletionGuard` hook redirects here on entry
- * and keeps the user from navigating elsewhere until they pick a path:
+ * (app) layout's two-layer `Stack.Protected` switches the entire subtree
+ * to this screen and keeps the user from navigating elsewhere until they
+ * pick a path:
  *
  *   Restore Account       calls `users.restoreAccount`, clears the
  *                         tombstone, drops us back at the home tab
@@ -93,9 +94,9 @@ export default function RestoreAccountScreen() {
     );
   }
 
-  // Note: `deletedAt` cleared mid-mount is handled by
-  // `useAccountDeletionGuard` in (app)/_layout.tsx, which routes the user
-  // back to `/` on the next render. No side-effect-in-render needed here.
+  // Note: `deletedAt` cleared mid-mount is handled by the two-layer
+  // Stack.Protected in (app)/_layout.tsx, which switches us back to the
+  // authed subtree on the next render. No side-effect-in-render needed.
   if (!me.deletedAt) {
     return (
       <Host style={{ flex: 1, backgroundColor: colors.background }}>
