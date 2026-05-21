@@ -5,7 +5,9 @@
     "allowImportingTsExtensions": true,
     "noEmit": true,
     "paths": {
-      "@/*": ["./*"]
+      "@/convex/*": ["./convex/*"],
+      "@/assets/*": ["./assets/*"],
+      "@/*": ["./src/*"]
     }
   },
   "include": ["**/*.ts", "**/*.tsx", ".expo/types/**/*.ts", "expo-env.d.ts"],

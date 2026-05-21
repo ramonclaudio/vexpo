@@ -1,7 +1,7 @@
 import { Stack } from "expo-router";
 
 import { useColors } from "@/hooks/use-theme";
-import { useReducedMotion } from "@/hooks/use-reduced-motion";
+import { useMotionScreenOptions } from "@/hooks/use-motion-screen-options";
 import { HeaderTint } from "@/constants/theme";
 import { LoadingScreen } from "@/components/ui/loading-screen";
 
@@ -15,15 +15,14 @@ export function SuspenseFallback() {
 
 export default function SettingsLayout() {
   const colors = useColors();
-  const reduceMotion = useReducedMotion();
+  const motion = useMotionScreenOptions("default");
 
   return (
     <Stack
       screenOptions={{
+        ...motion,
         headerShown: false,
         contentStyle: { backgroundColor: colors.background as string },
-        animation: reduceMotion ? "fade" : "default",
-        animationDuration: reduceMotion ? 150 : undefined,
       }}
     >
       <Stack.Screen name="index" />

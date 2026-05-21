@@ -1,3 +1,6 @@
+// SDK 56 bans application-code imports from @react-navigation/* in favor of
+// the expo-router re-exports. Theme types come from expo-router/react-navigation,
+// DefaultTheme from expo-router itself. Don't add @react-navigation/native back.
 import { DefaultTheme as RNDefaultTheme } from "expo-router";
 import type { Theme as RNTheme } from "expo-router/react-navigation";
 import { DynamicColorIOS } from "react-native";

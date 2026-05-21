@@ -1,7 +1,7 @@
-import { Stack, useSegments } from "expo-router";
+import { Stack } from "expo-router";
 
 import { useColors } from "@/hooks/use-theme";
-import { useReducedMotion } from "@/hooks/use-reduced-motion";
+import { useMotionScreenOptions } from "@/hooks/use-motion-screen-options";
 import { HeaderTint } from "@/constants/theme";
 import { FontFamily } from "@/constants/layout";
 
@@ -10,15 +10,18 @@ export const unstable_settings = {
   search: { anchor: "index" },
 };
 
-export default function SharedLayout() {
+// `segment` is the active group name in the comma-shared array, e.g.
+// `(home)` or `(search)`. Per the SDK 56 shared-routes docs, this is the
+// canonical entry point — no `useSegments()` cast, no magic index.
+export default function SharedLayout({ segment }: { segment: string }) {
   const colors = useColors();
-  const reduceMotion = useReducedMotion();
-  const segments = useSegments() as string[];
-  const isSearch = segments[2] === "(search)";
+  const motion = useMotionScreenOptions("default");
+  const isSearch = segment === "(search)";
 
   return (
     <Stack
       screenOptions={{
+        ...motion,
         headerTintColor: HeaderTint as string,
         headerBlurEffect: "none",
         headerShadowVisible: false,
@@ -26,8 +29,6 @@ export default function SharedLayout() {
         headerLargeStyle: { backgroundColor: "transparent" },
         headerTitleStyle: { fontFamily: FontFamily.semiBold },
         headerLargeTitleStyle: { fontFamily: FontFamily.bold },
-        animation: reduceMotion ? "fade" : "default",
-        animationDuration: reduceMotion ? 150 : undefined,
       }}
     >
       <Stack.Screen

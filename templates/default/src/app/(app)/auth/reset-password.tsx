@@ -64,7 +64,7 @@ export default function ResetPasswordScreen() {
   // in lite mode (`REQUIRE_EMAIL_VERIFICATION` unset).
   useEffect(() => {
     if (providers !== undefined && providers.emailFeatures === false) {
-      router.replace("/sign-in");
+      router.replace("/auth/sign-in");
     }
   }, [providers]);
 
@@ -167,7 +167,7 @@ export default function ResetPasswordScreen() {
             label="Sign in"
             onPress={() => {
               haptics.light();
-              router.replace("/sign-in");
+              router.replace("/auth/sign-in");
             }}
           />
           <Spacer />
@@ -237,7 +237,7 @@ export default function ResetPasswordScreen() {
                   modifiers={[buttonStyle("plain"), dfont({ size: 14 })]}
                   onPress={() => {
                     haptics.light();
-                    router.push("/forgot-password");
+                    router.push("/auth/forgot-password");
                   }}
                 />
               )}
@@ -311,7 +311,7 @@ export default function ResetPasswordScreen() {
               ]}
               onPress={() => {
                 haptics.light();
-                router.push("/sign-in");
+                router.push("/auth/sign-in");
               }}
             />
           </VStack>

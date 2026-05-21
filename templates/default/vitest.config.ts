@@ -4,7 +4,9 @@ import path from "node:path";
 export default defineConfig({
   resolve: {
     alias: {
-      "@": path.resolve(__dirname),
+      "@/convex": path.resolve(__dirname, "convex"),
+      "@/assets": path.resolve(__dirname, "assets"),
+      "@": path.resolve(__dirname, "src"),
     },
   },
   test: {
