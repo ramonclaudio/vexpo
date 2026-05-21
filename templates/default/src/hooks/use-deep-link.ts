@@ -5,15 +5,12 @@ import { router, type Href } from "expo-router";
 import { authClient } from "@/lib/auth-client";
 import { resolveDeepLink } from "@/lib/deep-link";
 
-const ROUTES: Record<string, Href> = {
-  "/linked": "/linked" as Href,
-};
-
 /**
- * Listens for deep link URLs and pushes to the matching route.
+ * Listens for deep-link URLs and pushes to the typed destination.
  *
  * Only runs once authenticated. Invalid or disallowed links are ignored.
- * Query params are forwarded as route params.
+ * Query params forward as route params. The typed `Href` comes from
+ * `DeepLinkRoutes` in `lib/deep-link.ts`; consumers don't cast.
  */
 export function useDeepLinkHandler() {
   // See note in app/_layout.tsx: Better Auth session is the canonical signal.
@@ -33,11 +30,7 @@ export function useDeepLinkHandler() {
       return;
     }
 
-    if (!resolved.path) return;
-
-    const target = ROUTES[resolved.path];
-    if (!target) return;
-
-    router.push({ pathname: target, params: resolved.params } as Href);
+    if (!resolved.href) return;
+    router.push({ pathname: resolved.href, params: resolved.params } as Href);
   }, [isAuthenticated, url]);
 }

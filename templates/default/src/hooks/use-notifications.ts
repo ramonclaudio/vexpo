@@ -2,10 +2,10 @@ import { useEffect, useRef, useState } from "react";
 import * as Notifications from "expo-notifications";
 import { useConvexAuth } from "convex/react";
 import { useMutation } from "convex/react";
-import { router } from "expo-router";
+import { router, type Href } from "expo-router";
 
 import { api } from "@/convex/_generated/api";
-import { isValidDeepLink } from "@/lib/deep-link";
+import { resolveDeepLink } from "@/lib/deep-link";
 import {
   getExpoPushToken,
   requestPermission,
@@ -27,11 +27,12 @@ function handleNotificationResponse(response: Notifications.NotificationResponse
   const url = response.notification.request.content.data?.url;
   if (typeof url !== "string") return;
 
-  if (isValidDeepLink(url)) {
-    router.push(url as Parameters<typeof router.push>[0]);
-  } else if (__DEV__) {
-    console.warn("[Notification] Blocked navigation to:", url);
+  const { href, params } = resolveDeepLink(url);
+  if (!href) {
+    if (__DEV__) console.warn("[Notification] Blocked navigation to:", url);
+    return;
   }
+  router.push({ pathname: href, params } as Href);
 }
 
 export function useNotifications(options?: UseNotificationsOptions) {
