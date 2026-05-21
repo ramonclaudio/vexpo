@@ -5,6 +5,7 @@ export default defineConfig({
   resolve: {
     alias: {
       "@/convex": path.resolve(__dirname, "convex"),
+      "@/assets": path.resolve(__dirname, "assets"),
       "@": path.resolve(__dirname, "src"),
     },
   },
