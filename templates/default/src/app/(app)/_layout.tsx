@@ -45,12 +45,23 @@ export default function AppLayout() {
     >
       <Stack.Protected guard={isAuthenticated}>
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+
+        {/*
+          Onboarding blocks the rest of the tree. Full-screen modal so the
+          tabs stay mounted underneath but are visually replaced until the
+          user finishes the carousel.
+        */}
         <Stack.Screen
           name="welcome"
-          options={{ headerShown: false, animation: reduceMotion ? "none" : "fade" }}
+          options={{
+            headerShown: false,
+            presentation: "fullScreenModal",
+            gestureEnabled: false,
+            animation: reduceMotion ? "none" : "fade",
+          }}
         />
 
-        <Stack.Screen name="debug">
+        <Stack.Screen name="debug" options={{ presentation: "fullScreenModal" }}>
           <Stack.Header transparent />
           <Stack.Screen.Title style={titleStyle}>Debug</Stack.Screen.Title>
           <Stack.Screen.BackButton withMenu>Settings</Stack.Screen.BackButton>
@@ -70,7 +81,23 @@ export default function AppLayout() {
           </Stack.Screen.BackButton>
         </Stack.Screen>
 
-        <Stack.Screen name="linked" options={{ headerShown: true, title: "Linked" }} />
+        {/*
+          Diagnostic inspector — sheet detents fit the short list of params.
+          Anchored to (tabs) so a deep link directly to the sheet leaves the
+          tab stack mounted underneath.
+        */}
+        <Stack.Screen
+          name="linked"
+          options={{
+            headerShown: true,
+            title: "Linked",
+            presentation: "formSheet",
+            sheetAllowedDetents: [0.5, 1],
+            sheetGrabberVisible: true,
+            sheetCornerRadius: 24,
+            sheetLargestUndimmedDetentIndex: 0,
+          }}
+        />
 
         <Stack.Screen name="profile/index" options={{ headerShown: true }}>
           <Stack.Header transparent />
@@ -78,7 +105,14 @@ export default function AppLayout() {
           <Stack.Screen.BackButton>Settings</Stack.Screen.BackButton>
         </Stack.Screen>
 
-        <Stack.Screen name="profile/change-password" options={{ headerShown: true }}>
+        {/*
+          Password change is a transient task — full slide-up modal matches
+          Apple Settings.app, gives the user clear "modal mode" semantics.
+        */}
+        <Stack.Screen
+          name="profile/change-password"
+          options={{ headerShown: true, presentation: "modal" }}
+        >
           <Stack.Header transparent />
           <Stack.Screen.Title style={titleStyle}>Password</Stack.Screen.Title>
           <Stack.Screen.BackButton>Profile</Stack.Screen.BackButton>
@@ -90,12 +124,17 @@ export default function AppLayout() {
           <Stack.Screen.BackButton>Settings</Stack.Screen.BackButton>
         </Stack.Screen>
 
+        {/*
+          Soft-delete intercept. Non-dismissable modal makes the modal
+          semantic explicit, replaces the previous gestureEnabled-false push.
+        */}
         <Stack.Screen
           name="restore-account"
           options={{
             headerShown: false,
-            animation: reduceMotion ? "fade" : "default",
+            presentation: "modal",
             gestureEnabled: false,
+            animation: reduceMotion ? "fade" : "default",
           }}
         />
       </Stack.Protected>

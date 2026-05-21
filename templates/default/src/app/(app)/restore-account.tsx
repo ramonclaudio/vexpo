@@ -93,10 +93,10 @@ export default function RestoreAccountScreen() {
     );
   }
 
-  // `deletedAt` cleared while we were mounting (e.g. another device
-  // already restored). Route the user away.
+  // Note: `deletedAt` cleared mid-mount is handled by
+  // `useAccountDeletionGuard` in (app)/_layout.tsx, which routes the user
+  // back to `/` on the next render. No side-effect-in-render needed here.
   if (!me.deletedAt) {
-    router.replace("/");
     return (
       <Host style={{ flex: 1, backgroundColor: colors.background }}>
         <Spacer />
