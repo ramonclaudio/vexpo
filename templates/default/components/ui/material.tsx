@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { StyleSheet, View, type ViewStyle } from "react-native";
+import { StyleSheet, View, type ViewProps } from "react-native";
 import { BlurView, type BlurTint } from "expo-blur";
 import { GlassView, isLiquidGlassAvailable, type GlassStyle } from "expo-glass-effect";
 
@@ -49,23 +49,27 @@ const GLASS_STYLE: Record<MaterialVariant, GlassStyle> = {
 
 const TINT_OVERLAY_OPACITY = 0.35;
 
-export function Material({
-  children,
-  style,
-  variant = "regular",
-  tintColor,
-  isInteractive = false,
-}: {
+// Inherits `ViewProps` so callers can pass `style`, `accessibilityRole`,
+// `accessibilityLiveRegion`, etc. directly on the material surface without
+// needing an outer wrapper View just for positioning or accessibility.
+export type MaterialProps = ViewProps & {
   children?: ReactNode;
-  style?: ViewStyle;
   variant?: MaterialVariant;
   tintColor?: string;
   isInteractive?: boolean;
-}) {
+};
+
+export function Material({
+  children,
+  variant = "regular",
+  tintColor,
+  isInteractive = false,
+  ...viewProps
+}: MaterialProps) {
   if (isLiquidGlassAvailable()) {
     return (
       <GlassView
-        style={style}
+        {...viewProps}
         glassEffectStyle={GLASS_STYLE[variant]}
         tintColor={tintColor}
         isInteractive={isInteractive}
@@ -76,7 +80,7 @@ export function Material({
   }
 
   return (
-    <BlurView style={style} intensity={BLUR_INTENSITY[variant]} tint={BLUR_TINT[variant]}>
+    <BlurView {...viewProps} intensity={BLUR_INTENSITY[variant]} tint={BLUR_TINT[variant]}>
       {tintColor ? (
         <View
           style={[
