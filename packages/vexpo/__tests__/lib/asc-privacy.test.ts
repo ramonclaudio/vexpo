@@ -32,9 +32,9 @@ describe("lintPrivacyConfig", () => {
         },
       ],
     });
-    const errors = issues.filter((i) => i.severity === "error");
-    expect(errors.length).toBeGreaterThan(0);
-    expect(errors[0]!.message).toMatch(/not a valid PrivacyDataType/);
+    const firstError = issues.find((i) => i.severity === "error");
+    expect(firstError).toBeDefined();
+    expect(firstError!.message).toMatch(/not a valid PrivacyDataType/);
   });
 
   test("flags unknown purpose", () => {
@@ -50,8 +50,8 @@ describe("lintPrivacyConfig", () => {
         },
       ],
     });
-    const errors = issues.filter((i) => i.severity === "error");
-    expect(errors[0]!.message).toMatch(/not a valid PrivacyPurpose/);
+    const firstError = issues.find((i) => i.severity === "error");
+    expect(firstError!.message).toMatch(/not a valid PrivacyPurpose/);
   });
 
   test("warns on collectsData=false with entries", () => {
@@ -67,14 +67,14 @@ describe("lintPrivacyConfig", () => {
         },
       ],
     });
-    const warnings = issues.filter((i) => i.severity === "warning");
-    expect(warnings[0]!.message).toMatch(/collectsData.*false.*entries.*non-empty/);
+    const firstWarning = issues.find((i) => i.severity === "warning");
+    expect(firstWarning!.message).toMatch(/collectsData.*false.*entries.*non-empty/);
   });
 
   test("errors when collectsData=true but no entries", () => {
     const issues = lintPrivacyConfig({ collectsData: true, entries: [] });
-    const errors = issues.filter((i) => i.severity === "error");
-    expect(errors[0]!.message).toMatch(/declare at least one data type/);
+    const firstError = issues.find((i) => i.severity === "error");
+    expect(firstError!.message).toMatch(/declare at least one data type/);
   });
 
   test("warns on duplicate categories", () => {

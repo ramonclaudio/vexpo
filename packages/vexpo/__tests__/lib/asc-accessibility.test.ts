@@ -19,8 +19,8 @@ describe("lintAccessibilityConfig", () => {
     const issues = lintAccessibilityConfig({
       entries: [{ deviceFamily: "SMARTGLASSES", features: {} }],
     });
-    const errors = issues.filter((i) => i.severity === "error");
-    expect(errors[0]!.message).toMatch(/not a valid AccessibilityDeviceFamily/);
+    const firstError = issues.find((i) => i.severity === "error");
+    expect(firstError!.message).toMatch(/not a valid AccessibilityDeviceFamily/);
   });
 
   test("flags unknown feature key", () => {
@@ -29,16 +29,16 @@ describe("lintAccessibilityConfig", () => {
         { deviceFamily: "IPHONE", features: { TELEPATHIC_INPUT: "FULLY_SUPPORTS" as never } },
       ],
     });
-    const errors = issues.filter((i) => i.severity === "error");
-    expect(errors[0]!.message).toMatch(/not a valid AccessibilityFeature/);
+    const firstError = issues.find((i) => i.severity === "error");
+    expect(firstError!.message).toMatch(/not a valid AccessibilityFeature/);
   });
 
   test("flags unknown support level", () => {
     const issues = lintAccessibilityConfig({
       entries: [{ deviceFamily: "IPHONE", features: { VOICE_OVER: "MAYBE" as never } }],
     });
-    const errors = issues.filter((i) => i.severity === "error");
-    expect(errors[0]!.message).toMatch(/not a valid AccessibilityLevel/);
+    const firstError = issues.find((i) => i.severity === "error");
+    expect(firstError!.message).toMatch(/not a valid AccessibilityLevel/);
   });
 
   test("warns on duplicate device families", () => {
@@ -54,7 +54,7 @@ describe("lintAccessibilityConfig", () => {
 
   test("warns on empty entries", () => {
     const issues = lintAccessibilityConfig({ entries: [] });
-    const warnings = issues.filter((i) => i.severity === "warning");
-    expect(warnings[0]!.message).toMatch(/at least one device family/);
+    const firstWarning = issues.find((i) => i.severity === "warning");
+    expect(firstWarning!.message).toMatch(/at least one device family/);
   });
 });
