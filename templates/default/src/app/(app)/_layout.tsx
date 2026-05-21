@@ -130,7 +130,6 @@ export default function AppLayout() {
           <Stack.Screen.Title style={titleStyle}>Sessions</Stack.Screen.Title>
           <Stack.Screen.BackButton>Settings</Stack.Screen.BackButton>
         </Stack.Screen>
-
       </Stack.Protected>
 
       {/*
