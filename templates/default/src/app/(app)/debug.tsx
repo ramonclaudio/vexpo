@@ -47,6 +47,53 @@ const RELEASE_TYPE_LABELS: Record<number, string> = {
   [ApplicationReleaseType.APP_STORE]: "App Store",
 };
 
+type InfoRowProps = {
+  label: string;
+  value: string;
+  valueModifiers?: Parameters<typeof Text>[0]["modifiers"];
+  valueColor?: string;
+};
+
+function InfoRow({ label, value, valueModifiers, valueColor }: InfoRowProps) {
+  const colors = useColors();
+  const dfont = useDynamicFont();
+  return (
+    <HStack
+      spacing={12}
+      alignment="center"
+      modifiers={[frame({ maxWidth: 10000 }), padding({ horizontal: 16, vertical: 12 })]}
+    >
+      <Text modifiers={[dfont({ size: 15 }), foregroundStyle(colors.mutedForeground as string)]}>
+        {label}
+      </Text>
+      <Spacer />
+      <Text
+        modifiers={[
+          dfont({ size: 15, weight: "medium" }),
+          foregroundStyle((valueColor ?? colors.foreground) as string),
+          textSelection(true),
+          ...(valueModifiers ?? []),
+        ]}
+      >
+        {value}
+      </Text>
+    </HStack>
+  );
+}
+
+function InfoCard({ children }: { children: React.ReactNode }) {
+  const colors = useColors();
+  return (
+    <VStack
+      spacing={0}
+      alignment="leading"
+      modifiers={[frame({ maxWidth: 10000 }), background(colors.muted as string), cornerRadius(20)]}
+    >
+      {children}
+    </VStack>
+  );
+}
+
 // Surface the last hour of expo-updates log entries so bsdiff patch success,
 // signature failures, and runtime-version mismatches are visible at runtime.
 // Chronological order, newest at the bottom of a bounded scrollable card
@@ -131,49 +178,6 @@ export default function DebugScreen() {
     foregroundStyle(colors.mutedForeground as string),
     padding({ horizontal: 8, top: 4 }),
   ];
-
-  const InfoRow = ({
-    label,
-    value,
-    valueModifiers,
-    valueColor,
-  }: {
-    label: string;
-    value: string;
-    valueModifiers?: Parameters<typeof Text>[0]["modifiers"];
-    valueColor?: string;
-  }) => (
-    <HStack
-      spacing={12}
-      alignment="center"
-      modifiers={[frame({ maxWidth: 10000 }), padding({ horizontal: 16, vertical: 12 })]}
-    >
-      <Text modifiers={[dfont({ size: 15 }), foregroundStyle(colors.mutedForeground as string)]}>
-        {label}
-      </Text>
-      <Spacer />
-      <Text
-        modifiers={[
-          dfont({ size: 15, weight: "medium" }),
-          foregroundStyle((valueColor ?? colors.foreground) as string),
-          textSelection(true),
-          ...(valueModifiers ?? []),
-        ]}
-      >
-        {value}
-      </Text>
-    </HStack>
-  );
-
-  const InfoCard = ({ children }: { children: React.ReactNode }) => (
-    <VStack
-      spacing={0}
-      alignment="leading"
-      modifiers={[frame({ maxWidth: 10000 }), background(colors.muted as string), cornerRadius(20)]}
-    >
-      {children}
-    </VStack>
-  );
 
   return (
     <>
