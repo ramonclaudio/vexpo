@@ -3,7 +3,7 @@ import Constants from "expo-constants";
 import * as Clipboard from "expo-clipboard";
 import * as LocalAuthentication from "expo-local-authentication";
 import { Image as ExpoImage, useImage } from "expo-image";
-import { router, usePreventZoomTransitionDismissal, type Href } from "expo-router";
+import { router, type Href } from "expo-router";
 
 const PROFILE_HREF = "/profile" as Href;
 const DEBUG_HREF = "/debug" as Href;
@@ -58,8 +58,6 @@ export default function SettingsScreen() {
   const [showSignOut, setShowSignOut] = useState(false);
   const [showDeleteAccount, setShowDeleteAccount] = useState(false);
   const [debugOn] = useDebugEnabled();
-
-  usePreventZoomTransitionDismissal();
 
   const navigate = (path: Href) => {
     haptics.light();

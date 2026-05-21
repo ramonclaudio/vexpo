@@ -5,6 +5,7 @@ import { api } from "@/convex/_generated/api";
 import { authClient } from "@/lib/auth-client";
 import { useDeepLinkHandler } from "@/hooks/use-deep-link";
 import { useColors } from "@/hooks/use-theme";
+import { useMotionScreenOptions } from "@/hooks/use-motion-screen-options";
 import { useReducedMotion } from "@/hooks/use-reduced-motion";
 import { FontFamily } from "@/constants/layout";
 import { LoadingScreen } from "@/components/ui/loading-screen";
@@ -34,19 +35,19 @@ export default function AppLayout() {
 
   const colors = useColors();
   const reduceMotion = useReducedMotion();
+  const motion = useMotionScreenOptions("slide_from_right", 300);
   const headerTint = colors.foreground as string;
   const titleStyle = { color: headerTint, fontFamily: FontFamily.semiBold };
 
   return (
     <Stack
       screenOptions={{
+        ...motion,
         headerShown: false,
         contentStyle: { backgroundColor: colors.background as string },
         headerBackTitle: "Back",
         headerTintColor: headerTint,
         headerShadowVisible: false,
-        animation: reduceMotion ? "fade" : "slide_from_right",
-        animationDuration: reduceMotion ? 150 : 300,
       }}
     >
       <Stack.Protected guard={isAuthenticated && !isAccountDeleted}>
@@ -105,24 +106,7 @@ export default function AppLayout() {
           }}
         />
 
-        <Stack.Screen name="profile/index" options={{ headerShown: true }}>
-          <Stack.Header transparent />
-          <Stack.Screen.Title style={titleStyle}>Profile</Stack.Screen.Title>
-          <Stack.Screen.BackButton>Settings</Stack.Screen.BackButton>
-        </Stack.Screen>
-
-        {/*
-          Password change is a transient task — full slide-up modal matches
-          Apple Settings.app, gives the user clear "modal mode" semantics.
-        */}
-        <Stack.Screen
-          name="profile/change-password"
-          options={{ headerShown: true, presentation: "modal" }}
-        >
-          <Stack.Header transparent />
-          <Stack.Screen.Title style={titleStyle}>Password</Stack.Screen.Title>
-          <Stack.Screen.BackButton>Profile</Stack.Screen.BackButton>
-        </Stack.Screen>
+        <Stack.Screen name="profile" options={{ headerShown: false }} />
 
         <Stack.Screen name="sessions" options={{ headerShown: true }}>
           <Stack.Header transparent />

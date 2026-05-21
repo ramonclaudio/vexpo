@@ -14,7 +14,7 @@ import { assetModules } from "@/lib/assets";
 import { useAssets } from "expo-asset";
 import { env } from "@/lib/env";
 import { useColorScheme, useColors } from "@/hooks/use-theme";
-import { useReducedMotion } from "@/hooks/use-reduced-motion";
+import { useMotionScreenOptions } from "@/hooks/use-motion-screen-options";
 import { useNotifications } from "@/hooks/use-notifications";
 import { useNavigationTracking } from "@/hooks/use-navigation-tracking";
 import { OfflineBanner } from "@/components/ui/offline-banner";
@@ -54,7 +54,7 @@ function RootNavigator() {
   const { isPending } = authClient.useSession();
   const colorScheme = useColorScheme();
   const colors = useColors();
-  const reduceMotion = useReducedMotion();
+  const motion = useMotionScreenOptions("default");
   const [assets] = useAssets(assetModules);
 
   useNotifications();
@@ -70,9 +70,8 @@ function RootNavigator() {
         <NavigationThemeProvider value={colorScheme === "dark" ? NavigationDark : NavigationLight}>
           <Stack
             screenOptions={{
+              ...motion,
               headerShown: false,
-              animation: reduceMotion ? "fade" : "default",
-              animationDuration: reduceMotion ? 150 : undefined,
               contentStyle: { backgroundColor: colors.background as string },
             }}
           >
