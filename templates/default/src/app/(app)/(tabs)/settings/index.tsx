@@ -233,12 +233,12 @@ export default function SettingsScreen() {
           <VStack spacing={8} modifiers={[frame({ maxWidth: Infinity })]}>
             {rowButton({
               label: "Help & Feedback",
-              systemImage: "bubble.left",
+              systemImage: "questionmark.bubble.fill",
               onPress: () => navigate("/help"),
             })}
             {rowButton({
               label: "Privacy",
-              systemImage: "hand.raised",
+              systemImage: "lock.shield.fill",
               onPress: () => navigate("/privacy"),
             })}
             {rowButton({
