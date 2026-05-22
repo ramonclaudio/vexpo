@@ -112,7 +112,6 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       // networks (hotel WiFi, captive portals). 2 seconds is enough for
       // a fast check on good networks and a graceful timeout otherwise.
       fallbackToCacheTimeout: 2000,
-      enableBsdiffPatchSupport: true,
       ...(projectId ? { url: `https://u.expo.dev/${projectId}` } : {}),
       // `expo-channel-name` request header is required for runtime channel
       // surfing via `Updates.setUpdateRequestHeadersOverride`. EAS Build
@@ -235,6 +234,8 @@ export default ({ config }: ConfigContext): ExpoConfig => {
           faceIDPermission: "Allow $(PRODUCT_NAME) to use Face ID to confirm sensitive actions.",
         },
       ],
+      "expo-image",
+      "expo-sqlite",
       "expo-system-ui",
       "expo-secure-store",
       "expo-web-browser",
