@@ -7,10 +7,12 @@ import {
   background,
   buttonStyle,
   clipShape,
+  contentShape,
   disabled as disabledMod,
   frame,
   onSubmit as onSubmitMod,
   padding,
+  shapes,
   submitLabel,
   textContentType,
   textFieldStyle,
@@ -115,6 +117,8 @@ export function PasswordField({
       <Button
         modifiers={[
           buttonStyle("plain"),
+          frame({ width: 44, height: 44 }),
+          contentShape(shapes.rectangle()),
           accessibilityLabel(visible ? "Hide password" : "Show password"),
           accessibilityHint(visible ? "Tap to mask the password" : "Tap to reveal the password"),
         ]}
