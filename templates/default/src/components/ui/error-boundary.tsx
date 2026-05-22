@@ -1,3 +1,5 @@
+import { useEffect } from "react";
+import { AccessibilityInfo } from "react-native";
 import { router, type ErrorBoundaryProps } from "expo-router";
 import { Host, VStack, Text, Button, Image, Spacer } from "@expo/ui/swift-ui";
 import {
@@ -18,6 +20,12 @@ export function AppErrorBoundary({ error, retry }: ErrorBoundaryProps) {
   const symbolSize = useSymbolSize();
   const colors = useColors();
   console.error("[ErrorBoundary]", error);
+
+  // VoiceOver users won't notice the visual change to a destructive surface
+  // unless we explicitly announce. Fires once on mount per crash.
+  useEffect(() => {
+    AccessibilityInfo.announceForAccessibility("Error: something went wrong");
+  }, []);
 
   return (
     <Host style={{ flex: 1 }}>
