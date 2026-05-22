@@ -1,0 +1,34 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "permissions": {
+    "allow": [
+      "Bash(npx expo:*)",
+      "Bash(npx eas:*)",
+      "Bash(npx eas-cli:*)",
+      "Bash(npx convex:*)",
+      "Bash(npx vexpo:*)",
+      "Bash(npx tsc:*)",
+      "Bash(npx vitest:*)",
+      "Bash(npx oxlint:*)",
+      "Bash(npx oxfmt:*)",
+      "Bash(npx @expo/fingerprint:*)",
+      "Bash(npx expo-doctor:*)",
+      "Bash(npx expo-doctor@latest:*)",
+      "Bash(npm run typecheck)",
+      "Bash(npm run lint)",
+      "Bash(npm run format)",
+      "Bash(npm run format:check)",
+      "Bash(npm run test)",
+      "Bash(npm run test:watch)",
+      "Bash(npm run dev)",
+      "Bash(npm run fp:*)",
+      "Bash(git status)",
+      "Bash(git diff:*)",
+      "Bash(git log:*)",
+      "Bash(git branch)",
+      "Bash(git branch --show-current)",
+      "Bash(git show:*)",
+      "Bash(git ls-files:*)"
+    ]
+  }
+}
