@@ -150,7 +150,7 @@ export default function WelcomeScreen() {
                     systemName={s.icon}
                     size={symbolSize(48)}
                     color={colors.primary as string}
-                    modifiers={[frame({ width: 80, height: 80 })]}
+                    modifiers={[frame({ width: 80, height: 80 }), accessibilityLabel("")]}
                   />
                 )}
                 <Text modifiers={[dfont({ size: 34, weight: "bold" }), kerning(-0.5)]}>

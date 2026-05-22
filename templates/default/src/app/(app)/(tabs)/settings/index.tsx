@@ -28,7 +28,6 @@ import {
   foregroundStyle,
   frame,
   padding,
-  onTapGesture,
   accessibilityLabel,
   lineLimit,
   truncationMode,
@@ -167,13 +166,12 @@ export default function SettingsScreen() {
               frame({ maxWidth: 10000 }),
               background(colors.muted as string),
               clipShape("capsule"),
-              onTapGesture(() => {
-                haptics.light();
-                navigate(PROFILE_HREF);
-              }),
               accessibilityLabel("Open profile"),
             ]}
-            onPress={() => navigate(PROFILE_HREF)}
+            onPress={() => {
+              haptics.light();
+              navigate(PROFILE_HREF);
+            }}
           >
             <HStack
               spacing={16}
