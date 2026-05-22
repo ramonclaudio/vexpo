@@ -454,12 +454,12 @@ function encodeOid(oid: string): Buffer {
   if (parts.length < 2) throw new Error(`invalid OID: ${oid}`);
   const bytes: number[] = [40 * parts[0]! + parts[1]!];
   for (let i = 2; i < parts.length; i++) {
-    let v = parts[i]!;
+    let n = parts[i]!;
     const buf: number[] = [];
     do {
-      buf.unshift(v & 0x7f);
-      v >>= 7;
-    } while (v > 0);
+      buf.unshift(n & 0x7f);
+      n >>= 7;
+    } while (n > 0);
     for (let j = 0; j < buf.length - 1; j++) buf[j]! |= 0x80;
     bytes.push(...buf);
   }
