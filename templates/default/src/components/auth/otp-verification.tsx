@@ -22,6 +22,7 @@ import {
   textFieldStyle,
 } from "@expo/ui/swift-ui/modifiers";
 import { useDynamicFont } from "@/lib/dynamic-font";
+import { useSymbolSize } from "@/lib/dynamic-symbol-size";
 import { Button as ButtonTokens } from "@/constants/layout";
 
 import { api } from "@/convex/_generated/api";
@@ -67,6 +68,7 @@ export function OtpVerification({
   pendingAvatar,
 }: OtpVerificationProps) {
   const dfont = useDynamicFont();
+  const symbolSize = useSymbolSize();
   const colors = useColors();
   const [otp, setOtp] = useState("");
   const generateAvatarUploadUrl = useMutation(api.users.generateAvatarUploadUrl);
@@ -156,7 +158,7 @@ export function OtpVerification({
 
         <Image
           systemName={isSignIn ? "lock.shield" : "envelope.badge"}
-          size={56}
+          size={symbolSize(56)}
           color={colors.primary}
           modifiers={[accessibilityLabel("")]}
         />

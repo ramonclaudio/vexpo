@@ -20,6 +20,7 @@ import {
 import { Button as ButtonTokens } from "@/constants/layout";
 import { useColors } from "@/hooks/use-theme";
 import { useDynamicFont } from "@/lib/dynamic-font";
+import { useSymbolSize } from "@/lib/dynamic-symbol-size";
 import { haptics } from "@/lib/haptics";
 
 type ObservableTextState = NonNullable<ComponentProps<typeof TextField>["text"]>;
@@ -66,6 +67,7 @@ export function PasswordField({
   accessibilityHint: a11yHint = "Enter your password",
 }: Props) {
   const dfont = useDynamicFont();
+  const symbolSize = useSymbolSize();
   const colors = useColors();
   const [visible, setVisible] = useState(false);
   const internalState = useNativeState("");
@@ -123,7 +125,7 @@ export function PasswordField({
       >
         <Image
           systemName={visible ? "eye.slash" : "eye"}
-          size={18}
+          size={symbolSize(18)}
           color={colors.mutedForeground as string}
           modifiers={[accessibilityLabel("")]}
         />

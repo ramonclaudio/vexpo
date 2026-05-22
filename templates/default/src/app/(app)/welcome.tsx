@@ -31,6 +31,7 @@ import {
   id,
 } from "@expo/ui/swift-ui/modifiers";
 import { useDynamicFont } from "@/lib/dynamic-font";
+import { useSymbolSize } from "@/lib/dynamic-symbol-size";
 import { Button as ButtonTokens } from "@/constants/layout";
 import { ProminentButton } from "@/components/ui/prominent-button";
 
@@ -67,6 +68,7 @@ const STEPS: readonly WelcomeStep[] = [
 
 export default function WelcomeScreen() {
   const dfont = useDynamicFont();
+  const symbolSize = useSymbolSize();
   const colors = useColors();
   const brandIcon = useThemedAsset(assets.brandIconLight, assets.brandIconDark);
   const activeID = useNativeState<string | null>(STEPS[0].id);
@@ -146,7 +148,7 @@ export default function WelcomeScreen() {
                 ) : (
                   <Image
                     systemName={s.icon}
-                    size={48}
+                    size={symbolSize(48)}
                     color={colors.primary as string}
                     modifiers={[frame({ width: 80, height: 80 })]}
                   />

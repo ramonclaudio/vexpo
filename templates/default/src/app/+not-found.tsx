@@ -7,11 +7,13 @@ import {
   tint,
 } from "@expo/ui/swift-ui/modifiers";
 import { useDynamicFont } from "@/lib/dynamic-font";
+import { useSymbolSize } from "@/lib/dynamic-symbol-size";
 import { ProminentButton } from "@/components/ui/prominent-button";
 import { useColors } from "@/hooks/use-theme";
 
 export default function NotFoundScreen() {
   const dfont = useDynamicFont();
+  const symbolSize = useSymbolSize();
   const colors = useColors();
   return (
     <>
@@ -27,7 +29,7 @@ export default function NotFoundScreen() {
           <Spacer />
           <Image
             systemName="questionmark.circle"
-            size={56}
+            size={symbolSize(56)}
             color={colors.mutedForeground as string}
           />
           <Text modifiers={[dfont({ size: 24, weight: "bold" }), multilineTextAlignment("center")]}>
