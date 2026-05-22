@@ -1,7 +1,12 @@
 import type { ReactNode } from "react";
 import { StyleSheet, View, type ViewProps } from "react-native";
 import { BlurView, type BlurTint } from "expo-blur";
-import { GlassView, isLiquidGlassAvailable, type GlassStyle } from "expo-glass-effect";
+import {
+  GlassView,
+  isGlassEffectAPIAvailable,
+  isLiquidGlassAvailable,
+  type GlassStyle,
+} from "expo-glass-effect";
 
 import { useReduceTransparency } from "@/hooks/use-reduce-transparency";
 
@@ -88,7 +93,12 @@ export function Material({
     );
   }
 
-  if (isLiquidGlassAvailable()) {
+  // `isLiquidGlassAvailable()` confirms the SDK + Info.plist support Liquid
+  // Glass; `isGlassEffectAPIAvailable()` confirms the runtime device actually
+  // has the API. Some iOS 26 beta builds pass the version check without the
+  // runtime API and crash on GlassView. Both must be true. See
+  // https://github.com/expo/expo/issues/40911.
+  if (isLiquidGlassAvailable() && isGlassEffectAPIAvailable()) {
     return (
       <GlassView
         {...viewProps}
