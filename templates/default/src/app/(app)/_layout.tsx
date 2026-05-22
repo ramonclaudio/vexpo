@@ -68,7 +68,7 @@ export default function AppLayout() {
           }}
         />
 
-        <Stack.Screen name="debug" options={{ presentation: "fullScreenModal" }}>
+        <Stack.Screen name="debug">
           <Stack.Header transparent />
           <Stack.Screen.Title style={titleStyle}>Debug</Stack.Screen.Title>
           <Stack.Screen.BackButton withMenu>Settings</Stack.Screen.BackButton>
