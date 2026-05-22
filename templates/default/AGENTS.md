@@ -12,7 +12,7 @@ hand. These are conventions, not magic.
   `convex/_generated/ai/guidelines.md` before touching anything in `convex/`.
 - **Auth.** Better Auth via `@convex-dev/better-auth@0.12.2`. Email
   verification is gated on the `REQUIRE_EMAIL_VERIFICATION` Convex env var.
-- **Mobile.** Expo SDK 56 preview, RN 0.85, React 19. **iOS only today.**
+- **Mobile.** Expo SDK 56, RN 0.85, React 19. **iOS only today.**
   Native UI exclusively via `@expo/ui/swift-ui`. No NativeWind, no Tailwind,
   no `react-native-paper`.
 - **CI/CD.** EAS Workflows (`.eas/workflows/*.yml`) for everything
@@ -66,6 +66,24 @@ rebrand` fills them in. App Review will reject builds with placeholder
 - Use `npx eas <subcommand>` for canonical EAS operations. **Don't reinvent
   EAS.** That's the vexpo design principle.
 - Read `SETUP.md` for the long-form orchestration walkthrough.
+
+## Agent setup
+
+- **Claude Code:** install Expo's official agent skills with
+  `/plugin marketplace add expo/skills` then `/plugin install expo`. For
+  Codex, Cursor, or any other agent, run `npx skills add expo/skills`. The
+  Convex agent skills install separately via `npx convex ai-files install`.
+- **Pre-approved commands:** `.claude/settings.json` allows read-only
+  `git`/`expo`/`eas`/`convex`/`vexpo` calls + the project's `npm run`
+  scripts (`typecheck`, `lint`, `test`, `format`, `dev`, `fp`) without
+  per-step permission prompts. Destructive ops (`git push`, `git reset`,
+  `npm install`, `expo deploy`) still ask.
+- **EAS Convex bootstrap:** `eas integrations:convex:connect` is the
+  upstream SDK 56 path for provisioning a Convex backend, writing
+  `CONVEX_DEPLOY_KEY` + `EXPO_PUBLIC_CONVEX_URL`, and registering the env
+  vars across Production/Preview/Development. `npx vexpo full` is the
+  broader path that also wires Better Auth, Resend, and App Store identity
+  in one shot. Use vexpo for a complete starter, EAS for Convex alone.
 
 <!-- convex-ai-start -->
 
