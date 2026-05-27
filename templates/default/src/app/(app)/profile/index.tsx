@@ -49,6 +49,7 @@ import {
   tint,
 } from "@expo/ui/swift-ui/modifiers";
 import { useDynamicFont } from "@/lib/dynamic-font";
+import { useSymbolSize } from "@/lib/dynamic-symbol-size";
 import { Button as ButtonTokens } from "@/constants/layout";
 
 import { api } from "@/convex/_generated/api";
@@ -71,6 +72,7 @@ type OtpState = { error?: string; success?: string };
 
 export default function ProfileScreen() {
   const dfont = useDynamicFont();
+  const symbolSize = useSymbolSize();
   const colors = useColors();
   const me = useQuery(api.users.getMe);
   const hasPasswordResult = useQuery(api.auth.hasPassword);
@@ -389,7 +391,7 @@ export default function ProfileScreen() {
                   <Spacer />
                   <Image
                     systemName="camera.circle.fill"
-                    size={28}
+                    size={symbolSize(28)}
                     color={colors.primary as string}
                     modifiers={[accessibilityLabel("")]}
                   />

@@ -7,10 +7,12 @@ import {
   background,
   buttonStyle,
   clipShape,
+  contentShape,
   disabled as disabledMod,
   frame,
   onSubmit as onSubmitMod,
   padding,
+  shapes,
   submitLabel,
   textContentType,
   textFieldStyle,
@@ -20,6 +22,7 @@ import {
 import { Button as ButtonTokens } from "@/constants/layout";
 import { useColors } from "@/hooks/use-theme";
 import { useDynamicFont } from "@/lib/dynamic-font";
+import { useSymbolSize } from "@/lib/dynamic-symbol-size";
 import { haptics } from "@/lib/haptics";
 
 type ObservableTextState = NonNullable<ComponentProps<typeof TextField>["text"]>;
@@ -66,6 +69,7 @@ export function PasswordField({
   accessibilityHint: a11yHint = "Enter your password",
 }: Props) {
   const dfont = useDynamicFont();
+  const symbolSize = useSymbolSize();
   const colors = useColors();
   const [visible, setVisible] = useState(false);
   const internalState = useNativeState("");
@@ -113,6 +117,8 @@ export function PasswordField({
       <Button
         modifiers={[
           buttonStyle("plain"),
+          frame({ width: 44, height: 44 }),
+          contentShape(shapes.rectangle()),
           accessibilityLabel(visible ? "Hide password" : "Show password"),
           accessibilityHint(visible ? "Tap to mask the password" : "Tap to reveal the password"),
         ]}
@@ -123,7 +129,7 @@ export function PasswordField({
       >
         <Image
           systemName={visible ? "eye.slash" : "eye"}
-          size={18}
+          size={symbolSize(18)}
           color={colors.mutedForeground as string}
           modifiers={[accessibilityLabel("")]}
         />

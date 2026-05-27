@@ -28,7 +28,6 @@ import {
   foregroundStyle,
   frame,
   padding,
-  onTapGesture,
   accessibilityLabel,
   lineLimit,
   truncationMode,
@@ -37,6 +36,7 @@ import {
   tint,
 } from "@expo/ui/swift-ui/modifiers";
 import { useDynamicFont } from "@/lib/dynamic-font";
+import { useSymbolSize } from "@/lib/dynamic-symbol-size";
 import { Button as ButtonTokens } from "@/constants/layout";
 
 import { api } from "@/convex/_generated/api";
@@ -50,6 +50,7 @@ const HEADER_AVATAR_SIZE = 56;
 
 export default function SettingsScreen() {
   const dfont = useDynamicFont();
+  const symbolSize = useSymbolSize();
   const colors = useColors();
   const me = useQuery(api.users.getMe);
   const removeAllTokens = useMutation(api.pushTokens.removeAll);
@@ -130,7 +131,7 @@ export default function SettingsScreen() {
             padding({ horizontal: 16 }),
           ]}
         >
-          <Image systemName={systemImage} size={18} color={labelColor} />
+          <Image systemName={systemImage} size={symbolSize(18)} color={labelColor} />
           <Text modifiers={[dfont({ size: 16, weight: "medium" }), foregroundStyle(labelColor)]}>
             {label}
           </Text>
@@ -138,7 +139,7 @@ export default function SettingsScreen() {
           {role !== "destructive" ? (
             <Image
               systemName="chevron.right"
-              size={13}
+              size={symbolSize(13)}
               color={colors.mutedForeground as string}
               modifiers={[accessibilityLabel("")]}
             />
@@ -165,13 +166,12 @@ export default function SettingsScreen() {
               frame({ maxWidth: 10000 }),
               background(colors.muted as string),
               clipShape("capsule"),
-              onTapGesture(() => {
-                haptics.light();
-                navigate(PROFILE_HREF);
-              }),
               accessibilityLabel("Open profile"),
             ]}
-            onPress={() => navigate(PROFILE_HREF)}
+            onPress={() => {
+              haptics.light();
+              navigate(PROFILE_HREF);
+            }}
           >
             <HStack
               spacing={16}
@@ -210,7 +210,7 @@ export default function SettingsScreen() {
               <Spacer />
               <Image
                 systemName="chevron.right"
-                size={13}
+                size={symbolSize(13)}
                 color={colors.mutedForeground as string}
                 modifiers={[accessibilityLabel("")]}
               />
@@ -233,12 +233,12 @@ export default function SettingsScreen() {
           <VStack spacing={8} modifiers={[frame({ maxWidth: Infinity })]}>
             {rowButton({
               label: "Help & Feedback",
-              systemImage: "bubble.left",
+              systemImage: "questionmark.bubble.fill",
               onPress: () => navigate("/help"),
             })}
             {rowButton({
               label: "Privacy",
-              systemImage: "hand.raised",
+              systemImage: "lock.shield.fill",
               onPress: () => navigate("/privacy"),
             })}
             {rowButton({

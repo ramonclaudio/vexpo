@@ -22,6 +22,7 @@ import {
   tint,
 } from "@expo/ui/swift-ui/modifiers";
 import { useDynamicFont } from "@/lib/dynamic-font";
+import { useSymbolSize } from "@/lib/dynamic-symbol-size";
 import { Button as ButtonTokens } from "@/constants/layout";
 
 import { haptics } from "@/lib/haptics";
@@ -29,6 +30,7 @@ import { useColors } from "@/hooks/use-theme";
 
 export default function PrivacyScreen() {
   const dfont = useDynamicFont();
+  const symbolSize = useSymbolSize();
   const colors = useColors();
   const [analyticsEnabled, setAnalyticsEnabled] = useState(true);
 
@@ -69,7 +71,7 @@ export default function PrivacyScreen() {
           padding({ horizontal: 16 }),
         ]}
       >
-        <Image systemName={systemImage} size={18} color={colors.foreground as string} />
+        <Image systemName={systemImage} size={symbolSize(18)} color={colors.foreground as string} />
         <Text
           modifiers={[
             dfont({ size: 16, weight: "medium" }),
@@ -83,7 +85,7 @@ export default function PrivacyScreen() {
           (chevron ? (
             <Image
               systemName="chevron.right"
-              size={13}
+              size={symbolSize(13)}
               color={colors.mutedForeground as string}
               modifiers={[accessibilityLabel("")]}
             />
@@ -129,7 +131,11 @@ export default function PrivacyScreen() {
               clipShape("capsule"),
             ]}
           >
-            <Image systemName="chart.bar.fill" size={18} color={colors.foreground as string} />
+            <Image
+              systemName="chart.bar.fill"
+              size={symbolSize(18)}
+              color={colors.foreground as string}
+            />
             <Text
               modifiers={[
                 dfont({ size: 16, weight: "medium" }),

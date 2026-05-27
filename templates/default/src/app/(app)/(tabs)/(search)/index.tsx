@@ -25,6 +25,7 @@ import {
 import type { SFSymbol } from "sf-symbols-typescript";
 
 import { useDynamicFont } from "@/lib/dynamic-font";
+import { useSymbolSize } from "@/lib/dynamic-symbol-size";
 import { useColors } from "@/hooks/use-theme";
 import { useDebounce } from "@/hooks/use-debounce";
 import { useDebugEnabled } from "@/lib/preferences";
@@ -121,6 +122,7 @@ function score(d: Destination, query: string): number {
 
 export default function SearchScreen() {
   const dfont = useDynamicFont();
+  const symbolSize = useSymbolSize();
   const colors = useColors();
   const [raw, setRaw] = useState("");
   const query = useDebounce(raw, DEBOUNCE_MS);
@@ -198,7 +200,11 @@ export default function SearchScreen() {
                         padding({ horizontal: 16, vertical: 12 }),
                       ]}
                     >
-                      <Image systemName={d.icon} size={20} color={colors.foreground as string} />
+                      <Image
+                        systemName={d.icon}
+                        size={symbolSize(20)}
+                        color={colors.foreground as string}
+                      />
                       <VStack alignment="leading" spacing={2}>
                         <Text
                           modifiers={[
@@ -220,7 +226,7 @@ export default function SearchScreen() {
                       <Spacer />
                       <Image
                         systemName="chevron.right"
-                        size={13}
+                        size={symbolSize(13)}
                         color={colors.mutedForeground as string}
                         modifiers={[accessibilityLabel("")]}
                       />

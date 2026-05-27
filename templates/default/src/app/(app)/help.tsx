@@ -26,6 +26,7 @@ import {
   tint,
 } from "@expo/ui/swift-ui/modifiers";
 import { useDynamicFont } from "@/lib/dynamic-font";
+import { useSymbolSize } from "@/lib/dynamic-symbol-size";
 import { Button as ButtonTokens } from "@/constants/layout";
 
 import { ErrorText } from "@/components/ui/status-text";
@@ -54,6 +55,7 @@ const FAQ_ITEMS = [
 
 export default function HelpScreen() {
   const dfont = useDynamicFont();
+  const symbolSize = useSymbolSize();
   const colors = useColors();
   const [searchText, setSearchText] = useState("");
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
@@ -121,7 +123,7 @@ export default function HelpScreen() {
           padding({ horizontal: 16 }),
         ]}
       >
-        <Image systemName={systemImage} size={18} color={colors.foreground as string} />
+        <Image systemName={systemImage} size={symbolSize(18)} color={colors.foreground as string} />
         <Text
           modifiers={[
             dfont({ size: 16, weight: "medium" }),
@@ -133,7 +135,7 @@ export default function HelpScreen() {
         <Spacer />
         <Image
           systemName="chevron.right"
-          size={13}
+          size={symbolSize(13)}
           color={colors.mutedForeground as string}
           modifiers={[accessibilityLabel("")]}
         />

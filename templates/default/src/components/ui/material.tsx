@@ -1,14 +1,28 @@
 import type { ReactNode } from "react";
 import { StyleSheet, View, type ViewProps } from "react-native";
 import { BlurView, type BlurTint } from "expo-blur";
-import { GlassView, isLiquidGlassAvailable, type GlassStyle } from "expo-glass-effect";
+import {
+  GlassView,
+  isGlassEffectAPIAvailable,
+  isLiquidGlassAvailable,
+  type GlassStyle,
+} from "expo-glass-effect";
+
+import { useReduceTransparency } from "@/hooks/use-reduce-transparency";
 
 /**
- * HIG-aware translucent surface. Picks the right backing per OS:
+ * HIG-aware translucent surface. Picks the right backing per OS and
+ * accessibility state:
  *
- *   iOS 26+        -> `GlassView` (true Liquid Glass via UIVisualEffectView)
- *   iOS 16.4-25    -> `BlurView` (UIVisualEffectView blur + tint overlay)
- *   anything else  -> solid `tintColor` fallback
+ *   Reduce Transparency on  -> solid `tintColor` background (no blur)
+ *   iOS 26+                  -> `GlassView` (true Liquid Glass via UIVisualEffectView)
+ *   iOS 16.4-25              -> `BlurView` (UIVisualEffectView blur + tint overlay)
+ *   anything else            -> solid `tintColor` fallback
+ *
+ * iOS 26 `GlassView` honors Reduce Transparency natively, so the explicit
+ * check only changes the iOS 16.4-25 path. But we route both through the
+ * same solid-fallback for consistency and so the iOS 26 path stays cheap
+ * when the user has opted out of blur.
  *
  * Apple's HIG reserves materials for the navigation layer that floats above
  * content: tab bars, navigation bars, toolbars, sheets, popovers, alerts,
@@ -66,7 +80,25 @@ export function Material({
   isInteractive = false,
   ...viewProps
 }: MaterialProps) {
-  if (isLiquidGlassAvailable()) {
+  const reduceTransparency = useReduceTransparency();
+
+  if (reduceTransparency) {
+    return (
+      <View
+        {...viewProps}
+        style={[viewProps.style, { backgroundColor: tintColor ?? "rgba(0,0,0,0.85)" }]}
+      >
+        {children}
+      </View>
+    );
+  }
+
+  // `isLiquidGlassAvailable()` confirms the SDK + Info.plist support Liquid
+  // Glass; `isGlassEffectAPIAvailable()` confirms the runtime device actually
+  // has the API. Some iOS 26 beta builds pass the version check without the
+  // runtime API and crash on GlassView. Both must be true. See
+  // https://github.com/expo/expo/issues/40911.
+  if (isLiquidGlassAvailable() && isGlassEffectAPIAvailable()) {
     return (
       <GlassView
         {...viewProps}
