@@ -3,7 +3,9 @@
   "description": "The all-in-one starting point for shipping a real Expo app. Native SwiftUI, Convex, Better Auth, Resend, EAS top-to-bottom.",
   "private": true,
   "type": "module",
-  "workspaces": ["packages/*"],
+  "workspaces": [
+    "packages/*"
+  ],
   "scripts": {
     "build": "npm run build --workspaces --if-present",
     "typecheck": "npm run typecheck --workspaces --if-present",
@@ -24,8 +26,8 @@
     "template:test": "cd templates/default && npm run test"
   },
   "devDependencies": {
-    "oxlint": "^1.66.0",
-    "oxfmt": "^0.51.0",
+    "oxfmt": "^0.52.0",
+    "oxlint": "^1.67.0",
     "typescript": "^6.0.3"
   },
   "license": "MIT",
