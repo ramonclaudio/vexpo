@@ -23,13 +23,5 @@ app-store/
 store.config.json
 eas.json
 
-# `expo-modules-jsi`'s iOS sources hash differently between developer machines
-# and EAS Build's worker. Two distinct contributors: pod install's
-# `prepare_command` stamps `Products/` with machine-specific stubs, and the
-# enclosing dir hash (tagged `expoAutolinkingIos`) drifts even pre-pod-install.
-# Real version changes still flip the fingerprint via package.json + the
-# `expoAutolinkingConfig:ios` JSON in `fingerprint.config.js`. Pair this with
-# `useRNCoreAutolinkingFromExpo: false` in fingerprint.config.js — without
-# both levers `eas build` fails `CONFIGURE_EXPO_UPDATES` with a runtime
-# version mismatch on every build.
-node_modules/expo-modules-jsi/apple/**
+# expo-modules-jsi build artifacts are ignored by @expo/fingerprint >=0.19.3
+# defaults (#46187, #46201), so no manual jsi pin is needed here.
