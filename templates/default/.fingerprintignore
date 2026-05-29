@@ -22,6 +22,3 @@ docs/
 app-store/
 store.config.json
 eas.json
-
-# expo-modules-jsi build artifacts are ignored by @expo/fingerprint >=0.19.3
-# defaults (#46187, #46201), so no manual jsi pin is needed here.

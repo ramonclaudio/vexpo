@@ -205,6 +205,13 @@ Runs `eas init` (creates the project, or links to an existing one) and writes `e
 
 After this, `expo prebuild` and `eas build` both find the right project + env. The `extra.eas.projectId` write also enables `app.config.ts → updates.url`.
 
+The `fingerprint` runtime version policy hashes the resolved config, so `projectId` must resolve to the same value on your machine and on the EAS worker. Otherwise `extra.eas`/`updates.url`/`updates.enabled` diverge and the build fails at `CONFIGURE_EXPO_UPDATES`. Two ways to get that parity:
+
+- **Commit `app.json`** (simplest, for a real app): after `eas init` writes `extra.eas.projectId`, commit `app.json`. EAS uploads it, so the worker reads the same projectId you do. No env var, nothing else.
+- **Plaintext `EAS_PROJECT_ID` env var**: for a fork that keeps `app.json` a stub, or CI that can't commit a projectId (this is how this template repo itself builds). `npx eas env:create --name EAS_PROJECT_ID --value <uuid> --visibility plaintext --environment development --environment preview --environment production`. Plaintext vars are injected before the worker evaluates `app.config.ts`, so it resolves the same projectId. Don't `.gitignore` `app.json`, that strips the worker's copy and forces this path.
+
+Either way the template needs no `fingerprint.config.js` and no `sourceSkips`.
+
 ## Phase 7: ASC API key (`npx vexpo apple asc-key`)
 
 The App Store Connect API key is needed for `eas submit` (and for vexpo's Phase 8 Services ID provisioning). The first key has to be created in the ASC web UI, there's no bootstrap path because you can't authenticate the API without already having a key.
