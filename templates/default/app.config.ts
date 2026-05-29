@@ -78,18 +78,13 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     icon: "./assets/icon.png",
     ...(EXPO_OWNER ? { owner: EXPO_OWNER } : {}),
     // Fingerprint policy: a native change auto-bumps the runtime hash so OTA
-    // updates never load against an incompatible binary. The policy is fragile
-    // out of the box on Expo SDK 56 — three sources hash differently between
-    // developer machines and EAS Build's worker even with identical npm
-    // lockfile + node version. Two levers in this template pin the drift:
-    //   - `fingerprint.config.js` -> `useRNCoreAutolinkingFromExpo: false`
-    //     consolidates reanimated/worklets autolinking into one content-
-    //     addressed JSON source
-    //   - `.fingerprintignore` -> `node_modules/expo-modules-jsi/apple/**`
-    //     skips the package dir whose `prepare_command` stamps machine-
-    //     specific stubs during pod install
-    // Together they make `eas build` and local `npx @expo/fingerprint` agree.
-    // Drop both knobs once upstream fixes the autolinker determinism.
+    // updates never load against an incompatible binary. SDK 56 needs one patch
+    // for parity between dev machines and EAS workers. The patch
+    // patches/@expo+fingerprint+0.19.3.patch hashes each autolinked dep by its
+    // package.json instead of its whole node_modules dir (expo/expo#46356), so
+    // pod-install and codegen artifacts on the worker stop drifting the hash.
+    // jsi build artifacts are covered by @expo/fingerprint >=0.19.3 defaults.
+    // Drop the patch once #46356 ships in a released @expo/fingerprint.
     runtimeVersion: { policy: "fingerprint" },
     developmentClient: {
       silentLaunch: true,

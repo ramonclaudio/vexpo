@@ -4,6 +4,7 @@
   "private": true,
   "main": "expo-router/entry",
   "scripts": {
+    "postinstall": "patch-package",
     "dev": "expo start --dev-client",
     "start": "expo start --dev-client --clear",
     "convex:dev": "convex dev",
@@ -105,6 +106,7 @@
     "convex-test": "^0.0.53",
     "oxfmt": "^0.52.0",
     "oxlint": "^1.67.0",
+    "patch-package": "^8.0.1",
     "tsx": "^4.22.3",
     "typescript": "^6.0.3",
     "vitest": "^4.1.6"
