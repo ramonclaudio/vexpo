@@ -3,7 +3,7 @@ import { access } from "node:fs/promises";
 import { dlx } from "./pkg-manager.ts";
 import { run } from "./proc.ts";
 
-export type ConvexTarget = { prod?: boolean; deployment?: string };
+export type ConvexTarget = { prod?: boolean; deployment?: string; envFile?: string };
 
 function deploymentName(value: string | undefined): string | undefined {
   if (!value) return undefined;
@@ -12,7 +12,14 @@ function deploymentName(value: string | undefined): string | undefined {
 }
 
 function targetArgs(target?: ConvexTarget): string[] {
-  if (target?.prod) return ["--prod"];
+  if (target?.prod) {
+    // A dev CONVEX_DEPLOY_KEY in .env.local shadows `--prod`: the Convex CLI
+    // uses the key's (dev) deployment and silently ignores --prod, so prod env
+    // ops land on the dev deployment. When the caller knows the prod source
+    // file, point the CLI at it (`--env-file`) so it reads the prod
+    // CONVEX_DEPLOYMENT / CONVEX_DEPLOY_KEY from there instead of .env.local.
+    return target.envFile ? ["--env-file", target.envFile] : ["--prod"];
+  }
   const explicit = target?.deployment ?? deploymentName(process.env.CONVEX_DEPLOYMENT);
   return explicit ? ["--deployment", explicit] : [];
 }
