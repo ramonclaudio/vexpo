@@ -78,29 +78,24 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     icon: "./assets/icon.png",
     ...(EXPO_OWNER ? { owner: EXPO_OWNER } : {}),
     // Fingerprint policy: a native change auto-bumps the runtime hash so OTA
-    // updates never load against an incompatible binary. SDK 56 needs one patch
-    // for parity between dev machines and EAS workers. The patch
-    // patches/@expo+fingerprint+0.19.3.patch hashes each autolinked dep by its
-    // package.json instead of its whole node_modules dir (expo/expo#46356), so
-    // pod-install and codegen artifacts on the worker stop drifting the hash.
-    // jsi build artifacts are covered by @expo/fingerprint >=0.19.3 defaults.
-    // Drop the patch once #46356 ships in a released @expo/fingerprint.
+    // updates never load against an incompatible binary. The local-vs-EAS
+    // drift that broke earlier SDK 56 builds no longer reproduces on current
+    // deps (precompiled modules + codegen land in `ios/`, which fingerprint
+    // ignores; jsi artifacts covered by @expo/fingerprint >=0.19.3 defaults),
+    // so no autolinking workaround is needed. Verified by unpatched EAS builds
+    // clearing CONFIGURE_EXPO_UPDATES.
     runtimeVersion: { policy: "fingerprint" },
     developmentClient: {
       silentLaunch: true,
     },
     updates: {
-      // Always `true` — must NOT depend on `projectId` resolution because the
-      // fingerprint runtime version policy hashes this field and the local +
-      // worker environments can disagree on projectId (local may resolve via
-      // `EAS_PROJECT_ID` env, worker may not). `ExpoConfigEASProject` in
-      // `fingerprint.config.js` already strips `extra.eas` and `updates.url`,
-      // but NOT `updates.enabled` — so flipping this based on projectId would
-      // diverge the hash and fail `CONFIGURE_EXPO_UPDATES`. If projectId
-      // happens to be missing at runtime, expo-updates fails silently on the
-      // check (same effective behavior as `enabled: false`), so leaving this
-      // true unconditionally is safe.
-      enabled: true,
+      // Derived from projectId, which resolves identically locally and on EAS
+      // workers because both read the plaintext `EAS_PROJECT_ID` env var. That
+      // symmetry keeps `extra.eas`/`updates.url`/`enabled` in fingerprint parity
+      // with no `sourceSkips`. If projectId is unset (fresh fork before setup),
+      // this is false on both sides: still consistent, OTA just stays inactive
+      // until configured.
+      enabled: !!projectId,
       checkAutomatically: "ON_LOAD",
       // Brief patience for the update server before falling back to the
       // bundled JS. Zero blocks every cold launch indefinitely on flaky
