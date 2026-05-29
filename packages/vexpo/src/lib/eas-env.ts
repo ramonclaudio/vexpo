@@ -160,14 +160,16 @@ export async function envPush(opts: {
   environments: readonly EasEnvironment[];
   force?: boolean;
 }): Promise<void> {
-  const argv = [dlx(), "eas", "env:push"];
-  for (const env of opts.environments) argv.push("--environment", env);
-  argv.push("--path", opts.path);
-  if (opts.force) argv.push("--force");
-  const { code, stderr } = await run(argv);
-  if (code !== 0) {
-    const tail = stderr.trim().split("\n").pop()?.trim() ?? `exit ${code}`;
-    throw new Error(`eas env:push failed: ${tail}`);
+  // eas-cli rejects multiple --environment flags in one `env:push` (fails with
+  // "GraphQL request failed"), so push to each environment in its own call.
+  for (const env of opts.environments) {
+    const argv = [dlx(), "eas", "env:push", "--environment", env, "--path", opts.path];
+    if (opts.force) argv.push("--force");
+    const { code, stderr } = await run(argv);
+    if (code !== 0) {
+      const tail = stderr.trim().split("\n").pop()?.trim() ?? `exit ${code}`;
+      throw new Error(`eas env:push (${env}) failed: ${tail}`);
+    }
   }
 }
 
