@@ -1,9 +1,18 @@
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
 import type { ConfigContext, ExpoConfig } from "expo/config";
 
-import pkg from "./package.json";
+// Read JSON via fs, not a static import or `require`. Node 24 strips TS types
+// natively and loads this file as ESM (it has `export default`), where bare
+// JSON imports need an attribute and `require`/`__dirname` don't exist. The
+// expo CLI path transpiles to CJS via sucrase. `fs` + `process.cwd()` is the
+// only shape that reads identically under both, and cwd is the project root in
+// every context that evaluates this config (expo, eas, prebuild).
+const pkg = JSON.parse(readFileSync(resolve(process.cwd(), "package.json"), "utf8")) as {
+  name: string;
+  version: string;
+};
 
 const IS_DEV = process.env.APP_VARIANT === "development";
 
@@ -27,7 +36,9 @@ type StoreConfig = {
 };
 const storeConfig: StoreConfig | undefined = (() => {
   try {
-    return require("./store.config.json") as StoreConfig;
+    return JSON.parse(
+      readFileSync(resolve(process.cwd(), "store.config.json"), "utf8"),
+    ) as StoreConfig;
   } catch {
     return undefined;
   }
@@ -125,7 +136,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       // arbitrary JS. Until the cert exists the block stays off and
       // updates ship unsigned (fine for prototyping; not for production).
       // https://docs.expo.dev/eas-update/code-signing/
-      ...(existsSync(resolve(__dirname, "certs", "certificate.pem"))
+      ...(existsSync(resolve(process.cwd(), "certs", "certificate.pem"))
         ? {
             codeSigningCertificate: "./certs/certificate.pem",
             codeSigningMetadata: { keyid: "main", alg: "rsa-v1_5-sha256" },
