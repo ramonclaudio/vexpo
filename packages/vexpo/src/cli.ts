@@ -27,6 +27,7 @@ import { runAppleJwt } from "./commands/apple/jwt.ts";
 import { runAscKey } from "./commands/apple/asc-key.ts";
 import { runEasRotationSecrets } from "./commands/apple/eas-rotation-secrets.ts";
 import { runServicesId } from "./commands/apple/services-id.ts";
+import { runAscConnect } from "./commands/asc.ts";
 import { runAccessibilityLint, runAccessibilityShow } from "./commands/asc-accessibility.ts";
 import { runPrivacyLint, runPrivacyShow } from "./commands/asc-privacy.ts";
 import {
@@ -354,11 +355,19 @@ env
 /* ------------------------------------------------------------------ asc --- */
 // ASC API direct access for endpoints eas-cli doesn't expose: TestFlight
 // beta groups + testers, customer review responses, sandbox testers, version
-// state + phased rollout, privacy + accessibility nutrition labels. EAS's
-// own `integrations:asc:*` topic is not surfaced as a public `vexpo`
-// command; `vexpo full` orchestrates `eas integrations:asc:connect`
-// internally by spawning it with EXPO_ASC_API_KEY_* env vars pre-set
-// (same pattern `vexpo apple credentials` uses).
+// state + phased rollout, privacy + accessibility nutrition labels. The
+// EAS<->ASC link (`eas integrations:asc:connect`) is wrapped by
+// `vexpo asc:connect` so CI/scripts can establish it headless (passes
+// EXPO_ASC_API_KEY_* + --non-interactive); `vexpo full` runs the same step
+// interactively.
+
+program
+  .command("asc:connect")
+  .description(
+    "Link the EAS project to its App Store Connect app (wraps `eas integrations:asc:connect` with the cached ASC key). Lets `eas submit` resolve the app from the bundle id, so eas.json needs no committed ascAppId. Headless on a non-TTY.",
+  )
+  .option("--force", "re-run even if already connected", false)
+  .action((options: { force?: boolean }) => exitWith(runAscConnect(options)));
 
 const ascVersion = program.command("asc:version").description("App Store version inspection.");
 

@@ -40,7 +40,7 @@ import { existsSync } from "node:fs";
 
 import { ascStatus } from "../lib/eas-integrations.ts";
 import { readOne } from "../lib/env-local.ts";
-import { BOLD, RESET, bad, line, nop, note, ok, section, yep } from "../lib/output.ts";
+import { BOLD, RESET, bad, line, nop, note, ok, section } from "../lib/output.ts";
 import { expandTilde } from "../lib/path.ts";
 import { dlx } from "../lib/pkg-manager.ts";
 import { spawn } from "../lib/proc.ts";
@@ -105,18 +105,6 @@ export async function runAscConnect(opts: { force?: boolean } = {}): Promise<num
   }
   ok(`bundle id: ${BOLD}${bundleId}${RESET}`);
 
-  line();
-  note("spawning `eas integrations:asc:connect`. Most likely flow:");
-  note("  1. Press Y to generate a new ASC API key (default)");
-  note("  2. Press Enter to accept ADMIN role (default)");
-  note("EXPO_ASC_API_KEY_* env vars are set so eas-cli uses our cached key");
-  note("for the Apple auth step, no Apple ID + password prompt.");
-
-  if (!process.stdin.isTTY) {
-    yep("non-TTY: skipping interactive wizard");
-    return 0;
-  }
-
   const env: Record<string, string> = {
     ...(process.env as Record<string, string>),
     EXPO_ASC_API_KEY_PATH: asc.p8Path,
@@ -124,15 +112,36 @@ export async function runAscConnect(opts: { force?: boolean } = {}): Promise<num
     EXPO_ASC_ISSUER_ID: asc.issuerId,
   };
 
-  const proc = spawn([dlx(), "eas", "integrations:asc:connect", "--bundle-id", bundleId], {
-    stdin: "inherit",
+  const interactive = process.stdin.isTTY;
+  const argv = [dlx(), "eas", "integrations:asc:connect", "--bundle-id", bundleId];
+
+  line();
+  if (interactive) {
+    note("spawning `eas integrations:asc:connect`. Most likely flow:");
+    note("  1. Press Y to generate a new ASC API key (default)");
+    note("  2. Press Enter to accept ADMIN role (default)");
+    note("EXPO_ASC_API_KEY_* env vars are set so eas-cli uses our cached key");
+    note("for the Apple auth step, no Apple ID + password prompt.");
+  } else {
+    // Non-TTY: drive it headless instead of skipping. The EXPO_ASC_API_KEY_*
+    // vars supply Apple auth (no Apple ID prompt); --non-interactive skips the
+    // wizard. If eas-cli still needs an interactive choice (generating a fresh
+    // ASC key from scratch), it exits non-zero and we surface that, rather than
+    // the old silent skip that left CI submit broken with no signal.
+    argv.push("--non-interactive");
+    note("non-TTY: attempting `eas integrations:asc:connect --non-interactive`");
+  }
+
+  const proc = spawn(argv, {
+    stdin: interactive ? "inherit" : "ignore",
     stdout: "inherit",
     stderr: "inherit",
     env,
   });
   const code = await proc.exited;
   if (code !== 0) {
-    bad(`eas integrations:asc:connect exited with code ${code}`);
+    bad(`eas integrations:asc:connect failed (exit ${code})`);
+    if (!interactive) note("run `vexpo asc:connect` once on a TTY to finish the link, then re-run");
     return code;
   }
 
