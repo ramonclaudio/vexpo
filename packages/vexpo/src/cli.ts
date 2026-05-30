@@ -55,6 +55,7 @@ import {
 } from "./commands/testflight.ts";
 import { runBetterAuth } from "./commands/better-auth.ts";
 import { runConvex } from "./commands/convex.ts";
+import { runConvexMigrate } from "./commands/convex-migrate.ts";
 import { runDoctor } from "./commands/doctor.ts";
 import { runConvexKey } from "./commands/env/convex-key.ts";
 import { runEnvPush } from "./commands/env/push.ts";
@@ -228,6 +229,18 @@ program
   .option("--name <name>", "override Convex project name")
   .action((options: { fresh?: boolean; local?: boolean; name?: string }) =>
     exitWith(runConvex(options)),
+  );
+
+program
+  .command("convex:migrate")
+  .description(
+    "Copy server-side Convex env (BETTER_AUTH_SECRET, RESEND_*, APPLE_*, APP_*, ...) from another deployment onto the current one. The piece a deployment migration can't get off disk; CONVEX_* are left untouched.",
+  )
+  .requiredOption("--from <deployment>", "source deployment slug to copy env from")
+  .option("--prod", "target the prod deployment (reads prod creds from .env.prod)")
+  .option("--dry-run", "show what would be copied, exit without changes", false)
+  .action((options: { from: string; prod?: boolean; dryRun?: boolean }) =>
+    exitWith(runConvexMigrate(options)),
   );
 
 program
