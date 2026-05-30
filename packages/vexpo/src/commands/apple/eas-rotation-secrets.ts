@@ -12,31 +12,21 @@
  *   APPLE_TEAM_ID           10-char team id
  *   APPLE_KEY_ID            10-char SIWA key id
  *   APPLE_SERVICES_ID       services id (e.g. com.you.app.signin)
- *   CONVEX_DEPLOY_KEY       prod deploy key (generated in Convex dashboard)
+ *   CONVEX_DEPLOY_KEY       prod deploy key (minted via the Platform API)
  *
  * For the 4 Apple values: read from .env.local + state cache, push idempotently.
- * For CONVEX_DEPLOY_KEY: prompt interactively if missing (we can't generate
- * Convex deploy keys without dashboard access).
+ * For CONVEX_DEPLOY_KEY: mint one for the project's prod deployment via the
+ * Convex Platform API (no dashboard), falling back to an interactive paste only
+ * when the deployment can't be resolved (offline / not logged in).
  */
 
 import { readFile } from "node:fs/promises";
 
+import { deploymentSlug } from "../../lib/convex-env.ts";
+import { mintDeployKey, resolveProdDeployment } from "../../lib/convex-management.ts";
 import { envCreate, envList, envUpdate, type EasEnvironment } from "../../lib/eas-env.ts";
 import { readOne } from "../../lib/env-local.ts";
-import {
-  BOLD,
-  DIM,
-  RESET,
-  ask,
-  bad,
-  helpAndWait,
-  line,
-  nop,
-  note,
-  ok,
-  section,
-  yep,
-} from "../../lib/output.ts";
+import { BOLD, DIM, RESET, ask, bad, line, nop, note, ok, section, yep } from "../../lib/output.ts";
 import { expandTilde } from "../../lib/path.ts";
 import { load as loadState, lookupCachedPath } from "../../lib/state.ts";
 
@@ -135,43 +125,57 @@ export async function runEasRotationSecrets(options: RotationSecretsOptions): Pr
 
   if (!existing.has("CONVEX_DEPLOY_KEY") || options.force) {
     line();
-    note("CONVEX_DEPLOY_KEY isn't set on EAS production. Generate one:");
-    await helpAndWait({
-      body: "Open the Convex dashboard for your project:",
-      urls: [
-        {
-          label: "Convex dashboard (Settings → Deploy keys)",
-          url: "https://dashboard.convex.dev",
-        },
-      ],
-      allowSkip: true,
-      skipLabel: "skip",
-    });
-    if (process.stdin.isTTY) {
-      const key = (
-        await ask(`  Paste Convex prod deploy key ${DIM}(or Enter to skip)${RESET} > `)
-      ).trim();
-      if (key) {
-        try {
-          if (existing.has("CONVEX_DEPLOY_KEY")) {
-            await envUpdate("CONVEX_DEPLOY_KEY", key, "secret", ENVS);
-            updated += 1;
-          } else {
-            await envCreate("CONVEX_DEPLOY_KEY", key, "secret", ENVS);
-            applied += 1;
-          }
-          ok("CONVEX_DEPLOY_KEY set");
-        } catch (err) {
-          bad(`CONVEX_DEPLOY_KEY: ${err instanceof Error ? err.message : err}`);
-          return 1;
-        }
+    const setKey = async (key: string): Promise<void> => {
+      if (existing.has("CONVEX_DEPLOY_KEY")) {
+        await envUpdate("CONVEX_DEPLOY_KEY", key, "secret", ENVS);
+        updated += 1;
       } else {
-        yep("skipped CONVEX_DEPLOY_KEY (set later with `eas env:create`)");
-        skipped += 1;
+        await envCreate("CONVEX_DEPLOY_KEY", key, "secret", ENVS);
+        applied += 1;
+      }
+    };
+
+    // Mint a prod deploy key via the Platform API: resolve the project's prod
+    // deployment from the dev deployment in .env.local, then create a key.
+    const prodSlug = await resolveProdDeployment(
+      deploymentSlug(await readOne("CONVEX_DEPLOYMENT")) ?? "",
+    );
+    let minted = false;
+    if (prodSlug) {
+      try {
+        const key = await mintDeployKey(prodSlug, { name: "eas-rotation" });
+        await setKey(key);
+        ok(`minted + set CONVEX_DEPLOY_KEY for prod ${BOLD}${prodSlug}${RESET}`);
+        minted = true;
+      } catch (err) {
+        yep(`couldn't mint a deploy key: ${err instanceof Error ? err.message : err}`);
       }
     } else {
-      yep("skipped CONVEX_DEPLOY_KEY (non-interactive)");
-      skipped += 1;
+      yep("couldn't resolve the prod deployment (offline or not logged in)");
+    }
+
+    // Fallback: interactive paste only when minting wasn't possible.
+    if (!minted) {
+      if (process.stdin.isTTY) {
+        const key = (
+          await ask(`  Paste a Convex prod deploy key ${DIM}(or Enter to skip)${RESET} > `)
+        ).trim();
+        if (key) {
+          try {
+            await setKey(key);
+            ok("CONVEX_DEPLOY_KEY set");
+          } catch (err) {
+            bad(`CONVEX_DEPLOY_KEY: ${err instanceof Error ? err.message : err}`);
+            return 1;
+          }
+        } else {
+          yep("skipped CONVEX_DEPLOY_KEY (set later with `eas env:create`)");
+          skipped += 1;
+        }
+      } else {
+        yep("skipped CONVEX_DEPLOY_KEY (non-interactive, mint unavailable)");
+        skipped += 1;
+      }
     }
   } else {
     nop("CONVEX_DEPLOY_KEY already set");
