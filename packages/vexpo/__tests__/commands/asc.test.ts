@@ -81,8 +81,8 @@ beforeEach(async () => {
         name: "asc-key",
         completedAt: new Date().toISOString(),
         outputs: {
-          issuerId: "1d68d54a-8849-406f-a4e0-1e284f3f0d33",
-          keyId: "3SBKJXPM27",
+          issuerId: "11111111-2222-3333-4444-555555555555",
+          keyId: "ABCDE12345",
           p8Path: "/tmp/fake.p8",
         },
       },
@@ -137,8 +137,8 @@ describe("runAscConnect", () => {
       "com.vexpo.vexpo",
     ]);
     expect(opts.env.EXPO_ASC_API_KEY_PATH).toBe("/tmp/fake.p8");
-    expect(opts.env.EXPO_ASC_KEY_ID).toBe("3SBKJXPM27");
-    expect(opts.env.EXPO_ASC_ISSUER_ID).toBe("1d68d54a-8849-406f-a4e0-1e284f3f0d33");
+    expect(opts.env.EXPO_ASC_KEY_ID).toBe("ABCDE12345");
+    expect(opts.env.EXPO_ASC_ISSUER_ID).toBe("11111111-2222-3333-4444-555555555555");
   });
 
   it("falls through to spawn when ascStatus throws (no EAS project yet)", async () => {
@@ -161,7 +161,7 @@ describe("runAscConnect", () => {
     await runAscConnect({});
     const argv = spawnSpy.mock.calls[0]?.[0] as string[];
     expect(argv).not.toContain("--api-key-id");
-    expect(argv).not.toContain("3SBKJXPM27");
+    expect(argv).not.toContain("ABCDE12345");
   });
 
   it("returns 1 when no cached ASC key in state.json", async () => {

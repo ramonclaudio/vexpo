@@ -5,7 +5,7 @@
  * env vars pre-set from the cached `asc-key` state.
  *
  * Why not pass `--api-key-id`: that flag is the Apple-side 10-char key id
- * (e.g. "3SBKJXPM27"), and eas-cli looks it up against its *uploaded* key
+ * (e.g. "ABCDE12345"), and eas-cli looks it up against its *uploaded* key
  * resources. Passing the cached id when no key is uploaded fails with
  * `No App Store Connect API key found with Apple key identifier ...`, which
  * is the common case on a fresh project. Dropping the flag lets the wizard
