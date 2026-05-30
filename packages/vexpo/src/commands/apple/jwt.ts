@@ -13,7 +13,7 @@
  */
 
 import { signClientSecret } from "../../lib/apple-jwt.ts";
-import { envMap, envSet } from "../../lib/convex-env.ts";
+import { deploymentSlug, envMap, envSet } from "../../lib/convex-env.ts";
 import { readOne } from "../../lib/env-local.ts";
 import {
   BOLD,
@@ -35,7 +35,55 @@ import { load as loadState, lookupCachedPath, recordStep } from "../../lib/state
 
 export type AppleJwtOptions = {
   rotate?: boolean;
+  copyFrom?: string;
 };
+
+/** Apple Sign In vars that live ON the Convex deployment, set by this command. */
+const APPLE_ENV_KEYS = [
+  "APPLE_CLIENT_ID",
+  "APPLE_TEAM_ID",
+  "APPLE_KEY_ID",
+  "APPLE_CLIENT_SECRET",
+] as const;
+
+/**
+ * Copy the Apple Sign In env from another deployment onto the current one. The
+ * client_secret JWT and key id live on the deployment, not in any .env file, so
+ * env push can't migrate them. This pulls them off `from` (a deployment slug in
+ * your account) and sets them here. No .p8 and no TTY needed. The copied JWT
+ * keeps the source's expiry, so re-sign with `vexpo apple jwt` before it lapses.
+ */
+async function copyAppleEnv(from: string): Promise<number> {
+  section("Apple Sign In");
+  const slug = deploymentSlug(from) ?? from;
+  const src = await envMap({ deployment: slug });
+  const present = APPLE_ENV_KEYS.filter((k) => src.has(k) && src.get(k));
+  if (present.length === 0) {
+    bad(`no APPLE_* vars on deployment ${slug} (unreachable or not provisioned)`);
+    note("pass a deployment slug your account can reach, e.g. `--copy-from old-deployment-123`");
+    return 1;
+  }
+  const dst = await envMap();
+  let copied = 0;
+  for (const key of present) {
+    const value = src.get(key)!;
+    if (dst.get(key) === value) {
+      nop(`${key} already matches`);
+      continue;
+    }
+    await envSet(key, value);
+    ok(`copied ${key} from ${slug}`);
+    copied += 1;
+  }
+  line();
+  ok(`Apple env copied from ${slug} (${copied} changed)`);
+  if (!present.includes("APPLE_CLIENT_SECRET")) {
+    yep("source had no APPLE_CLIENT_SECRET; re-sign with `vexpo apple jwt`");
+  } else {
+    note("the copied client_secret keeps the source's expiry; re-sign before it lapses");
+  }
+  return 0;
+}
 
 async function promptOrEnv(envName: string, prompt: string): Promise<string | undefined> {
   const fromEnv = process.env[envName];
@@ -46,6 +94,15 @@ async function promptOrEnv(envName: string, prompt: string): Promise<string | un
 }
 
 export async function runAppleJwt(options: AppleJwtOptions): Promise<number> {
+  if (options.copyFrom) {
+    try {
+      return await copyAppleEnv(options.copyFrom);
+    } catch (err) {
+      bad(err instanceof Error ? err.message : String(err));
+      return 1;
+    }
+  }
+
   section("Apple Sign In");
 
   try {

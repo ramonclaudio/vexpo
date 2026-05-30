@@ -270,7 +270,11 @@ apple
     "Sign the Sign In with Apple ES256 client_secret JWT (180-day expiry, Apple's max). Quarterly auto-rotation runs as an EAS Workflow cron. No eas-cli equivalent.",
   )
   .option("--rotate", "re-sign the JWT only", false)
-  .action((options: { rotate?: boolean }) => exitWith(runAppleJwt(options)));
+  .option(
+    "--copy-from <deployment>",
+    "copy APPLE_* env from another deployment (slug) instead of signing; no .p8 needed",
+  )
+  .action((options: { rotate?: boolean; copyFrom?: string }) => exitWith(runAppleJwt(options)));
 
 apple
   .command("credentials")
