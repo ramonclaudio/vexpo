@@ -16,6 +16,8 @@
  * become Check objects with severity "fail" or "warn".
  */
 
+import { existsSync } from "node:fs";
+
 import { validate as ascValidate, makeAscClient, type AscCredentials } from "./asc-api.ts";
 import { envMap as convexEnvMap, type ConvexTarget } from "./convex-env.ts";
 import {
@@ -791,12 +793,26 @@ function verifyFiles(ctx: VerifyContext): Check[] {
 // ---------- Top-level ----------
 
 export async function readContext(channel: Channel): Promise<VerifyContext> {
+  // A dev CONVEX_DEPLOY_KEY in .env.local shadows `--prod`, so reading prod env
+  // via bare `--prod` silently returns the DEV deployment. Point the Convex CLI
+  // at the prod env file (it carries the prod deploy key) so prod checks hit the
+  // real prod deployment. With no prod file we can't reach prod, so the map stays
+  // empty rather than masquerading dev env as prod (mirrors env push readRemoteState).
+  const prodEnvFile = existsSync(".env.prod")
+    ? ".env.prod"
+    : existsSync(".env.production")
+      ? ".env.production"
+      : undefined;
   const [envLocal, envProd, convexEnv, convexProdEnv, appConfigFacts, ascCreds] = await Promise.all(
     [
       readEnvFile(".env.local"),
       readEnvFile(".env.prod").then(async (m) => (m.size > 0 ? m : readEnvFile(".env.production"))),
       convexEnvMap().catch(() => new Map<string, string>()),
-      convexEnvMap({ prod: true } satisfies ConvexTarget).catch(() => new Map<string, string>()),
+      prodEnvFile
+        ? convexEnvMap({ prod: true, envFile: prodEnvFile } satisfies ConvexTarget).catch(
+            () => new Map<string, string>(),
+          )
+        : Promise.resolve(new Map<string, string>()),
       readAppConfigFacts(),
       loadAscCreds(),
     ],
