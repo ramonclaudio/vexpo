@@ -84,13 +84,13 @@ type RemoteState = {
   hasEasProject: boolean;
 };
 
-async function readRemoteState(): Promise<RemoteState> {
+async function readRemoteState(prodEnvFile?: string): Promise<RemoteState> {
   const projectId = await resolveProjectId();
   const hasEasProject = !!projectId;
 
   const [convexDev, convexProd, easDev, easPreview, easProd] = await Promise.all([
     convexEnvMap().catch(() => new Map<string, string>()),
-    convexEnvMap({ prod: true }).catch(() => new Map<string, string>()),
+    convexEnvMap({ prod: true, envFile: prodEnvFile }).catch(() => new Map<string, string>()),
     hasEasProject
       ? easEnvList("development").catch(() => new Map<string, string>())
       : Promise.resolve(new Map<string, string>()),
@@ -253,9 +253,11 @@ async function applyPlan(
     const tmp = `.tmp-convex-${channel}-${process.pid}.env`;
     try {
       await writeFile(tmp, entries.map(([k, v]) => `${k}=${v}`).join("\n") + "\n");
-      await convexEnvSetFromFile(tmp, channel === "prod" ? { prod: true } : undefined, {
-        force: opts.force ?? false,
-      });
+      await convexEnvSetFromFile(
+        tmp,
+        channel === "prod" ? { prod: true, envFile: plan.sourceFile } : undefined,
+        { force: opts.force ?? false },
+      );
       ok(`convex(${channel}) bulk-set ${entries.length} var${entries.length === 1 ? "" : "s"}`);
       for (const [k] of entries) note(`  ${k}`);
       applied += entries.length;
@@ -324,7 +326,8 @@ export async function runEnvPush(options: EnvPushOptions): Promise<number> {
     }
   }
 
-  const remote = await readRemoteState();
+  const prodEnvFile = sources.find((s) => s.channel === "prod")?.path;
+  const remote = await readRemoteState(prodEnvFile);
   if (!remote.hasEasProject) yep("no EAS projectId in app.json. EAS env routes will be blocked");
 
   // Detect any MANUAL_EAS_SECRETS in the prod source. they need explicit
