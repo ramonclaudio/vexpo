@@ -3,8 +3,9 @@ name: Deploy to production
 on:
   # Manual trigger only. A push:main trigger here deploys Convex prod, builds
   # iOS, and submits to the App Store on every merge, including docs/CI commits.
-  # Ship intentionally: `eas workflow:run .eas/workflows/deploy-production.yml`,
-  # or cut a `v*` tag (see release.yml).
+  # Ship intentionally: `eas workflow:run .eas/workflows/deploy-production.yml`.
+  # This is the only workflow that runs `convex deploy`; release.yml's `v*` tag
+  # builds and submits but does NOT deploy Convex, so deploy here first.
   workflow_dispatch: {}
 
 concurrency:
