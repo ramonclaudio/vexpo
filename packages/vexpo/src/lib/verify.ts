@@ -16,7 +16,7 @@
  * become Check objects with severity "fail" or "warn".
  */
 
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 
 import { validate as ascValidate, makeAscClient, type AscCredentials } from "./asc-api.ts";
 import { deploymentSlug, envMap as convexEnvMap, type ConvexTarget } from "./convex-env.ts";
@@ -27,6 +27,7 @@ import {
   listProjectDeployments,
 } from "./convex-management.ts";
 import { ascStatus } from "./eas-integrations.ts";
+import { submitProfilesMissingAscAppId } from "./eas-submit.ts";
 import {
   diagnostics as easDiagnostics,
   envList as easEnvList,
@@ -729,15 +730,31 @@ async function verifyEas(ctx: VerifyContext): Promise<Check[]> {
     }
   }
 
-  // ASC integration: lets `eas submit` resolve the app from the bundle id. A
-  // missing link passed the Apple checks yet broke CI submit with an ascAppId
-  // demand, so surface it here. warn (not fail) since not every project ships.
+  // ASC integration: lets `eas submit` resolve the app interactively. warn (not
+  // fail) since not every project ships.
   try {
     const status = await ascStatus();
     if (status.status === "connected") {
       checks.push(
         ok("eas", "asc-integration", status.appStoreConnectApp?.bundleIdentifier ?? "connected"),
       );
+      // Non-interactive submit (CI) reads the app id only from eas.json's submit
+      // profile, the integration doesn't satisfy it. Nudge if a profile lacks it.
+      const missing = existsSync("eas.json")
+        ? submitProfilesMissingAscAppId(readFileSync("eas.json", "utf8"))
+        : [];
+      if (missing.length > 0) {
+        checks.push(
+          warn(
+            "eas",
+            "asc-submit-id",
+            `submit profile${missing.length === 1 ? "" : "s"} ${missing.join(", ")} missing ascAppId`,
+            "run `vexpo asc` to write it; non-interactive `eas submit` (CI) fails without it",
+          ),
+        );
+      } else if (existsSync("eas.json")) {
+        checks.push(ok("eas", "asc-submit-id", "submit profiles carry ascAppId"));
+      }
     } else {
       checks.push(
         warn(

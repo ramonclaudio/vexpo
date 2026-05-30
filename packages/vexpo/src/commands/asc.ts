@@ -37,10 +37,12 @@
  */
 
 import { existsSync } from "node:fs";
+import { readFile, writeFile } from "node:fs/promises";
 
 import { ascStatus } from "../lib/eas-integrations.ts";
+import { withAscAppId } from "../lib/eas-submit.ts";
 import { readOne } from "../lib/env-local.ts";
-import { BOLD, RESET, bad, line, nop, note, ok, section } from "../lib/output.ts";
+import { BOLD, RESET, bad, line, nop, note, ok, section, yep } from "../lib/output.ts";
 import { expandTilde } from "../lib/path.ts";
 import { dlx } from "../lib/pkg-manager.ts";
 import { spawn } from "../lib/proc.ts";
@@ -148,5 +150,29 @@ export async function runAscConnect(opts: { force?: boolean } = {}): Promise<num
     ascKeyId: asc.keyId,
     connectedAt: new Date().toISOString(),
   });
+
+  // Write the resolved ascAppId into eas.json submit profiles. `eas submit`
+  // reads the app id only from the submit profile (no flag, no env var), so the
+  // integration alone doesn't satisfy a non-interactive submit (CI, scripts).
+  // The upstream template ships generic; this fills the fork's id, like rebrand.
+  if (existsSync("eas.json")) {
+    try {
+      const ascAppId = (await ascStatus()).appStoreConnectApp?.ascAppIdentifier;
+      if (ascAppId) {
+        const before = await readFile("eas.json", "utf8");
+        const after = withAscAppId(before, ascAppId);
+        if (after !== before) {
+          await writeFile("eas.json", after);
+          ok(`wrote ascAppId ${BOLD}${ascAppId}${RESET} to eas.json submit profiles`);
+          note("commit this in your fork: non-interactive `eas submit` (CI) needs it");
+        } else {
+          nop("eas.json submit profiles already carry ascAppId");
+        }
+      }
+    } catch (err) {
+      yep(`couldn't write ascAppId to eas.json: ${err instanceof Error ? err.message : err}`);
+      note("non-interactive submit will need `ascAppId` set manually in eas.json");
+    }
+  }
   return 0;
 }

@@ -28,13 +28,14 @@ vi.mock("../../src/lib/env-local.ts", () => ({
   readOne: vi.fn(),
 }));
 
-// Mock node:fs's existsSync so the asc-key state's p8Path check passes
-// without a real file on disk. The test harness chdirs into a tmpdir.
+// Mock node:fs's existsSync so the asc-key state's p8Path check passes without
+// a real file on disk. The test harness chdirs into a tmpdir. eas.json reports
+// absent so the post-connect ascAppId write is skipped (no eas.json here).
 vi.mock("node:fs", async () => {
   const actual = (await vi.importActual("node:fs")) as Record<string, unknown>;
   return {
     ...actual,
-    existsSync: vi.fn().mockReturnValue(true),
+    existsSync: vi.fn((p: unknown) => !String(p).endsWith("eas.json")),
   };
 });
 
