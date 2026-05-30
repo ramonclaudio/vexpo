@@ -28,7 +28,7 @@ on:
         default: production
       action:
         description: Publish a new rollout, or edit the % of the existing one
-        type: select
+        type: choice
         required: true
         default: edit
         options:
@@ -40,9 +40,10 @@ on:
         required: true
         default: 25
 
-concurrency:
-  cancel_in_progress: false
-  group: ${{ workflow.filename }}-${{ inputs.branch }}
+# No concurrency block on purpose. EAS only accepts `cancel_in_progress: true`
+# (and no custom group yet), but cancelling an in-flight rollout mid-publish is
+# worse than letting it finish, so the no-block default (don't cancel) is the
+# correct behaviour here.
 
 jobs:
   rollout:
