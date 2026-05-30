@@ -142,7 +142,13 @@ export async function envUpdate(
     visibility,
   ];
   if (opts?.type) argv.push("--type", opts.type);
-  for (const env of environments) argv.push("--environment", env);
+  // `env:update` identifies the existing variable by name + its CURRENT
+  // environment (--variable-environment). Without it, a name that exists in
+  // several environments is ambiguous and eas-cli prompts "Select variable",
+  // which a --non-interactive run can't answer. We deliberately do NOT pass
+  // --environment (the "new environments"): omitting it leaves the var's
+  // existing env links unchanged, we only want to change the value.
+  for (const env of environments) argv.push("--variable-environment", env);
   argv.push("--non-interactive");
   const { code, stderr } = await run(argv);
   if (code !== 0) {
