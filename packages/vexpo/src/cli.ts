@@ -22,6 +22,7 @@ import { Command } from "commander";
 
 import pkg from "../package.json" with { type: "json" };
 import { runAccounts } from "./commands/accounts.ts";
+import { runAdopt } from "./commands/adopt.ts";
 import { runAppleCredentials } from "./commands/apple/credentials.ts";
 import { runAppleJwt } from "./commands/apple/jwt.ts";
 import { runAscKey } from "./commands/apple/asc-key.ts";
@@ -220,6 +221,14 @@ program
   .action((options: { channel?: string; json?: boolean; strict?: boolean }) => {
     exitWith(runDoctor(options));
   });
+
+program
+  .command("adopt")
+  .description(
+    "Finish a project created by `eas integrations:convex:connect`: adopt the existing dev deployment (never a fresh one), backfill site URLs + Better Auth, report the deployment topology (flagging a duplicate dev deployment), and print the exact commands left to finish.",
+  )
+  .option("--skip-dev-steps", "report topology + runbook only, don't run convex/better-auth", false)
+  .action((options: { skipDevSteps?: boolean }) => exitWith(runAdopt(options)));
 
 program
   .command("convex")
