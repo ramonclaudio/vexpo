@@ -168,16 +168,18 @@ export async function provisionSendingKey(
 
 /**
  * Deletes any existing webhook pointing at this endpoint, then creates a fresh
- * one. Returns the signing secret.
+ * one. Returns the new webhook id + signing secret (Resend only returns the
+ * secret at creation, so the id lets callers record which webhook the stored
+ * RESEND_WEBHOOK_SECRET belongs to for later drift detection).
  */
 export async function provisionWebhook(
   fullKey: string,
   endpoint: string,
   events: readonly string[] = RESEND_TRANSACTIONAL_EVENTS,
-): Promise<string> {
+): Promise<{ id: string; secret: string }> {
   for (const stale of (await listWebhooks(fullKey)).filter((w) => w.endpoint === endpoint)) {
     await deleteWebhook(fullKey, stale.id);
   }
   const created = await createWebhook(fullKey, { endpoint, events: [...events] });
-  return created.signing_secret;
+  return { id: created.id, secret: created.signing_secret };
 }

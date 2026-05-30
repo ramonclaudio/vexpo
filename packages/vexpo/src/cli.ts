@@ -245,7 +245,24 @@ program
   .description("Provision Resend sending key + webhook, write to Convex env.")
   .option("--name <name>", "override sending key name")
   .option("--from <address>", "override EMAIL_FROM")
-  .action((options: { name?: string; from?: string }) => exitWith(runResend(options)));
+  .option(
+    "--repoint",
+    "move the webhook to the current convex.site + realign the secret, without rotating the sending key or changing auth policy",
+  )
+  .option("--prod", "with --repoint, target the prod deployment + .env.prod site URL")
+  .option(
+    "--force",
+    "with --repoint, recreate the webhook even if it already points at the endpoint",
+  )
+  .action(
+    (options: {
+      name?: string;
+      from?: string;
+      repoint?: boolean;
+      prod?: boolean;
+      force?: boolean;
+    }) => exitWith(runResend(options)),
+  );
 
 /* ---------------------------------------------------------------- apple --- */
 
