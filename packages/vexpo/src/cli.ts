@@ -55,6 +55,7 @@ import {
 import { runBetterAuth } from "./commands/better-auth.ts";
 import { runConvex } from "./commands/convex.ts";
 import { runDoctor } from "./commands/doctor.ts";
+import { runConvexKey } from "./commands/env/convex-key.ts";
 import { runEnvPush } from "./commands/env/push.ts";
 import { runRebrand } from "./commands/rebrand.ts";
 import { runResend } from "./commands/resend.ts";
@@ -324,6 +325,26 @@ env
         }),
       );
     },
+  );
+
+env
+  .command("convex-key")
+  .description(
+    "Sync the Convex deploy key + deployment selector to EAS env (dev → development, prod → production/preview). Fixes a stale EAS deploy key after a deployment migration; env push skips these on purpose.",
+  )
+  .option("--dev-key <key>", "dev deploy key (default: CONVEX_DEPLOY_KEY in .env.local)")
+  .option("--prod-key <key>", "prod deploy key (default: CONVEX_DEPLOY_KEY in .env.prod)")
+  .option("--local-file <path>", "override .env.local path")
+  .option("--prod-file <path>", "override .env.prod path")
+  .action((options: { devKey?: string; prodKey?: string; localFile?: string; prodFile?: string }) =>
+    exitWith(
+      runConvexKey({
+        devKey: options.devKey,
+        prodKey: options.prodKey,
+        localFile: options.localFile,
+        prodFile: options.prodFile,
+      }),
+    ),
   );
 
 /* ------------------------------------------------------------------ asc --- */
