@@ -1,6 +1,10 @@
 /**
- * App Store Connect API: sandbox testers (for In-App Purchase testing).
- * eas-cli does not touch this.
+ * App Store Connect API: sandbox testers (In-App Purchase testing). eas-cli
+ * does not cover this. Apple's public REST API has no create/get-by-id/delete
+ * for sandbox testers, you add them in App Store Connect (Users and Access ->
+ * Sandbox). It only lists testers and modifies their behaviour, so this exposes
+ * exactly the v2 operations the API supports: list, update (renewal rate /
+ * interrupt purchases / territory), and clear purchase history.
  */
 
 import type { AscClient } from "./asc-api.ts";
@@ -9,67 +13,47 @@ export type SandboxTester = {
   type: "sandboxTesters";
   id: string;
   attributes: {
+    acAccountName?: string;
     firstName?: string;
     lastName?: string;
-    email?: string;
-    appStoreTerritory?: string;
+    territory?: string;
     subscriptionRenewalRate?: string;
     interruptPurchases?: boolean;
     applePayCompatible?: boolean;
   };
 };
 
+export type SandboxTesterUpdate = {
+  subscriptionRenewalRate?: string;
+  interruptPurchases?: boolean;
+  territory?: string;
+};
+
 export function sandbox(client: AscClient) {
   return {
     sandboxTesters: {
       list(): Promise<SandboxTester[]> {
-        return client.paginatedList<SandboxTester>("/v1/sandboxTesters");
+        return client.paginatedList<SandboxTester>("/v2/sandboxTesters");
       },
-      async get(id: string): Promise<SandboxTester> {
+      async update(id: string, attributes: SandboxTesterUpdate): Promise<SandboxTester> {
         const res = await client.request<{ data: SandboxTester }>(
-          "GET",
-          `/v1/sandboxTesters/${id}`,
+          "PATCH",
+          `/v2/sandboxTesters/${id}`,
+          { data: { type: "sandboxTesters", id, attributes } },
         );
         return res.data;
       },
-      async create(args: {
-        email: string;
-        password: string;
-        firstName: string;
-        lastName: string;
-        appStoreTerritory: string;
-        secretQuestion: string;
-        secretAnswer: string;
-        birthDate: string;
-      }): Promise<SandboxTester> {
-        // ASC requires the full set: confirmPassword (matches password), a
-        // security Q&A, a birthDate (YYYY-MM-DD), and appStoreTerritory (NOT
-        // "territory"). Omitting any is a 400.
-        const body = {
+      // Clear purchase history for one or more testers (async on Apple's side;
+      // a 2xx means the request was accepted). Identifies testers by id.
+      async clearPurchaseHistory(ids: string[]): Promise<void> {
+        await client.request<unknown>("POST", "/v2/sandboxTestersClearPurchaseHistoryRequest", {
           data: {
-            type: "sandboxTesters",
-            attributes: {
-              firstName: args.firstName,
-              lastName: args.lastName,
-              email: args.email,
-              password: args.password,
-              confirmPassword: args.password,
-              secretQuestion: args.secretQuestion,
-              secretAnswer: args.secretAnswer,
-              birthDate: args.birthDate,
-              appStoreTerritory: args.appStoreTerritory,
+            type: "sandboxTestersClearPurchaseHistoryRequest",
+            relationships: {
+              sandboxTesters: { data: ids.map((id) => ({ type: "sandboxTesters", id })) },
             },
           },
-        };
-        const res = await client.request<{ data: SandboxTester }>(
-          "POST",
-          "/v1/sandboxTesters",
-          body,
-        );
-        return res.data;
-      },
-      async delete(id: string): Promise<void> {
-        await client.request<void>("DELETE", `/v1/sandboxTesters/${id}`);
+        });
       },
     },
   };

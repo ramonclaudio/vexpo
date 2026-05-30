@@ -43,7 +43,7 @@ import {
   runReviewsRespond,
   runReviewsUnanswered,
 } from "./commands/reviews.ts";
-import { runSandboxCreate, runSandboxDelete, runSandboxList } from "./commands/sandbox.ts";
+import { runSandboxClearPurchases, runSandboxList, runSandboxUpdate } from "./commands/sandbox.ts";
 import {
   runTestflightGroupsCreate,
   runTestflightGroupsDelete,
@@ -625,53 +625,38 @@ const sandboxCmd = program
 
 sandboxCmd
   .command("list")
-  .description("List sandbox testers.")
+  .description("List sandbox testers. (Create/delete testers in App Store Connect; the API can't.)")
   .option("--json", "JSON output", false)
   .action((options) => exitWith(runSandboxList(options)));
 
 sandboxCmd
-  .command("create")
-  .description("Create a sandbox tester.")
-  .requiredOption("--email <email>")
-  .requiredOption("--password <password>", "8+ chars; this is the App Store sandbox password")
-  .requiredOption("--first-name <name>")
-  .requiredOption("--last-name <name>")
-  .requiredOption("--territory <code>", "App Store territory code (e.g. USA)")
-  .option(
-    "--secret-question <q>",
-    "ASC requires a security question",
-    "What is your favorite color?",
+  .command("update <id>")
+  .description(
+    "Modify a sandbox tester: subscription renewal rate, interrupt purchases, or territory.",
   )
-  .option("--secret-answer <a>", "security answer", "blue")
-  .option("--birth-date <date>", "YYYY-MM-DD (tester must be an adult)", "2000-01-01")
+  .option("--renewal-rate <rate>", "subscription renewal rate (e.g. MONTHLY_RENEWAL_EVERY_HOUR)")
+  .option("--territory <code>", "App Store territory code (e.g. USA)")
+  .option("--interrupt-purchases <bool>", "interrupt purchases for testing (true|false)")
   .action(
-    (options: {
-      email: string;
-      password: string;
-      firstName: string;
-      lastName: string;
-      territory: string;
-      secretQuestion: string;
-      secretAnswer: string;
-      birthDate: string;
-    }) =>
+    (
+      id: string,
+      options: { renewalRate?: string; territory?: string; interruptPurchases?: string },
+    ) =>
       exitWith(
-        runSandboxCreate({
-          email: options.email,
-          password: options.password,
-          firstName: options.firstName,
-          lastName: options.lastName,
-          appStoreTerritory: options.territory,
-          secretQuestion: options.secretQuestion,
-          secretAnswer: options.secretAnswer,
-          birthDate: options.birthDate,
+        runSandboxUpdate(id, {
+          subscriptionRenewalRate: options.renewalRate,
+          territory: options.territory,
+          interruptPurchases:
+            options.interruptPurchases === undefined
+              ? undefined
+              : options.interruptPurchases === "true",
         }),
       ),
   );
 
 sandboxCmd
-  .command("delete <id>")
-  .description("Delete a sandbox tester.")
-  .action((id: string) => exitWith(runSandboxDelete(id)));
+  .command("clear-purchases <ids...>")
+  .description("Clear purchase history for one or more sandbox testers (by id).")
+  .action((ids: string[]) => exitWith(runSandboxClearPurchases(ids)));
 
 program.parse();
