@@ -24,6 +24,21 @@ function targetArgs(target?: ConvexTarget): string[] {
   return explicit ? ["--deployment", explicit] : [];
 }
 
+/**
+ * `convex env list` prints values via the CLI's dotfile formatter, which wraps
+ * values containing #, quotes, backticks, or newlines in quotes and escapes
+ * newlines as literal `\n`. Undo that so the map holds the real value (the write
+ * path passes it back literally; the CLI re-quotes on its own).
+ */
+function unquoteEnvValue(value: string): string {
+  const q = value[0];
+  if ((q === '"' || q === "'") && value.length >= 2 && value[value.length - 1] === q) {
+    const inner = value.slice(1, -1);
+    return q === '"' ? inner.replace(/\\n/g, "\n") : inner;
+  }
+  return value;
+}
+
 export async function envMap(target?: ConvexTarget): Promise<Map<string, string>> {
   const argv = [dlx(), "convex", "env", "list", ...targetArgs(target)];
   const { code, stdout } = await run(argv);
@@ -33,7 +48,7 @@ export async function envMap(target?: ConvexTarget): Promise<Map<string, string>
     const trimmed = raw.trim();
     if (!trimmed) continue;
     const eq = trimmed.indexOf("=");
-    if (eq > 0) out.set(trimmed.slice(0, eq), trimmed.slice(eq + 1));
+    if (eq > 0) out.set(trimmed.slice(0, eq), unquoteEnvValue(trimmed.slice(eq + 1)));
   }
   return out;
 }

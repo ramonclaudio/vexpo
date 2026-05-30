@@ -211,12 +211,10 @@ export async function updateConfigure(
 }
 
 /**
- * Runs `eas diagnostics`. Returns:
- *   - { ok: true, info } if eas.json validates and CLI auth works
- *   - { ok: false, error } if anything fails
- *
- * eas-cli's diagnostics surfaces eas.json schema errors, missing project
- * link, and CLI version info. Useful as a single health check.
+ * Runs `eas diagnostics`. At eas v20 this is just an environment-info dump (CLI
+ * version, OS, node), so it only proves the CLI is installed and runnable, NOT
+ * that eas.json validates or the project is linked. Real link/auth health comes
+ * from project:info + whoami (see verify.ts).
  */
 export async function diagnostics(): Promise<
   { ok: true; info: string } | { ok: false; error: string }
