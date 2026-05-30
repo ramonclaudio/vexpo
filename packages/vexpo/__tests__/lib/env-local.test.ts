@@ -225,9 +225,11 @@ describe("ensureLine", () => {
 });
 
 describe("removeLines", () => {
-  it("is a no-op when the file is absent", async () => {
+  it("is a no-op when the file is absent, and creates no file", async () => {
     await removeLines(["FOO"]);
-    // No throw, no file created.
+    // Assert the side effect, not just non-throw: a regression that writes a
+    // file on the absent path instead of early-returning would be caught here.
+    await expect(readFile(ENV_FILE, "utf8")).rejects.toThrow();
   });
 
   it("removes a single key", async () => {
@@ -258,10 +260,13 @@ describe("removeLines", () => {
   });
 
   it("collapses three or more blank lines down to one blank between blocks", async () => {
-    await writeFile(ENV_FILE, "A=1\nB=2\nC=3\nD=4\n");
-    await removeLines(["B", "C"]);
+    // Removing B from between two blank lines leaves three consecutive newlines;
+    // the collapse must reduce them to two. Without it the result would be
+    // "A=1\n\n\nC=3\n", so `.toBe` pins the collapse rather than just its absence.
+    await writeFile(ENV_FILE, "A=1\n\nB=2\n\nC=3\n");
+    await removeLines(["B"]);
     const text = await readFile(ENV_FILE, "utf8");
-    expect(/\n{3,}/.test(text)).toBe(false);
+    expect(text).toBe("A=1\n\nC=3\n");
   });
 
   it("does not remove keys with substring matches", async () => {

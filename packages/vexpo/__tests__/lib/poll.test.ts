@@ -103,13 +103,37 @@ describe("poll", () => {
     expect(result.done).toBe(false);
   });
 
-  it("uses default intervalMs (30s) and timeoutMs (30 minutes) when unset", async () => {
-    // We don't actually want to wait 30s; verify defaults are sane by reading
-    // the type-level + observing that an immediate success doesn't time out.
-    const result = await poll({
-      check: async () => ({ done: true, value: "fast" }),
-    });
-    expect(result.done).toBe(true);
+  it("defaults to a 30s interval and a 30-minute timeout when unset", async () => {
+    // Fake timers pin the real default values. An immediate-success poll never
+    // reaches the interval/timeout code, so it can't catch a regression in them.
+    vi.useFakeTimers();
+    try {
+      const check = vi.fn(async () => ({ done: false as const }));
+      let settled = false;
+      const p = poll({ check }).then((r) => {
+        settled = true;
+        return r;
+      });
+
+      await vi.advanceTimersByTimeAsync(0);
+      expect(check).toHaveBeenCalledTimes(1); // immediate first attempt
+
+      await vi.advanceTimersByTimeAsync(29_999);
+      expect(check).toHaveBeenCalledTimes(1); // no re-check before the 30s default
+
+      await vi.advanceTimersByTimeAsync(1);
+      expect(check).toHaveBeenCalledTimes(2); // re-checks at exactly 30s -> pins interval
+
+      await vi.advanceTimersByTimeAsync(29 * 60_000);
+      expect(settled).toBe(false); // still polling before the 30-min default timeout
+
+      await vi.advanceTimersByTimeAsync(60_000);
+      const result = await p;
+      expect(result.done).toBe(false); // times out at the 30-min default
+      expect(settled).toBe(true);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });
 

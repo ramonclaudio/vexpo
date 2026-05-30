@@ -18,7 +18,7 @@ describe("runPrivacyShow (local, no ASC API)", () => {
     expect(readSpy).not.toHaveBeenCalled();
   });
 
-  it("renders the declared local config", async () => {
+  it("renders each entry: category plus the tracking/linked/purpose flags", async () => {
     existsSpy.mockReturnValue(true);
     readSpy.mockReturnValue(
       JSON.stringify({
@@ -33,7 +33,15 @@ describe("runPrivacyShow (local, no ASC API)", () => {
         ],
       }),
     );
+    // `line`/`section` write to stderr. Capture them and assert the real render,
+    // not just the exit code (which is 0 for the Data-Not-Collected path too).
+    const err = vi.spyOn(process.stderr, "write").mockReturnValue(true);
     expect(await runPrivacyShow("p.json")).toBe(0);
+    const out = err.mock.calls.map((c) => String(c[0])).join("");
+    err.mockRestore();
+    expect(out).toContain("LOCATION");
+    expect(out).toContain("tracking · ANALYTICS"); // tracking present, purposes joined
+    expect(out).not.toContain("linked"); // linkedToUser is false
   });
 
   it("returns 1 on malformed JSON", async () => {

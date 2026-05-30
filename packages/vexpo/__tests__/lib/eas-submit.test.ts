@@ -95,9 +95,12 @@ describe("withAscAppId", () => {
     expect(p.android.ascAppId).toBe("android-stray");
   });
 
-  it("does not throw on a non-object ios value", () => {
+  it("returns a non-object ios value unchanged (identity no-op)", () => {
     const weird = '{\n  "submit": { "p": { "ios": "weird" } }\n}\n';
-    expect(() => withAscAppId(weird, "1234567890")).not.toThrow();
+    // needsAscAppId sees ios is not an object, so withAscAppId must return the
+    // input untouched. `.toBe` pins that no-op; `.not.toThrow` would still pass
+    // if the early-return guard were deleted and the value got reformatted.
+    expect(withAscAppId(weird, "1234567890")).toBe(weird);
   });
 
   it("no-ops when there is no submit section", () => {

@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("expo-linking", () => {
-  function parse(url: string) {
+  const parse = vi.fn((url: string) => {
     try {
       const u = new URL(url);
       const queryParams: Record<string, string> = {};
@@ -17,11 +17,15 @@ vi.mock("expo-linking", () => {
     } catch {
       return { scheme: null, hostname: null, path: url, queryParams: null };
     }
-  }
+  });
   return { parse, createURL: (p: string) => p };
 });
 
+import { parse } from "expo-linking";
+
 import { resolveDeepLink } from "@/lib/deep-link";
+
+const parseMock = parse as unknown as ReturnType<typeof vi.fn>;
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -71,8 +75,17 @@ describe("resolveDeepLink", () => {
     expect(result.href).toBe("/linked");
   });
 
-  it("drops nullish query values", () => {
-    const result = resolveDeepLink("vexpo://app/linked?x=1");
-    expect(result.params).toEqual({ x: "1" });
+  it("drops nullish query values and joins array values", () => {
+    // URLSearchParams only yields strings, so the real source's `value == null`
+    // skip and `Array.isArray` join branches are unreachable through a real URL.
+    // Drive them directly via the parse mock.
+    parseMock.mockReturnValueOnce({
+      scheme: "vexpo",
+      hostname: "app",
+      path: "/linked",
+      queryParams: { a: "1", b: null, tags: ["x", "y"] },
+    });
+    const result = resolveDeepLink("vexpo://app/linked");
+    expect(result.params).toEqual({ a: "1", tags: "x,y" });
   });
 });
