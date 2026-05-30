@@ -5,9 +5,68 @@ vi.mock("node:fs/promises", () => ({
 }));
 vi.mock("node:os", () => ({ homedir: () => "/home/test" }));
 
-import { deleteDeployKey, mintDeployKey } from "../../src/lib/convex-management.ts";
+import {
+  deleteDeployKey,
+  listProjectDeployments,
+  mintDeployKey,
+  resolveProdDeployment,
+} from "../../src/lib/convex-management.ts";
 
 afterEach(() => vi.unstubAllGlobals());
+
+const DEPLOYMENTS = [
+  { name: "dev-a", deploymentType: "dev", projectId: 7, reference: "dev/auto" },
+  { name: "dev-b", deploymentType: "dev", projectId: 7, reference: "dev/vexpo", isDefault: true },
+  {
+    name: "prod-x",
+    deploymentType: "prod",
+    projectId: 7,
+    reference: "/prod/vexpo",
+    isDefault: true,
+  },
+];
+
+function mockTwoHop(deployments = DEPLOYMENTS) {
+  const fetchMock = vi
+    .fn()
+    .mockResolvedValueOnce(new Response(JSON.stringify({ projectId: 7 }), { status: 200 }))
+    .mockResolvedValueOnce(new Response(JSON.stringify(deployments), { status: 200 }));
+  vi.stubGlobal("fetch", fetchMock);
+  return fetchMock;
+}
+
+describe("listProjectDeployments", () => {
+  it("resolves the project then lists its deployments (two Bearer GETs)", async () => {
+    const fetchMock = mockTwoHop();
+    const list = await listProjectDeployments("dev-a");
+    expect(list).toHaveLength(3);
+    const [u1, i1] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(u1).toBe("https://api.convex.dev/v1/deployments/dev-a");
+    expect((i1.headers as Record<string, string>).Authorization).toBe("Bearer pat-xyz");
+    expect(fetchMock.mock.calls[1][0]).toBe(
+      "https://api.convex.dev/v1/projects/7/list_deployments",
+    );
+  });
+
+  it("degrades to null on a 401 without the second call", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response("no", { status: 401 }));
+    vi.stubGlobal("fetch", fetchMock);
+    expect(await listProjectDeployments("dev-a")).toBeNull();
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("resolveProdDeployment", () => {
+  it("returns the default prod deployment name", async () => {
+    mockTwoHop();
+    expect(await resolveProdDeployment("dev-a")).toBe("prod-x");
+  });
+
+  it("returns null when the project has no prod deployment", async () => {
+    mockTwoHop(DEPLOYMENTS.filter((d) => d.deploymentType !== "prod"));
+    expect(await resolveProdDeployment("dev-a")).toBeNull();
+  });
+});
 
 describe("mintDeployKey", () => {
   it("POSTs create_deploy_key with the Bearer PAT and returns the key", async () => {
@@ -18,14 +77,22 @@ describe("mintDeployKey", () => {
       );
     vi.stubGlobal("fetch", fetchMock);
 
-    const key = await mintDeployKey("abc", { name: "eas-rotation", expiresAtMs: 123 });
+    const future = Date.now() + 40 * 60_000;
+    const key = await mintDeployKey("abc", { name: "eas-rotation", expiresAtMs: future });
 
     expect(key).toBe("prod:abc|ey");
     const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
     expect(url).toBe("https://api.convex.dev/v1/deployments/abc/create_deploy_key");
     expect(init.method).toBe("POST");
     expect((init.headers as Record<string, string>).Authorization).toBe("Bearer pat-xyz");
-    expect(JSON.parse(init.body as string)).toEqual({ name: "eas-rotation", expiresAt: 123 });
+    expect(JSON.parse(init.body as string)).toEqual({ name: "eas-rotation", expiresAt: future });
+  });
+
+  it("rejects an expiresAtMs less than 30 minutes out", async () => {
+    vi.stubGlobal("fetch", vi.fn());
+    await expect(mintDeployKey("abc", { expiresAtMs: Date.now() + 60_000 })).rejects.toThrow(
+      /30 minutes/,
+    );
   });
 
   it("omits expiresAt when not given and defaults the name", async () => {

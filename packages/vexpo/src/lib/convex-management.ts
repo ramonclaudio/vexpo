@@ -17,7 +17,7 @@ import { join } from "node:path";
 
 const BASE = `${process.env.CONVEX_PROVISION_HOST || "https://api.convex.dev"}/v1`;
 
-export type DeploymentType = "dev" | "prod" | "preview" | "custom";
+type DeploymentType = "dev" | "prod" | "preview" | "custom";
 
 export type PlatformDeployment = {
   name: string;
@@ -99,7 +99,12 @@ export async function mintDeployKey(
 ): Promise<string> {
   const token = await requireToken();
   const body: { name: string; expiresAt?: number } = { name: opts?.name ?? "vexpo" };
-  if (opts?.expiresAtMs) body.expiresAt = opts.expiresAtMs;
+  if (opts?.expiresAtMs) {
+    if (opts.expiresAtMs < Date.now() + 30 * 60_000) {
+      throw new Error("deploy key expiresAtMs must be at least 30 minutes in the future");
+    }
+    body.expiresAt = opts.expiresAtMs;
+  }
   const res = await post<{ deployKey?: string }>(
     token,
     `/deployments/${deploymentName}/create_deploy_key`,
