@@ -496,7 +496,8 @@ function parseAuthData(buf: Buffer, opts: { hasCredential?: boolean } = {}): Par
 }
 
 function decideEnvironment(): "development" | "production" {
-  const flag = process.env.APP_ATTEST_ENVIRONMENT;
-  if (flag === "production" || flag === "development") return flag;
-  return process.env.CONVEX_DEPLOYMENT_TYPE === "prod" ? "production" : "development";
+  // Fail closed: production is the default so a missing or misconfigured env var
+  // never silently downgrades to accepting the weaker development AAGUID. Opt
+  // into development explicitly (e.g. local `convex dev` testing a dev build).
+  return process.env.APP_ATTEST_ENVIRONMENT === "development" ? "development" : "production";
 }
