@@ -253,12 +253,15 @@ async function applyPlan(
 
   for (const [channel, entries] of convexBatches) {
     if (entries.length === 0) continue;
-    // Temp files carry plaintext secrets. Keep them out of the repo CWD (a crash
-    // between write and unlink would strand them in the working tree) and 0600.
+    // Temp files carry plaintext secrets. Keep them out of the repo CWD and
+    // create exclusively (flag "wx"): the path is predictable, so a stale file
+    // or a symlink pre-planted there would otherwise capture the write or dodge
+    // the 0600 mode (mode is only applied on create). unlink in finally.
     const tmp = join(tmpdir(), `vexpo-convex-${channel}-${process.pid}.env`);
     try {
       await writeFile(tmp, entries.map(([k, v]) => `${k}=${v}`).join("\n") + "\n", {
         mode: 0o600,
+        flag: "wx",
       });
       await convexEnvSetFromFile(
         tmp,
@@ -282,6 +285,7 @@ async function applyPlan(
     try {
       await writeFile(tmp, entries.map(([k, v]) => `${k}=${v}`).join("\n") + "\n", {
         mode: 0o600,
+        flag: "wx",
       });
       await easEnvPush({ path: tmp, environments: envs, force: true });
       ok(`eas(${envs.join(",")}) pushed ${entries.length} var${entries.length === 1 ? "" : "s"}`);
