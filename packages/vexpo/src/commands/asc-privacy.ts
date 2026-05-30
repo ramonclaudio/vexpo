@@ -1,36 +1,55 @@
 /**
  * `vexpo asc:privacy` group.
  *
- *   show       Pull the app's current Privacy Nutrition Label state.
- *   lint <f>   Validate a local `app-store/privacy.config.json` against
- *              Apple's published category + purpose enums.
+ *   show [f]   Show the locally declared `privacy.config.json`. Apple exposes
+ *              no public read API for the live label (the `App` resource has no
+ *              privacy relationship); set it in App Store Connect.
+ *   lint <f>   Validate a local `app-store/privacy.config.json` against Apple's
+ *              published category + purpose enums.
  */
 
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 
-import { ascBootstrap } from "../lib/asc-state.ts";
-import { fetchAppPrivacyDetails, lintPrivacyConfig } from "../lib/asc-privacy.ts";
-import { BOLD, RED, RESET, YELLOW, bad, line, ok, section } from "../lib/output.ts";
+import { lintPrivacyConfig } from "../lib/asc-privacy.ts";
+import { BOLD, DIM, RED, RESET, YELLOW, bad, line, note, ok, section } from "../lib/output.ts";
 
-export async function runPrivacyShow(opts: { json?: boolean }): Promise<number> {
-  try {
-    const { client, ascAppId, bundleId } = await ascBootstrap();
-    if (!ascAppId) {
-      bad(`no ASC app for bundle id ${bundleId ?? "(unset)"}`);
-      return 1;
-    }
-    const details = await fetchAppPrivacyDetails(client, ascAppId);
-    if (opts.json) {
-      process.stdout.write(JSON.stringify(details, null, 2) + "\n");
-      return 0;
-    }
+const ASC_PRIVACY_URL = "https://appstoreconnect.apple.com";
+
+export async function runPrivacyShow(file: string, opts: { json?: boolean } = {}): Promise<number> {
+  if (!existsSync(file)) {
     section("Privacy details");
-    line(JSON.stringify(details, null, 2));
+    note(`no local ${file}. Apple's API can't read the live label; set it in App Store Connect:`);
+    note(`  ${ASC_PRIVACY_URL} -> your app -> App Privacy`);
     return 0;
+  }
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(readFileSync(file, "utf8"));
   } catch (err) {
-    bad(err instanceof Error ? err.message : String(err));
+    bad(`failed to read ${file}: ${err instanceof Error ? err.message : String(err)}`);
     return 1;
   }
+  if (opts.json) {
+    process.stdout.write(JSON.stringify(parsed, null, 2) + "\n");
+    return 0;
+  }
+  section(`Privacy details (declared in ${file})`);
+  const config = parsed as { collectsData?: boolean; entries?: Array<Record<string, unknown>> };
+  if (!config.collectsData) {
+    line(`  ${BOLD}Data Not Collected${RESET}`);
+    return 0;
+  }
+  for (const e of config.entries ?? []) {
+    const flags = [
+      e.usedForTracking ? "tracking" : "",
+      e.linkedToUser ? "linked" : "",
+      Array.isArray(e.purposes) ? e.purposes.join(",") : "",
+    ]
+      .filter(Boolean)
+      .join(" · ");
+    line(`  ${BOLD}${String(e.category)}${RESET}  ${DIM}${flags}${RESET}`);
+  }
+  return 0;
 }
 
 export async function runPrivacyLint(filePath: string): Promise<number> {

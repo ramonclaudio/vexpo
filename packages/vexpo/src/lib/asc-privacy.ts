@@ -1,20 +1,15 @@
 /**
  * App Store Connect privacy nutrition label helpers.
  *
- * Apple's `App Privacy Details` API surface is limited: read endpoints
- * exist for inspecting current declarations, but the full questionnaire
- * is currently filled via the App Store Connect dashboard, not POSTed.
- * This module covers what the public API exposes — read + local lint —
- * and leaves the dashboard step to the operator.
- *
- * The lint validates a local `app-store/privacy.config.json` against
- * Apple's published enum lists so a stale or misspelled category gets
- * caught before submission.
+ * Apple's public ASC REST API exposes NO privacy resource: the `App`
+ * resource has no privacy/data-usage relationship, and the questionnaire
+ * is filled only in the App Store Connect dashboard. So there's nothing to
+ * fetch; this module is a local lint that validates a declared
+ * `app-store/privacy.config.json` against Apple's published enum lists, so a
+ * stale or misspelled category gets caught before submission.
  *
  * https://developer.apple.com/app-store/app-privacy-details/
  */
-
-import type { AscClient } from "./asc-api.ts";
 
 // Apple's published data categories. Source: App Privacy Details guide.
 // Strings match the keys ASC uses for `AppPrivacyDataCategory`.
@@ -141,10 +136,6 @@ export function lintPrivacyConfig(config: unknown): LintIssue[] {
   });
 
   return issues;
-}
-
-export async function fetchAppPrivacyDetails(client: AscClient, appId: string): Promise<unknown> {
-  return client.request("GET", `/v1/apps/${appId}/appPrivacyDetails`);
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

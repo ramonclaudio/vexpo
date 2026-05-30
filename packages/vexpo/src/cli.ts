@@ -462,17 +462,21 @@ program
   .action((options) => exitWith(runSubmissionsList(options)));
 
 /* -------------------------------------------------------- asc:privacy --- */
-// Privacy Nutrition Labels. Apple's API is read-only today; the lint
-// validates a local `app-store/privacy.config.json` against the published
-// data type + purpose enums so a stale label gets caught pre-submission.
+// Privacy Nutrition Labels. Apple's public API exposes NO privacy resource
+// (the App resource has no privacy relationship), so this is local-only: show
+// renders the declared `app-store/privacy.config.json`, lint validates it
+// against the published data type + purpose enums so a stale label gets caught
+// pre-submission. The live label is set in App Store Connect.
 
-const ascPrivacy = program.command("asc:privacy").description("Privacy nutrition labels.");
+const ascPrivacy = program.command("asc:privacy").description("Privacy nutrition labels (local).");
 
 ascPrivacy
-  .command("show")
-  .description("Fetch the app's current privacy details from ASC.")
+  .command("show [file]")
+  .description("Show the declared privacy.config.json (Apple has no live read API; set it in ASC).")
   .option("--json", "JSON output", false)
-  .action((options: { json?: boolean }) => exitWith(runPrivacyShow(options)));
+  .action((file: string | undefined, options: { json?: boolean }) =>
+    exitWith(runPrivacyShow(file ?? "app-store/privacy.config.json", options)),
+  );
 
 ascPrivacy
   .command("lint <file>")
