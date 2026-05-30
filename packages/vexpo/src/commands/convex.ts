@@ -37,6 +37,25 @@ export type ConvexOptions = {
 const BUNDLE_ID_RE = /^[A-Za-z0-9.-]+$/;
 const TEAM_ID_RE = /^[A-Z0-9]{10}$/;
 
+/**
+ * Plan the `convex dev` invocation. `--local` on `convex dev` is a deprecated
+ * option that crashes (convex 1.39+), so a local target is selected the
+ * supported way: `--dev-deployment local` when provisioning fresh, or a prior
+ * `convex deployment select local` for an existing one. Pure, for testability.
+ */
+export function planConvexDev(
+  options: { local?: boolean },
+  needsProvisioning: boolean,
+  projectName: string,
+): { selectLocalFirst: boolean; devArgs: string[] } {
+  const devArgs = ["convex", "dev", "--once", "--tail-logs", "disable"];
+  if (needsProvisioning) {
+    devArgs.push("--configure", "new", "--project", projectName);
+    devArgs.push("--dev-deployment", options.local ? "local" : "cloud");
+  }
+  return { selectLocalFirst: !!options.local && !needsProvisioning, devArgs };
+}
+
 export async function runConvex(options: ConvexOptions): Promise<number> {
   section("Convex deployment");
 
@@ -68,9 +87,21 @@ export async function runConvex(options: ConvexOptions): Promise<number> {
     const needsProvisioning = options.fresh === true || !existing;
     const projectName = options.name ?? (await pkgName());
 
-    const cmd = [dlx(), "convex", "dev", "--once", "--tail-logs", "disable"];
-    if (options.local) cmd.push("--local");
-    if (needsProvisioning) cmd.push("--configure", "new", "--project", projectName);
+    const plan = planConvexDev(options, needsProvisioning, projectName);
+    // For an existing local deployment, select it before running dev (the dev
+    // `--local` flag is deprecated and crashes).
+    if (plan.selectLocalFirst) {
+      const sel = spawn([dlx(), "convex", "deployment", "select", "local"], {
+        stdin: "inherit",
+        stdout: "inherit",
+        stderr: "inherit",
+      });
+      if ((await sel.exited) !== 0) {
+        bad("convex deployment select local failed");
+        return 1;
+      }
+    }
+    const cmd = [dlx(), ...plan.devArgs];
 
     if (needsProvisioning) {
       ok(`provisioning Convex project '${projectName}'`);
