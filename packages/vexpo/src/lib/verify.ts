@@ -553,6 +553,18 @@ async function verifyEas(ctx: VerifyContext): Promise<Check[]> {
     // leave null; we still probe EAS env below before deciding lite vs fail
   }
 
+  // Lite mode (no projectId AND no sign of provisioning) skips before any EAS
+  // shell-out, so the read path stays fast and offline-safe. REQUIRE_EMAIL_VERIFICATION
+  // unset on Convex is the lite-setup marker.
+  if (!projectId) {
+    const env = ctx.channel === "prod" ? ctx.convexProdEnv : ctx.convexEnv;
+    const rev = env.get("REQUIRE_EMAIL_VERIFICATION");
+    if (!rev || rev === "false") {
+      checks.push(skip("eas", "project-id", "lite mode (run `npx vexpo full` to init EAS)"));
+      return checks;
+    }
+  }
+
   // Fetch all three EAS env maps once. eas-cli resolves the project itself, so
   // this can succeed even when vexpo's projectId resolution returns null (a
   // stubbed app.json with EAS_PROJECT_ID only in the shell).
@@ -582,15 +594,9 @@ async function verifyEas(ctx: VerifyContext): Promise<Check[]> {
       ),
     );
   } else {
-    const env = ctx.channel === "prod" ? ctx.convexProdEnv : ctx.convexEnv;
-    const rev = env.get("REQUIRE_EMAIL_VERIFICATION");
-    if (!rev || rev === "false") {
-      checks.push(skip("eas", "project-id", "lite mode (run `npx vexpo full` to init EAS)"));
-    } else {
-      checks.push(
-        fail("eas", "project-id", "no projectId in app.json, EAS_PROJECT_ID env, or .env.local"),
-      );
-    }
+    checks.push(
+      fail("eas", "project-id", "no projectId in app.json, EAS_PROJECT_ID env, or .env.local"),
+    );
     return checks;
   }
 
