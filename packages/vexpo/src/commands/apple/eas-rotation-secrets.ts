@@ -8,7 +8,7 @@
  * doesn't accept a visibility flag, and we don't push real secrets at default
  * visibility.
  *
- *   APPLE_P8_PRIVATE_KEY    PEM contents of the SIWA .p8 (read from path)
+ *   APPLE_P8_PRIVATE_KEY    path to the SIWA .p8 (EAS reads + base64-encodes it)
  *   APPLE_TEAM_ID           10-char team id
  *   APPLE_KEY_ID            10-char SIWA key id
  *   APPLE_SERVICES_ID       services id (e.g. com.you.app.signin)
