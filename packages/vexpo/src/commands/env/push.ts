@@ -23,6 +23,7 @@ import {
   envMap as convexEnvMap,
   envSetFromFile as convexEnvSetFromFile,
 } from "../../lib/convex-env.ts";
+import { checkToken } from "../../lib/convex-management.ts";
 import {
   envList as easEnvList,
   envPush as easEnvPush,
@@ -299,6 +300,14 @@ async function applyPlan(
 
 export async function runEnvPush(options: EnvPushOptions): Promise<number> {
   section("Env push");
+
+  // Fail loud on an expired/revoked Convex login before the Convex env writes
+  // hit a cryptic auth error. "no-token" is left alone (CI may use a deploy key).
+  if ((await checkToken()) === "unauthorized") {
+    bad("Convex login expired or revoked");
+    note("run `npx convex login` to refresh, then re-run");
+    return 1;
+  }
 
   const sources = await readSources({ local: options.localFile, prod: options.prodFile });
   if (sources.length === 0) {

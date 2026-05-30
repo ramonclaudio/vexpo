@@ -21,6 +21,7 @@ import { existsSync } from "node:fs";
 import { validate as ascValidate, makeAscClient, type AscCredentials } from "./asc-api.ts";
 import { deploymentSlug, envMap as convexEnvMap, type ConvexTarget } from "./convex-env.ts";
 import {
+  checkToken,
   deploymentsOfType,
   describeDeployment,
   listProjectDeployments,
@@ -155,6 +156,19 @@ async function verifyConvex(ctx: VerifyContext): Promise<Check[]> {
   const checks: Check[] = [];
   const env = ctx.channel === "prod" ? ctx.convexProdEnv : ctx.convexEnv;
   const local = ctx.channel === "prod" ? ctx.envProd : ctx.envLocal;
+
+  // Login freshness, gated on a configured deployment so lite/offline stays fast.
+  // A present-but-expired token is the confusing case the file-stat can't catch.
+  if (local.get("CONVEX_DEPLOYMENT")) {
+    const status = await checkToken();
+    if (status === "unauthorized") {
+      checks.push(
+        fail("convex", "login", "Convex token expired or revoked", "run `npx convex login`"),
+      );
+    } else if (status === "valid") {
+      checks.push(ok("convex", "login", "token valid"));
+    }
+  }
 
   const cloudUrl = local.get("EXPO_PUBLIC_CONVEX_URL");
   const siteUrl = local.get("EXPO_PUBLIC_CONVEX_SITE_URL");

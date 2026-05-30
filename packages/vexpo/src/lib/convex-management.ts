@@ -38,6 +38,32 @@ async function accessToken(): Promise<string | null> {
   }
 }
 
+export type TokenStatus = "valid" | "unauthorized" | "no-token";
+
+/**
+ * Check the Convex login is usable, not just present on disk. No token →
+ * "no-token" instantly (no network). Otherwise a cheap authed GET: 401/403 →
+ * "unauthorized" (the token expired or was revoked, re-login). Any network error
+ * → "valid", so offline or an API hiccup never blocks work.
+ */
+export async function checkToken(): Promise<TokenStatus> {
+  const token = await accessToken();
+  if (!token) return "no-token";
+  const ctl = new AbortController();
+  const timer = setTimeout(() => ctl.abort(), 8_000);
+  try {
+    const res = await fetch(`${BASE}/list_personal_access_tokens`, {
+      headers: { Authorization: `Bearer ${token}`, "Convex-Client": "vexpo-cli" },
+      signal: ctl.signal,
+    });
+    return res.status === 401 || res.status === 403 ? "unauthorized" : "valid";
+  } catch {
+    return "valid";
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 async function get<T>(token: string, path: string): Promise<T | null> {
   const ctl = new AbortController();
   const timer = setTimeout(() => ctl.abort(), 10_000);

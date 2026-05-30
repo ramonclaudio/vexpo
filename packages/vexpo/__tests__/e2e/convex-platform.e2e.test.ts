@@ -14,6 +14,7 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
 import {
+  checkToken,
   deleteDeployKey,
   listProjectDeployments,
   mintDeployKey,
@@ -36,6 +37,10 @@ const DEPLOYMENT = process.env.VEXPO_E2E_DEPLOYMENT ?? "";
 const RUN = loggedIn() && process.env.VEXPO_E2E_CONVEX === "1" && DEPLOYMENT.length > 0;
 
 describe.skipIf(!RUN)("convex platform API (real)", () => {
+  it("validates the live login token (read-only)", async () => {
+    expect(await checkToken()).toBe("valid");
+  });
+
   it("enumerates the project's deployments (read-only)", async () => {
     const list = await listProjectDeployments(DEPLOYMENT);
     expect(list).not.toBeNull();

@@ -8,7 +8,8 @@
  */
 
 import { appleTeamIdFallback, bundleIdFallback, pkgName, scheme } from "../lib/app.ts";
-import { envSet as convexEnvSet, isLoggedIn } from "../lib/convex-env.ts";
+import { envSet as convexEnvSet } from "../lib/convex-env.ts";
+import { checkToken } from "../lib/convex-management.ts";
 import { ensureLine, readAll, removeLines } from "../lib/env-local.ts";
 import {
   BOLD,
@@ -60,10 +61,13 @@ export async function runConvex(options: ConvexOptions): Promise<number> {
   section("Convex deployment");
 
   try {
-    if (!(await isLoggedIn())) {
-      yep("not signed in to Convex");
+    const tokenStatus = await checkToken();
+    if (tokenStatus !== "valid") {
+      yep(
+        tokenStatus === "no-token" ? "not signed in to Convex" : "Convex token expired or revoked",
+      );
       await helpAndWait({
-        body: "Sign up free and run `npx convex login` in another terminal:",
+        body: "Sign in (or refresh) with `npx convex login` in another terminal:",
         urls: [
           { label: "Convex sign-up", url: "https://convex.dev" },
           { label: "Convex dashboard", url: "https://dashboard.convex.dev" },

@@ -6,13 +6,42 @@ vi.mock("node:fs/promises", () => ({
 vi.mock("node:os", () => ({ homedir: () => "/home/test" }));
 
 import {
+  checkToken,
   deleteDeployKey,
   listProjectDeployments,
   mintDeployKey,
   resolveProdDeployment,
 } from "../../src/lib/convex-management.ts";
+import { readFile } from "node:fs/promises";
 
 afterEach(() => vi.unstubAllGlobals());
+
+describe("checkToken", () => {
+  it("returns 'valid' on a 200", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response("[]", { status: 200 })));
+    expect(await checkToken()).toBe("valid");
+  });
+
+  it("returns 'unauthorized' on 401 / 403", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response("no", { status: 401 })));
+    expect(await checkToken()).toBe("unauthorized");
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response("no", { status: 403 })));
+    expect(await checkToken()).toBe("unauthorized");
+  });
+
+  it("degrades to 'valid' on a network error (offline never blocks)", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error("offline")));
+    expect(await checkToken()).toBe("valid");
+  });
+
+  it("returns 'no-token' without any fetch when config has no accessToken", async () => {
+    (readFile as unknown as ReturnType<typeof vi.fn>).mockResolvedValueOnce("{}");
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+    expect(await checkToken()).toBe("no-token");
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+});
 
 const DEPLOYMENTS = [
   { name: "dev-a", deploymentType: "dev", projectId: 7, reference: "dev/auto" },
