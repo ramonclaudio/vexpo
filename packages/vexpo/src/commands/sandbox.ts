@@ -29,7 +29,7 @@ export async function runSandboxList(opts: { json?: boolean } = {}): Promise<num
     for (const t of list) {
       const name = `${t.attributes.firstName ?? ""} ${t.attributes.lastName ?? ""}`.trim();
       line(
-        `  ${BOLD}${t.attributes.email ?? "(no email)"}${RESET}  ${DIM}${t.attributes.territory ?? ""}  ${name}${RESET}`,
+        `  ${BOLD}${t.attributes.email ?? "(no email)"}${RESET}  ${DIM}${t.attributes.appStoreTerritory ?? ""}  ${name}${RESET}`,
       );
     }
     return 0;
@@ -44,7 +44,10 @@ export async function runSandboxCreate(opts: {
   password: string;
   firstName: string;
   lastName: string;
-  territory: string;
+  appStoreTerritory: string;
+  secretQuestion: string;
+  secretAnswer: string;
+  birthDate: string;
 }): Promise<number> {
   try {
     const s = await client();

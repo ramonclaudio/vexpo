@@ -636,7 +636,14 @@ sandboxCmd
   .requiredOption("--password <password>", "8+ chars; this is the App Store sandbox password")
   .requiredOption("--first-name <name>")
   .requiredOption("--last-name <name>")
-  .requiredOption("--territory <code>", "ISO territory code (e.g. USA)")
+  .requiredOption("--territory <code>", "App Store territory code (e.g. USA)")
+  .option(
+    "--secret-question <q>",
+    "ASC requires a security question",
+    "What is your favorite color?",
+  )
+  .option("--secret-answer <a>", "security answer", "blue")
+  .option("--birth-date <date>", "YYYY-MM-DD (tester must be an adult)", "2000-01-01")
   .action(
     (options: {
       email: string;
@@ -644,7 +651,22 @@ sandboxCmd
       firstName: string;
       lastName: string;
       territory: string;
-    }) => exitWith(runSandboxCreate(options)),
+      secretQuestion: string;
+      secretAnswer: string;
+      birthDate: string;
+    }) =>
+      exitWith(
+        runSandboxCreate({
+          email: options.email,
+          password: options.password,
+          firstName: options.firstName,
+          lastName: options.lastName,
+          appStoreTerritory: options.territory,
+          secretQuestion: options.secretQuestion,
+          secretAnswer: options.secretAnswer,
+          birthDate: options.birthDate,
+        }),
+      ),
   );
 
 sandboxCmd

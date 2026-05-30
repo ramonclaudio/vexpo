@@ -12,9 +12,10 @@ export type SandboxTester = {
     firstName?: string;
     lastName?: string;
     email?: string;
-    territory?: string;
+    appStoreTerritory?: string;
     subscriptionRenewalRate?: string;
     interruptPurchases?: boolean;
+    applePayCompatible?: boolean;
   };
 };
 
@@ -36,8 +37,14 @@ export function sandbox(client: AscClient) {
         password: string;
         firstName: string;
         lastName: string;
-        territory: string;
+        appStoreTerritory: string;
+        secretQuestion: string;
+        secretAnswer: string;
+        birthDate: string;
       }): Promise<SandboxTester> {
+        // ASC requires the full set: confirmPassword (matches password), a
+        // security Q&A, a birthDate (YYYY-MM-DD), and appStoreTerritory (NOT
+        // "territory"). Omitting any is a 400.
         const body = {
           data: {
             type: "sandboxTesters",
@@ -46,7 +53,11 @@ export function sandbox(client: AscClient) {
               lastName: args.lastName,
               email: args.email,
               password: args.password,
-              territory: args.territory,
+              confirmPassword: args.password,
+              secretQuestion: args.secretQuestion,
+              secretAnswer: args.secretAnswer,
+              birthDate: args.birthDate,
+              appStoreTerritory: args.appStoreTerritory,
             },
           },
         };
