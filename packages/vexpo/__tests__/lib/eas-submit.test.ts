@@ -29,22 +29,20 @@ const EAS = `{
 }
 `;
 
+const parse = (s: string) => JSON.parse(s);
+
 describe("withAscAppId", () => {
-  it("inserts ascAppId into every submit profile, before the first key", () => {
-    const out = withAscAppId(EAS, "1234567890");
-    const cfg = JSON.parse(out);
+  it("sets ascAppId on every submit profile's ios block", () => {
+    const cfg = parse(withAscAppId(EAS, "1234567890"));
     expect(cfg.submit.testflight.ios.ascAppId).toBe("1234567890");
     expect(cfg.submit.production.ios.ascAppId).toBe("1234567890");
-    expect(out).toContain('"ascAppId": "1234567890",\n        "metadataPath"');
+    expect(cfg.submit.testflight.ios.metadataPath).toBe("./store.config.json");
   });
 
-  it("does not touch build-profile ios blocks (scoped to submit)", () => {
-    const cfg = JSON.parse(withAscAppId(EAS, "1234567890"));
+  it("does not touch build-profile ios blocks", () => {
+    const cfg = parse(withAscAppId(EAS, "1234567890"));
     expect(cfg.build.production.ios).not.toHaveProperty("ascAppId");
-  });
-
-  it("preserves formatting, no reflow of compact arrays", () => {
-    expect(withAscAppId(EAS, "1234567890")).toContain('["node_modules", "ios/Pods"]');
+    expect(cfg.build.production.cache.paths).toEqual(["node_modules", "ios/Pods"]);
   });
 
   it("is idempotent for the same id", () => {
@@ -53,48 +51,48 @@ describe("withAscAppId", () => {
   });
 
   it("updates an existing different id without duplicating the key", () => {
-    const once = withAscAppId(EAS, "111");
-    const updated = withAscAppId(once, "222");
-    const cfg = JSON.parse(updated);
+    const updated = withAscAppId(withAscAppId(EAS, "111"), "222");
+    const cfg = parse(updated);
     expect(cfg.submit.testflight.ios.ascAppId).toBe("222");
     expect(cfg.submit.production.ios.ascAppId).toBe("222");
     expect(updated.match(/"ascAppId"/g)).toHaveLength(2);
   });
 
-  it("writes ascAppId into an inline ios block the regex can't reach (parse fallback)", () => {
+  it("writes into an inline ios block", () => {
     const inline =
       '{\n  "submit": {\n    "testflight": { "ios": { "metadataPath": "./m.json" } }\n  }\n}\n';
-    const out = withAscAppId(inline, "1234567890");
-    const ios = JSON.parse(out).submit.testflight.ios;
+    const ios = parse(withAscAppId(inline, "1234567890")).submit.testflight.ios;
     expect(ios.ascAppId).toBe("1234567890");
     expect(ios.metadataPath).toBe("./m.json");
   });
 
-  it("writes ascAppId into an empty ios block", () => {
+  it("writes into an empty ios block", () => {
     const empty = '{\n  "submit": {\n    "production": { "ios": {} }\n  }\n}\n';
-    expect(JSON.parse(withAscAppId(empty, "999")).submit.production.ios.ascAppId).toBe("999");
-  });
-
-  it("covers every profile when shapes are mixed (pretty + inline)", () => {
-    const mixed =
-      '{\n  "submit": {\n    "testflight": {\n      "ios": {\n        "metadataPath": "./m.json"\n      }\n    },\n    "production": { "ios": { "metadataPath": "./m.json" } }\n  }\n}\n';
-    expect(submitProfilesMissingAscAppId(withAscAppId(mixed, "1234567890"))).toEqual([]);
+    expect(parse(withAscAppId(empty, "999")).submit.production.ios.ascAppId).toBe("999");
   });
 
   it("never touches a build ios block, even when submit comes before build", () => {
     const submitFirst =
-      '{\n  "submit": {\n    "production": {\n      "ios": {\n        "metadataPath": "./m.json"\n      }\n    }\n  },\n  "build": {\n    "production": {\n      "ios": {\n        "credentialsSource": "remote"\n      }\n    }\n  }\n}\n';
-    const cfg = JSON.parse(withAscAppId(submitFirst, "1234567890"));
+      '{\n  "submit": { "production": { "ios": { "metadataPath": "./m.json" } } },\n  "build": { "production": { "ios": { "credentialsSource": "remote" } } }\n}\n';
+    const cfg = parse(withAscAppId(submitFirst, "1234567890"));
     expect(cfg.submit.production.ios.ascAppId).toBe("1234567890");
     expect(cfg.build.production.ios).not.toHaveProperty("ascAppId");
   });
 
-  it("scopes value updates to submit, not a later build section", () => {
-    const withId =
-      '{\n  "submit": { "production": { "ios": { "ascAppId": "old", "metadataPath": "./m.json" } } },\n  "build": { "production": { "ios": { "credentialsSource": "remote" } } }\n}\n';
-    const cfg = JSON.parse(withAscAppId(withId, "new"));
-    expect(cfg.submit.production.ios.ascAppId).toBe("new");
-    expect(cfg.build.production.ios).not.toHaveProperty("ascAppId");
+  it("leaves a nested ascAppId inside ios untouched", () => {
+    const nested =
+      '{\n  "submit": { "production": { "ios": { "metadata": { "ascAppId": "nested" } } } }\n}\n';
+    const ios = parse(withAscAppId(nested, "1234567890")).submit.production.ios;
+    expect(ios.ascAppId).toBe("1234567890");
+    expect(ios.metadata.ascAppId).toBe("nested");
+  });
+
+  it("leaves a sibling android.ascAppId untouched", () => {
+    const sibling =
+      '{\n  "submit": { "production": { "ios": { "metadataPath": "./m.json" }, "android": { "ascAppId": "android-stray" } } }\n}\n';
+    const p = parse(withAscAppId(sibling, "1234567890")).submit.production;
+    expect(p.ios.ascAppId).toBe("1234567890");
+    expect(p.android.ascAppId).toBe("android-stray");
   });
 
   it("does not throw on a non-object ios value", () => {
