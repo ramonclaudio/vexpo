@@ -19,7 +19,12 @@
 import { existsSync } from "node:fs";
 
 import { validate as ascValidate, makeAscClient, type AscCredentials } from "./asc-api.ts";
-import { envMap as convexEnvMap, type ConvexTarget } from "./convex-env.ts";
+import { deploymentSlug, envMap as convexEnvMap, type ConvexTarget } from "./convex-env.ts";
+import {
+  deploymentsOfType,
+  describeDeployment,
+  listProjectDeployments,
+} from "./convex-management.ts";
 import { ascStatus } from "./eas-integrations.ts";
 import {
   diagnostics as easDiagnostics,
@@ -204,6 +209,30 @@ async function verifyConvex(ctx: VerifyContext): Promise<Check[]> {
     }
   } else {
     checks.push(fail("convex", "better-auth-secret", `not set on Convex (${ctx.channel})`));
+  }
+
+  // Enumerate the project's deployments via the Platform API to catch a
+  // duplicate dev deployment (the EAS Convex integration spins up a second one
+  // alongside a personal `convex dev` deployment). Skips silently when the
+  // management token isn't available (offline / not logged in).
+  const deploymentName = deploymentSlug(local.get("CONVEX_DEPLOYMENT"));
+  if (deploymentName) {
+    const deployments = await listProjectDeployments(deploymentName);
+    if (deployments) {
+      const devs = deploymentsOfType(deployments, "dev");
+      if (devs.length > 1) {
+        checks.push(
+          warn(
+            "convex",
+            "deployments",
+            `${devs.length} dev deployments in this project`,
+            `${devs.map(describeDeployment).join(", ")} — pick one canonical, delete the others`,
+          ),
+        );
+      } else {
+        checks.push(ok("convex", "deployments", `${deployments.length} total, 1 dev`));
+      }
+    }
   }
 
   return checks;
