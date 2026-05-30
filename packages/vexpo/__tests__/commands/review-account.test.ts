@@ -13,13 +13,11 @@ vi.mock("../../src/lib/proc.ts", () => ({
   streamText: vi.fn().mockResolvedValue(""),
 }));
 vi.mock("node:fs/promises", () => ({
-  readFile: vi
-    .fn()
-    .mockResolvedValue(
-      JSON.stringify({
-        apple: { review: { demoUsername: "review@example.com", demoPassword: "pw123456" } },
-      }),
-    ),
+  readFile: vi.fn().mockResolvedValue(
+    JSON.stringify({
+      apple: { review: { demoUsername: "review@example.com", demoPassword: "pw123456" } },
+    }),
+  ),
 }));
 
 import { runReviewAccount } from "../../src/commands/review-account.ts";
