@@ -20,7 +20,7 @@
  * when the deployment can't be resolved (offline / not logged in).
  */
 
-import { readFile } from "node:fs/promises";
+import { access } from "node:fs/promises";
 
 import { deploymentSlug } from "../../lib/convex-env.ts";
 import { mintDeployKey, resolveProdDeployment } from "../../lib/convex-management.ts";
@@ -79,19 +79,18 @@ export async function runEasRotationSecrets(options: RotationSecretsOptions): Pr
     note("re-run with APPLE_P8_PATH=/path/to/AuthKey.p8");
     return 1;
   }
-  let pem: string;
   try {
-    pem = await readFile(p8Path, "utf8");
+    await access(p8Path);
   } catch {
     bad(`.p8 file not found at ${p8Path}`);
     return 1;
   }
 
-  // APPLE_P8_PRIVATE_KEY pushes as `--type file` per Resend / EAS docs
-  // recommendation for .p8 binary content. Other rotation values are plain
-  // strings.
+  // APPLE_P8_PRIVATE_KEY pushes as `--type file`. eas env:create/update treat a
+  // file-type value as a filesystem PATH (the CLI reads + base64-encodes it), so
+  // pass p8Path, NOT the file contents. Other rotation values are plain strings.
   const apple: Array<{ name: string; value: string; type?: "file" | "string" }> = [
-    { name: "APPLE_P8_PRIVATE_KEY", value: pem, type: "file" },
+    { name: "APPLE_P8_PRIVATE_KEY", value: p8Path, type: "file" },
     { name: "APPLE_TEAM_ID", value: teamId },
     { name: "APPLE_KEY_ID", value: keyId },
     { name: "APPLE_SERVICES_ID", value: servicesId },
