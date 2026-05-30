@@ -10,10 +10,17 @@
  *   dev key/selector  → EAS development
  *   prod key          → EAS production (the deploy-production job runs there)
  *   prod selector     → EAS production + preview (matches the URL routing)
+ *
+ * The prod deploy key is a secret that lives on EAS, minted via --mint (the same
+ * path eas-rotation-secrets uses), not stored in .env.prod. .env.prod carries
+ * only the CONVEX_DEPLOYMENT selector, which is what `vexpo convex:migrate --prod`
+ * targets prod with over login.
  */
 
 import { access } from "node:fs/promises";
 
+import { deploymentSlug } from "../../lib/convex-env.ts";
+import { mintProdDeployKey } from "../../lib/convex-management.ts";
 import {
   envCreate,
   envList,
@@ -29,6 +36,7 @@ export type ConvexKeyOptions = {
   prodKey?: string;
   localFile?: string;
   prodFile?: string;
+  mint?: boolean;
 };
 
 async function fileExists(p: string): Promise<boolean> {
@@ -77,9 +85,29 @@ export async function runConvexKey(options: ConvexKeyOptions): Promise<number> {
   const prod = await readEnvFile(prodFile);
 
   const devKey = options.devKey ?? local.get("CONVEX_DEPLOY_KEY");
-  const prodKey = options.prodKey ?? prod.get("CONVEX_DEPLOY_KEY");
+  let prodKey = options.prodKey ?? prod.get("CONVEX_DEPLOY_KEY");
   const devSel = local.get("CONVEX_DEPLOYMENT");
   const prodSel = prod.get("CONVEX_DEPLOYMENT");
+
+  // The prod deploy key is a secret that belongs on EAS, not in .env.prod (which
+  // carries only the CONVEX_DEPLOYMENT selector). With --mint, create one via the
+  // Platform API instead of reading it off disk, but only if EAS doesn't already
+  // hold it, so re-runs and a prior eas-rotation-secrets don't mint a second key.
+  if (options.mint && !prodKey) {
+    const easProd = await envList("production").catch(() => new Map<string, string>());
+    if (easProd.has("CONVEX_DEPLOY_KEY")) {
+      note("prod CONVEX_DEPLOY_KEY already on EAS; skipping mint");
+    } else {
+      const slug = deploymentSlug(prodSel ?? devSel);
+      const minted = slug ? await mintProdDeployKey(slug, "convex-key").catch(() => null) : null;
+      if (minted) {
+        prodKey = minted.key;
+        ok(`minted prod deploy key for ${BOLD}${minted.deployment}${RESET}`);
+      } else {
+        yep("--mint: couldn't resolve the prod deployment to mint a key");
+      }
+    }
+  }
 
   if (devKey && !devKey.startsWith("dev:"))
     yep("dev deploy key is not dev-scoped (expected dev:…)");

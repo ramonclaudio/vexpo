@@ -378,17 +378,26 @@ env
   )
   .option("--dev-key <key>", "dev deploy key (default: CONVEX_DEPLOY_KEY in .env.local)")
   .option("--prod-key <key>", "prod deploy key (default: CONVEX_DEPLOY_KEY in .env.prod)")
+  .option("--mint", "mint the prod deploy key via the Platform API if EAS lacks one", false)
   .option("--local-file <path>", "override .env.local path")
   .option("--prod-file <path>", "override .env.prod path")
-  .action((options: { devKey?: string; prodKey?: string; localFile?: string; prodFile?: string }) =>
-    exitWith(
-      runConvexKey({
-        devKey: options.devKey,
-        prodKey: options.prodKey,
-        localFile: options.localFile,
-        prodFile: options.prodFile,
-      }),
-    ),
+  .action(
+    (options: {
+      devKey?: string;
+      prodKey?: string;
+      mint?: boolean;
+      localFile?: string;
+      prodFile?: string;
+    }) =>
+      exitWith(
+        runConvexKey({
+          devKey: options.devKey,
+          prodKey: options.prodKey,
+          mint: options.mint,
+          localFile: options.localFile,
+          prodFile: options.prodFile,
+        }),
+      ),
   );
 
 /* ------------------------------------------------------------------ asc --- */

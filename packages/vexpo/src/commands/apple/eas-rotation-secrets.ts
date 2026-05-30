@@ -23,7 +23,7 @@
 import { access } from "node:fs/promises";
 
 import { deploymentSlug } from "../../lib/convex-env.ts";
-import { mintDeployKey, resolveProdDeployment } from "../../lib/convex-management.ts";
+import { mintProdDeployKey } from "../../lib/convex-management.ts";
 import { envCreate, envList, envUpdate, type EasEnvironment } from "../../lib/eas-env.ts";
 import { readOne } from "../../lib/env-local.ts";
 import { BOLD, DIM, RESET, ask, bad, line, nop, note, ok, section, yep } from "../../lib/output.ts";
@@ -134,23 +134,24 @@ export async function runEasRotationSecrets(options: RotationSecretsOptions): Pr
       }
     };
 
-    // Mint a prod deploy key via the Platform API: resolve the project's prod
-    // deployment from the dev deployment in .env.local, then create a key.
-    const prodSlug = await resolveProdDeployment(
-      deploymentSlug(await readOne("CONVEX_DEPLOYMENT")) ?? "",
-    );
+    // Mint a prod deploy key via the Platform API (resolves the project's prod
+    // deployment from the dev selector in .env.local). The prod key lives on EAS,
+    // not in .env.prod, so there's nothing to read off disk.
     let minted = false;
-    if (prodSlug) {
-      try {
-        const key = await mintDeployKey(prodSlug, { name: "eas-rotation" });
-        await setKey(key);
-        ok(`minted + set CONVEX_DEPLOY_KEY for prod ${BOLD}${prodSlug}${RESET}`);
+    try {
+      const result = await mintProdDeployKey(
+        deploymentSlug(await readOne("CONVEX_DEPLOYMENT")) ?? "",
+        "eas-rotation",
+      );
+      if (result) {
+        await setKey(result.key);
+        ok(`minted + set CONVEX_DEPLOY_KEY for prod ${BOLD}${result.deployment}${RESET}`);
         minted = true;
-      } catch (err) {
-        yep(`couldn't mint a deploy key: ${err instanceof Error ? err.message : err}`);
+      } else {
+        yep("couldn't resolve the prod deployment (offline or not logged in)");
       }
-    } else {
-      yep("couldn't resolve the prod deployment (offline or not logged in)");
+    } catch (err) {
+      yep(`couldn't mint a deploy key: ${err instanceof Error ? err.message : err}`);
     }
 
     // Fallback: interactive paste only when minting wasn't possible.

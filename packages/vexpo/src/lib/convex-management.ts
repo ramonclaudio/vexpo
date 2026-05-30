@@ -129,6 +129,21 @@ export async function resolveProdDeployment(anyDeploymentName: string): Promise<
 }
 
 /**
+ * Resolve the project's prod deployment from any of its deployment slugs, then
+ * mint a deploy key for it. The single mint path for the prod CONVEX_DEPLOY_KEY
+ * (shared by eas-rotation-secrets and `env convex-key --mint`). Returns null
+ * when the prod deployment can't be resolved (offline / not logged in).
+ */
+export async function mintProdDeployKey(
+  anyDeploymentName: string,
+  name = "vexpo",
+): Promise<{ key: string; deployment: string } | null> {
+  const deployment = await resolveProdDeployment(anyDeploymentName);
+  if (!deployment) return null;
+  return { key: await mintDeployKey(deployment, { name }), deployment };
+}
+
+/**
  * Every deployment in the project that `deploymentName` belongs to. Resolves the
  * project from the deployment, then lists its deployments. Returns null on any
  * failure so callers skip gracefully.
