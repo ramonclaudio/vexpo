@@ -247,21 +247,20 @@ async function applyPlan(
 
   let applied = 0;
   let failed = 0;
-  const { writeFile, unlink } = await import("node:fs/promises");
+  const { writeFile, unlink, mkdtemp, rmdir } = await import("node:fs/promises");
   const { tmpdir } = await import("node:os");
   const { join } = await import("node:path");
 
   for (const [channel, entries] of convexBatches) {
     if (entries.length === 0) continue;
-    // Temp files carry plaintext secrets. Keep them out of the repo CWD and
-    // create exclusively (flag "wx"): the path is predictable, so a stale file
-    // or a symlink pre-planted there would otherwise capture the write or dodge
-    // the 0600 mode (mode is only applied on create). unlink in finally.
-    const tmp = join(tmpdir(), `vexpo-convex-${channel}-${process.pid}.env`);
+    // Plaintext secrets go into a fresh private mkdtemp dir (0700, unguessable
+    // name) so no predictable or pre-planted path can capture them or dodge the
+    // 0600 file mode. Removed in finally.
+    const dir = await mkdtemp(join(tmpdir(), "vexpo-env-"));
+    const tmp = join(dir, "convex.env");
     try {
       await writeFile(tmp, entries.map(([k, v]) => `${k}=${v}`).join("\n") + "\n", {
         mode: 0o600,
-        flag: "wx",
       });
       await convexEnvSetFromFile(
         tmp,
@@ -276,16 +275,17 @@ async function applyPlan(
       failed += entries.length;
     } finally {
       await unlink(tmp).catch(() => {});
+      await rmdir(dir).catch(() => {});
     }
   }
 
   for (const { envs, entries } of easBatches.values()) {
     if (entries.length === 0) continue;
-    const tmp = join(tmpdir(), `vexpo-eas-${envs.join("-")}-${process.pid}.env`);
+    const dir = await mkdtemp(join(tmpdir(), "vexpo-env-"));
+    const tmp = join(dir, "eas.env");
     try {
       await writeFile(tmp, entries.map(([k, v]) => `${k}=${v}`).join("\n") + "\n", {
         mode: 0o600,
-        flag: "wx",
       });
       await easEnvPush({ path: tmp, environments: envs, force: true });
       ok(`eas(${envs.join(",")}) pushed ${entries.length} var${entries.length === 1 ? "" : "s"}`);
@@ -296,6 +296,7 @@ async function applyPlan(
       failed += entries.length;
     } finally {
       await unlink(tmp).catch(() => {});
+      await rmdir(dir).catch(() => {});
     }
   }
 
