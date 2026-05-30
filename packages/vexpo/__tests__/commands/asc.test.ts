@@ -211,6 +211,20 @@ describe("runAscConnect", () => {
     expect(spawnSpy).toHaveBeenCalledTimes(1);
   });
 
+  it("requires a TTY: non-TTY returns 1 without spawning (no doomed --non-interactive)", async () => {
+    Object.defineProperty(process.stdin, "isTTY", { value: false, configurable: true });
+    ascStatusSpy.mockResolvedValueOnce({
+      action: "status",
+      project: "@testuser/testapp",
+      status: "not-connected",
+    });
+    readOneSpy.mockResolvedValueOnce("com.vexpo.vexpo");
+
+    const exit = await runAscConnect({});
+    expect(exit).toBe(1);
+    expect(spawnSpy).not.toHaveBeenCalled();
+  });
+
   it("propagates non-zero exit from eas integrations:asc:connect", async () => {
     ascStatusSpy.mockResolvedValueOnce({
       action: "status",

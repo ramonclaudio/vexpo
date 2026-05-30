@@ -396,14 +396,15 @@ env
 // beta groups + testers, customer review responses, sandbox testers, version
 // state + phased rollout, privacy + accessibility nutrition labels. The
 // EAS<->ASC link (`eas integrations:asc:connect`) is wrapped by
-// `vexpo asc:connect` so CI/scripts can establish it headless (passes
-// EXPO_ASC_API_KEY_* + --non-interactive); `vexpo full` runs the same step
-// interactively.
+// `vexpo asc:connect` (passes EXPO_ASC_API_KEY_* so the Apple auth step needs
+// no Apple ID prompt); `vexpo full` runs the same step. Needs a TTY: eas
+// integrations:asc:connect can't run headless (it requires an uploaded key id
+// + app id in --non-interactive mode).
 
 program
   .command("asc:connect")
   .description(
-    "Link the EAS project to its App Store Connect app (wraps `eas integrations:asc:connect` with the cached ASC key). Lets `eas submit` resolve the app from the bundle id, so eas.json needs no committed ascAppId. Headless on a non-TTY.",
+    "Link the EAS project to its App Store Connect app (wraps `eas integrations:asc:connect` with the cached ASC key). Lets `eas submit` resolve the app from the bundle id, so eas.json needs no committed ascAppId. Needs an interactive terminal.",
   )
   .option("--force", "re-run even if already connected", false)
   .action((options: { force?: boolean }) => exitWith(runAscConnect(options)));

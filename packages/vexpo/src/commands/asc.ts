@@ -105,6 +105,16 @@ export async function runAscConnect(opts: { force?: boolean } = {}): Promise<num
   }
   ok(`bundle id: ${BOLD}${bundleId}${RESET}`);
 
+  // `eas integrations:asc:connect --non-interactive` hard-requires both
+  // --api-key-id and --asc-app-id (and can't generate a key headless), so a
+  // non-TTY attempt always fails before doing anything. Require a TTY rather
+  // than spawn a doomed command.
+  if (!process.stdin.isTTY) {
+    bad("ASC connect needs a TTY: eas integrations:asc:connect can't run headless");
+    note("run `vexpo asc:connect` in an interactive terminal to finish the EAS↔ASC link");
+    return 1;
+  }
+
   const env: Record<string, string> = {
     ...(process.env as Record<string, string>),
     EXPO_ASC_API_KEY_PATH: asc.p8Path,
@@ -112,36 +122,22 @@ export async function runAscConnect(opts: { force?: boolean } = {}): Promise<num
     EXPO_ASC_ISSUER_ID: asc.issuerId,
   };
 
-  const interactive = process.stdin.isTTY;
-  const argv = [dlx(), "eas", "integrations:asc:connect", "--bundle-id", bundleId];
-
   line();
-  if (interactive) {
-    note("spawning `eas integrations:asc:connect`. Most likely flow:");
-    note("  1. Press Y to generate a new ASC API key (default)");
-    note("  2. Press Enter to accept ADMIN role (default)");
-    note("EXPO_ASC_API_KEY_* env vars are set so eas-cli uses our cached key");
-    note("for the Apple auth step, no Apple ID + password prompt.");
-  } else {
-    // Non-TTY: drive it headless instead of skipping. The EXPO_ASC_API_KEY_*
-    // vars supply Apple auth (no Apple ID prompt); --non-interactive skips the
-    // wizard. If eas-cli still needs an interactive choice (generating a fresh
-    // ASC key from scratch), it exits non-zero and we surface that, rather than
-    // the old silent skip that left CI submit broken with no signal.
-    argv.push("--non-interactive");
-    note("non-TTY: attempting `eas integrations:asc:connect --non-interactive`");
-  }
+  note("spawning `eas integrations:asc:connect`. Most likely flow:");
+  note("  1. Press Y to generate a new ASC API key (default)");
+  note("  2. Press Enter to accept ADMIN role (default)");
+  note("EXPO_ASC_API_KEY_* env vars are set so eas-cli uses our cached key");
+  note("for the Apple auth step, no Apple ID + password prompt.");
 
-  const proc = spawn(argv, {
-    stdin: interactive ? "inherit" : "ignore",
+  const proc = spawn([dlx(), "eas", "integrations:asc:connect", "--bundle-id", bundleId], {
+    stdin: "inherit",
     stdout: "inherit",
     stderr: "inherit",
     env,
   });
   const code = await proc.exited;
   if (code !== 0) {
-    bad(`eas integrations:asc:connect failed (exit ${code})`);
-    if (!interactive) note("run `vexpo asc:connect` once on a TTY to finish the link, then re-run");
+    bad(`eas integrations:asc:connect exited with code ${code}`);
     return code;
   }
 
