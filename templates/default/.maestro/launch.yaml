@@ -1,4 +1,9 @@
-# Smoke test: app launches and the welcome screen renders.
+# Smoke test: the app cold-starts and renders its first screen.
+#
+# A cleared launch is unauthenticated, so the app lands on the sign-in screen.
+# The "Welcome" onboarding carousel lives behind the auth guard in
+# src/app/(app)/_layout.tsx, so it only shows after sign-in, never on a fresh
+# install. Asserting it here can't pass; assert the sign-in heading instead.
 #
 # Maestro auto-derives the appId from the build's bundle id, so the same
 # flow runs against the dev simulator binary (`com.example.<pkg>` fallback
@@ -17,7 +22,6 @@ appId: ${MAESTRO_APP_ID}
 # "Unknown Property: timeout").
 - extendedWaitUntil:
     visible:
-      text: "Welcome"
+      text: "Sign in"
     timeout: 30000
-- assertVisible: "Your new app starts here."
-- takeScreenshot: welcome
+- takeScreenshot: sign-in
