@@ -964,7 +964,8 @@ const STEP_RUNNERS: Record<string, StepRunner> = {
   "vexpo apple jwt": () => runAppleJwt({}),
   "vexpo apple eas-rotation-secrets": () => runEasRotationSecrets({}),
   "vexpo asc connect": () => runAscConnect({}),
-  "vexpo eas": () => runEas({}),
+  "vexpo eas": async () =>
+    runEas({ withProd: (await fileExists(".env.prod")) || (await fileExists(".env.production")) }),
   "vexpo review-account": () => runReviewAccount({}),
 };
 
