@@ -11,8 +11,13 @@ appId: ${MAESTRO_APP_ID}
 ---
 - launchApp:
     clearState: true
-- assertVisible:
-    text: "Welcome"
+# Cold start on the EAS simulator can exceed assertVisible's default 7s auto-wait,
+# so wait up to 30s for the first frame. extendedWaitUntil takes a timeout and
+# also asserts visibility; assertVisible does not (a timeout key on it errors with
+# "Unknown Property: timeout").
+- extendedWaitUntil:
+    visible:
+      text: "Welcome"
     timeout: 30000
 - assertVisible: "Your new app starts here."
 - takeScreenshot: welcome
