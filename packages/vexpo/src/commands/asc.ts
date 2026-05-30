@@ -1,6 +1,6 @@
 /**
- * `vexpo asc connect`. Internal step run by `vexpo full`, not exposed as a
- * standalone public command (no entry in `cli.ts`). Spawns
+ * `vexpo asc connect`. Exposed as `vexpo asc:connect` and also run as a step by
+ * `vexpo full`. Spawns
  * `eas integrations:asc:connect --bundle-id <bundle>` with `EXPO_ASC_API_KEY_*`
  * env vars pre-set from the cached `asc-key` state.
  *

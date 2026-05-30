@@ -221,7 +221,7 @@ export async function runAppleJwt(options: AppleJwtOptions): Promise<number> {
 
     if (process.stdin.isTTY && !rotateOnly) {
       line();
-      if (await askYesNo("Schedule a calendar reminder ~150 days from now?", false)) {
+      if (await askYesNo("Show the renewal date and rotate command?", false)) {
         const when = new Date(Date.now() + 150 * 86400_000);
         note(`renew on or before ${when.toDateString()} by running:`);
         note(`  ${BOLD}vexpo apple jwt --rotate${RESET}`);
