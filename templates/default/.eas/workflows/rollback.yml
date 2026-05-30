@@ -48,26 +48,24 @@ jobs:
     name: Roll back ${{ inputs.branch }} (${{ inputs.type }})
     environment: ${{ inputs.branch == 'production' && 'production' || 'development' }}
     runs_on: linux-medium
+    # Inputs reach the script ONLY as env vars, never interpolated into the
+    # script body, so a branch/message containing shell metacharacters is treated
+    # as data, not code. argv is built as an array; no eval.
+    env:
+      ROLLBACK_BRANCH: ${{ inputs.branch }}
+      ROLLBACK_TYPE: ${{ inputs.type }}
+      ROLLBACK_MSG: ${{ inputs.message }}
     steps:
       - uses: eas/checkout
       - uses: eas/install_node_modules
       - name: Roll back
         run: |
-          MSG="${{ inputs.message }}"
-          MSG_ARG=""
-          if [ -n "$MSG" ]; then MSG_ARG="--message \"$MSG\""; fi
-          if [ "${{ inputs.type }}" = "embedded" ]; then
-            eval npx eas-cli update:roll-back-to-embedded \
-              --branch "${{ inputs.branch }}" \
-              --platform ios \
-              --non-interactive \
-              $MSG_ARG
+          args=(--branch "$ROLLBACK_BRANCH" --platform ios --non-interactive)
+          if [ -n "$ROLLBACK_MSG" ]; then args+=(--message "$ROLLBACK_MSG"); fi
+          if [ "$ROLLBACK_TYPE" = "embedded" ]; then
+            npx eas-cli update:roll-back-to-embedded "${args[@]}"
           else
-            eval npx eas-cli update:republish \
-              --branch "${{ inputs.branch }}" \
-              --platform ios \
-              --non-interactive \
-              $MSG_ARG
+            npx eas-cli update:republish "${args[@]}"
           fi
 
   notify:
