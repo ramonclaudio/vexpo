@@ -5,7 +5,7 @@
 
 Operational CLI for [vexpo](https://github.com/ramonclaudio/vexpo) projects: Expo + Convex + Better Auth + Resend, end-to-end iOS. Provisions the stack, validates every credential, keeps env values in sync across `.env.local` / Convex env / EAS env, and exposes the App Store Connect API endpoints `eas-cli` doesn't.
 
-Scaffolded by [`create-vexpo`](https://www.npmjs.com/package/create-vexpo) into your project's devDependencies. Invoke via `npx vexpo`.
+Scaffolded by [`create-vexpo`](https://www.npmjs.com/package/@ramonclaudio/create-vexpo) into your project's devDependencies. Invoke via `npx vexpo`.
 
 ## Design rule: don't reinvent EAS
 

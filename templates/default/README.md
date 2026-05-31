@@ -39,18 +39,22 @@ Long-form walkthrough with every prompt, every env-var alternative, and recovery
 
 - Convex backend with reactive queries, storage, real-time sync, and `@convex-dev/rate-limiter` on every application mutation. Auth-route rate limits ship via Better Auth at the HTTP layer.
 - Better Auth via `@convex-dev/better-auth` (sessions, accounts; per-device revocation via `session.userAgent`)
+- App Attest device attestation via `@expo/app-integrity` with server-side verification in Convex
 - Resend via `@convex-dev/resend` for OTP, password reset, change-email, with webhook delivery events
 - Apple Sign In via Apple's official `AppleAuthenticationButton`, HIG-compliant (BLACK in dark mode, WHITE in light; `WHITE_OUTLINE` isn't used), SIWA Services ID + ES256 JWT signing (180-day expiry, auto-rotated every 90 days)
 - APNs push via `expo-notifications` with token registration on sign-in
 - Apple Universal Links from Convex's HTTP router (AASA at `/.well-known/apple-app-site-association`)
 - Profile editing with avatar uploads to Convex storage
 - Active sessions screen with device-by-device revocation
+- Account soft-delete with a 30-day grace window and a restore-or-confirm screen on next sign-in
+- Pull-to-refresh on home and sessions, plus an interactive update banner on iOS 26
 - Theme switching, haptics toggle, reduced motion, dynamic type, VoiceOver labels everywhere
 - Spotlight-style search tab (debounced, scored, keyword-aware)
 - Skeleton placeholders during initial query loads
 - Debug screen at `/debug` gated by toggle, off in production by default
 - Liquid Glass on iOS 26+ via `expo-glass-effect`, UIVisualEffectView blur fallback on iOS 16.4-25 via `expo-blur`, both behind a `<Material>` primitive
-- EAS Build / Update / Submit / Metadata. `runtimeVersion: { policy: "fingerprint" }` (auto-bumps on native code changes), branch/channel model, `appVersionSource: "remote"`. ASC API key managed by EAS (`eas credentials -p ios`), no `eas.json` patches. Two fingerprint stability knobs make the policy work end-to-end on this stack: `fingerprint.config.js` sets `useRNCoreAutolinkingFromExpo: false` (so reanimated/worklets are hashed once via the autolinker's JSON output, not per-dir), and `.fingerprintignore` excludes `node_modules/expo-modules-jsi/apple/**` (skips the pod-install-stamped `Products/` stubs). Drop both knobs when upstream fixes the autolinker determinism.
+- OTA updates code-signed end-to-end (`expo-updates` code signing; generate the cert with `npm run updates:gen-cert`), so only signed bundles install
+- EAS Build / Update / Submit / Metadata. `runtimeVersion: { policy: "fingerprint" }` (auto-bumps on native code changes), branch/channel model, `appVersionSource: "remote"`. ASC API key managed by EAS (`eas credentials -p ios`), no `eas.json` patches. `@expo/fingerprint >= 0.19.3` makes the policy deterministic across machines and CI out of the box, so the earlier `fingerprint.config.js` + `.fingerprintignore` jsi knobs were dropped.
 - 10 EAS Workflows under `.eas/workflows/`: dev builds, PR previews with `github-comment` + QR + fingerprint-gated OTA-or-build, deploy on `main`, TestFlight on `beta/*`, manual rollback / rollout, ASC event triggers to Slack, the SIWA JWT rotation cron, Maestro E2E
 - GitHub Actions for general-purpose checks: typecheck, lint, format, tests, fingerprint diff on PR + push to `main`
 
@@ -112,28 +116,29 @@ Setup is one-shot, not a `package.json` script. Run `npx vexpo lite` / `npx vexp
 ## Project structure
 
 ```
-app/                              Expo Router screens
-  (auth)/                         Sign in, sign up, forgot/reset password
-  (app)/                          Authenticated screens
-    (tabs)/                       Tab navigation
-    welcome.tsx, sessions.tsx, debug.tsx, ...
-    profile/                      Profile screens (index.tsx + change-password.tsx)
-  +native-intent.tsx              Deep link validation
-  +not-found.tsx                  404 fallback
-components/                       Reusable UI
-constants/                        Theme, layout, UI tokens
+src/
+  app/                            Expo Router screens
+    (app)/                        Authenticated stack (auth modal, tabs, profile, ...)
+      (tabs)/                     Home, search, settings
+      auth/                       Sign in, sign up, forgot/reset password (modal)
+      profile/                    index.tsx + change-password.tsx
+      welcome.tsx, sessions.tsx, restore-account.tsx, debug.tsx, ...
+    +native-intent.tsx            Deep link validation
+    +not-found.tsx                404 fallback
+  components/                     Reusable UI (auth/, ui/)
+  constants/                      Theme, layout, UI tokens
+  hooks/                          useNetwork, useTheme, useUpdates, etc.
+  lib/                            Auth client, haptics, env, deep links, native state
 convex/                           Convex backend
-hooks/                            useNetwork, useTheme, useUpdates, etc.
-lib/                              Auth client, haptics, env, deep links
 plugins/
-  with-auto-signing.js            Sets CODE_SIGN_STYLE=Automatic + DEVELOPMENT_TEAM
+  with-auto-signing.js            CODE_SIGN_STYLE=Automatic + DEVELOPMENT_TEAM
   with-pod-deployment-target.js   Forces every pod to iOS 16.4
 .eas/workflows/                   10 EAS Workflow YAML files
 .github/workflows/check.yml       Typecheck, lint, format, tests, fingerprint diff
 scripts/
   clean.ts                        Trash + reinstall
   rotate-apple-jwt.mjs            CI: re-sign JWT from env vars
-__tests__/                        Convex constants + validators + HMAC verification + deep-link
+__tests__/                        Convex + lib unit tests (validators, HMAC, deep link, schemas)
 ```
 
 ## Long-form docs
@@ -145,6 +150,6 @@ __tests__/                        Convex constants + validators + HMAC verificat
 
 ## Version pinning
 
-Every `expo-*` package tracks the same SDK 56 preview tag. Mismatched tags cause subtle runtime crashes. `npm run upgrade` runs `expo install expo@next && expo install --fix` to roll all of them forward together.
+Every `expo-*` package tracks the same SDK 56 release. Mismatched versions cause subtle runtime crashes. `npm run upgrade:stable` runs `expo install expo@latest && expo install --fix` to roll all of them forward together; `npm run upgrade` (`expo@next`) tracks the next SDK preview.
 
 `@convex-dev/better-auth@0.12.0` is the minimum compatible with `better-auth@1.6.x` (peer-dep range is `>=1.6.9 <1.7.0`). Earlier versions peer-dep `better-auth <1.6.0` and reject the `mode` field newer better-auth adds to adapter queries, breaking signup. The template pins `better-auth@1.6.11` + `@convex-dev/better-auth@0.12.2`.
