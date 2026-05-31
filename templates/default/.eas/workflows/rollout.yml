@@ -28,7 +28,7 @@ on:
         default: production
       action:
         description: Publish a new rollout, or edit the % of the existing one
-        type: select
+        type: choice
         required: true
         default: edit
         options:
@@ -40,31 +40,38 @@ on:
         required: true
         default: 25
 
-concurrency:
-  cancel_in_progress: false
-  group: ${{ workflow.filename }}-${{ inputs.branch }}
+# No concurrency block on purpose. EAS only accepts `cancel_in_progress: true`
+# (and no custom group yet), but cancelling an in-flight rollout mid-publish is
+# worse than letting it finish, so the no-block default (don't cancel) is the
+# correct behaviour here.
 
 jobs:
   rollout:
     name: ${{ inputs.action }} → ${{ inputs.percentage }}% on ${{ inputs.branch }}
     environment: ${{ inputs.branch == 'production' && 'production' || 'development' }}
     runs_on: linux-medium
+    # Inputs reach the script only as env vars (never interpolated into the body)
+    # so a branch with shell metacharacters is treated as data, not code.
+    env:
+      ROLLOUT_BRANCH: ${{ inputs.branch }}
+      ROLLOUT_ACTION: ${{ inputs.action }}
+      ROLLOUT_PCT: ${{ inputs.percentage }}
     steps:
       - uses: eas/checkout
       - uses: eas/install_node_modules
       - name: Roll out
         run: |
-          if [ "${{ inputs.action }}" = "publish" ]; then
+          if [ "$ROLLOUT_ACTION" = "publish" ]; then
             npx eas-cli update \
-              --branch "${{ inputs.branch }}" \
+              --branch "$ROLLOUT_BRANCH" \
               --platform ios \
-              --rollout-percentage "${{ inputs.percentage }}" \
+              --rollout-percentage "$ROLLOUT_PCT" \
               --non-interactive \
-              --message "Rollout publish @ ${{ inputs.percentage }}%"
+              --message "Rollout publish @ ${ROLLOUT_PCT}%"
           else
             npx eas-cli update:edit \
-              --branch "${{ inputs.branch }}" \
-              --rollout-percentage "${{ inputs.percentage }}" \
+              --branch "$ROLLOUT_BRANCH" \
+              --rollout-percentage "$ROLLOUT_PCT" \
               --non-interactive
           fi
 
