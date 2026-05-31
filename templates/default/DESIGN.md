@@ -269,6 +269,8 @@ The system uses `@expo/ui/swift-ui` primitives exclusively for native rendering.
 | `ProgressView`              | Spinner or determinate progress                                               | Loading states                         |
 | `ContentUnavailableView`    | Empty state with SF Symbol + title + description                              | Empty home, no results                 |
 
+Text inputs bind `text` to a `useNativeState("")` and mask synchronously: a `"worklet"` `onTextChange` rewrites the field on the same frame the keystroke lands (digits-only OTP, lowercase usernames), so the raw character never paints. Reusable masks live in `lib/masks.ts`.
+
 ### Custom composition (in `components/ui/`)
 
 | Component                              | Purpose                                                                                                                                                                           | Notes                              |
