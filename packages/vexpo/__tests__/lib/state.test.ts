@@ -275,8 +275,7 @@ describe("checkConcurrentRun", () => {
     const state: SetupState = {
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      lastPid: undefined as any,
+      lastPid: undefined as unknown as number,
       steps: {},
       audit: [],
     };

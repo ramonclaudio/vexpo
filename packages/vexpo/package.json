@@ -47,6 +47,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "npm run build && __tests__/e2e/run.sh",
+    "test:e2e:api": "vitest run --config vitest.e2e.config.ts",
     "test:all": "npm run test && npm run test:e2e"
   },
   "dependencies": {

@@ -28,13 +28,14 @@ vi.mock("../../src/lib/env-local.ts", () => ({
   readOne: vi.fn(),
 }));
 
-// Mock node:fs's existsSync so the asc-key state's p8Path check passes
-// without a real file on disk. The test harness chdirs into a tmpdir.
+// Mock node:fs's existsSync so the asc-key state's p8Path check passes without
+// a real file on disk. The test harness chdirs into a tmpdir. eas.json reports
+// absent so the post-connect ascAppId write is skipped (no eas.json here).
 vi.mock("node:fs", async () => {
   const actual = (await vi.importActual("node:fs")) as Record<string, unknown>;
   return {
     ...actual,
-    existsSync: vi.fn().mockReturnValue(true),
+    existsSync: vi.fn((p: unknown) => !String(p).endsWith("eas.json")),
   };
 });
 
@@ -80,8 +81,8 @@ beforeEach(async () => {
         name: "asc-key",
         completedAt: new Date().toISOString(),
         outputs: {
-          issuerId: "1d68d54a-8849-406f-a4e0-1e284f3f0d33",
-          keyId: "3SBKJXPM27",
+          issuerId: "11111111-2222-3333-4444-555555555555",
+          keyId: "ABCDE12345",
           p8Path: "/tmp/fake.p8",
         },
       },
@@ -136,8 +137,8 @@ describe("runAscConnect", () => {
       "com.vexpo.vexpo",
     ]);
     expect(opts.env.EXPO_ASC_API_KEY_PATH).toBe("/tmp/fake.p8");
-    expect(opts.env.EXPO_ASC_KEY_ID).toBe("3SBKJXPM27");
-    expect(opts.env.EXPO_ASC_ISSUER_ID).toBe("1d68d54a-8849-406f-a4e0-1e284f3f0d33");
+    expect(opts.env.EXPO_ASC_KEY_ID).toBe("ABCDE12345");
+    expect(opts.env.EXPO_ASC_ISSUER_ID).toBe("11111111-2222-3333-4444-555555555555");
   });
 
   it("falls through to spawn when ascStatus throws (no EAS project yet)", async () => {
@@ -160,7 +161,7 @@ describe("runAscConnect", () => {
     await runAscConnect({});
     const argv = spawnSpy.mock.calls[0]?.[0] as string[];
     expect(argv).not.toContain("--api-key-id");
-    expect(argv).not.toContain("3SBKJXPM27");
+    expect(argv).not.toContain("ABCDE12345");
   });
 
   it("returns 1 when no cached ASC key in state.json", async () => {
@@ -209,6 +210,20 @@ describe("runAscConnect", () => {
     await runAscConnect({ force: true });
     expect(ascStatusSpy).not.toHaveBeenCalled();
     expect(spawnSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it("requires a TTY: non-TTY returns 1 without spawning (no doomed --non-interactive)", async () => {
+    Object.defineProperty(process.stdin, "isTTY", { value: false, configurable: true });
+    ascStatusSpy.mockResolvedValueOnce({
+      action: "status",
+      project: "@testuser/testapp",
+      status: "not-connected",
+    });
+    readOneSpy.mockResolvedValueOnce("com.vexpo.vexpo");
+
+    const exit = await runAscConnect({});
+    expect(exit).toBe(1);
+    expect(spawnSpy).not.toHaveBeenCalled();
   });
 
   it("propagates non-zero exit from eas integrations:asc:connect", async () => {

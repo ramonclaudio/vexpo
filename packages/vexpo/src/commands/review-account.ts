@@ -11,7 +11,7 @@ import { readFile } from "node:fs/promises";
 
 import { bad, line, note, ok, section } from "../lib/output.ts";
 import { dlx } from "../lib/pkg-manager.ts";
-import { spawn, streamText } from "../lib/proc.ts";
+import { run } from "../lib/proc.ts";
 
 export type ReviewAccountOptions = {
   email?: string;
@@ -51,30 +51,22 @@ export async function runReviewAccount(options: ReviewAccountOptions): Promise<n
       name,
       ...(options.username ? { username: options.username } : {}),
     });
-    const tryRun = async (
-      extraArgs: string[],
-    ): Promise<{ ok: boolean; out: string; err: string }> => {
-      const proc = spawn(
-        [dlx(), "convex", "run", ...extraArgs, "admin:createReviewAccount", payload],
-        { stdin: "ignore", stdout: "pipe", stderr: "pipe" },
-      );
-      const code = await proc.exited;
-      return {
-        ok: code === 0,
-        out: await streamText(proc.stdout),
-        err: await streamText(proc.stderr),
-      };
-    };
-
-    let result = await tryRun(["--component-function"]);
-    if (!result.ok) result = await tryRun([]);
-    if (!result.ok) {
+    // admin:createReviewAccount is an app-root internalAction, so a plain
+    // `convex run admin:createReviewAccount <json>` reaches it (no --component).
+    // Drain stdout/stderr concurrently with exit (via run()); awaiting exited
+    // before reading the pipes deadlocks on >64KB of convex output and can lose
+    // the error text the command exists to surface.
+    const { code, stdout, stderr } = await run(
+      [dlx(), "convex", "run", "admin:createReviewAccount", payload],
+      { stdin: "ignore" },
+    );
+    if (code !== 0) {
       bad("convex run failed");
-      const stderr = result.err.trim();
-      if (stderr) note(stderr);
+      const trimmed = stderr.trim();
+      if (trimmed) note(trimmed);
       return 1;
     }
-    process.stderr.write(result.out);
+    process.stderr.write(stdout);
 
     line();
     ok("review account ready, Apple's reviewer can now sign in");

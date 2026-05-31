@@ -8,35 +8,25 @@
  * doesn't accept a visibility flag, and we don't push real secrets at default
  * visibility.
  *
- *   APPLE_P8_PRIVATE_KEY    PEM contents of the SIWA .p8 (read from path)
+ *   APPLE_P8_PRIVATE_KEY    path to the SIWA .p8 (EAS reads + base64-encodes it)
  *   APPLE_TEAM_ID           10-char team id
  *   APPLE_KEY_ID            10-char SIWA key id
  *   APPLE_SERVICES_ID       services id (e.g. com.you.app.signin)
- *   CONVEX_DEPLOY_KEY       prod deploy key (generated in Convex dashboard)
+ *   CONVEX_DEPLOY_KEY       prod deploy key (minted via the Platform API)
  *
  * For the 4 Apple values: read from .env.local + state cache, push idempotently.
- * For CONVEX_DEPLOY_KEY: prompt interactively if missing (we can't generate
- * Convex deploy keys without dashboard access).
+ * For CONVEX_DEPLOY_KEY: mint one for the project's prod deployment via the
+ * Convex Platform API (no dashboard), falling back to an interactive paste only
+ * when the deployment can't be resolved (offline / not logged in).
  */
 
-import { readFile } from "node:fs/promises";
+import { access } from "node:fs/promises";
 
+import { deploymentSlug } from "../../lib/convex-env.ts";
+import { mintProdDeployKey } from "../../lib/convex-management.ts";
 import { envCreate, envList, envUpdate, type EasEnvironment } from "../../lib/eas-env.ts";
 import { readOne } from "../../lib/env-local.ts";
-import {
-  BOLD,
-  DIM,
-  RESET,
-  ask,
-  bad,
-  helpAndWait,
-  line,
-  nop,
-  note,
-  ok,
-  section,
-  yep,
-} from "../../lib/output.ts";
+import { BOLD, DIM, RESET, ask, bad, line, nop, note, ok, section, yep } from "../../lib/output.ts";
 import { expandTilde } from "../../lib/path.ts";
 import { load as loadState, lookupCachedPath } from "../../lib/state.ts";
 
@@ -89,19 +79,18 @@ export async function runEasRotationSecrets(options: RotationSecretsOptions): Pr
     note("re-run with APPLE_P8_PATH=/path/to/AuthKey.p8");
     return 1;
   }
-  let pem: string;
   try {
-    pem = await readFile(p8Path, "utf8");
+    await access(p8Path);
   } catch {
     bad(`.p8 file not found at ${p8Path}`);
     return 1;
   }
 
-  // APPLE_P8_PRIVATE_KEY pushes as `--type file` per Resend / EAS docs
-  // recommendation for .p8 binary content. Other rotation values are plain
-  // strings.
+  // APPLE_P8_PRIVATE_KEY pushes as `--type file`. eas env:create/update treat a
+  // file-type value as a filesystem PATH (the CLI reads + base64-encodes it), so
+  // pass p8Path, NOT the file contents. Other rotation values are plain strings.
   const apple: Array<{ name: string; value: string; type?: "file" | "string" }> = [
-    { name: "APPLE_P8_PRIVATE_KEY", value: pem, type: "file" },
+    { name: "APPLE_P8_PRIVATE_KEY", value: p8Path, type: "file" },
     { name: "APPLE_TEAM_ID", value: teamId },
     { name: "APPLE_KEY_ID", value: keyId },
     { name: "APPLE_SERVICES_ID", value: servicesId },
@@ -135,43 +124,58 @@ export async function runEasRotationSecrets(options: RotationSecretsOptions): Pr
 
   if (!existing.has("CONVEX_DEPLOY_KEY") || options.force) {
     line();
-    note("CONVEX_DEPLOY_KEY isn't set on EAS production. Generate one:");
-    await helpAndWait({
-      body: "Open the Convex dashboard for your project:",
-      urls: [
-        {
-          label: "Convex dashboard (Settings → Deploy keys)",
-          url: "https://dashboard.convex.dev",
-        },
-      ],
-      allowSkip: true,
-      skipLabel: "skip",
-    });
-    if (process.stdin.isTTY) {
-      const key = (
-        await ask(`  Paste Convex prod deploy key ${DIM}(or Enter to skip)${RESET} > `)
-      ).trim();
-      if (key) {
-        try {
-          if (existing.has("CONVEX_DEPLOY_KEY")) {
-            await envUpdate("CONVEX_DEPLOY_KEY", key, "secret", ENVS);
-            updated += 1;
-          } else {
-            await envCreate("CONVEX_DEPLOY_KEY", key, "secret", ENVS);
-            applied += 1;
+    const setKey = async (key: string): Promise<void> => {
+      if (existing.has("CONVEX_DEPLOY_KEY")) {
+        await envUpdate("CONVEX_DEPLOY_KEY", key, "secret", ENVS);
+        updated += 1;
+      } else {
+        await envCreate("CONVEX_DEPLOY_KEY", key, "secret", ENVS);
+        applied += 1;
+      }
+    };
+
+    // Mint a prod deploy key via the Platform API (resolves the project's prod
+    // deployment from the dev selector in .env.local). The prod key lives on EAS,
+    // not in .env.prod, so there's nothing to read off disk.
+    let minted = false;
+    try {
+      const result = await mintProdDeployKey(
+        deploymentSlug(await readOne("CONVEX_DEPLOYMENT")) ?? "",
+        "eas-rotation",
+      );
+      if (result) {
+        await setKey(result.key);
+        ok(`minted + set CONVEX_DEPLOY_KEY for prod ${BOLD}${result.deployment}${RESET}`);
+        minted = true;
+      } else {
+        yep("couldn't resolve the prod deployment (offline or not logged in)");
+      }
+    } catch (err) {
+      yep(`couldn't mint a deploy key: ${err instanceof Error ? err.message : err}`);
+    }
+
+    // Fallback: interactive paste only when minting wasn't possible.
+    if (!minted) {
+      if (process.stdin.isTTY) {
+        const key = (
+          await ask(`  Paste a Convex prod deploy key ${DIM}(or Enter to skip)${RESET} > `)
+        ).trim();
+        if (key) {
+          try {
+            await setKey(key);
+            ok("CONVEX_DEPLOY_KEY set");
+          } catch (err) {
+            bad(`CONVEX_DEPLOY_KEY: ${err instanceof Error ? err.message : err}`);
+            return 1;
           }
-          ok("CONVEX_DEPLOY_KEY set");
-        } catch (err) {
-          bad(`CONVEX_DEPLOY_KEY: ${err instanceof Error ? err.message : err}`);
-          return 1;
+        } else {
+          yep("skipped CONVEX_DEPLOY_KEY (set later with `eas env:create`)");
+          skipped += 1;
         }
       } else {
-        yep("skipped CONVEX_DEPLOY_KEY (set later with `eas env:create`)");
+        yep("skipped CONVEX_DEPLOY_KEY (non-interactive, mint unavailable)");
         skipped += 1;
       }
-    } else {
-      yep("skipped CONVEX_DEPLOY_KEY (non-interactive)");
-      skipped += 1;
     }
   } else {
     nop("CONVEX_DEPLOY_KEY already set");

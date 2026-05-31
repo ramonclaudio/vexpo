@@ -1,11 +1,11 @@
 /**
- * `vexpo asc connect`. Internal step run by `vexpo full`, not exposed as a
- * standalone public command (no entry in `cli.ts`). Spawns
+ * `vexpo asc connect`. Exposed as `vexpo asc:connect` and also run as a step by
+ * `vexpo full`. Spawns
  * `eas integrations:asc:connect --bundle-id <bundle>` with `EXPO_ASC_API_KEY_*`
  * env vars pre-set from the cached `asc-key` state.
  *
  * Why not pass `--api-key-id`: that flag is the Apple-side 10-char key id
- * (e.g. "3SBKJXPM27"), and eas-cli looks it up against its *uploaded* key
+ * (e.g. "ABCDE12345"), and eas-cli looks it up against its *uploaded* key
  * resources. Passing the cached id when no key is uploaded fails with
  * `No App Store Connect API key found with Apple key identifier ...`, which
  * is the common case on a fresh project. Dropping the flag lets the wizard
@@ -37,8 +37,10 @@
  */
 
 import { existsSync } from "node:fs";
+import { readFile, writeFile } from "node:fs/promises";
 
 import { ascStatus } from "../lib/eas-integrations.ts";
+import { withAscAppId } from "../lib/eas-submit.ts";
 import { readOne } from "../lib/env-local.ts";
 import { BOLD, RESET, bad, line, nop, note, ok, section, yep } from "../lib/output.ts";
 import { expandTilde } from "../lib/path.ts";
@@ -105,16 +107,14 @@ export async function runAscConnect(opts: { force?: boolean } = {}): Promise<num
   }
   ok(`bundle id: ${BOLD}${bundleId}${RESET}`);
 
-  line();
-  note("spawning `eas integrations:asc:connect`. Most likely flow:");
-  note("  1. Press Y to generate a new ASC API key (default)");
-  note("  2. Press Enter to accept ADMIN role (default)");
-  note("EXPO_ASC_API_KEY_* env vars are set so eas-cli uses our cached key");
-  note("for the Apple auth step, no Apple ID + password prompt.");
-
+  // `eas integrations:asc:connect --non-interactive` hard-requires both
+  // --api-key-id and --asc-app-id (and can't generate a key headless), so a
+  // non-TTY attempt always fails before doing anything. Require a TTY rather
+  // than spawn a doomed command.
   if (!process.stdin.isTTY) {
-    yep("non-TTY: skipping interactive wizard");
-    return 0;
+    bad("ASC connect needs a TTY: eas integrations:asc:connect can't run headless");
+    note("run `vexpo asc:connect` in an interactive terminal to finish the EAS↔ASC link");
+    return 1;
   }
 
   const env: Record<string, string> = {
@@ -123,6 +123,13 @@ export async function runAscConnect(opts: { force?: boolean } = {}): Promise<num
     EXPO_ASC_KEY_ID: asc.keyId,
     EXPO_ASC_ISSUER_ID: asc.issuerId,
   };
+
+  line();
+  note("spawning `eas integrations:asc:connect`. Most likely flow:");
+  note("  1. Press Y to generate a new ASC API key (default)");
+  note("  2. Press Enter to accept ADMIN role (default)");
+  note("EXPO_ASC_API_KEY_* env vars are set so eas-cli uses our cached key");
+  note("for the Apple auth step, no Apple ID + password prompt.");
 
   const proc = spawn([dlx(), "eas", "integrations:asc:connect", "--bundle-id", bundleId], {
     stdin: "inherit",
@@ -143,5 +150,29 @@ export async function runAscConnect(opts: { force?: boolean } = {}): Promise<num
     ascKeyId: asc.keyId,
     connectedAt: new Date().toISOString(),
   });
+
+  // Write the resolved ascAppId into eas.json submit profiles. `eas submit`
+  // reads the app id only from the submit profile (no flag, no env var), so the
+  // integration alone doesn't satisfy a non-interactive submit (CI, scripts).
+  // The upstream template ships generic; this fills the fork's id, like rebrand.
+  if (existsSync("eas.json")) {
+    try {
+      const ascAppId = (await ascStatus()).appStoreConnectApp?.ascAppIdentifier;
+      if (ascAppId) {
+        const before = await readFile("eas.json", "utf8");
+        const after = withAscAppId(before, ascAppId);
+        if (after !== before) {
+          await writeFile("eas.json", after);
+          ok(`wrote ascAppId ${BOLD}${ascAppId}${RESET} to eas.json submit profiles`);
+          note("commit this in your fork: non-interactive `eas submit` (CI) needs it");
+        } else {
+          nop("eas.json submit profiles already carry ascAppId");
+        }
+      }
+    } catch (err) {
+      yep(`couldn't write ascAppId to eas.json: ${err instanceof Error ? err.message : err}`);
+      note("non-interactive submit will need `ascAppId` set manually in eas.json");
+    }
+  }
   return 0;
 }

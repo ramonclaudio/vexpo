@@ -1,6 +1,6 @@
 import { createVerify, generateKeyPairSync } from "node:crypto";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
-import { tmpdir } from "node:os";
+import { homedir, tmpdir } from "node:os";
 import path from "node:path";
 
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -141,10 +141,10 @@ describe("signClientSecret", () => {
     );
   });
 
-  it("expands a tilde-prefixed path", async () => {
-    // We can't easily put a fake `~/foo.p8` on disk, but we can confirm a
-    // tilde-prefixed bogus path produces the documented error rather than
-    // crashing with EACCES or ENOENT against a literal `~/...` path.
+  it("expands a tilde-prefixed path to the home dir before reading", async () => {
+    // The error must carry the EXPANDED path (homedir-prefixed), not a literal
+    // `~/...`. If tilde expansion is ever dropped, the message would contain
+    // `~/` and this assertion fails, where a bare /p8 file not found/ would not.
     await expect(
       signClientSecret({
         privateKey: { path: "~/does-not-exist-vexpo-test.p8" },
@@ -152,7 +152,7 @@ describe("signClientSecret", () => {
         keyId: "K",
         servicesId: "S",
       }),
-    ).rejects.toThrow(/p8 file not found/);
+    ).rejects.toThrow(`p8 file not found at ${homedir()}/does-not-exist-vexpo-test.p8`);
   });
 
   it("throws a clear error when the `.p8` path is missing", async () => {

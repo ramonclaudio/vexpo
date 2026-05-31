@@ -23,6 +23,7 @@ import {
   envMap as convexEnvMap,
   envSetFromFile as convexEnvSetFromFile,
 } from "../../lib/convex-env.ts";
+import { checkToken } from "../../lib/convex-management.ts";
 import {
   envList as easEnvList,
   envPush as easEnvPush,
@@ -246,13 +247,21 @@ async function applyPlan(
 
   let applied = 0;
   let failed = 0;
-  const { writeFile, unlink } = await import("node:fs/promises");
+  const { writeFile, unlink, mkdtemp, rmdir } = await import("node:fs/promises");
+  const { tmpdir } = await import("node:os");
+  const { join } = await import("node:path");
 
   for (const [channel, entries] of convexBatches) {
     if (entries.length === 0) continue;
-    const tmp = `.tmp-convex-${channel}-${process.pid}.env`;
+    // Plaintext secrets go into a fresh private mkdtemp dir (0700, unguessable
+    // name) so no predictable or pre-planted path can capture them or dodge the
+    // 0600 file mode. Removed in finally.
+    const dir = await mkdtemp(join(tmpdir(), "vexpo-env-"));
+    const tmp = join(dir, "convex.env");
     try {
-      await writeFile(tmp, entries.map(([k, v]) => `${k}=${v}`).join("\n") + "\n");
+      await writeFile(tmp, entries.map(([k, v]) => `${k}=${v}`).join("\n") + "\n", {
+        mode: 0o600,
+      });
       await convexEnvSetFromFile(
         tmp,
         channel === "prod" ? { prod: true, envFile: plan.sourceFile } : undefined,
@@ -266,14 +275,18 @@ async function applyPlan(
       failed += entries.length;
     } finally {
       await unlink(tmp).catch(() => {});
+      await rmdir(dir).catch(() => {});
     }
   }
 
   for (const { envs, entries } of easBatches.values()) {
     if (entries.length === 0) continue;
-    const tmp = `.tmp-eas-${envs.join("-")}-${process.pid}.env`;
+    const dir = await mkdtemp(join(tmpdir(), "vexpo-env-"));
+    const tmp = join(dir, "eas.env");
     try {
-      await writeFile(tmp, entries.map(([k, v]) => `${k}=${v}`).join("\n") + "\n");
+      await writeFile(tmp, entries.map(([k, v]) => `${k}=${v}`).join("\n") + "\n", {
+        mode: 0o600,
+      });
       await easEnvPush({ path: tmp, environments: envs, force: true });
       ok(`eas(${envs.join(",")}) pushed ${entries.length} var${entries.length === 1 ? "" : "s"}`);
       for (const [k] of entries) note(`  ${k}`);
@@ -283,6 +296,7 @@ async function applyPlan(
       failed += entries.length;
     } finally {
       await unlink(tmp).catch(() => {});
+      await rmdir(dir).catch(() => {});
     }
   }
 
@@ -291,6 +305,14 @@ async function applyPlan(
 
 export async function runEnvPush(options: EnvPushOptions): Promise<number> {
   section("Env push");
+
+  // Fail loud on an expired/revoked Convex login before the Convex env writes
+  // hit a cryptic auth error. "no-token" is left alone (CI may use a deploy key).
+  if ((await checkToken()) === "unauthorized") {
+    bad("Convex login expired or revoked");
+    note("run `npx convex login` to refresh, then re-run");
+    return 1;
+  }
 
   const sources = await readSources({ local: options.localFile, prod: options.prodFile });
   if (sources.length === 0) {
@@ -330,20 +352,23 @@ export async function runEnvPush(options: EnvPushOptions): Promise<number> {
   const remote = await readRemoteState(prodEnvFile);
   if (!remote.hasEasProject) yep("no EAS projectId in app.json. EAS env routes will be blocked");
 
-  // Detect any MANUAL_EAS_SECRETS in the prod source. they need explicit
-  // `eas env:create --visibility secret`, not bulk push. Print guidance.
-  const prodSource = sources.find((s) => s.channel === "prod");
-  const manualHits = prodSource
-    ? Object.keys(MANUAL_EAS_SECRETS).filter((k) => prodSource.entries.has(k))
-    : [];
+  // Detect any MANUAL_EAS_SECRETS in ANY source (dev or prod). they need an
+  // explicit `eas env:create --visibility secret`, not bulk push. A dev-file
+  // hit (e.g. CONVEX_DEPLOY_KEY in .env.local) is just as silently dropped.
+  const manualHits: Array<{ key: string; file: string }> = [];
+  for (const s of sources) {
+    for (const k of Object.keys(MANUAL_EAS_SECRETS)) {
+      if (s.entries.has(k)) manualHits.push({ key: k, file: s.path });
+    }
+  }
   if (manualHits.length > 0) {
     line();
     yep(
       `${manualHits.length} secret-visibility key${manualHits.length === 1 ? "" : "s"} detected. set manually:`,
     );
-    for (const k of manualHits) {
-      note(`  ${BOLD}${k}${RESET}`);
-      note(`    ${DIM}${MANUAL_EAS_SECRETS[k]}${RESET}`);
+    for (const { key, file } of manualHits) {
+      note(`  ${BOLD}${key}${RESET} ${DIM}(${file})${RESET}`);
+      note(`    ${DIM}${MANUAL_EAS_SECRETS[key]}${RESET}`);
     }
     note(`${DIM}lite skips these to avoid pushing secrets at default visibility${RESET}`);
   }
@@ -389,6 +414,27 @@ export async function runEnvPush(options: EnvPushOptions): Promise<number> {
     ok("nothing to do. all source values match destinations");
     await recordStep("accounts", { mode: "lite", verifiedAt: new Date().toISOString() });
     return 0;
+  }
+
+  // Prod Convex writes go through `convex env set --env-file <prod source>` so
+  // the prod deploy key in that file selects the prod deployment. If the prod
+  // source carries no prod-scoped CONVEX_DEPLOY_KEY/CONVEX_DEPLOYMENT, the CLI
+  // falls back to the dev key in .env.local and the writes silently land on dev.
+  // Refuse rather than shadow.
+  const prodConvexWrites = entries.some(
+    (e) => e.channel === "prod" && e.destinations.some((d) => d.type === "convex"),
+  );
+  if (prodConvexWrites) {
+    const pf = sources.find((s) => s.channel === "prod");
+    const deployKey = pf?.entries.get("CONVEX_DEPLOY_KEY") ?? "";
+    const selector = pf?.entries.get("CONVEX_DEPLOYMENT") ?? "";
+    if (!deployKey.startsWith("prod:") && !selector.startsWith("prod:")) {
+      line();
+      bad(`${pf?.path ?? "prod source"} has no prod-scoped CONVEX_DEPLOY_KEY or CONVEX_DEPLOYMENT`);
+      note("prod env would silently write to the DEV deployment (the dev key shadows --prod)");
+      note("add a `prod:` CONVEX_DEPLOY_KEY (or CONVEX_DEPLOYMENT) to the prod file and re-run");
+      return 1;
+    }
   }
 
   line();

@@ -128,9 +128,9 @@ describe("currentRuntime + currentRuntimeVersion", () => {
     }
   });
 
-  it("returns a non-empty version string", () => {
-    const version = currentRuntimeVersion();
-    expect(version).toBeTruthy();
-    expect(version).not.toBe("?");
+  it("returns the actual runtime version (bun's or node's)", () => {
+    // Pin the real selection, not just non-empty: a regression returning some
+    // other process.versions.* (v8, openssl) would pass a truthy/not-"?" check.
+    expect(currentRuntimeVersion()).toBe(process.versions.bun ?? process.versions.node ?? "?");
   });
 });

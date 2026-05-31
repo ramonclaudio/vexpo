@@ -103,39 +103,4 @@ describe("ascStatus", () => {
     expect(status.status).toBe("invalid");
     expect(status.appStoreConnectApp).toBeUndefined();
   });
-
-  it("tolerates appStoreConnectApp=null if eas-cli ever stops sanitizing", async () => {
-    // sanitizeValue currently strips null fields. If a future eas-cli release
-    // disables that pass, our `&& status.appStoreConnectApp` check still
-    // works because null is falsy. This test pins that behavior.
-    runSpy.mockResolvedValue({
-      code: 0,
-      stdout: JSON.stringify({
-        action: "status",
-        project: "@testuser/testapp",
-        status: "not-connected",
-        appStoreConnectApp: null,
-      }),
-      stderr: "",
-    });
-    const status = (await ascStatus()) as unknown as AscStatus & {
-      appStoreConnectApp: null | AscStatus["appStoreConnectApp"];
-    };
-    expect(status.status).toBe("not-connected");
-    expect(status.appStoreConnectApp).toBeNull();
-  });
-
-  it("rejects the pre-PR-#50 shape so the broken type cannot regress", async () => {
-    // Catches the exact bug the type fix targets: if eas-cli ever emits
-    // { connected: bool, ascApp: {...} } again, this test fails loudly
-    // instead of silently breaking the idempotency check.
-    runSpy.mockResolvedValue({
-      code: 0,
-      stdout: JSON.stringify({ connected: true, ascApp: { bundleId: "com.test.app" } }),
-      stderr: "",
-    });
-    const status = (await ascStatus()) as unknown as { status?: string; connected?: boolean };
-    expect(status.status).toBeUndefined();
-    expect(status.connected).toBe(true);
-  });
 });

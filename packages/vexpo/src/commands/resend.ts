@@ -14,8 +14,11 @@
  * We don't automate DNS.
  */
 
+import { access } from "node:fs/promises";
+
 import { pkgName } from "../lib/app.ts";
-import { envSet } from "../lib/convex-env.ts";
+import { envSet, type ConvexTarget } from "../lib/convex-env.ts";
+import { readEnvFile } from "../lib/env-files.ts";
 import { readOne } from "../lib/env-local.ts";
 import {
   BOLD,
@@ -33,22 +36,51 @@ import {
 } from "../lib/output.ts";
 import { formatElapsed, poll } from "../lib/poll.ts";
 import {
+  deleteWebhook,
   getDomain,
   listDomains,
+  listWebhooks,
   probeAccess,
   provisionSendingKey,
   provisionWebhook,
   verifyDomain,
   type ResendDomain,
 } from "../lib/resend-api.ts";
-import { recordStep } from "../lib/state.ts";
+import { load as loadState, recordStep } from "../lib/state.ts";
 
 export type ResendOptions = {
   name?: string;
   from?: string;
+  repoint?: boolean;
+  prod?: boolean;
+  force?: boolean;
 };
 
+async function fileExists(p: string): Promise<boolean> {
+  try {
+    await access(p);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/** Full-access key from env, or an interactive paste. null on a non-TTY with no env var. */
+async function resolveFullKey(): Promise<string | null> {
+  const fromEnv = process.env.RESEND_FULL_ACCESS_KEY;
+  if (fromEnv) return fromEnv;
+  if (!process.stdin.isTTY) return null;
+  line();
+  note("Need a Resend full-access API key. Create one at:");
+  note(`  ${BOLD}https://resend.com/api-keys${RESET} → Create API Key → Permission: Full Access`);
+  note("Used once, never persisted.");
+  const pasted = await ask(`  RESEND_FULL_ACCESS_KEY > `);
+  return pasted || null;
+}
+
 export async function runResend(options: ResendOptions): Promise<number> {
+  if (options.repoint) return runResendRepoint(options);
+
   section("Resend provisioning");
 
   const siteUrl = await readOne("EXPO_PUBLIC_CONVEX_SITE_URL");
@@ -79,9 +111,9 @@ export async function runResend(options: ResendOptions): Promise<number> {
     }
   }
 
-  const access = await probeAccess(fullKey);
-  if (access !== "full") {
-    bad(`provided key has '${access}' access; need 'full'`);
+  const keyAccess = await probeAccess(fullKey);
+  if (keyAccess !== "full") {
+    bad(`provided key has '${keyAccess}' access; need 'full'`);
     return 1;
   }
   ok("full-access key verified");
@@ -173,7 +205,7 @@ export async function runResend(options: ResendOptions): Promise<number> {
   ok(`scoped sending key '${name}' provisioned`);
 
   const endpoint = `${siteUrl.replace(/\/$/, "")}/resend-webhook`;
-  const secret = await provisionWebhook(fullKey, endpoint);
+  const { id: webhookId, secret } = await provisionWebhook(fullKey, endpoint);
   ok(`webhook → ${endpoint}`);
 
   const fromAddr = options.from ?? `${name}@${domain.name}`;
@@ -198,6 +230,7 @@ export async function runResend(options: ResendOptions): Promise<number> {
     keyName: name,
     fromAddress: fromAddr,
     webhookEndpoint: endpoint,
+    webhookId,
   });
 
   line();
@@ -207,5 +240,85 @@ export async function runResend(options: ResendOptions): Promise<number> {
   note(
     `     ${DIM}https://resend.com/domains/${domain.id}${RESET} shows the records + verification status`,
   );
+  return 0;
+}
+
+/**
+ * Repoint the Resend webhook at the current deployment's convex.site WITHOUT the
+ * destructive side effects of a full `vexpo resend` run: it does not rotate the
+ * scoped sending key and does not flip REQUIRE_EMAIL_VERIFICATION. It moves the
+ * webhook to the new endpoint, aligns RESEND_WEBHOOK_SECRET on the deployment,
+ * and retires stale resend-webhook endpoints. Use after migrating a Convex
+ * deployment (the convex.site changes underneath the old webhook).
+ *
+ * Resend's API can't read a signing secret back or edit an endpoint in place,
+ * so moving the webhook mints a fresh secret; we write it onto the deployment
+ * atomically so signature verification keeps working.
+ */
+export async function runResendRepoint(options: ResendOptions): Promise<number> {
+  const channel = options.prod ? "prod" : "dev";
+  section(`Resend repoint (${channel})`);
+
+  let siteUrl: string | undefined;
+  let convexTarget: ConvexTarget | undefined;
+  if (options.prod) {
+    const prodFile = (await fileExists(".env.prod")) ? ".env.prod" : ".env.production";
+    siteUrl = (await readEnvFile(prodFile)).get("EXPO_PUBLIC_CONVEX_SITE_URL");
+    convexTarget = { prod: true, envFile: prodFile };
+  } else {
+    siteUrl = (await readOne("EXPO_PUBLIC_CONVEX_SITE_URL")) ?? undefined;
+  }
+  if (!siteUrl) {
+    bad(`EXPO_PUBLIC_CONVEX_SITE_URL missing from ${options.prod ? ".env.prod" : ".env.local"}`);
+    note("run `vexpo convex` (and a prod deploy) so the site URL is populated, then re-run");
+    return 1;
+  }
+  const endpoint = `${siteUrl.replace(/\/$/, "")}/resend-webhook`;
+  ok(`target endpoint: ${endpoint}`);
+
+  const fullKey = await resolveFullKey();
+  if (!fullKey) {
+    bad("no RESEND_FULL_ACCESS_KEY env var and no TTY for paste");
+    return 1;
+  }
+  if ((await probeAccess(fullKey)) !== "full") {
+    bad("provided key does not have full access");
+    return 1;
+  }
+
+  const hooks = await listWebhooks(fullKey);
+  const atNew = hooks.find((w) => w.endpoint === endpoint);
+  const stale = hooks.filter(
+    (w) => w.endpoint !== endpoint && w.endpoint.endsWith("/resend-webhook"),
+  );
+
+  let webhookId: string | undefined;
+  if (atNew && !options.force) {
+    ok(`webhook already points at ${endpoint}`);
+    note("its secret can't be read back; pass --force to recreate + realign RESEND_WEBHOOK_SECRET");
+    webhookId = atNew.id;
+  } else {
+    const { id, secret } = await provisionWebhook(fullKey, endpoint);
+    webhookId = id;
+    ok(`webhook → ${endpoint}`);
+    await envSet("RESEND_WEBHOOK_SECRET", secret, convexTarget);
+    ok(`RESEND_WEBHOOK_SECRET aligned on the ${channel} deployment`);
+  }
+
+  let retired = 0;
+  for (const w of stale) {
+    await deleteWebhook(fullKey, w.id);
+    note(`retired stale webhook → ${w.endpoint}`);
+    retired += 1;
+  }
+
+  // Merge into the recorded resend step so drift detection has the live webhook
+  // id and we keep the domain/key metadata from the last full provision.
+  const prev = (await loadState()).steps.resend?.outputs ?? {};
+  await recordStep("resend", { ...prev, webhookEndpoint: endpoint, webhookId });
+
+  line();
+  ok(`repoint complete${retired ? ` (${retired} stale retired)` : ""}`);
+  nop("sending key and REQUIRE_EMAIL_VERIFICATION left unchanged");
   return 0;
 }

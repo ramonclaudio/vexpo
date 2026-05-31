@@ -22,11 +22,13 @@ import { Command } from "commander";
 
 import pkg from "../package.json" with { type: "json" };
 import { runAccounts } from "./commands/accounts.ts";
+import { runAdopt } from "./commands/adopt.ts";
 import { runAppleCredentials } from "./commands/apple/credentials.ts";
 import { runAppleJwt } from "./commands/apple/jwt.ts";
 import { runAscKey } from "./commands/apple/asc-key.ts";
 import { runEasRotationSecrets } from "./commands/apple/eas-rotation-secrets.ts";
 import { runServicesId } from "./commands/apple/services-id.ts";
+import { runAscConnect } from "./commands/asc.ts";
 import { runAccessibilityLint, runAccessibilityShow } from "./commands/asc-accessibility.ts";
 import { runPrivacyLint, runPrivacyShow } from "./commands/asc-privacy.ts";
 import {
@@ -41,7 +43,7 @@ import {
   runReviewsRespond,
   runReviewsUnanswered,
 } from "./commands/reviews.ts";
-import { runSandboxCreate, runSandboxDelete, runSandboxList } from "./commands/sandbox.ts";
+import { runSandboxClearPurchases, runSandboxList, runSandboxUpdate } from "./commands/sandbox.ts";
 import {
   runTestflightGroupsCreate,
   runTestflightGroupsDelete,
@@ -54,7 +56,9 @@ import {
 } from "./commands/testflight.ts";
 import { runBetterAuth } from "./commands/better-auth.ts";
 import { runConvex } from "./commands/convex.ts";
+import { runConvexMigrate } from "./commands/convex-migrate.ts";
 import { runDoctor } from "./commands/doctor.ts";
+import { runConvexKey } from "./commands/env/convex-key.ts";
 import { runEnvPush } from "./commands/env/push.ts";
 import { runRebrand } from "./commands/rebrand.ts";
 import { runResend } from "./commands/resend.ts";
@@ -219,6 +223,14 @@ program
   });
 
 program
+  .command("adopt")
+  .description(
+    "Finish a project created by `eas integrations:convex:connect`: adopt the existing dev deployment (never a fresh one), backfill site URLs + Better Auth, report the deployment topology (flagging a duplicate dev deployment), and print the exact commands left to finish.",
+  )
+  .option("--skip-dev-steps", "report topology + runbook only, don't run convex/better-auth", false)
+  .action((options: { skipDevSteps?: boolean }) => exitWith(runAdopt(options)));
+
+program
   .command("convex")
   .description("Provision or connect a Convex deployment.")
   .option("--fresh", "provision a NEW deployment", false)
@@ -226,6 +238,18 @@ program
   .option("--name <name>", "override Convex project name")
   .action((options: { fresh?: boolean; local?: boolean; name?: string }) =>
     exitWith(runConvex(options)),
+  );
+
+program
+  .command("convex:migrate")
+  .description(
+    "Copy server-side Convex env (BETTER_AUTH_SECRET, RESEND_*, APPLE_*, APP_*, ...) from another deployment onto the current one. The piece a deployment migration can't get off disk; CONVEX_* are left untouched.",
+  )
+  .requiredOption("--from <deployment>", "source deployment slug to copy env from")
+  .option("--prod", "target the prod deployment (reads prod creds from .env.prod)")
+  .option("--dry-run", "show what would be copied, exit without changes", false)
+  .action((options: { from: string; prod?: boolean; dryRun?: boolean }) =>
+    exitWith(runConvexMigrate(options)),
   );
 
 program
@@ -243,7 +267,24 @@ program
   .description("Provision Resend sending key + webhook, write to Convex env.")
   .option("--name <name>", "override sending key name")
   .option("--from <address>", "override EMAIL_FROM")
-  .action((options: { name?: string; from?: string }) => exitWith(runResend(options)));
+  .option(
+    "--repoint",
+    "move the webhook to the current convex.site + realign the secret, without rotating the sending key or changing auth policy",
+  )
+  .option("--prod", "with --repoint, target the prod deployment + .env.prod site URL")
+  .option(
+    "--force",
+    "with --repoint, recreate the webhook even if it already points at the endpoint",
+  )
+  .action(
+    (options: {
+      name?: string;
+      from?: string;
+      repoint?: boolean;
+      prod?: boolean;
+      force?: boolean;
+    }) => exitWith(runResend(options)),
+  );
 
 /* ---------------------------------------------------------------- apple --- */
 
@@ -269,7 +310,11 @@ apple
     "Sign the Sign In with Apple ES256 client_secret JWT (180-day expiry, Apple's max). Quarterly auto-rotation runs as an EAS Workflow cron. No eas-cli equivalent.",
   )
   .option("--rotate", "re-sign the JWT only", false)
-  .action((options: { rotate?: boolean }) => exitWith(runAppleJwt(options)));
+  .option(
+    "--copy-from <deployment>",
+    "copy APPLE_* env from another deployment (slug) instead of signing; no .p8 needed",
+  )
+  .action((options: { rotate?: boolean; copyFrom?: string }) => exitWith(runAppleJwt(options)));
 
 apple
   .command("credentials")
@@ -326,14 +371,52 @@ env
     },
   );
 
+env
+  .command("convex-key")
+  .description(
+    "Sync the Convex deploy key + deployment selector to EAS env (dev → development, prod → production/preview). Fixes a stale EAS deploy key after a deployment migration; env push skips these on purpose.",
+  )
+  .option("--dev-key <key>", "dev deploy key (default: CONVEX_DEPLOY_KEY in .env.local)")
+  .option("--prod-key <key>", "prod deploy key (default: CONVEX_DEPLOY_KEY in .env.prod)")
+  .option("--mint", "mint the prod deploy key via the Platform API if EAS lacks one", false)
+  .option("--local-file <path>", "override .env.local path")
+  .option("--prod-file <path>", "override .env.prod path")
+  .action(
+    (options: {
+      devKey?: string;
+      prodKey?: string;
+      mint?: boolean;
+      localFile?: string;
+      prodFile?: string;
+    }) =>
+      exitWith(
+        runConvexKey({
+          devKey: options.devKey,
+          prodKey: options.prodKey,
+          mint: options.mint,
+          localFile: options.localFile,
+          prodFile: options.prodFile,
+        }),
+      ),
+  );
+
 /* ------------------------------------------------------------------ asc --- */
 // ASC API direct access for endpoints eas-cli doesn't expose: TestFlight
 // beta groups + testers, customer review responses, sandbox testers, version
-// state + phased rollout, privacy + accessibility nutrition labels. EAS's
-// own `integrations:asc:*` topic is not surfaced as a public `vexpo`
-// command; `vexpo full` orchestrates `eas integrations:asc:connect`
-// internally by spawning it with EXPO_ASC_API_KEY_* env vars pre-set
-// (same pattern `vexpo apple credentials` uses).
+// state + phased rollout, privacy + accessibility nutrition labels. The
+// EAS<->ASC link (`eas integrations:asc:connect`) is wrapped by
+// `vexpo asc:connect` (passes EXPO_ASC_API_KEY_* so the Apple auth step needs
+// no Apple ID prompt); `vexpo full` runs the same step. Needs a TTY: eas
+// integrations:asc:connect can't run headless (it requires an uploaded key id
+// + app id in --non-interactive mode).
+
+program
+  .command("asc:connect")
+  .description(
+    "Link the EAS project to its App Store Connect app (wraps `eas integrations:asc:connect` with the cached ASC key). Lets `eas submit` resolve the app from the bundle id, so eas.json needs no committed ascAppId. Needs an interactive terminal.",
+  )
+  .option("--force", "re-run even if already connected", false)
+  .action((options: { force?: boolean }) => exitWith(runAscConnect(options)));
 
 const ascVersion = program.command("asc:version").description("App Store version inspection.");
 
@@ -379,17 +462,21 @@ program
   .action((options) => exitWith(runSubmissionsList(options)));
 
 /* -------------------------------------------------------- asc:privacy --- */
-// Privacy Nutrition Labels. Apple's API is read-only today; the lint
-// validates a local `app-store/privacy.config.json` against the published
-// data type + purpose enums so a stale label gets caught pre-submission.
+// Privacy Nutrition Labels. Apple's public API exposes NO privacy resource
+// (the App resource has no privacy relationship), so this is local-only: show
+// renders the declared `app-store/privacy.config.json`, lint validates it
+// against the published data type + purpose enums so a stale label gets caught
+// pre-submission. The live label is set in App Store Connect.
 
-const ascPrivacy = program.command("asc:privacy").description("Privacy nutrition labels.");
+const ascPrivacy = program.command("asc:privacy").description("Privacy nutrition labels (local).");
 
 ascPrivacy
-  .command("show")
-  .description("Fetch the app's current privacy details from ASC.")
+  .command("show [file]")
+  .description("Show the declared privacy.config.json (Apple has no live read API; set it in ASC).")
   .option("--json", "JSON output", false)
-  .action((options: { json?: boolean }) => exitWith(runPrivacyShow(options)));
+  .action((file: string | undefined, options: { json?: boolean }) =>
+    exitWith(runPrivacyShow(file ?? "app-store/privacy.config.json", options)),
+  );
 
 ascPrivacy
   .command("lint <file>")
@@ -542,31 +629,38 @@ const sandboxCmd = program
 
 sandboxCmd
   .command("list")
-  .description("List sandbox testers.")
+  .description("List sandbox testers. (Create/delete testers in App Store Connect; the API can't.)")
   .option("--json", "JSON output", false)
   .action((options) => exitWith(runSandboxList(options)));
 
 sandboxCmd
-  .command("create")
-  .description("Create a sandbox tester.")
-  .requiredOption("--email <email>")
-  .requiredOption("--password <password>", "8+ chars; this is the App Store sandbox password")
-  .requiredOption("--first-name <name>")
-  .requiredOption("--last-name <name>")
-  .requiredOption("--territory <code>", "ISO territory code (e.g. USA)")
+  .command("update <id>")
+  .description(
+    "Modify a sandbox tester: subscription renewal rate, interrupt purchases, or territory.",
+  )
+  .option("--renewal-rate <rate>", "subscription renewal rate (e.g. MONTHLY_RENEWAL_EVERY_HOUR)")
+  .option("--territory <code>", "App Store territory code (e.g. USA)")
+  .option("--interrupt-purchases <bool>", "interrupt purchases for testing (true|false)")
   .action(
-    (options: {
-      email: string;
-      password: string;
-      firstName: string;
-      lastName: string;
-      territory: string;
-    }) => exitWith(runSandboxCreate(options)),
+    (
+      id: string,
+      options: { renewalRate?: string; territory?: string; interruptPurchases?: string },
+    ) =>
+      exitWith(
+        runSandboxUpdate(id, {
+          subscriptionRenewalRate: options.renewalRate,
+          territory: options.territory,
+          interruptPurchases:
+            options.interruptPurchases === undefined
+              ? undefined
+              : options.interruptPurchases === "true",
+        }),
+      ),
   );
 
 sandboxCmd
-  .command("delete <id>")
-  .description("Delete a sandbox tester.")
-  .action((id: string) => exitWith(runSandboxDelete(id)));
+  .command("clear-purchases <ids...>")
+  .description("Clear purchase history for one or more sandbox testers (by id).")
+  .action((ids: string[]) => exitWith(runSandboxClearPurchases(ids)));
 
 program.parse();

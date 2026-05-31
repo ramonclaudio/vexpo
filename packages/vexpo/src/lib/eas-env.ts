@@ -142,7 +142,13 @@ export async function envUpdate(
     visibility,
   ];
   if (opts?.type) argv.push("--type", opts.type);
-  for (const env of environments) argv.push("--environment", env);
+  // `env:update` identifies the existing variable by name + its CURRENT
+  // environment (--variable-environment). Without it, a name that exists in
+  // several environments is ambiguous and eas-cli prompts "Select variable",
+  // which a --non-interactive run can't answer. We deliberately do NOT pass
+  // --environment (the "new environments"): omitting it leaves the var's
+  // existing env links unchanged, we only want to change the value.
+  for (const env of environments) argv.push("--variable-environment", env);
   argv.push("--non-interactive");
   const { code, stderr } = await run(argv);
   if (code !== 0) {
@@ -211,12 +217,10 @@ export async function updateConfigure(
 }
 
 /**
- * Runs `eas diagnostics`. Returns:
- *   - { ok: true, info } if eas.json validates and CLI auth works
- *   - { ok: false, error } if anything fails
- *
- * eas-cli's diagnostics surfaces eas.json schema errors, missing project
- * link, and CLI version info. Useful as a single health check.
+ * Runs `eas diagnostics`. At eas v20 this is just an environment-info dump (CLI
+ * version, OS, node), so it only proves the CLI is installed and runnable, NOT
+ * that eas.json validates or the project is linked. Real link/auth health comes
+ * from project:info + whoami (see verify.ts).
  */
 export async function diagnostics(): Promise<
   { ok: true; info: string } | { ok: false; error: string }

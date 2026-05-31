@@ -612,13 +612,12 @@ async function describePhase(
       return {
         step,
         label: "setup:apple:eas-rotation-secrets",
-        action:
-          cached && !options.force ? "skip (all 5 set)" : "run (interactive for CONVEX_DEPLOY_KEY)",
+        action: cached && !options.force ? "skip (all 5 set)" : "run (mints CONVEX_DEPLOY_KEY)",
         details: [
           "push the 5 EAS production secrets the JWT rotation cron needs",
-          "APPLE_P8_PRIVATE_KEY (PEM contents from cached path)",
+          "APPLE_P8_PRIVATE_KEY (.p8 path; EAS reads + base64-encodes it)",
           "APPLE_TEAM_ID, APPLE_KEY_ID, APPLE_SERVICES_ID (from .env.local)",
-          "CONVEX_DEPLOY_KEY (prompted, generate at dashboard.convex.dev)",
+          "CONVEX_DEPLOY_KEY (minted via the Convex Platform API; paste fallback if offline)",
         ],
       };
   }
@@ -745,9 +744,9 @@ const JOURNEY: { async: JourneyEntry[]; sync: JourneyEntry[]; auto: JourneyEntry
     },
     {
       label: "Convex production deploy key",
-      cost: "30 sec",
+      cost: "auto",
       description:
-        "For the JWT rotation cron and the deploy_convex step in deploy-production.yml. Generate once, paste into the CLI when prompted.",
+        "For the JWT rotation cron and the deploy_convex step in deploy-production.yml. Minted automatically via the Convex Platform API; paste only as an offline fallback.",
       url: "https://dashboard.convex.dev",
     },
     {
@@ -801,7 +800,7 @@ const JOURNEY: { async: JourneyEntry[]; sync: JourneyEntry[]; auto: JourneyEntry
       label: "EAS rotation secrets",
       cost: "auto",
       description:
-        "Pushes the 5 EAS production secrets the JWT rotation cron needs (4 from .env.local + state, plus CONVEX_DEPLOY_KEY which you paste).",
+        "Pushes the 5 EAS production secrets the JWT rotation cron needs (4 from .env.local + state, plus CONVEX_DEPLOY_KEY minted via the Platform API).",
     },
   ],
 };
@@ -943,6 +942,7 @@ async function stepInstallOnly(): Promise<void> {
 
 const completed: StepName[] = [];
 const skipped: StepName[] = [];
+let failedStep: StepName | null = null;
 
 /**
  * Maps a subcommand display name to its in-process runner. Direct calls
@@ -964,15 +964,21 @@ const STEP_RUNNERS: Record<string, StepRunner> = {
   "vexpo apple jwt": () => runAppleJwt({}),
   "vexpo apple eas-rotation-secrets": () => runEasRotationSecrets({}),
   "vexpo asc connect": () => runAscConnect({}),
-  "vexpo eas": () => runEas({}),
+  "vexpo eas": async () =>
+    runEas({ withProd: (await fileExists(".env.prod")) || (await fileExists(".env.production")) }),
   "vexpo review-account": () => runReviewAccount({}),
 };
 
 async function runStep(name: string, state?: StepName): Promise<void> {
   const runner = STEP_RUNNERS[name];
   if (!runner) throw new Error(`unknown setup step: ${name}`);
-  const code = await runner();
-  if (code !== 0) throw new Error(`${name} exited with code ${code}`);
+  try {
+    const code = await runner();
+    if (code !== 0) throw new Error(`${name} exited with code ${code}`);
+  } catch (err) {
+    if (state) failedStep = state;
+    throw err;
+  }
   if (state) completed.push(state);
 }
 
@@ -1114,10 +1120,14 @@ export async function runSetup(opts: SetupOptions): Promise<number> {
   // Module-level options used by helpers (probe, runStep, etc.). Refresh on
   // each entry. the caller passes a fresh options object, we mirror it here.
   options = opts;
+  // Reset module-level accumulators so a second runSetup in one process (tests,
+  // a future batch mode) starts clean and the audit attributes the real step.
+  failedStep = null;
+  completed.length = 0;
+  skipped.length = 0;
   const startedAtPerf = performance.now();
   const startedAtIso = new Date().toISOString();
   let failureMessage: string | null = null;
-  let failureStep: StepName | null = null;
 
   try {
     if (options.fresh) {
@@ -1372,7 +1382,7 @@ export async function runSetup(opts: SetupOptions): Promise<number> {
           completed,
           skipped,
           ...(failureMessage
-            ? { failed: { step: failureStep ?? "convex", message: failureMessage } }
+            ? { failed: { step: failedStep ?? "convex", message: failureMessage } }
             : {}),
         });
       } catch {

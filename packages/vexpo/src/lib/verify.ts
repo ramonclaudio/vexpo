@@ -16,8 +16,18 @@
  * become Check objects with severity "fail" or "warn".
  */
 
+import { existsSync, readFileSync } from "node:fs";
+
 import { validate as ascValidate, makeAscClient, type AscCredentials } from "./asc-api.ts";
-import { envMap as convexEnvMap, type ConvexTarget } from "./convex-env.ts";
+import { deploymentSlug, envMap as convexEnvMap, type ConvexTarget } from "./convex-env.ts";
+import {
+  checkToken,
+  deploymentsOfType,
+  describeDeployment,
+  listProjectDeployments,
+} from "./convex-management.ts";
+import { ascStatus } from "./eas-integrations.ts";
+import { submitProfilesMissingAscAppId } from "./eas-submit.ts";
 import {
   diagnostics as easDiagnostics,
   envList as easEnvList,
@@ -148,6 +158,19 @@ async function verifyConvex(ctx: VerifyContext): Promise<Check[]> {
   const env = ctx.channel === "prod" ? ctx.convexProdEnv : ctx.convexEnv;
   const local = ctx.channel === "prod" ? ctx.envProd : ctx.envLocal;
 
+  // Login freshness, gated on a configured deployment so lite/offline stays fast.
+  // A present-but-expired token is the confusing case the file-stat can't catch.
+  if (local.get("CONVEX_DEPLOYMENT")) {
+    const status = await checkToken();
+    if (status === "unauthorized") {
+      checks.push(
+        fail("convex", "login", "Convex token expired or revoked", "run `npx convex login`"),
+      );
+    } else if (status === "valid") {
+      checks.push(ok("convex", "login", "token valid"));
+    }
+  }
+
   const cloudUrl = local.get("EXPO_PUBLIC_CONVEX_URL");
   const siteUrl = local.get("EXPO_PUBLIC_CONVEX_SITE_URL");
 
@@ -201,6 +224,30 @@ async function verifyConvex(ctx: VerifyContext): Promise<Check[]> {
     }
   } else {
     checks.push(fail("convex", "better-auth-secret", `not set on Convex (${ctx.channel})`));
+  }
+
+  // Enumerate the project's deployments via the Platform API to catch a
+  // duplicate dev deployment (the EAS Convex integration spins up a second one
+  // alongside a personal `convex dev` deployment). Skips silently when the
+  // management token isn't available (offline / not logged in).
+  const deploymentName = deploymentSlug(local.get("CONVEX_DEPLOYMENT"));
+  if (deploymentName) {
+    const deployments = await listProjectDeployments(deploymentName);
+    if (deployments) {
+      const devs = deploymentsOfType(deployments, "dev");
+      if (devs.length > 1) {
+        checks.push(
+          warn(
+            "convex",
+            "deployments",
+            `${devs.length} dev deployments in this project`,
+            `${devs.map(describeDeployment).join(", ")} — pick one canonical, delete the others`,
+          ),
+        );
+      } else {
+        checks.push(ok("convex", "deployments", `${deployments.length} total, 1 dev`));
+      }
+    }
   }
 
   return checks;
@@ -513,53 +560,79 @@ async function verifyApple(ctx: VerifyContext): Promise<Check[]> {
 
 async function verifyEas(ctx: VerifyContext): Promise<Check[]> {
   const checks: Check[] = [];
+
   let projectId: string | null = null;
   try {
     projectId = await resolveProjectId();
   } catch {
-    checks.push(skip("eas", "project-id", "couldn't resolve projectId"));
-    return checks;
+    // leave null; we still probe EAS env below before deciding lite vs fail
   }
+
+  // Lite mode (no projectId AND no sign of provisioning) skips before any EAS
+  // shell-out, so the read path stays fast and offline-safe. REQUIRE_EMAIL_VERIFICATION
+  // unset on Convex is the lite-setup marker.
   if (!projectId) {
-    // Lite mode marker: `REQUIRE_EMAIL_VERIFICATION` unset on Convex
-    // implies lite-mode setup, which doesn't run `eas init`. Skip rather
-    // than fail.
     const env = ctx.channel === "prod" ? ctx.convexProdEnv : ctx.convexEnv;
-    const requireEmailVerification = env.get("REQUIRE_EMAIL_VERIFICATION");
-    if (!requireEmailVerification || requireEmailVerification === "false") {
+    const rev = env.get("REQUIRE_EMAIL_VERIFICATION");
+    if (!rev || rev === "false") {
       checks.push(skip("eas", "project-id", "lite mode (run `npx vexpo full` to init EAS)"));
       return checks;
     }
+  }
+
+  // Fetch all three EAS env maps once. eas-cli resolves the project itself, so
+  // this can succeed even when vexpo's projectId resolution returns null (a
+  // stubbed app.json with EAS_PROJECT_ID only in the shell).
+  const envNames = ["production", "preview", "development"] as const;
+  const envMaps = new Map<(typeof envNames)[number], Map<string, string> | null>();
+  for (const e of envNames) {
+    try {
+      envMaps.set(e, await easEnvList(e));
+    } catch {
+      envMaps.set(e, null);
+    }
+  }
+  const provisioned = [...envMaps.values()].some((m) => m !== null && m.size > 0);
+
+  if (projectId) {
+    checks.push(ok("eas", "project-id", projectId));
+  } else if (provisioned) {
+    // Provisioned but unresolved: don't skip the whole group. A stubbed app.json
+    // with no EAS_PROJECT_ID is how stale EAS env + a missing ASC link stayed
+    // hidden, so run the env + integration checks anyway.
+    checks.push(
+      warn(
+        "eas",
+        "project-id",
+        "EAS env is provisioned but projectId is unresolved",
+        "set EAS_PROJECT_ID in .env.local (app.json is intentionally stubbed)",
+      ),
+    );
+  } else {
     checks.push(
       fail("eas", "project-id", "no projectId in app.json, EAS_PROJECT_ID env, or .env.local"),
     );
     return checks;
   }
-  checks.push(ok("eas", "project-id", projectId));
 
-  let who: string | null = null;
-  try {
-    who = await easWhoami();
-  } catch {
-    checks.push(skip("eas", "signed-in", "eas CLI not available"));
-    return checks;
-  }
-  if (!who) {
-    checks.push(warn("eas", "signed-in", "not signed in (run `npx eas login`)"));
-    return checks;
-  }
-  checks.push(ok("eas", "signed-in", who));
+  // whoami + project-info + diagnostics need a resolved projectId; best-effort,
+  // never short-circuit the env + integration checks below.
+  if (projectId) {
+    try {
+      const who = await easWhoami();
+      checks.push(
+        who
+          ? ok("eas", "signed-in", who)
+          : warn("eas", "signed-in", "not signed in (run `npx eas login`)"),
+      );
+    } catch {
+      checks.push(skip("eas", "signed-in", "eas CLI not available"));
+    }
 
-  // Verify the projectId resolves on EAS via `eas project:info`. Catches:
-  //  - project deleted on EAS but still in app.json
-  //  - user logged into a different EAS account from when projectId was set
-  //  - account-transferred project (slug or owner changed)
-  try {
-    const info = await easProjectInfo();
-    if (info) {
-      if (info.id === projectId) {
-        checks.push(ok("eas", "project-info", info.fullName));
-      } else {
+    try {
+      const info = await easProjectInfo();
+      if (info && info.id === projectId) checks.push(ok("eas", "project-info", info.fullName));
+      else if (info)
         checks.push(
           fail(
             "eas",
@@ -568,44 +641,29 @@ async function verifyEas(ctx: VerifyContext): Promise<Check[]> {
             "run `vexpo eas` to re-link",
           ),
         );
-      }
-    } else {
-      checks.push(
-        warn(
-          "eas",
-          "project-info",
-          "eas project:info failed (project may have been deleted or transferred)",
-        ),
-      );
-    }
-  } catch {
-    checks.push(skip("eas", "project-info", "eas-cli not available"));
-  }
-
-  // Run `eas diagnostics` for a single shot of "is the CLI happy with this
-  // project". Catches eas.json schema errors, missing project link, version
-  // mismatches. Surfaced as one check; the eas-cli error tail is the message.
-  try {
-    const diag = await easDiagnostics();
-    if (diag.ok) {
-      checks.push(ok("eas", "diagnostics", "eas-cli health ok"));
-    } else {
-      checks.push(warn("eas", "diagnostics", diag.error));
-    }
-  } catch {
-    checks.push(skip("eas", "diagnostics", "eas-cli not available"));
-  }
-
-  const envs: Array<"production" | "preview" | "development"> = [
-    "production",
-    "preview",
-    "development",
-  ];
-  for (const env of envs) {
-    let list: Map<string, string>;
-    try {
-      list = await easEnvList(env);
+      else
+        checks.push(
+          warn("eas", "project-info", "eas project:info failed (project deleted or transferred?)"),
+        );
     } catch {
+      checks.push(skip("eas", "project-info", "eas-cli not available"));
+    }
+
+    try {
+      const diag = await easDiagnostics();
+      checks.push(
+        diag.ok
+          ? ok("eas", "diagnostics", "eas-cli health ok")
+          : warn("eas", "diagnostics", diag.error),
+      );
+    } catch {
+      checks.push(skip("eas", "diagnostics", "eas-cli not available"));
+    }
+  }
+
+  for (const env of envNames) {
+    const list = envMaps.get(env) ?? null;
+    if (!list) {
       checks.push(skip("eas", `env-${env}`, "eas env:list unavailable"));
       continue;
     }
@@ -622,10 +680,33 @@ async function verifyEas(ctx: VerifyContext): Promise<Check[]> {
         ),
       );
 
+    // Value drift, not just presence: does the EAS-stored Convex URL point at the
+    // same deployment the local env file does? Presence alone passed green while
+    // EAS still pointed at the OLD project after a migration.
+    const expected = (env === "development" ? ctx.envLocal : ctx.envProd).get(
+      "EXPO_PUBLIC_CONVEX_URL",
+    );
+    const actual = list.get("EXPO_PUBLIC_CONVEX_URL");
+    if (expected && actual) {
+      const expSlug = deploymentSlugFromHost(hostnameOf(expected) ?? "");
+      const actSlug = deploymentSlugFromHost(hostnameOf(actual) ?? "");
+      if (expSlug && actSlug && expSlug !== actSlug) {
+        checks.push(
+          fail(
+            "eas",
+            `convex-url-${env}`,
+            `EAS points at ${actSlug}, local at ${expSlug}`,
+            "run `vexpo env push` + `vexpo env convex-key` to repoint EAS at the active deployment",
+          ),
+        );
+      } else if (expSlug && actSlug) {
+        checks.push(ok("eas", `convex-url-${env}`, `points at ${actSlug}`));
+      }
+    }
+
     // The JWT rotation cron + the deploy_convex step in deploy-production.yml
-    // both read these from EAS env (production, secret visibility). Names
-    // appear in `eas env:list` even when value is masked, so we can verify
-    // presence without ever seeing the secret values.
+    // both read these from EAS env (production, secret visibility). Names appear
+    // in `eas env:list` even when the value is masked, so presence is checkable.
     if (env === "production") {
       const rotationSecrets = [
         "CONVEX_DEPLOY_KEY",
@@ -647,6 +728,45 @@ async function verifyEas(ctx: VerifyContext): Promise<Check[]> {
           ),
         );
     }
+  }
+
+  // ASC integration: lets `eas submit` resolve the app interactively. warn (not
+  // fail) since not every project ships.
+  try {
+    const status = await ascStatus();
+    if (status.status === "connected") {
+      checks.push(
+        ok("eas", "asc-integration", status.appStoreConnectApp?.bundleIdentifier ?? "connected"),
+      );
+      // Non-interactive submit (CI) reads the app id only from eas.json's submit
+      // profile, the integration doesn't satisfy it. Nudge if a profile lacks it.
+      const missing = existsSync("eas.json")
+        ? submitProfilesMissingAscAppId(readFileSync("eas.json", "utf8"))
+        : [];
+      if (missing.length > 0) {
+        checks.push(
+          warn(
+            "eas",
+            "asc-submit-id",
+            `submit profile${missing.length === 1 ? "" : "s"} ${missing.join(", ")} missing ascAppId`,
+            "run `vexpo asc` to write it; non-interactive `eas submit` (CI) fails without it",
+          ),
+        );
+      } else if (existsSync("eas.json")) {
+        checks.push(ok("eas", "asc-submit-id", "submit profiles carry ascAppId"));
+      }
+    } else {
+      checks.push(
+        warn(
+          "eas",
+          "asc-integration",
+          `not connected (${status.status})`,
+          "run `vexpo asc:connect` so `eas submit` resolves the app from the bundle id",
+        ),
+      );
+    }
+  } catch {
+    checks.push(skip("eas", "asc-integration", "eas integrations:asc:status unavailable"));
   }
 
   return checks;
@@ -791,12 +911,26 @@ function verifyFiles(ctx: VerifyContext): Check[] {
 // ---------- Top-level ----------
 
 export async function readContext(channel: Channel): Promise<VerifyContext> {
+  // A dev CONVEX_DEPLOY_KEY in .env.local shadows `--prod`, so reading prod env
+  // via bare `--prod` silently returns the DEV deployment. Point the Convex CLI
+  // at the prod env file (it carries the prod deploy key) so prod checks hit the
+  // real prod deployment. With no prod file we can't reach prod, so the map stays
+  // empty rather than masquerading dev env as prod (mirrors env push readRemoteState).
+  const prodEnvFile = existsSync(".env.prod")
+    ? ".env.prod"
+    : existsSync(".env.production")
+      ? ".env.production"
+      : undefined;
   const [envLocal, envProd, convexEnv, convexProdEnv, appConfigFacts, ascCreds] = await Promise.all(
     [
       readEnvFile(".env.local"),
       readEnvFile(".env.prod").then(async (m) => (m.size > 0 ? m : readEnvFile(".env.production"))),
       convexEnvMap().catch(() => new Map<string, string>()),
-      convexEnvMap({ prod: true } satisfies ConvexTarget).catch(() => new Map<string, string>()),
+      prodEnvFile
+        ? convexEnvMap({ prod: true, envFile: prodEnvFile } satisfies ConvexTarget).catch(
+            () => new Map<string, string>(),
+          )
+        : Promise.resolve(new Map<string, string>()),
       readAppConfigFacts(),
       loadAscCreds(),
     ],

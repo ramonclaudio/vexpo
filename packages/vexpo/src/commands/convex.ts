@@ -8,7 +8,8 @@
  */
 
 import { appleTeamIdFallback, bundleIdFallback, pkgName, scheme } from "../lib/app.ts";
-import { envSet as convexEnvSet, isLoggedIn } from "../lib/convex-env.ts";
+import { envSet as convexEnvSet } from "../lib/convex-env.ts";
+import { checkToken } from "../lib/convex-management.ts";
 import { ensureLine, readAll, removeLines } from "../lib/env-local.ts";
 import {
   BOLD,
@@ -37,14 +38,36 @@ export type ConvexOptions = {
 const BUNDLE_ID_RE = /^[A-Za-z0-9.-]+$/;
 const TEAM_ID_RE = /^[A-Z0-9]{10}$/;
 
+/**
+ * Plan the `convex dev` invocation. `--local` on `convex dev` is a deprecated
+ * option that crashes (convex 1.39+), so a local target is selected the
+ * supported way: `--dev-deployment local` when provisioning fresh, or a prior
+ * `convex deployment select local` for an existing one. Pure, for testability.
+ */
+export function planConvexDev(
+  options: { local?: boolean },
+  needsProvisioning: boolean,
+  projectName: string,
+): { selectLocalFirst: boolean; devArgs: string[] } {
+  const devArgs = ["convex", "dev", "--once", "--tail-logs", "disable"];
+  if (needsProvisioning) {
+    devArgs.push("--configure", "new", "--project", projectName);
+    devArgs.push("--dev-deployment", options.local ? "local" : "cloud");
+  }
+  return { selectLocalFirst: !!options.local && !needsProvisioning, devArgs };
+}
+
 export async function runConvex(options: ConvexOptions): Promise<number> {
   section("Convex deployment");
 
   try {
-    if (!(await isLoggedIn())) {
-      yep("not signed in to Convex");
+    const tokenStatus = await checkToken();
+    if (tokenStatus !== "valid") {
+      yep(
+        tokenStatus === "no-token" ? "not signed in to Convex" : "Convex token expired or revoked",
+      );
       await helpAndWait({
-        body: "Sign up free and run `npx convex login` in another terminal:",
+        body: "Sign in (or refresh) with `npx convex login` in another terminal:",
         urls: [
           { label: "Convex sign-up", url: "https://convex.dev" },
           { label: "Convex dashboard", url: "https://dashboard.convex.dev" },
@@ -68,9 +91,21 @@ export async function runConvex(options: ConvexOptions): Promise<number> {
     const needsProvisioning = options.fresh === true || !existing;
     const projectName = options.name ?? (await pkgName());
 
-    const cmd = [dlx(), "convex", "dev", "--once", "--tail-logs", "disable"];
-    if (options.local) cmd.push("--local");
-    if (needsProvisioning) cmd.push("--configure", "new", "--project", projectName);
+    const plan = planConvexDev(options, needsProvisioning, projectName);
+    // For an existing local deployment, select it before running dev (the dev
+    // `--local` flag is deprecated and crashes).
+    if (plan.selectLocalFirst) {
+      const sel = spawn([dlx(), "convex", "deployment", "select", "local"], {
+        stdin: "inherit",
+        stdout: "inherit",
+        stderr: "inherit",
+      });
+      if ((await sel.exited) !== 0) {
+        bad("convex deployment select local failed");
+        return 1;
+      }
+    }
+    const cmd = [dlx(), ...plan.devArgs];
 
     if (needsProvisioning) {
       ok(`provisioning Convex project '${projectName}'`);
