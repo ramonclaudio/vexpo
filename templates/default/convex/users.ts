@@ -281,9 +281,12 @@ export const restoreAccount = authMutation({
   handler: async (ctx) => {
     await rateLimitWithThrow(ctx, "criticalAction", ctx.user._id.toString());
     const now = Date.now();
+
+    // Not tombstoned: idempotent no-op, matching deleteAccount's retry safety.
     if (!ctx.user.deletedAt) return { success: true };
 
     await ctx.db.patch(ctx.user._id, { deletedAt: undefined, updatedAt: now });
+
     await ctx.db.insert("accountDeletionAudit", {
       userId: ctx.user._id,
       authId: ctx.user.authUserId,

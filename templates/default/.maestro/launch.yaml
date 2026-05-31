@@ -1,9 +1,16 @@
-# Smoke test: app launches and the welcome screen renders.
+# Smoke test: the app cold-starts and renders without crashing.
 #
-# Maestro auto-derives the appId from the build's bundle id, so the same
-# flow runs against the dev simulator binary (`com.example.<pkg>` fallback
-# in app.config.ts) and the production binary (`com.<your-team>.<app>`)
-# without edits.
+# This app's UI is built entirely with @expo/ui SwiftUI, and those views are NOT
+# surfaced to Maestro's iOS accessibility query: plain <Text>, button labels, and
+# even explicit accessibilityLabel modifiers are all invisible to Maestro. So a
+# flow can't assert on or drive the UI without faking it. What it CAN verify, and
+# all this does, is that the app builds, installs, and launches to a stable first
+# frame without crashing. Screen and flow logic is covered by unit + Convex tests
+# (see __tests__), not here.
+#
+# Maestro auto-derives the appId from the build's bundle id, so the same flow
+# runs against the dev simulator binary (`com.example.<pkg>` fallback in
+# app.config.ts) and the production binary (`com.<your-team>.<app>`) without edits.
 #
 # Run locally: `maestro test .maestro/launch.yaml`
 # Run on EAS:  triggered by `.eas/workflows/e2e-tests.yml` on every PR.
@@ -11,8 +18,6 @@ appId: ${MAESTRO_APP_ID}
 ---
 - launchApp:
     clearState: true
-- assertVisible:
-    text: "Welcome"
-    timeout: 30000
-- assertVisible: "Your new app starts here."
-- takeScreenshot: welcome
+- waitForAnimationToEnd:
+    timeout: 15000
+- takeScreenshot: launch
