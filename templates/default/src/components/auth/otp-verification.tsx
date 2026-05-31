@@ -1,6 +1,17 @@
 import { startTransition, useActionState, useState } from "react";
 import { useMutation } from "convex/react";
-import { Host, VStack, HStack, Text, TextField, Button, Image, Spacer } from "@expo/ui/swift-ui";
+import {
+  Host,
+  VStack,
+  HStack,
+  Text,
+  TextField,
+  Button,
+  Image,
+  Spacer,
+  useNativeState,
+} from "@expo/ui/swift-ui";
+import { runOnJS } from "react-native-worklets";
 import {
   foregroundStyle,
   buttonStyle,
@@ -29,6 +40,7 @@ import { api } from "@/convex/_generated/api";
 import { authClient } from "@/lib/auth-client";
 import { haptics } from "@/lib/haptics";
 import { useColors } from "@/hooks/use-theme";
+import { maskOtp } from "@/lib/masks";
 import { ProminentButton } from "@/components/ui/prominent-button";
 import { ErrorText } from "@/components/ui/status-text";
 import { announce } from "@/lib/a11y";
@@ -70,6 +82,7 @@ export function OtpVerification({
   const dfont = useDynamicFont();
   const symbolSize = useSymbolSize();
   const colors = useColors();
+  const otpState = useNativeState("");
   const [otp, setOtp] = useState("");
   const generateAvatarUploadUrl = useMutation(api.users.generateAvatarUploadUrl);
   const updateAvatar = useMutation(api.users.updateAvatar);
@@ -184,8 +197,14 @@ export function OtpVerification({
 
         <VStack spacing={12} modifiers={[frame({ maxWidth: Infinity })]}>
           <TextField
+            text={otpState}
             placeholder="000000"
-            onTextChange={(text) => setOtp(text.replace(/\D/g, "").slice(0, 6))}
+            onTextChange={(text) => {
+              "worklet";
+              const digits = maskOtp(text);
+              otpState.value = digits;
+              runOnJS(setOtp)(digits);
+            }}
             autoFocus
             modifiers={[
               textFieldStyle("plain"),

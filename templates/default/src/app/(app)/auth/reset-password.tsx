@@ -39,9 +39,12 @@ import { useDynamicFont } from "@/lib/dynamic-font";
 import { useSymbolSize } from "@/lib/dynamic-symbol-size";
 import { Button as ButtonTokens } from "@/constants/layout";
 
+import { runOnJS } from "react-native-worklets";
+
 import { authClient } from "@/lib/auth-client";
 import { assets } from "@/lib/assets";
 import { haptics } from "@/lib/haptics";
+import { maskOtp } from "@/lib/masks";
 import { firstError, resetPasswordSchema } from "@/lib/schemas";
 import { PasswordField } from "@/components/auth/password-field";
 import { ProminentButton } from "@/components/ui/prominent-button";
@@ -70,6 +73,7 @@ export default function ResetPasswordScreen() {
     }
   }, [providers]);
 
+  const otpState = useNativeState("");
   const [otp, setOtp] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -249,8 +253,14 @@ export default function ResetPasswordScreen() {
           <VStack spacing={6} alignment="leading" modifiers={[frame({ maxWidth: Infinity })]}>
             <Text modifiers={labelModifiers}>Verification code</Text>
             <TextField
+              text={otpState}
               placeholder="000000"
-              onTextChange={(text) => setOtp(text.replace(/\D/g, "").slice(0, 6))}
+              onTextChange={(text) => {
+                "worklet";
+                const digits = maskOtp(text);
+                otpState.value = digits;
+                runOnJS(setOtp)(digits);
+              }}
               autoFocus
               modifiers={[
                 ...inputModifiers,
