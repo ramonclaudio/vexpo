@@ -81,7 +81,11 @@ describe("required username (profileUpdateSchema)", () => {
   });
 
   it("rejects too-short usernames", () => {
-    const r = profileUpdateSchema.safeParse({ name: "Ray", username: "ab", email: "r@example.com" });
+    const r = profileUpdateSchema.safeParse({
+      name: "Ray",
+      username: "ab",
+      email: "r@example.com",
+    });
     expect(r.success).toBe(false);
     expect(firstErrorField(r)).toBe("username");
   });
@@ -170,7 +174,11 @@ describe("resetPasswordSchema", () => {
   const base = { email: "r@example.com", otp: "123456", password: validPassword };
 
   it("rejects an OTP that is not 6 digits", () => {
-    const r = resetPasswordSchema.safeParse({ ...base, otp: "12345", confirmPassword: validPassword });
+    const r = resetPasswordSchema.safeParse({
+      ...base,
+      otp: "12345",
+      confirmPassword: validPassword,
+    });
     expect(r.success).toBe(false);
     expect(firstError(r)).toBe("Enter the 6-digit code");
   });
