@@ -357,15 +357,33 @@ async function verifyResend(ctx: VerifyContext): Promise<Check[]> {
     const expectedEndpoint = `${expectedSiteUrl.replace(/\/$/, "")}/resend-webhook`;
     const match = webhooks.find((w) => w.endpoint === expectedEndpoint);
     if (!match) {
-      const others = webhooks.map((w) => w.endpoint).join(", ");
-      checks.push(
-        warn(
-          "resend",
-          "webhook-endpoint",
-          `no webhook pointing at ${expectedEndpoint}`,
-          others ? `existing: ${others}` : undefined,
-        ),
+      const others = webhooks.map((w) => w.endpoint);
+      // The key's account has resend-webhooks for OTHER convex.site deployments but
+      // none for this one. That's the classic post-migration drift: the deployment
+      // slug changed and the webhook didn't follow. The fix is to repoint, not to
+      // swap keys. (Only suspect the wrong account if the domain check also fails.)
+      const staleConvex = others.filter(
+        (e) => e.includes(".convex.site") && e.endsWith("/resend-webhook"),
       );
+      if (staleConvex.length > 0) {
+        checks.push(
+          warn(
+            "resend",
+            "webhook-endpoint",
+            `no webhook for this deployment; ${staleConvex.length} point at other convex.site deployments (stale after a deployment migration)`,
+            `run \`vexpo resend --repoint${ctx.channel === "prod" ? " --prod" : ""}\` to move it to ${expectedEndpoint} and realign RESEND_WEBHOOK_SECRET. stale: ${staleConvex.join(", ")}`,
+          ),
+        );
+      } else {
+        checks.push(
+          warn(
+            "resend",
+            "webhook-endpoint",
+            `no webhook pointing at ${expectedEndpoint}`,
+            others.length ? `existing: ${others.join(", ")}` : undefined,
+          ),
+        );
+      }
     } else if (match.status !== "enabled" && match.status !== "active") {
       checks.push(warn("resend", "webhook-endpoint", `webhook ${match.id} status=${match.status}`));
     } else {
