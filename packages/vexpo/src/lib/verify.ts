@@ -357,31 +357,15 @@ async function verifyResend(ctx: VerifyContext): Promise<Check[]> {
     const expectedEndpoint = `${expectedSiteUrl.replace(/\/$/, "")}/resend-webhook`;
     const match = webhooks.find((w) => w.endpoint === expectedEndpoint);
     if (!match) {
-      const others = webhooks.map((w) => w.endpoint);
-      // If the key's account has webhooks for OTHER Convex deployments but none
-      // for this one, the RESEND_API_KEY almost certainly belongs to a different
-      // Resend account than this project. Name that, it's the difference between
-      // "create a webhook" and "you're holding the wrong key".
-      const otherConvex = others.filter((e) => e.includes(".convex.site"));
-      if (otherConvex.length > 0) {
-        checks.push(
-          warn(
-            "resend",
-            "webhook-endpoint",
-            `RESEND_API_KEY's account has no webhook for this deployment (it has ${otherConvex.length} for other deployments)`,
-            `the key is likely for a different Resend account. expected ${expectedEndpoint}; this key sees: ${others.join(", ")}`,
-          ),
-        );
-      } else {
-        checks.push(
-          warn(
-            "resend",
-            "webhook-endpoint",
-            `no webhook pointing at ${expectedEndpoint}`,
-            others.length ? `existing: ${others.join(", ")}` : undefined,
-          ),
-        );
-      }
+      const others = webhooks.map((w) => w.endpoint).join(", ");
+      checks.push(
+        warn(
+          "resend",
+          "webhook-endpoint",
+          `no webhook pointing at ${expectedEndpoint}`,
+          others ? `existing: ${others}` : undefined,
+        ),
+      );
     } else if (match.status !== "enabled" && match.status !== "active") {
       checks.push(warn("resend", "webhook-endpoint", `webhook ${match.id} status=${match.status}`));
     } else {
