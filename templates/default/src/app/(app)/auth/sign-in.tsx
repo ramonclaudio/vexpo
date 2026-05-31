@@ -3,7 +3,17 @@ import * as AppleAuthentication from "expo-apple-authentication";
 import { Image as ExpoImage } from "expo-image";
 import { router } from "expo-router";
 import { useQuery } from "convex/react";
-import { Host, ScrollView, VStack, TextField, Button, Text, RNHostView } from "@expo/ui/swift-ui";
+import {
+  Host,
+  ScrollView,
+  VStack,
+  TextField,
+  Button,
+  Text,
+  RNHostView,
+  useNativeState,
+} from "@expo/ui/swift-ui";
+import { runOnJS } from "react-native-worklets";
 import {
   autocorrectionDisabled,
   foregroundStyle,
@@ -32,6 +42,7 @@ import { api } from "@/convex/_generated/api";
 import { authClient } from "@/lib/auth-client";
 import { assets } from "@/lib/assets";
 import { haptics } from "@/lib/haptics";
+import { maskUsername } from "@/lib/masks";
 import {
   firstError,
   forgotPasswordSchema,
@@ -59,6 +70,7 @@ export default function SignInScreen() {
 
   const [signInMethod, setSignInMethod] = useState<SignInMethod>("email");
   const [emailValue, setEmailValue] = useState("");
+  const usernameFieldState = useNativeState("");
   const [usernameValue, setUsernameValue] = useState("");
   const [password, setPassword] = useState("");
   const [otpEmail, setOtpEmail] = useState("");
@@ -365,8 +377,14 @@ export default function SignInScreen() {
               <VStack spacing={6} alignment="leading" modifiers={[frame({ maxWidth: Infinity })]}>
                 <Text modifiers={labelModifiers}>Username</Text>
                 <TextField
+                  text={usernameFieldState}
                   placeholder="johndoe"
-                  onTextChange={setUsernameValue}
+                  onTextChange={(text) => {
+                    "worklet";
+                    const next = maskUsername(text);
+                    usernameFieldState.value = next;
+                    runOnJS(setUsernameValue)(next);
+                  }}
                   modifiers={[
                     ...inputModifiers,
                     keyboardType("ascii-capable"),

@@ -48,9 +48,12 @@ import { Button as ButtonTokens } from "@/constants/layout";
 
 import { api } from "@/convex/_generated/api";
 import { isReservedUsername, isValidUsernameFormat } from "@/convex/constants";
+import { runOnJS } from "react-native-worklets";
+
 import { authClient } from "@/lib/auth-client";
 import { assets } from "@/lib/assets";
 import { haptics } from "@/lib/haptics";
+import { maskUsername } from "@/lib/masks";
 import { setNativeValue } from "@/lib/native-state";
 import { OtpVerification, type PendingAvatar } from "@/components/auth/otp-verification";
 import { PasswordField } from "@/components/auth/password-field";
@@ -73,6 +76,7 @@ export default function SignUpScreen() {
   const colors = useColors();
   const brandIcon = useThemedAsset(assets.brandIconLight, assets.brandIconDark);
   const [name, setName] = useState("");
+  const usernameState = useNativeState("");
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -117,13 +121,13 @@ export default function SignUpScreen() {
 
   const handleUsernameChange = useCallback(
     (value: string) => {
-      // Force lowercase so the field reads what the schema stores. iOS would
-      // otherwise autocapitalize the first letter on `ascii-capable`.
-      const lower = value.toLowerCase();
-      setUsername(lower);
+      // `value` arrives already masked (lowercase, `[a-z0-9._]`) from the
+      // field's worklet, so this only mirrors it and drives the availability
+      // check off the JS thread.
+      setUsername(value);
       setUsernameAvailable(null);
       if (usernameCheckRef.current) clearTimeout(usernameCheckRef.current);
-      const trimmed = lower.trim();
+      const trimmed = value.trim();
       if (!trimmed || !isValidUsernameFormat(trimmed)) return;
       if (isReservedUsername(trimmed)) {
         setUsernameAvailable(false);
@@ -497,8 +501,14 @@ export default function SignUpScreen() {
           >
             <Text modifiers={labelModifiers}>Username (optional)</Text>
             <TextField
+              text={usernameState}
               placeholder="johndoe"
-              onTextChange={handleUsernameChange}
+              onTextChange={(text) => {
+                "worklet";
+                const next = maskUsername(text);
+                usernameState.value = next;
+                runOnJS(handleUsernameChange)(next);
+              }}
               modifiers={[
                 ...inputModifiers,
                 keyboardType("ascii-capable"),

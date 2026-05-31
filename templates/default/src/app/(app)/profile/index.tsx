@@ -52,9 +52,12 @@ import { useDynamicFont } from "@/lib/dynamic-font";
 import { useSymbolSize } from "@/lib/dynamic-symbol-size";
 import { Button as ButtonTokens } from "@/constants/layout";
 
+import { runOnJS } from "react-native-worklets";
+
 import { api } from "@/convex/_generated/api";
 import { authClient } from "@/lib/auth-client";
 import { haptics } from "@/lib/haptics";
+import { maskOtp, maskUsername } from "@/lib/masks";
 import { setNativeValue } from "@/lib/native-state";
 import { firstError, profileUpdateSchema } from "@/lib/schemas";
 import { validateBio } from "@/convex/validators";
@@ -89,7 +92,10 @@ export default function ProfileScreen() {
   const deleteAccountMutation = useMutation(api.users.deleteAccount);
 
   // SwiftUI source of truth via useNativeState; mirrored to React state via
-  // onTextChange so derived values like `hasChanges` stay reactive.
+  // onTextChange so derived values like `hasChanges` stay reactive. Username
+  // and the email-OTP field below add a "worklet" onTextChange so the mask
+  // (lowercase / digits-only) rewrites the field synchronously on the UI
+  // thread; name, email, and bio need no masking so they keep a plain mirror.
   const nameState = useNativeState(me?.name ?? "");
   const usernameState = useNativeState(me?.username ?? "");
   const emailState = useNativeState(me?.email ?? "");
@@ -426,9 +432,10 @@ export default function ProfileScreen() {
                     text={otpCodeState}
                     placeholder="000000"
                     onTextChange={(text) => {
-                      const digits = text.replace(/\D/g, "").slice(0, 6);
-                      if (digits !== text) setNativeValue(otpCodeState, digits);
-                      setOtp(digits);
+                      "worklet";
+                      const digits = maskOtp(text);
+                      otpCodeState.value = digits;
+                      runOnJS(setOtp)(digits);
                     }}
                     autoFocus
                     modifiers={[
@@ -499,7 +506,12 @@ export default function ProfileScreen() {
                   <TextField
                     text={usernameState}
                     placeholder="johndoe"
-                    onTextChange={(v) => setUsername(v.toLowerCase())}
+                    onTextChange={(text) => {
+                      "worklet";
+                      const next = maskUsername(text);
+                      usernameState.value = next;
+                      runOnJS(setUsername)(next);
+                    }}
                     modifiers={[
                       ...inputModifiers,
                       keyboardType("ascii-capable"),
