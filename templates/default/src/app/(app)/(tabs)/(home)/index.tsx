@@ -1,4 +1,4 @@
-import { Host, ScrollView, VStack, Text, ContentUnavailableView } from "@expo/ui/swift-ui";
+import { Host, ScrollView, VStack, Text } from "@expo/ui/swift-ui";
 import {
   foregroundStyle,
   kerning,
@@ -8,6 +8,7 @@ import {
   tint,
 } from "@expo/ui/swift-ui/modifiers";
 
+import { ContentUnavailable } from "@/components/ui/content-unavailable";
 import { authClient } from "@/lib/auth-client";
 import { useDynamicFont } from "@/lib/dynamic-font";
 import { useColors } from "@/hooks/use-theme";
@@ -49,7 +50,7 @@ export default function HomeScreen() {
             </Text>
           </VStack>
 
-          <ContentUnavailableView
+          <ContentUnavailable
             title="Nothing here yet"
             systemImage="square.dashed"
             description="Home screen is ready to build."

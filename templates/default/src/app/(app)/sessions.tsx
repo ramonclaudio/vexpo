@@ -1,15 +1,5 @@
 import { useEffect, useState } from "react";
-import {
-  Host,
-  ScrollView,
-  Button,
-  Text,
-  VStack,
-  HStack,
-  Spacer,
-  Alert,
-  ContentUnavailableView,
-} from "@expo/ui/swift-ui";
+import { Host, ScrollView, Button, Text, VStack, HStack, Spacer, Alert } from "@expo/ui/swift-ui";
 import {
   background,
   buttonStyle,
@@ -23,6 +13,7 @@ import {
   tint,
 } from "@expo/ui/swift-ui/modifiers";
 
+import { ContentUnavailable } from "@/components/ui/content-unavailable";
 import { SkeletonSessions } from "@/components/ui/skeleton";
 import { useDynamicFont } from "@/lib/dynamic-font";
 
@@ -117,7 +108,7 @@ export default function SessionsScreen() {
       {sessions === null ? (
         <SkeletonSessions />
       ) : sessions.length === 0 ? (
-        <ContentUnavailableView
+        <ContentUnavailable
           title="No active sessions"
           systemImage="list.bullet.rectangle.portrait"
           description="You have no other active sessions."

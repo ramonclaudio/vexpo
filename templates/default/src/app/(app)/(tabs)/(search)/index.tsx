@@ -1,16 +1,6 @@
 import { useMemo, useState } from "react";
 import { router, Stack } from "expo-router";
-import {
-  Host,
-  ScrollView,
-  Button,
-  Text,
-  VStack,
-  HStack,
-  Spacer,
-  Image,
-  ContentUnavailableView,
-} from "@expo/ui/swift-ui";
+import { Host, ScrollView, Button, Text, VStack, HStack, Spacer, Image } from "@expo/ui/swift-ui";
 import {
   accessibilityLabel,
   background,
@@ -30,6 +20,7 @@ import { useColors } from "@/hooks/use-theme";
 import { useDebounce } from "@/hooks/use-debounce";
 import { useDebugEnabled } from "@/lib/preferences";
 import { haptics } from "@/lib/haptics";
+import { ContentUnavailable } from "@/components/ui/content-unavailable";
 
 type Destination = {
   title: string;
@@ -171,7 +162,7 @@ export default function SearchScreen() {
             modifiers={[padding({ horizontal: 24, top: 16, bottom: 40 })]}
           >
             {results.length === 0 ? (
-              <ContentUnavailableView
+              <ContentUnavailable
                 title="No results"
                 systemImage="magnifyingglass"
                 description={`Nothing matches "${query.trim()}"`}

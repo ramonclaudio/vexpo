@@ -11,7 +11,6 @@ import {
   Spacer,
   Image,
   Text,
-  ContentUnavailableView,
   DisclosureGroup,
 } from "@expo/ui/swift-ui";
 import {
@@ -27,6 +26,7 @@ import {
 } from "@expo/ui/swift-ui/modifiers";
 import { useDynamicFont } from "@/lib/dynamic-font";
 import { useSymbolSize } from "@/lib/dynamic-symbol-size";
+import { ContentUnavailable } from "@/components/ui/content-unavailable";
 import { Button as ButtonTokens } from "@/constants/layout";
 
 import { ErrorText } from "@/components/ui/status-text";
@@ -189,7 +189,7 @@ export default function HelpScreen() {
             )}
 
             {filteredFaq.length === 0 ? (
-              <ContentUnavailableView
+              <ContentUnavailable
                 title="No results"
                 systemImage="magnifyingglass"
                 description="Try a different search term"
