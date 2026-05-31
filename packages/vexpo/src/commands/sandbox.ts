@@ -5,11 +5,22 @@
  * modifies renewal behaviour, which is what CI testing actually needs.
  */
 
+import { AscApiError } from "../lib/asc-api.ts";
 import { sandbox, type SandboxTesterUpdate } from "../lib/asc-sandbox.ts";
 import { ascBootstrap } from "../lib/asc-state.ts";
 import { BOLD, DIM, RESET, bad, line, nop, note, ok, section } from "../lib/output.ts";
 
 const ASC_SANDBOX_URL = "https://appstoreconnect.apple.com/access/users/sandbox";
+
+// Apple 404s the whole sandboxTesters surface when the feature isn't enabled
+// for the team (it also returns 404 if it changes the endpoint again). That's
+// an Apple-side state, not a vexpo failure, so surface it plainly.
+const SANDBOX_UNAVAILABLE =
+  "Apple's sandbox testers API is unavailable for this team (404). Manage them in App Store Connect -> Users and Access -> Sandbox.";
+
+function sandboxUnavailable(err: unknown): err is AscApiError {
+  return err instanceof AscApiError && err.status === 404;
+}
 
 async function client() {
   const { client: ascClient } = await ascBootstrap();
@@ -46,6 +57,12 @@ export async function runSandboxList(opts: { json?: boolean } = {}): Promise<num
     }
     return 0;
   } catch (err) {
+    if (sandboxUnavailable(err)) {
+      section("Sandbox testers");
+      nop("unavailable");
+      note(SANDBOX_UNAVAILABLE);
+      return 0;
+    }
     bad(err instanceof Error ? err.message : String(err));
     return 1;
   }
@@ -67,6 +84,10 @@ export async function runSandboxUpdate(id: string, opts: SandboxTesterUpdate): P
     ok("updated");
     return 0;
   } catch (err) {
+    if (sandboxUnavailable(err)) {
+      note(SANDBOX_UNAVAILABLE);
+      return 1;
+    }
     bad(err instanceof Error ? err.message : String(err));
     return 1;
   }
@@ -84,6 +105,10 @@ export async function runSandboxClearPurchases(ids: string[]): Promise<number> {
     ok(`requested for ${ids.length} tester${ids.length === 1 ? "" : "s"}`);
     return 0;
   } catch (err) {
+    if (sandboxUnavailable(err)) {
+      note(SANDBOX_UNAVAILABLE);
+      return 1;
+    }
     bad(err instanceof Error ? err.message : String(err));
     return 1;
   }
