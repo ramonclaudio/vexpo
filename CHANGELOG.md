@@ -2,6 +2,13 @@
 
 All notable changes to vexpo are tracked here. Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.1] - 2026-05-31
+
+Patch release for the `@ramonclaudio/vexpo` CLI. `@ramonclaudio/create-vexpo` republishes in lockstep with no functional change.
+
+- `vexpo sandbox` degrades gracefully when Apple 404s the sandbox testers API: a plain pointer to App Store Connect instead of a raw `ASC 404 PATH_ERROR`. `list` exits 0.
+- `vexpo doctor` resend webhook check now names the wrong-Resend-account case (webhooks exist for other `convex.site` deployments but not this one) instead of reporting a missing webhook.
+
 ## [0.1.0] - 2026-05-11
 
 First public release.
@@ -13,4 +20,5 @@ First public release.
 
 See [`README.md`](./README.md) for the feature list, [`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md) for the trade-off log, [`docs/SECURITY.md`](./docs/SECURITY.md) for the threat model, [`docs/OPERATIONS.md`](./docs/OPERATIONS.md) for the on-call runbook, and [`docs/UPSTREAM.md`](./docs/UPSTREAM.md) for the ledger of every upstream PR we shipped to `expo/expo` that the template depends on.
 
+[0.1.1]: https://github.com/ramonclaudio/vexpo/releases/tag/v0.1.1
 [0.1.0]: https://github.com/ramonclaudio/vexpo/releases/tag/v0.1.0
