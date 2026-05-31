@@ -1,13 +1,5 @@
 import { useLocalSearchParams } from "expo-router";
-import {
-  Host,
-  ScrollView,
-  Text,
-  VStack,
-  HStack,
-  Spacer,
-  ContentUnavailableView,
-} from "@expo/ui/swift-ui";
+import { Host, ScrollView, Text, VStack, HStack, Spacer } from "@expo/ui/swift-ui";
 import {
   background,
   cornerRadius,
@@ -20,6 +12,7 @@ import {
 } from "@expo/ui/swift-ui/modifiers";
 import { useDynamicFont } from "@/lib/dynamic-font";
 
+import { ContentUnavailable } from "@/components/ui/content-unavailable";
 import { useColors } from "@/hooks/use-theme";
 
 export default function LinkedScreen() {
@@ -103,7 +96,7 @@ export default function LinkedScreen() {
               </VStack>
             </VStack>
           ) : (
-            <ContentUnavailableView
+            <ContentUnavailable
               title="No params"
               systemImage="link.badge.plus"
               description="This deep link didn't include any parameters."
