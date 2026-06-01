@@ -90,8 +90,6 @@ http.route({
           appName: payload.metadata?.appName,
           detailsUrl: payload.buildDetailsPageUrl,
         });
-        // Extend: dispatch on `payload.status === "errored"` to a Slack
-        // notifier, persist the build/submit row to a Convex table, etc.
         return new Response(JSON.stringify({ ok: true, requestId }), {
           status: 200,
           headers: { "Content-Type": "application/json", "X-Request-Id": requestId },

@@ -77,22 +77,6 @@ const exitWith = (p: Promise<number>): void => {
   });
 };
 
-/* ---------------------------------------------------------- lite / full --- */
-
-// Two top-level setup commands:
-//
-//   vexpo lite          Convex + Better Auth only, 60-second simulator path.
-//   vexpo lite --new    same, plus a Convex signup walkthrough for first-time users.
-//   vexpo full          full provisioning: Convex + Better Auth + Resend + Apple
-//                       Sign In + ASC API key + EAS init + rebrand. Does NOT
-//                       auto-build to TestFlight, just provisions.
-//   vexpo full --new    same, plus the Apple/Expo/Convex/Resend signup walkthrough
-//                       for first-time users.
-//
-// After `vexpo full` completes, the user runs `eas build -p ios --profile
-// production --auto-submit-with-profile testflight` to ship to TestFlight.
-// vexpo does NOT invoke eas build itself.
-
 program
   .command("lite")
   .description(
@@ -286,8 +270,6 @@ program
     }) => exitWith(runResend(options)),
   );
 
-/* ---------------------------------------------------------------- apple --- */
-
 const apple = program.command("apple").description("Apple-side provisioning.");
 
 apple
@@ -331,8 +313,6 @@ apple
   )
   .option("--force", "overwrite existing values", false)
   .action((options: { force?: boolean }) => exitWith(runEasRotationSecrets(options)));
-
-/* ------------------------------------------------------------------ env --- */
 
 const env = program
   .command("env")
@@ -400,16 +380,6 @@ env
       ),
   );
 
-/* ------------------------------------------------------------------ asc --- */
-// ASC API direct access for endpoints eas-cli doesn't expose: TestFlight
-// beta groups + testers, customer review responses, sandbox testers, version
-// state + phased rollout, privacy + accessibility nutrition labels. The
-// EAS<->ASC link (`eas integrations:asc:connect`) is wrapped by
-// `vexpo asc:connect` (passes EXPO_ASC_API_KEY_* so the Apple auth step needs
-// no Apple ID prompt); `vexpo full` runs the same step. Needs a TTY: eas
-// integrations:asc:connect can't run headless (it requires an uploaded key id
-// + app id in --non-interactive mode).
-
 program
   .command("asc:connect")
   .description(
@@ -461,13 +431,6 @@ program
   .option("--json", "JSON output", false)
   .action((options) => exitWith(runSubmissionsList(options)));
 
-/* -------------------------------------------------------- asc:privacy --- */
-// Privacy Nutrition Labels. Apple's public API exposes NO privacy resource
-// (the App resource has no privacy relationship), so this is local-only: show
-// renders the declared `app-store/privacy.config.json`, lint validates it
-// against the published data type + purpose enums so a stale label gets caught
-// pre-submission. The live label is set in App Store Connect.
-
 const ascPrivacy = program.command("asc:privacy").description("Privacy nutrition labels (local).");
 
 ascPrivacy
@@ -483,10 +446,6 @@ ascPrivacy
   .description("Validate a local privacy.config.json against Apple's enums.")
   .action((file: string) => exitWith(runPrivacyLint(file)));
 
-/* --------------------------------------------------- asc:accessibility --- */
-// Accessibility Nutrition Labels (WWDC25, iOS 26+). Same shape as
-// asc:privacy: show pulls current state, lint validates locals.
-
 const ascA11y = program
   .command("asc:accessibility")
   .description("Accessibility nutrition labels (iOS 26+).");
@@ -501,10 +460,6 @@ ascA11y
   .command("lint <file>")
   .description("Validate a local accessibility.config.json against Apple's enums.")
   .action((file: string) => exitWith(runAccessibilityLint(file)));
-
-/* ----------------------------------------------------------- testflight --- */
-// TestFlight beta groups + testers. eas-cli stops at upload; ASC API
-// owns the rest of the flow.
 
 const testflight = program
   .command("testflight")
@@ -588,8 +543,6 @@ testflight
     exitWith(runTestflightWhatsNew({ buildId, locale: options.locale ?? "en-US", text })),
   );
 
-/* -------------------------------------------------------------- reviews --- */
-
 const reviewsCmd = program
   .command("reviews")
   .description("Customer reviews + responses via ASC API.");
@@ -620,8 +573,6 @@ reviewsCmd
   .command("delete-response <responseId>")
   .description("Delete a review response.")
   .action((responseId: string) => exitWith(runReviewsDeleteResponse(responseId)));
-
-/* -------------------------------------------------------------- sandbox --- */
 
 const sandboxCmd = program
   .command("sandbox")

@@ -124,9 +124,7 @@ export function OtpVerification({
             const { storageId } = (await upload.json()) as { storageId: string };
             await updateAvatar({ storageId: storageId as never });
           }
-        } catch {
-          // Swallow: verification still succeeded.
-        }
+        } catch {}
       }
 
       haptics.success();

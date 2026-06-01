@@ -25,7 +25,6 @@ async function fileExists(p: string): Promise<boolean> {
   }
 }
 
-/** What the user's project lockfile says they use. Defaults to npm. */
 export async function detectPackageManager(): Promise<PackageManager> {
   if (await fileExists("bun.lock")) return "bun";
   if (await fileExists("bun.lockb")) return "bun";
@@ -34,12 +33,10 @@ export async function detectPackageManager(): Promise<PackageManager> {
   return "npm";
 }
 
-/** Runtime-aware dlx. Use this for OUR subprocess invocations. */
 export function dlx(): string {
   return process.versions.bun ? "bunx" : "npx";
 }
 
-/** PM-aware dlx, for printing user-facing commands. */
 export function dlxFor(pm: PackageManager): string {
   switch (pm) {
     case "bun":

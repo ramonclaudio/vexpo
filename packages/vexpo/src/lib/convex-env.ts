@@ -67,8 +67,6 @@ export async function envRemove(name: string, target?: ConvexTarget): Promise<vo
 }
 
 /**
- * Set every var in a `.env`-format file in one shot via `convex env set --from-file`.
- * Single call instead of looping per-key. The CLI handles the upsert semantics.
  * Pass `force: true` to overwrite existing values (Convex CLI requires --force on overwrite).
  */
 export async function envSetFromFile(

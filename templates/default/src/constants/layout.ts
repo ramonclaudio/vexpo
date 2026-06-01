@@ -60,12 +60,6 @@ export const Breakpoint = {
 export const TAB_BAR_HEIGHT = 80;
 export const TAB_BAR_CLEARANCE = TAB_BAR_HEIGHT + Spacing.lg;
 
-// Single source of truth for prominent action buttons across the auth flow,
-// onboarding, error states, and OTP. Keeps Sign In, Sign Up, Send Reset
-// Code, Reset Password, Verify, Try Again, and Sign in with Apple visually
-// identical: same height, same capsule corner radius, same Geist label
-// size and weight. Color comes from the shadcn palette (`primary` /
-// `primaryForeground`), never hardcoded.
 export const Button = {
   height: 50,
   cornerRadius: 25,

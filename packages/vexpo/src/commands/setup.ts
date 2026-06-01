@@ -1,28 +1,3 @@
-/**
- * `vexpo full`. orchestrator. Probes existing state, then runs only the
- * subcommands that haven't been completed. Each phase is also runnable
- * standalone (`vexpo convex`, `vexpo resend`, etc.).
- *
- * Caches per-step "verified at" timestamps in .setup-state.json (gitignored).
- * On re-runs, fresh cached steps are skipped without hitting external APIs.
- * State is never the source of truth: external services win on disagreement,
- * and --force re-runs everything regardless. --no-state ignores the cache.
- *
- * For env-only sync (no provisioning, no signups), use `vexpo env push`.
- *
- * The JWT rotation cron's secrets (APPLE_P8_PRIVATE_KEY, CONVEX_DEPLOY_KEY,
- * etc.) are set manually as EAS env vars at production/secret visibility:
- *
- *   eas env:create --name CONVEX_DEPLOY_KEY     --value <…> --environment production --visibility secret
- *   eas env:create --name APPLE_P8_PRIVATE_KEY  --value-file <…>.p8 --environment production --visibility secret
- *   eas env:create --name APPLE_TEAM_ID         --value <…> --environment production --visibility secret
- *   eas env:create --name APPLE_KEY_ID          --value <…> --environment production --visibility secret
- *   eas env:create --name APPLE_SERVICES_ID     --value <…> --environment production --visibility secret
- *
- * Then .eas/workflows/rotate-apple-jwt.yml reads them automatically when the
- * cron fires.
- */
-
 import { access } from "node:fs/promises";
 
 import {
@@ -64,7 +39,6 @@ import {
   type StepName,
 } from "../lib/state.ts";
 
-// Subcommand runners. direct in-process calls, no spawning.
 import { runAccounts } from "./accounts.ts";
 import { runAppleCredentials } from "./apple/credentials.ts";
 import { runAscKey } from "./apple/asc-key.ts";
@@ -86,21 +60,8 @@ export type SetupOptions = {
   dryRun?: boolean;
   plan?: boolean;
   noState?: boolean;
-  /**
-   * Lite mode. Provisions only what the iOS Simulator needs:
-   * Convex deployment + Better Auth secret + bundle id prompt. No Apple
-   * Developer account, no domain, no EAS, no Resend, no rebrand. Email
-   * verification stays off (sign-up auto-verifies, no OTP). ~60 seconds
-   * from clone to `npm run ios`.
-   */
   lite?: boolean;
   /**
-   * First-time user mode. Walks through every account signup (Apple
-   * Developer, Convex, Expo, Resend) with explainer text before doing
-   * the actual provisioning. Without this flag, vexpo assumes you already
-   * have those accounts + API keys and skips the educational walkthrough,
-   * jumping straight to interactive credential prompts where needed.
-   *
    * An Apple Developer Program membership is always required for TestFlight
    * because Apple has no API to create one. `--new` includes a pause and
    * `helpAndWait` if the user isn't enrolled.
@@ -109,10 +70,6 @@ export type SetupOptions = {
   skipRebrand?: boolean;
 };
 
-// Lite mode → only Convex + Better Auth phases run.
-// Default mode → assumes the user has accounts + API keys; skips the
-// signup walkthrough phase but provisions everything else.
-// --new → adds the signup walkthrough on top of the default.
 type EffectiveScope = {
   accounts: boolean;
   rebrand: boolean;
@@ -126,10 +83,6 @@ function computeScope(o: SetupOptions): EffectiveScope {
   const lite = o.lite === true;
   const isNew = o.isNew === true;
   return {
-    // Accounts walkthrough is educational only. Default mode skips it because
-    // users with existing accounts don't need it. `--new` opts in. In lite
-    // mode + --new, the walkthrough is limited to the Convex signup (runAccounts
-    // gets `lite: true` and short-circuits past Apple/Domain/Expo/Resend).
     accounts: isNew,
     rebrand: !lite && !o.skipRebrand,
     resend: !lite,
@@ -139,10 +92,6 @@ function computeScope(o: SetupOptions): EffectiveScope {
   };
 }
 
-// Module-level options handle, populated at the start of runSetup. The
-// subordinate functions in this module read it instead of taking options
-// through every call. This keeps the original orchestrator's shape but
-// drops the global parseArgs dependency.
 let options: SetupOptions = {};
 
 async function isXcodeInstalled(): Promise<boolean> {
@@ -169,9 +118,7 @@ async function trashPaths(paths: string[]): Promise<void> {
     try {
       await access(p);
       existing.push(p);
-    } catch {
-      // path doesn't exist, skip
-    }
+    } catch {}
   }
   if (existing.length === 0) return;
   const proc = spawn(["trash", ...existing], {
@@ -249,13 +196,8 @@ async function shouldRun(step: StepName, liveCheck: () => Promise<boolean>): Pro
   }
   const live = await liveCheck();
   if (live && !options.dryRun && !options.plan && !options.noState) {
-    // Upsert a state entry so subsequent probes find this step cached and the
-    // final summary shows "ok" instead of "-". Without this, any step whose
-    // runner is never invoked (because the live check confirmed completion)
-    // appears blank in the summary even though it's correctly configured.
     // Gated on !dryRun + !plan + !noState because those modes are explicitly
-    // read-only previews; mutating state.json from a preview would be a
-    // surprise.
+    // read-only previews; mutating state.json from a preview would be a surprise.
     await recordStep(step, { source: "live-check" });
   }
   return { step, label: step, status: live ? "live" : "missing" };
@@ -430,11 +372,6 @@ async function stepProbe(): Promise<{
   return { rows, needs, install: !installOk, localEnv: localOk };
 }
 
-/**
- * Per-phase summary for dry-run output. What each phase would do if we
- * ran it now, given current state. Phrased so the reader can decide
- * whether they're comfortable with each action before committing.
- */
 type PhaseDescription = {
   step: StepName;
   label: string;
@@ -678,18 +615,6 @@ async function printDryRunPlan(probe: {
   note(`single-phase: ${DIM}npx vexpo <phase>${RESET} (e.g. ${DIM}npx vexpo resend${RESET})`);
 }
 
-/**
- * `vexpo full --plan` prints the full journey before any work runs.
- *
- * Three buckets:
- *  - async-wait: human-driven step you can't shortcut (Apple enrollment, DNS).
- *    Time cost is wallclock. Schedule accordingly.
- *  - sync-click: web UI work. Time cost is keyboard time. Each one is small.
- *  - auto: CLI handles, no input needed beyond what's already cached.
- *
- * Reading this should let the user decide whether to commit before they hit
- * Enter on `vexpo full`.
- */
 type JourneyEntry = {
   label: string;
   cost: string;
@@ -877,14 +802,10 @@ const LITE_AUTO_LABELS = new Set<string>([
 
 export function isComplete(result: { needs: Map<string, boolean>; install: boolean }): boolean {
   if (result.install) return false;
-  // Mirrors the full-mode phase order from `printDryRunPlan` and the
-  // orchestrator loop. Every phase that `vexpo full` invokes in default
-  // scope (i.e. excluding `accounts` and `review-account`, which are
-  // opt-in / standalone) must appear here, otherwise a step missing from
-  // the cache will exit early through the "everything is configured" gate.
-  // Original 5-entry list missed `apple-asc-link`, `apple-credentials`,
-  // `apple-services-id`, `apple-eas-rotation-secrets`, `asc-key`, and
-  // `rebrand`. Bug surfaced when apple-asc-link was the only missing step.
+  // Every phase that `vexpo full` invokes in default scope (i.e. excluding
+  // `accounts` and `review-account`, which are opt-in / standalone) must appear
+  // here, otherwise a step missing from the cache will exit early through the
+  // "everything is configured" gate.
   for (const required of [
     "rebrand",
     "convex",
@@ -944,12 +865,6 @@ const completed: StepName[] = [];
 const skipped: StepName[] = [];
 let failedStep: StepName | null = null;
 
-/**
- * Maps a subcommand display name to its in-process runner. Direct calls
- * instead of spawning child processes. the cli.ts entry point already
- * registers each command, but the orchestrator goes through these so
- * cached/missing steps are routed through one place.
- */
 type StepRunner = () => Promise<number>;
 
 const STEP_RUNNERS: Record<string, StepRunner> = {
@@ -1057,12 +972,6 @@ async function printSummary(useLocal: boolean, elapsedMs: number): Promise<void>
     "EXPO_PUBLIC_APP_BUNDLE_ID",
     "EXPO_PUBLIC_APPLE_TEAM_ID",
   ];
-  // Mirrors the phase order in the orchestrator + the dry-run plan. Includes
-  // every step the full-mode flow visits (and review-account, which is opt-in
-  // via prompt). Steps appear in this list even if they weren't explicitly
-  // run, because `shouldRun` upserts state when a live check passes so the
-  // summary can show "ok" instead of "-" for steps that were validated but
-  // never needed a runner.
   const stateKeys: StepName[] = [
     "accounts",
     "rebrand",
@@ -1117,11 +1026,7 @@ async function printSummary(useLocal: boolean, elapsedMs: number): Promise<void>
 }
 
 export async function runSetup(opts: SetupOptions): Promise<number> {
-  // Module-level options used by helpers (probe, runStep, etc.). Refresh on
-  // each entry. the caller passes a fresh options object, we mirror it here.
   options = opts;
-  // Reset module-level accumulators so a second runSetup in one process (tests,
-  // a future batch mode) starts clean and the audit attributes the real step.
   failedStep = null;
   completed.length = 0;
   skipped.length = 0;
@@ -1134,10 +1039,8 @@ export async function runSetup(opts: SetupOptions): Promise<number> {
       await clearAll();
     }
 
-    // Detect a concurrent run (another vexpo process touched .setup-state.json
-    // within the warn window). Warn but don't block. running setup in two
-    // terminals at once is unusual but not catastrophic; the state file's
-    // atomic rename and per-step idempotency handle the race.
+    // Warn but don't block on a concurrent run: the state file's atomic rename
+    // and per-step idempotency handle the race.
     if (!options.dryRun && !options.plan && !options.noState) {
       const existing = await loadState();
       const concurrent = checkConcurrentRun(existing);
@@ -1179,7 +1082,6 @@ export async function runSetup(opts: SetupOptions): Promise<number> {
 
     const scope = computeScope(options);
 
-    // Phase 0: account orchestration (interactive walk through signups)
     if (scope.accounts) {
       const status = probe.rows.get("accounts")?.status;
       if (options.force || status === "missing") {
@@ -1195,7 +1097,6 @@ export async function runSetup(opts: SetupOptions): Promise<number> {
       skipped.push("accounts");
     }
 
-    // Phase 1: rebrand wizard (only if template defaults still in place)
     if (scope.rebrand) {
       const status = probe.rows.get("rebrand")?.status;
       if (options.force || status === "missing") {
@@ -1211,22 +1112,18 @@ export async function runSetup(opts: SetupOptions): Promise<number> {
       skipped.push("rebrand");
     }
 
-    // Phase 2: Convex (write .env.local, create deployment). always runs.
     if (options.fresh || options.force || probe.needs.get("convex")) {
       await runStep("vexpo convex", "convex");
     } else {
       nop("vexpo convex already complete");
     }
 
-    // Phase 3: Better Auth secret + APP_NAME. always runs.
     if (options.force || probe.needs.get("better-auth")) {
       await runStep("vexpo better-auth", "better-auth");
     } else {
       nop("vexpo better-auth already complete");
     }
 
-    // Phase 4: Resend (key + webhook). DNS records are added by you at your
-    // registrar. Resend's dashboard shows verification status.
     if (scope.resend) {
       if (options.force || probe.needs.get("resend")) {
         await runStep("vexpo resend", "resend");
@@ -1237,7 +1134,6 @@ export async function runSetup(opts: SetupOptions): Promise<number> {
       skipped.push("resend");
     }
 
-    // Phase 5: review account (interactive). production tier only.
     if (scope.reviewAccount) {
       await maybeRunStep(
         "vexpo review-account",
@@ -1248,7 +1144,6 @@ export async function runSetup(opts: SetupOptions): Promise<number> {
       skipped.push("review-account");
     }
 
-    // Phase 6: EAS init + env mirror. testflight tier and above.
     if (scope.eas) {
       if (options.force || probe.needs.get("eas")) {
         await runStep("vexpo eas", "eas");
@@ -1261,8 +1156,6 @@ export async function runSetup(opts: SetupOptions): Promise<number> {
       skipped.push("eas");
     }
 
-    // Phase 7: Apple. ASC key bootstrap, EAS credentials, Services ID, JWT.
-    // Testflight tier and above.
     if (scope.apple) {
       if (options.force || probe.needs.get("asc-key")) {
         await maybeRunStep(
@@ -1274,9 +1167,6 @@ export async function runSetup(opts: SetupOptions): Promise<number> {
         nop("vexpo apple asc-key cached");
       }
 
-      // Phase 7a.5: EAS iOS credentials. Wraps `eas credentials -p ios` so dist
-      // cert / provisioning profile / push key / ASC API key all land on EAS.
-      // Required for any `eas build` or `eas submit` to work.
       if (options.force || probe.needs.get("apple-credentials")) {
         await maybeRunStep(
           "vexpo apple credentials",
@@ -1287,12 +1177,6 @@ export async function runSetup(opts: SetupOptions): Promise<number> {
         nop("vexpo apple credentials cached");
       }
 
-      // Link the EAS project to its ASC app via `eas integrations:asc:connect`.
-      // Pre-sets EXPO_ASC_API_KEY_* env vars from cached asc-key state so the
-      // wizard's credential paste step auto-fills, and passes --bundle-id so
-      // the app picker is skipped. Wizard still prompts once when no key is
-      // uploaded yet (Use existing / Set up new). Idempotent: skips when EAS
-      // already reports as connected.
       if (options.force || probe.needs.get("apple-asc-link")) {
         await maybeRunStep(
           "vexpo asc connect",
@@ -1319,8 +1203,6 @@ export async function runSetup(opts: SetupOptions): Promise<number> {
           : "Sign the Apple Sign In JWT now?";
       await maybeRunStep("vexpo apple jwt", prompt, "apple-sign-in");
 
-      // Phase 7c: EAS rotation secrets so the cron at .eas/workflows/rotate-apple-jwt.yml
-      // can fire without manual setup later.
       if (options.force || probe.needs.get("apple-eas-rotation-secrets")) {
         await maybeRunStep(
           "vexpo apple eas-rotation-secrets",
@@ -1348,10 +1230,6 @@ export async function runSetup(opts: SetupOptions): Promise<number> {
     await stepExpoDoctor();
     await printSummary(!!options.local, performance.now() - startedAtPerf);
 
-    // After full provisioning, print the canonical TestFlight build command.
-    // vexpo doesn't invoke `eas build` itself. that's EAS's command and
-    // the user runs it when they're ready (after reviewing the build profile,
-    // checking Apple's review status, etc.). Lite mode skips this hint.
     if (!options.lite && !options.dryRun) {
       printShipNextSteps();
     }
@@ -1366,10 +1244,9 @@ export async function runSetup(opts: SetupOptions): Promise<number> {
     }
     return 1;
   } finally {
-    // Audit trail only on real runs. `--dry-run`, `--plan`, and `--no-state`
-    // are explicitly read-only; mutating `.setup-state.json` from a preview
-    // would surprise users and break CI workflows that rely on the cache
-    // being stable across dry-run validations.
+    // Skip the audit on read-only modes: mutating .setup-state.json from a
+    // preview would break CI workflows that rely on the cache staying stable
+    // across dry-run validations.
     const skipAudit = options.dryRun === true || options.plan === true || options.noState === true;
     if (!skipAudit) {
       try {

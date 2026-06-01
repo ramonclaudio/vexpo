@@ -1,20 +1,3 @@
-// Webhook handler factory for Convex HTTP routes.
-//
-// Every webhook source we accept (EAS Build/Submit, Resend delivery events,
-// future Stripe / GitHub) follows the same shape: a signed POST with a
-// shared secret, JSON body, signature in a header. Centralising the
-// boilerplate here means each route gets:
-//
-//   - Body-size cap (defend against runaway upload eating the function budget)
-//   - Constant-time signature verification (HMAC, configurable algorithm)
-//   - Optional replay protection (timestamp window check)
-//   - Per-request correlation ID + structured access log with timing
-//   - Uniform JSON error responses with a `requestId` for grepping
-//
-// The handler the caller supplies receives the parsed JSON body, raw text
-// body (in case re-hashing is needed), and the request ID. It returns a
-// `Response`; the factory wraps timing + logging around it.
-
 import type { GenericActionCtx } from "convex/server";
 
 import { log, newRequestId } from "./log.ts";
@@ -22,11 +5,8 @@ import { log, newRequestId } from "./log.ts";
 export type SignatureAlgorithm = "sha1" | "sha256";
 
 export type WithWebhookOptions = {
-  /** Stable name in logs. Example: "eas-webhook", "resend-webhook". */
   source: string;
-  /** Request header carrying the signature. Example: "expo-signature". */
   signatureHeader: string;
-  /** Convex env var holding the shared secret. Example: "EAS_WEBHOOK_SECRET". */
   secretEnv: string;
   /** HMAC algorithm. EAS uses SHA-1, Stripe uses SHA-256, Resend uses Svix's HMAC-SHA256. */
   algorithm: SignatureAlgorithm;
@@ -35,16 +15,9 @@ export type WithWebhookOptions = {
    * EAS sends `sha1=<hex>`, Stripe sends `t=<ts>,v1=<hex>`, etc. Default `""`.
    */
   signaturePrefix?: string;
-  /** Cap the request body size in bytes. Defaults to 1 MiB. */
   maxBodyBytes?: number;
-  /**
-   * Optional max age of the request in seconds. If set, the handler reads
-   * the timestamp from the named header and rejects if too old. Defaults
-   * to "no replay window check."
-   */
   replay?: {
     header: string;
-    /** Allowed clock skew in seconds. */
     maxAgeSeconds: number;
   };
 };
@@ -136,9 +109,6 @@ export function withWebhook<T = unknown>(
         status: response.status,
         durationMs: Date.now() - start,
       });
-      // Always attach X-Request-Id to the response so callers can correlate
-      // logs even when the handler doesn't set it explicitly. Don't clobber
-      // a value the handler already chose.
       if (!response.headers.get("X-Request-Id")) {
         const headers = new Headers(response.headers);
         headers.set("X-Request-Id", requestId);

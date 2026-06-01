@@ -1,23 +1,8 @@
 /**
- * `vexpo apple asc-key`. validates an App Store Connect API key against the
- * ASC REST API and caches the (issuerId, keyId, p8Path) tuple in
- * .setup-state.json so other vexpo commands that talk to ASC directly
- * (`vexpo apple services-id`) can reuse it without re-prompting.
- *
- * What this is NOT:
- *   - We do not upload the key to EAS. That's `eas credentials`. The key
- *     being valid here doesn't mean EAS knows about it.
- *   - We do not create the key in App Store Connect. That has no API path.
- *     You create it once in the ASC web UI; we validate from there.
- *
- * Why we run this before `eas credentials`: catching a bad key here saves
- * the round-trip of uploading to EAS and watching the build fail. Validation
- * is a single GET /v1/apps with the signed JWT; it takes <1 second.
- *
- * Env (skip prompts, useful for CI):
- *   APPLE_ASC_ISSUER_ID    issuer (UUID)
- *   APPLE_ASC_KEY_ID       10-char key id
- *   APPLE_ASC_P8_PATH      path to AuthKey_<id>.p8
+ * We do not create the key in App Store Connect. That has no API path. You
+ * create it once in the ASC web UI; we validate from there. We also don't
+ * upload the key to EAS (that's `eas credentials`): the key being valid here
+ * doesn't mean EAS knows about it.
  */
 
 import { access } from "node:fs/promises";

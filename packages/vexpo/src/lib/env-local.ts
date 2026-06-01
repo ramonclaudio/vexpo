@@ -14,7 +14,6 @@ async function fileExists(p: string): Promise<boolean> {
 export async function readAll(): Promise<Map<string, string>> {
   const out = new Map<string, string>();
   if (!(await fileExists(ENV_FILE))) return out;
-  // Strip UTF-8 BOM if present, normalize CRLF → LF.
   const text = (await readFile(ENV_FILE, "utf8")).replace(/^﻿/, "").replace(/\r\n/g, "\n");
   const lines = text.split("\n");
   for (let i = 0; i < lines.length; i++) {
@@ -25,10 +24,6 @@ export async function readAll(): Promise<Map<string, string>> {
     if (eq <= 0) continue;
     const key = trimmed.slice(0, eq).trim();
     let value = trimmed.slice(eq + 1);
-    // Multi-line quoted value: if value starts with `"` or `'` and the closing
-    // quote is on a later line, accumulate until we find it. Standard dotenv
-    // behavior; preserves the user's intent for keys like SSH keys + JSON
-    // blobs that span lines.
     const startQuote = value.match(/^\s*(['"])/);
     if (startQuote) {
       const quote = startQuote[1];
@@ -43,7 +38,6 @@ export async function readAll(): Promise<Map<string, string>> {
       out.set(key, value);
       continue;
     }
-    // Single-line: trim, drop inline trailing comment (`<space>#...`).
     value = value.trim();
     const hashAt = value.search(/\s#/);
     if (hashAt >= 0) value = value.slice(0, hashAt).trim();

@@ -1,16 +1,3 @@
-/**
- * `vexpo convex:migrate`. Copies the server-side Convex env from another
- * deployment onto the current one (or prod with --prod). These values live ON
- * the deployment, not in any .env file, so env push can't move them: this is
- * the one piece a deployment migration can't get off disk (BETTER_AUTH_SECRET,
- * RESEND_*, APPLE_*, APP_*, SITE_URL, EMAIL_FROM, REQUIRE_EMAIL_VERIFICATION).
- *
- * Convex auto-provides CONVEX_* per deployment, so those are never copied (they
- * must stay pointed at the target). After this, repoint EAS + Resend:
- *   vexpo env convex-key                EAS deploy key + selector
- *   vexpo resend --repoint [--prod]     webhook → the new convex.site
- */
-
 import { access } from "node:fs/promises";
 
 import { deploymentSlug, envMap, envSet, type ConvexTarget } from "../lib/convex-env.ts";
@@ -23,11 +10,6 @@ export type ConvexMigrateOptions = {
   dryRun?: boolean;
 };
 
-/**
- * Server-side env worth migrating: everything the source deployment has that
- * isn't Convex-auto-provided (CONVEX_*) and differs from the target. Pure so the
- * copy decision is unit-testable without shelling out.
- */
 export function selectMigratableEnv(
   src: Map<string, string>,
   dst: Map<string, string>,

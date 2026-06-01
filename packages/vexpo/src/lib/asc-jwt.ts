@@ -1,8 +1,6 @@
 /**
  * ES256 JWT signer for the App Store Connect API. Apple caps tokens at 20
- * minutes; we default to 18 minutes (1080s) with margin. Tokens are signed
- * with a `.p8` private key downloaded from App Store Connect → Users and
- * Access → Integrations → App Store Connect API.
+ * minutes; we default to 18 minutes (1080s) with margin.
  *
  * The header `alg=ES256` and `typ=JWT` plus `kid=keyId` are required.
  * The payload requires `iss=issuerId`, `iat`, `exp`, and `aud="appstoreconnect-v1"`.

@@ -1,21 +1,3 @@
-/**
- * `vexpo apple services-id`. uses the App Store Connect API to find-or-create
- * the Sign In with Apple Services ID + the APPLE_ID_AUTH capability on the
- * primary App's BundleId. The Services ID is what backend Apple OAuth uses
- * as `sub` when signing the client secret JWT (see `vexpo apple jwt`).
- *
- * Reads ASC credentials from state.json (recorded by `vexpo apple asc-key`)
- * and the bundle identifier from .env.local (`EXPO_PUBLIC_APP_BUNDLE_ID`).
- *
- * Idempotent: re-runs detect existing resources and skip create.
- *
- * Env (override prompts):
- *   APPLE_ASC_ISSUER_ID    ASC API issuer
- *   APPLE_ASC_KEY_ID       ASC API key id
- *   APPLE_ASC_P8_PATH      path to .p8
- *   APPLE_SERVICES_ID      desired services id (default: <bundle>.signin)
- */
-
 import { appName } from "../../lib/app.ts";
 import {
   SIGN_IN_WITH_APPLE_CAPABILITY,

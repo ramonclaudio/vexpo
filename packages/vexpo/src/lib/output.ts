@@ -1,17 +1,9 @@
-/**
- * Terminal output helpers. Cross-runtime. uses raw ANSI codes and process
- * streams, no Bun.* APIs.
- */
-
 import { createInterface } from "node:readline/promises";
 
 export const RESET = "\x1b[0m";
 export const BOLD = "\x1b[1m";
 export const DIM = "\x1b[2m";
 
-// Truecolor ANSI from hex. Falls back to ANSI 256-color when truecolor
-// isn't likely supported (TERM lacks "color" hint). Most modern terminals
-// on macOS/Linux support truecolor; we keep it simple.
 function ansiHex(hex: string): string {
   const m = /^#?([\da-f]{2})([\da-f]{2})([\da-f]{2})$/i.exec(hex);
   if (!m) return "";
@@ -38,8 +30,6 @@ export const yep = (m: string): void => line(`  ${YELLOW}!!${RESET}   ${m}`);
 export const bad = (m: string): void => line(`  ${RED}xx${RESET}   ${RED}${m}${RESET}`);
 export const note = (m: string): void => line(`       ${DIM}${m}${RESET}`);
 
-// Approximate "string width". counts codepoints. Doesn't handle CJK/emoji
-// double-width perfectly but good enough for our section dividers.
 function stringWidth(s: string): number {
   return [...s].length;
 }

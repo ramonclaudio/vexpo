@@ -1,15 +1,3 @@
-/**
- * Shared eas-cli helpers.
- *
- * Two patterns:
- *   - `easJson<T>(argv)`. runs eas with `--json --non-interactive`, parses
- *     stdout. Errors throw with the last stderr line as the message.
- *   - `easSpawn(argv)`. runs eas with stdio inherit (interactive). Returns
- *     the numeric exit code.
- *
- * Every domain wrapper (eas-build.ts, eas-update.ts, etc.) builds on these.
- */
-
 import { dlx } from "./pkg-manager.ts";
 import { run, spawn } from "./proc.ts";
 
@@ -25,10 +13,6 @@ function compact(argv: EasArgs): string[] {
   return out;
 }
 
-/**
- * Run eas with JSON output. Appends `--json --non-interactive` if not already
- * present. Parses stdout as `T`. Throws on non-zero exit or invalid JSON.
- */
 export async function easJson<T = unknown>(argv: EasArgs): Promise<T> {
   const flat = compact(argv);
   if (!flat.includes("--json")) flat.push("--json");
@@ -48,11 +32,6 @@ export async function easJson<T = unknown>(argv: EasArgs): Promise<T> {
   }
 }
 
-/**
- * Spawn eas with stdio inherit. Used for interactive commands (build, submit,
- * credentials wizard, etc.) and for any command where the user wants to see
- * the eas-cli output verbatim.
- */
 export async function easSpawn(
   argv: EasArgs,
   opts: { env?: Record<string, string | undefined>; cwd?: string } = {},
@@ -68,11 +47,6 @@ export async function easSpawn(
   return proc.exited;
 }
 
-/**
- * Run eas non-interactively, capturing stdout + stderr. For commands that
- * don't support `--json` but need scripted invocation. Returns raw streams +
- * exit code; caller decides what to do with them.
- */
 export async function easText(
   argv: EasArgs,
 ): Promise<{ code: number; stdout: string; stderr: string }> {

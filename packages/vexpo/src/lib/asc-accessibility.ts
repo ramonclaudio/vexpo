@@ -15,7 +15,6 @@
 
 import type { AscClient } from "./asc-api.ts";
 
-// Apple's supported features in the Accessibility Nutrition Labels surface.
 export const ACCESSIBILITY_FEATURES = [
   "VOICE_OVER",
   "VOICE_CONTROL",
@@ -29,10 +28,8 @@ export const ACCESSIBILITY_FEATURES = [
 ] as const;
 export type AccessibilityFeature = (typeof ACCESSIBILITY_FEATURES)[number];
 
-// Per-feature support level. Apple's UI lets developers declare "Yes"
-// (fully supports), "No" (does not support), or "N/A" (feature doesn't
-// apply to the app's content). "PARTIAL" is included for the schema
-// even though the dashboard collapses it into "Yes" with a caveat note.
+// "PARTIAL" is included for the schema even though the dashboard collapses
+// it into "Yes" with a caveat note.
 export const ACCESSIBILITY_LEVELS = [
   "FULLY_SUPPORTS",
   "PARTIAL",
@@ -41,8 +38,6 @@ export const ACCESSIBILITY_LEVELS = [
 ] as const;
 export type AccessibilityLevel = (typeof ACCESSIBILITY_LEVELS)[number];
 
-// Device families Apple breaks the declaration by. Most apps declare per
-// device family; visionOS in particular requires its own declaration.
 export const ACCESSIBILITY_DEVICE_FAMILIES = [
   "IPHONE",
   "IPAD",

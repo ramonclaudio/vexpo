@@ -5,10 +5,6 @@ import { internalMutation, internalQuery } from "./_generated/server";
 
 const CLEANUP_BATCH = 200;
 
-/**
- * Record a freshly-issued App Attest challenge. Called from the Node
- * action that generated the nonce.
- */
 export const createChallenge = internalMutation({
   args: { nonce: v.string(), expiresAt: v.number() },
   returns: v.id("appAttestChallenges"),
@@ -42,11 +38,6 @@ export const consumeChallenge = internalMutation({
   },
 });
 
-/**
- * Persist a verified App Attest key. Upserts on `keyId` so re-attesting
- * the same key (e.g. after a server-side data wipe) overwrites the
- * stored counter.
- */
 export const storeKey = internalMutation({
   args: {
     keyId: v.string(),
@@ -82,10 +73,6 @@ export const storeKey = internalMutation({
   },
 });
 
-/**
- * Look up a stored key by `keyId`. Returns the public key + current
- * counter so an action can verify an assertion against it.
- */
 export const findKey = internalQuery({
   args: { keyId: v.string() },
   returns: v.union(
@@ -114,12 +101,6 @@ export const findKey = internalQuery({
   },
 });
 
-/**
- * Bump a key's counter after a successful assertion. The action passes
- * the new value back so this mutation never has to redo the verify
- * math; race conditions are handled by the action's prior counter
- * check.
- */
 export const bumpCounter = internalMutation({
   args: { keyId: v.string(), counter: v.number() },
   returns: v.null(),
@@ -140,10 +121,6 @@ export const bumpCounter = internalMutation({
   },
 });
 
-/**
- * Hourly sweep of expired App Attest challenges. Bounded batches, same
- * pattern as `pushTokens.cleanupStale`.
- */
 export const cleanupChallenges = internalMutation({
   args: {},
   returns: v.number(),

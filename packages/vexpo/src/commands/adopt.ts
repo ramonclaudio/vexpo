@@ -37,7 +37,6 @@ export type RunbookState = {
   hasEasProdUrl: boolean;
 };
 
-/** The ordered "what's left" runbook, tailored to what's already provisioned. Pure, for testability. */
 export function buildFinishRunbook(s: RunbookState): Array<{ cmd: string; desc: string }> {
   const steps: Array<{ cmd: string; desc: string }> = [];
   if (!s.hasResend) {
@@ -78,8 +77,6 @@ export async function runAdopt(options: AdoptOptions): Promise<number> {
   }
   ok(`adopting Convex deployment: ${BOLD}${devSlug}${RESET}`);
 
-  // Topology: enumerate the project's deployments (read-only) so the duplicate
-  // dev deployment the integration leaves is visible up front.
   const deployments = await listProjectDeployments(devSlug);
   let prodSlug: string | undefined;
   if (deployments) {
@@ -100,8 +97,6 @@ export async function runAdopt(options: AdoptOptions): Promise<number> {
     nop("deployment enumeration unavailable (offline or not logged in); continuing");
   }
 
-  // Safe, idempotent dev backfill: reconnect to the EXISTING deployment (never
-  // fresh), fill the missing EXPO_PUBLIC_CONVEX_SITE_URL/SITE_URL + identity.
   if (!options.skipDevSteps) {
     line();
     const code = await runConvex({});
@@ -116,7 +111,6 @@ export async function runAdopt(options: AdoptOptions): Promise<number> {
     }
   }
 
-  // Tailored finish runbook: probe what's still missing and emit only those.
   const devEnv = await envMap();
   const projectId = await resolveProjectId();
   const easProd = projectId ? await envList("production").catch(() => null) : null;

@@ -1,12 +1,3 @@
-/**
- * `vexpo reviews` group. Customer reviews + responses via the ASC API.
- *
- *   vexpo reviews list [--territory US] [--rating 1]
- *   vexpo reviews unanswered [--days 7]
- *   vexpo reviews respond <reviewId> "<body>"
- *   vexpo reviews delete-response <responseId>
- */
-
 import { ascBootstrap } from "../lib/asc-state.ts";
 import { reviews, unansweredOlderThan } from "../lib/asc-reviews.ts";
 import { BOLD, DIM, RESET, bad, line, nop, ok, section } from "../lib/output.ts";

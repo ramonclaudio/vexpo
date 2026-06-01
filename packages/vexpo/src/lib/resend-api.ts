@@ -128,12 +128,6 @@ export async function deleteWebhook(key: string, id: string): Promise<void> {
   await call("DELETE", `/webhooks/${id}`, key);
 }
 
-// Subscribed events for the transactional webhook. The 4 actionable ones for
-// auth flows are bounced, complained, suppressed, failed. those tell us a
-// user's address won't deliver. delivered + sent + delivery_delayed are
-// observability. opened + clicked are inert unless per-email tracking is on
-// (we don't enable it). email.scheduled and email.received aren't relevant
-// for the OTP-only flow this template ships.
 export const RESEND_TRANSACTIONAL_EVENTS = [
   "email.sent",
   "email.delivered",
@@ -146,10 +140,6 @@ export const RESEND_TRANSACTIONAL_EVENTS = [
   "email.clicked",
 ] as const;
 
-/**
- * Deletes any existing key with this name, then creates a new scoped sending
- * key restricted to the given domain. Returns the new token.
- */
 export async function provisionSendingKey(
   fullKey: string,
   name: string,

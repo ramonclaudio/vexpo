@@ -13,9 +13,6 @@ import { useDynamicFont } from "@/lib/dynamic-font";
 import { Button as ButtonTokens } from "@/constants/layout";
 import { useColors } from "@/hooks/use-theme";
 
-// Full-width prominent action button. Capsule shape, shadcn `primary` fill,
-// `primaryForeground` Geist bold label.
-//
 // Why this isn't `buttonStyle("borderedProminent")`:
 // SwiftUI's borderedProminent paints the bg with the tint color but hardcodes
 // the label foreground to `.white`. Our shadcn `primary` is near-white in dark

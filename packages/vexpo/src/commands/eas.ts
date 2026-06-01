@@ -1,23 +1,3 @@
-/**
- * `vexpo eas`. bridge to eas-cli. Just delegates: `eas init` then
- * `eas env:push --path .env.local --environment <each>`. Nothing fancy.
- *
- * Why this exists: the orchestrator wants one entry point for "wire up EAS"
- * and we record the projectId in `.setup-state.json` so the probe knows EAS
- * is set up without re-shelling. If you'd rather skip the wrapper:
- *
- *     npx eas init
- *     npx eas env:push --path .env.local --environment development --force
- *     npx eas env:push --path .env.prod  --environment production --force
- *     npx eas env:push --path .env.prod  --environment preview    --force
- *
- * What we explicitly do NOT do:
- *   - iOS dist cert / profile / push key / ASC API key upload  → eas credentials
- *   - capability sync from ios.entitlements                    → eas build
- *   - ASC app record creation                                  → eas submit (first run)
- *   - OTA branches/channels                                    → eas update / eas branch
- */
-
 import { access } from "node:fs/promises";
 
 import {
@@ -96,10 +76,6 @@ export async function runEas(options: EasOptions): Promise<number> {
         ok(`EAS project created: ${projectId}`);
       }
 
-      // Pre-create channels + branches the workflows reference. eas-cli
-      // auto-creates them lazily on first `eas update`, but pre-creating
-      // means dashboards / `eas channel:list` show the expected names from
-      // day one and workflows never hit "channel not found" on a cold project.
       const channels = ["development", "preview", "production"];
       const createdChannels = await ensureChannels(channels);
       if (createdChannels.length > 0) ok(`channels created: ${createdChannels.join(", ")}`);
@@ -110,11 +86,6 @@ export async function runEas(options: EasOptions): Promise<number> {
       if (createdBranches.length > 0) ok(`branches created: ${createdBranches.join(", ")}`);
       else nop(`branches already exist (${branches.join(", ")})`);
     }
-    // The template's eas.json already wires channels onto the parent build
-    // profiles (development / preview / production), and extending profiles
-    // inherit. `eas update:configure` is therefore a no-op here. If you need
-    // to re-wire on a project that lost its channel fields, run
-    // `vexpo update:configure` manually.
 
     if (!options.skipEnv) {
       if (await fileExists(".env.local")) {

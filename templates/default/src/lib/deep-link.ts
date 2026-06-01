@@ -1,14 +1,6 @@
 import type { Href } from "expo-router";
 import { parse, createURL } from "expo-linking";
 
-/**
- * Single source of truth for deep-linkable paths in this app.
- *
- * Keys are app-relative URL paths. Values are the typed Href the router pushes
- * when the link resolves. `+native-intent.tsx`, `use-deep-link.ts`, Apple
- * Universal Links, and Siri Shortcut destination declarations all read from
- * this map. Adding a deep-linkable route is one edit here.
- */
 export const DeepLinkRoutes = {
   "/": "/",
   "/welcome": "/welcome",
@@ -20,8 +12,6 @@ export const DeepLinkRoutes = {
   "/auth/sign-up": "/auth/sign-up",
   "/auth/forgot-password": "/auth/forgot-password",
   "/auth/reset-password": "/auth/reset-password",
-  // Aliases for older deep-link shapes captured by Universal Links or
-  // notifications before the auth modal restructure.
   "/sign-in": "/auth/sign-in",
   "/sign-up": "/auth/sign-up",
   "/forgot-password": "/auth/forgot-password",
@@ -63,13 +53,6 @@ export type ResolvedDeepLink = {
   params: Record<string, string>;
 };
 
-/**
- * Parse a deep-link URL into typed `{ path, href, params }`.
- *
- * `path` is the URL-shape registry key. `href` is the typed router destination.
- * Returns `{ path: null, href: null, params: {} }` for invalid URLs, disallowed
- * paths, or traversal attempts. Pure: no React, no side effects.
- */
 export function resolveDeepLink(url: string): ResolvedDeepLink {
   const empty: ResolvedDeepLink = { path: null, href: null, params: {} };
   if (!url || typeof url !== "string") return empty;

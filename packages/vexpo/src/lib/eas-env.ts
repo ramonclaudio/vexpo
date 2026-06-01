@@ -20,20 +20,6 @@ export async function whoami(): Promise<string | null> {
   return text ? text.split("\n")[0].trim() : null;
 }
 
-/**
- * Resolves the EAS project id from the same source chain `app.config.ts` uses
- * in the template default, so doctor + setup + env push agree with what
- * `eas build` will actually use at config eval time.
- *
- * Source order:
- *   1. `app.json` -> `expo.extra.eas.projectId` (written by `eas init`)
- *   2. `process.env.EAS_PROJECT_ID` (shell override; also auto-injected by
- *      EAS Build on the worker)
- *   3. `.env.local` -> `EAS_PROJECT_ID` (the canonical place to set this
- *      locally without mutating the committed `app.json`)
- *
- * Empty strings are treated as "not set" at every step.
- */
 export async function resolveProjectId(): Promise<string | null> {
   try {
     await access("app.json");
@@ -42,9 +28,7 @@ export async function resolveProjectId(): Promise<string | null> {
     };
     const value = json.expo?.extra?.eas?.projectId;
     if (value && value.length > 0) return value;
-  } catch {
-    // fall through; app.json absent / malformed / missing the key
-  }
+  } catch {}
 
   const fromProcess = process.env.EAS_PROJECT_ID;
   if (fromProcess && fromProcess.length > 0) return fromProcess;
@@ -61,9 +45,7 @@ export async function resolveProjectId(): Promise<string | null> {
       process.env.EAS_PROJECT_ID = fromFile;
       return fromFile;
     }
-  } catch {
-    // ignore .env.local read failures, just return null
-  }
+  } catch {}
 
   return null;
 }
@@ -157,10 +139,6 @@ export async function envUpdate(
   }
 }
 
-/**
- * Push every var in a `.env`-format file to one or more EAS environments.
- * Wraps `eas env:push` (the official bulk upsert path).
- */
 export async function envPush(opts: {
   path: string;
   environments: readonly EasEnvironment[];
@@ -179,11 +157,6 @@ export async function envPush(opts: {
   }
 }
 
-/**
- * Wraps `eas init`. If `app.json` already has `extra.eas.projectId`, re-link
- * non-interactively with `--id` so eas-cli skips the "create new project?"
- * prompt entirely. Otherwise create a fresh project.
- */
 export async function init(): Promise<{ ok: boolean; projectId?: string }> {
   const existing = await resolveProjectId();
   const argv = existing
@@ -200,12 +173,8 @@ export async function init(): Promise<{ ok: boolean; projectId?: string }> {
 }
 
 /**
- * Runs `eas update:configure` to wire EAS Update channel fields into eas.json
- * build profiles. Idempotent: re-runs are no-ops once channels are present.
- * Safe to call after init even if updates were already configured.
- *
- * Note: eas-cli currently injects channel names derived from profile names,
- * which produces invalid channels for profile names containing colons (e.g.
+ * eas-cli currently injects channel names derived from profile names, which
+ * produces invalid channels for profile names containing colons (e.g.
  * `development:simulator`). Don't auto-run on a config that has those.
  */
 export async function updateConfigure(
@@ -231,10 +200,6 @@ export async function diagnostics(): Promise<
   return { ok: false, error: tail || `exit ${code}` };
 }
 
-/**
- * `eas channel:list --json` returns `{ currentPage: [{ id, name }, ...] }`.
- * Returns the channel names. Empty if the project has none yet.
- */
 export async function listChannels(): Promise<string[]> {
   const { code, stdout } = await run([
     dlx(),
@@ -254,13 +219,12 @@ export async function listChannels(): Promise<string[]> {
   }
 }
 
-/** Create a channel by name. Idempotent: re-creates are no-ops on EAS. */
+/** Idempotent: re-creates are no-ops on EAS. */
 export async function createChannel(name: string): Promise<boolean> {
   const { code } = await run([dlx(), "eas", "channel:create", name, "--non-interactive", "--json"]);
   return code === 0;
 }
 
-/** Ensure every named channel exists. Returns the list of newly-created names. */
 export async function ensureChannels(names: readonly string[]): Promise<string[]> {
   const existing = new Set(await listChannels());
   const created: string[] = [];
@@ -271,7 +235,6 @@ export async function ensureChannels(names: readonly string[]): Promise<string[]
   return created;
 }
 
-/** `eas branch:list --json` returns an array of `{ id, name }`. */
 export async function listBranches(): Promise<string[]> {
   const { code, stdout } = await run([
     dlx(),
@@ -294,13 +257,12 @@ export async function listBranches(): Promise<string[]> {
   }
 }
 
-/** Create a branch by name. Idempotent. */
+/** Idempotent. */
 export async function createBranch(name: string): Promise<boolean> {
   const { code } = await run([dlx(), "eas", "branch:create", name, "--non-interactive", "--json"]);
   return code === 0;
 }
 
-/** Ensure every named branch exists. Returns newly-created names. */
 export async function ensureBranches(names: readonly string[]): Promise<string[]> {
   const existing = new Set(await listBranches());
   const created: string[] = [];
@@ -311,12 +273,6 @@ export async function ensureBranches(names: readonly string[]): Promise<string[]
   return created;
 }
 
-/**
- * Runs `eas project:info` to verify the project ID in `app.json` resolves on
- * EAS infrastructure. Returns the canonical `@account/slug` if the project
- * exists. If the project was deleted or the user is logged into a different
- * account, eas-cli errors out and we return null.
- */
 export async function projectInfo(): Promise<{ fullName: string; id: string } | null> {
   const { code, stdout } = await run([dlx(), "eas", "project:info"]);
   if (code !== 0) return null;

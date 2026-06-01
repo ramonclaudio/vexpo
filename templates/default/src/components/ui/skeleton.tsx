@@ -60,8 +60,6 @@ function Circle({ size }: { size: number }): React.ReactNode {
   );
 }
 
-// Profile screen skeleton. Mirrors the layout of `app/(app)/profile.tsx`:
-// avatar row + display-name row + email row + sign-in-method row.
 export function SkeletonProfile(): React.ReactNode {
   return (
     <VStack alignment="leading" spacing={Spacing.xl} modifiers={[padding({ all: 24 })]}>
@@ -89,8 +87,6 @@ export function SkeletonProfile(): React.ReactNode {
   );
 }
 
-// Sessions screen skeleton. Three placeholder rows mirroring the
-// device-by-device shape in `app/(app)/sessions.tsx`.
 export function SkeletonSessions(): React.ReactNode {
   return (
     <VStack alignment="leading" spacing={Spacing.md} modifiers={[padding({ all: 24 })]}>

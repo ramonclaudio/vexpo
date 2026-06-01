@@ -38,7 +38,6 @@ export type AppleJwtOptions = {
   copyFrom?: string;
 };
 
-/** Apple Sign In vars that live ON the Convex deployment, set by this command. */
 const APPLE_ENV_KEYS = [
   "APPLE_CLIENT_ID",
   "APPLE_TEAM_ID",

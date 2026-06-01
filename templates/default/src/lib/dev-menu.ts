@@ -43,10 +43,6 @@ function clearLocalStorage() {
   console.log("[DevMenu] localStorage cleared");
 }
 
-/**
- * Registers custom dev menu items visible when shaking the device.
- * Call once at app startup. No-op in production builds.
- */
 export function registerDevMenuItems() {
   if (!__DEV__) return;
 

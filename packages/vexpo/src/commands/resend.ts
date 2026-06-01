@@ -1,19 +1,3 @@
-/**
- * `vexpo resend`. provisions a scoped sending API key + webhook against your
- * Resend account, points the webhook at the current Convex deployment, and
- * writes RESEND_API_KEY + RESEND_WEBHOOK_SECRET + EMAIL_FROM + RESEND_TEST_MODE
- * to the dev Convex env. Idempotent: re-runs delete the matching key + webhook
- * before creating fresh ones.
- *
- * Reads the full-access key from RESEND_FULL_ACCESS_KEY env var, or prompts
- * interactively. The full-access key is used only during this command and is
- * never persisted.
- *
- * After this runs, you still need to add DNS records at your registrar for
- * the sending domain. Resend's dashboard shows the records and verifies them.
- * We don't automate DNS.
- */
-
 import { access } from "node:fs/promises";
 
 import { pkgName } from "../lib/app.ts";
@@ -65,7 +49,6 @@ async function fileExists(p: string): Promise<boolean> {
   }
 }
 
-/** Full-access key from env, or an interactive paste. null on a non-TTY with no env var. */
 async function resolveFullKey(): Promise<string | null> {
   const fromEnv = process.env.RESEND_FULL_ACCESS_KEY;
   if (fromEnv) return fromEnv;
@@ -134,16 +117,13 @@ export async function runResend(options: ResendOptions): Promise<number> {
       allowSkip: false,
     });
 
-    // Auto-poll for verification. User added DNS records and pressed Enter.
-    // Resend's verification can take 5-60 min depending on the registrar.
-    // Trigger Resend's re-check on each poll cycle (verifyDomain), then read.
     const all = await listDomains(fullKey);
     const pending = all.filter((d) => d.status !== "verified");
     if (pending.length === 0) {
       bad("no domains added yet in Resend. Add one in the dashboard, then re-run.");
       return 1;
     }
-    const target = pending[pending.length - 1]; // most recently added
+    const target = pending[pending.length - 1];
     note(`polling ${BOLD}${target.name}${RESET} for verified status (every 30s, max 10 min)...`);
     note(
       `${DIM}DNS propagation timing depends on your registrar. Some are seconds, some are an hour.${RESET}`,
@@ -218,9 +198,6 @@ export async function runResend(options: ResendOptions): Promise<number> {
   ok(`EMAIL_FROM=${fromAddr} set on Convex`);
   await envSet("RESEND_TEST_MODE", "false");
   ok("RESEND_TEST_MODE=false (sends to real addresses)");
-  // Resend is wired, so the email-OTP / password-reset / change-email flows
-  // can finish. Flip REQUIRE_EMAIL_VERIFICATION on so sign-up requires an
-  // OTP and the client renders the email-features buttons.
   await envSet("REQUIRE_EMAIL_VERIFICATION", "true");
   ok("REQUIRE_EMAIL_VERIFICATION=true (sign-up now requires OTP)");
 
@@ -244,13 +221,6 @@ export async function runResend(options: ResendOptions): Promise<number> {
 }
 
 /**
- * Repoint the Resend webhook at the current deployment's convex.site WITHOUT the
- * destructive side effects of a full `vexpo resend` run: it does not rotate the
- * scoped sending key and does not flip REQUIRE_EMAIL_VERIFICATION. It moves the
- * webhook to the new endpoint, aligns RESEND_WEBHOOK_SECRET on the deployment,
- * and retires stale resend-webhook endpoints. Use after migrating a Convex
- * deployment (the convex.site changes underneath the old webhook).
- *
  * Resend's API can't read a signing secret back or edit an endpoint in place,
  * so moving the webhook mints a fresh secret; we write it onto the deployment
  * atomically so signature verification keeps working.
@@ -312,8 +282,6 @@ export async function runResendRepoint(options: ResendOptions): Promise<number> 
     retired += 1;
   }
 
-  // Merge into the recorded resend step so drift detection has the live webhook
-  // id and we keep the domain/key metadata from the last full provision.
   const prev = (await loadState()).steps.resend?.outputs ?? {};
   await recordStep("resend", { ...prev, webhookEndpoint: endpoint, webhookId });
 

@@ -43,8 +43,7 @@ export function sandbox(client: AscClient) {
         );
         return res.data;
       },
-      // Clear purchase history for one or more testers (async on Apple's side;
-      // a 2xx means the request was accepted). Identifies testers by id.
+      // Async on Apple's side; a 2xx means the request was accepted, not completed.
       async clearPurchaseHistory(ids: string[]): Promise<void> {
         await client.request<unknown>("POST", "/v2/sandboxTestersClearPurchaseHistoryRequest", {
           data: {

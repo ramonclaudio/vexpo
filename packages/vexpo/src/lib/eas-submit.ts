@@ -16,7 +16,6 @@ function isObject(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-/** Submit profiles whose `ios` block has no `ascAppId` (for doctor nudges). */
 export function submitProfilesMissingAscAppId(easJson: string): string[] {
   let cfg: EasJson;
   try {
@@ -29,7 +28,6 @@ export function submitProfilesMissingAscAppId(easJson: string): string[] {
     .map(([name]) => name);
 }
 
-/** True when any submit profile's `ios` object lacks this exact `ascAppId`. */
 function needsAscAppId(easJson: string, ascAppId: string): boolean {
   let cfg: EasJson;
   try {

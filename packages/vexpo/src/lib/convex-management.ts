@@ -81,7 +81,6 @@ async function get<T>(token: string, path: string): Promise<T | null> {
   }
 }
 
-/** POST that throws on failure (writes must surface errors, unlike the best-effort reads above). */
 async function post<T>(token: string, path: string, body: unknown): Promise<T> {
   const ctl = new AbortController();
   const timer = setTimeout(() => ctl.abort(), 15_000);
@@ -140,13 +139,11 @@ export async function mintDeployKey(
   return res.deployKey;
 }
 
-/** Delete a deploy key by its full value, encoded token, or unique name. Throws on failure. */
 export async function deleteDeployKey(deploymentName: string, id: string): Promise<void> {
   const token = await requireToken();
   await post(token, `/deployments/${deploymentName}/delete_deploy_key`, { id });
 }
 
-/** The default prod deployment name for the project that `anyDeploymentName` belongs to, or null. */
 export async function resolveProdDeployment(anyDeploymentName: string): Promise<string | null> {
   const deployments = await listProjectDeployments(anyDeploymentName);
   if (!deployments) return null;
@@ -154,12 +151,6 @@ export async function resolveProdDeployment(anyDeploymentName: string): Promise<
   return (prods.find((d) => d.isDefault) ?? prods[0])?.name ?? null;
 }
 
-/**
- * Resolve the project's prod deployment from any of its deployment slugs, then
- * mint a deploy key for it. The single mint path for the prod CONVEX_DEPLOY_KEY
- * (shared by eas-rotation-secrets and `env convex-key --mint`). Returns null
- * when the prod deployment can't be resolved (offline / not logged in).
- */
 export async function mintProdDeployKey(
   anyDeploymentName: string,
   name = "vexpo",
@@ -169,11 +160,6 @@ export async function mintProdDeployKey(
   return { key: await mintDeployKey(deployment, { name }), deployment };
 }
 
-/**
- * Every deployment in the project that `deploymentName` belongs to. Resolves the
- * project from the deployment, then lists its deployments. Returns null on any
- * failure so callers skip gracefully.
- */
 export async function listProjectDeployments(
   deploymentName: string,
 ): Promise<PlatformDeployment[] | null> {
@@ -188,7 +174,6 @@ export async function listProjectDeployments(
   return Array.isArray(list) ? list : null;
 }
 
-/** Deployments of a given type, in dashboard order. Pure, for testability. */
 export function deploymentsOfType(
   deployments: readonly PlatformDeployment[],
   type: DeploymentType,
@@ -196,7 +181,6 @@ export function deploymentsOfType(
   return deployments.filter((d) => d.deploymentType === type);
 }
 
-/** One-line label for a deployment: `name (reference)`. */
 export function describeDeployment(d: PlatformDeployment): string {
   return d.reference ? `${d.name} (${d.reference})` : d.name;
 }

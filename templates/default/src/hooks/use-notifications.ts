@@ -18,11 +18,6 @@ interface UseNotificationsOptions {
   onNotificationsDropped?: () => void;
 }
 
-/**
- * If a notification's payload includes a `url` string, route to it after
- * deep-link validation. Add custom action handling (categories, button taps,
- * inline replies) here when your app needs it.
- */
 function handleNotificationResponse(response: Notifications.NotificationResponse) {
   const url = response.notification.request.content.data?.url;
   if (typeof url !== "string") return;
@@ -41,7 +36,6 @@ export function useNotifications(options?: UseNotificationsOptions) {
   const registered = useRef(false);
   const [expoPushToken, setExpoPushToken] = useState<string | null>(null);
 
-  // Register push token when authenticated
   useEffect(() => {
     if (!isAuthenticated) {
       registered.current = false;
@@ -63,7 +57,6 @@ export function useNotifications(options?: UseNotificationsOptions) {
     })();
   }, [isAuthenticated, upsertToken]);
 
-  // Event listeners
   useEffect(() => {
     const receivedSub = Notifications.addNotificationReceivedListener((notification) => {
       if (__DEV__) console.log("[Notification] Received:", notification.request.identifier);
@@ -96,7 +89,6 @@ export function useNotifications(options?: UseNotificationsOptions) {
     };
   }, [isAuthenticated, options, upsertToken]);
 
-  // Cold-start deep linking
   const lastResponse = Notifications.useLastNotificationResponse();
   useEffect(() => {
     if (!lastResponse) return;

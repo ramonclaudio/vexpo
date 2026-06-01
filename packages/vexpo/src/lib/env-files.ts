@@ -1,13 +1,3 @@
-/**
- * Multi-file env reader for setup-lite. Reads .env.local (dev) and
- * .env.prod (prod), classifies each key by destination, and produces
- * a sync plan: for each (key, source-file) pair, what destinations
- * should it write to and under what name.
- *
- * Routing is centralized in ROUTING below. adding a new var means
- * adding one entry, not editing five scripts.
- */
-
 import { access, readFile } from "node:fs/promises";
 
 export type Channel = "dev" | "prod";
@@ -21,10 +11,8 @@ export type Destination =
     };
 
 type RoutingEntry = {
-  /** Description for the report */
   description?: string;
   /**
-   * Where this key (when present in a source file) should be written.
    * `channel` placeholder gets filled in based on which file the key was read from.
    */
   routes: (channel: Channel) => Destination[];
@@ -34,7 +22,6 @@ const easEnvFor = (channel: Channel): readonly ("development" | "preview" | "pro
   channel === "prod" ? ["production", "preview"] : ["development"];
 
 export const ROUTING: Record<string, RoutingEntry> = {
-  // EAS-only (build-time public)
   EXPO_PUBLIC_CONVEX_URL: {
     routes: (c) => [{ type: "eas", key: "EXPO_PUBLIC_CONVEX_URL", environments: easEnvFor(c) }],
   },
@@ -56,7 +43,6 @@ export const ROUTING: Record<string, RoutingEntry> = {
     routes: (c) => [{ type: "eas", key: "EXPO_PUBLIC_EXPO_OWNER", environments: easEnvFor(c) }],
   },
 
-  // Convex-bound server-side
   SITE_URL: { routes: (c) => [{ type: "convex", key: "SITE_URL", channel: c }] },
   BETTER_AUTH_SECRET: {
     routes: (c) => [{ type: "convex", key: "BETTER_AUTH_SECRET", channel: c }],
@@ -131,7 +117,6 @@ export async function readEnvFile(path: string): Promise<Map<string, string>> {
 
   for (const raw of text.split("\n")) {
     if (pendingKey && pendingQuote) {
-      // continuation of a multi-line quoted value
       const closeIdx = raw.indexOf(pendingQuote);
       if (closeIdx >= 0) {
         buffer += `\n${raw.slice(0, closeIdx)}`;
@@ -178,8 +163,6 @@ export async function readSources(paths?: { local?: string; prod?: string }): Pr
   if (await fileExists(local)) {
     sources.push({ path: local, channel: "dev", entries: await readEnvFile(local) });
   } else if (paths?.local) {
-    // An explicit `--local-file <path>` that doesn't exist is a user error.
-    // Default `.env.local` missing is fine (just nothing to push).
     throw new Error(`--local-file path does not exist: ${paths.local}`);
   }
   for (const p of prodCandidates) {
@@ -189,7 +172,6 @@ export async function readSources(paths?: { local?: string; prod?: string }): Pr
     }
   }
   if (paths?.prod && !sources.some((s) => s.channel === "prod")) {
-    // Same rule for `--prod-file`: explicit missing path is a user error.
     throw new Error(`--prod-file path does not exist: ${paths.prod}`);
   }
   return sources;
@@ -224,7 +206,6 @@ export function buildPlan(sources: EnvSource[]): SyncEntry[] {
   return entries;
 }
 
-/** What's in source files but unrecognized. useful for "did you mean" hints. */
 export function unrecognizedKeys(sources: EnvSource[]): string[] {
   const out = new Set<string>();
   for (const src of sources) {
@@ -236,7 +217,6 @@ export function unrecognizedKeys(sources: EnvSource[]): string[] {
   return [...out].toSorted();
 }
 
-/** Keys we want but couldn't find in any source file. Useful for "still missing" hints. */
 export function missingKeys(sources: EnvSource[]): { dev: string[]; prod: string[] } {
   const dev = new Set(Object.keys(ROUTING));
   const prod = new Set(Object.keys(ROUTING));

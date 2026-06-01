@@ -1,14 +1,3 @@
-/**
- * `vexpo apple credentials`. wraps `eas credentials:configure-build`.
- *
- * Loads the cached ASC API key from `.setup-state.json` and passes it to
- * eas-cli via `EXPO_ASC_API_KEY_PATH` / `EXPO_ASC_KEY_ID` / `EXPO_ASC_ISSUER_ID`
- * env vars so the wizard skips the Apple Developer login prompt and generates
- * the dist cert + provisioning profile + push key automatically.
- *
- * Idempotent: re-running detects existing credentials on EAS and reuses them.
- */
-
 import { existsSync } from "node:fs";
 
 import { bundleIdFallback } from "../../lib/app.ts";
@@ -44,9 +33,7 @@ async function resolveBundleId(profile: string): Promise<{
     if (fromEnv && !fromEnv.startsWith("com.example.")) {
       return { source: "EAS env", value: fromEnv, templatePlaceholder: false };
     }
-  } catch {
-    // eas-cli not reachable; fall through to placeholder warning.
-  }
+  } catch {}
   return {
     source: fromConfig ? "app.config.ts" : null,
     value: fromConfig,
@@ -140,10 +127,6 @@ export async function runAppleCredentials(options: CredentialsOptions): Promise<
     EXPO_ASC_ISSUER_ID: asc.issuerId,
   };
 
-  // `eas credentials:configure-build` is the per-profile entrypoint that
-  // skips the top-level credentials menu and goes straight into "set up
-  // builds for <profile>". Combined with EXPO_ASC_API_KEY_* env vars, this
-  // is the shortest path to provisioned credentials.
   const proc = spawn([dlx(), "eas", "credentials:configure-build", "-p", "ios", "-e", profile], {
     stdin: "inherit",
     stdout: "inherit",

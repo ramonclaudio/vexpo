@@ -48,10 +48,6 @@ import { internalAction } from "./_generated/server";
  * https://developer.apple.com/documentation/devicecheck/validating-apps-that-connect-to-your-server
  */
 
-// ----------------------------------------------------------------------------
-// Constants
-// ----------------------------------------------------------------------------
-
 // Apple App Attest Root CA, distributed by Apple at
 // https://www.apple.com/certificateauthority/Apple_App_Attestation_Root_CA.pem
 // Pinned in source so a compromised CDN can't replace it.
@@ -85,15 +81,7 @@ const AAGUID_DEVELOPMENT = Buffer.from("appattestdevelop", "binary");
 // Challenges TTL'd so a captured nonce can't be replayed indefinitely.
 const CHALLENGE_TTL_MS = 5 * 60 * 1000;
 
-// ----------------------------------------------------------------------------
-// Actions
-// ----------------------------------------------------------------------------
-
 /**
- * Issue a fresh App Attest challenge. The client passes the returned
- * `nonce` to `attestKeyAsync` or `generateAssertionAsync` and posts the
- * resulting attestation back via `verifyAttestation` / `verifyAssertion`.
- *
  * Single-use: each nonce is consumed on the first verification that
  * references it. Expired nonces are swept by `cleanupAppAttestChallenges`.
  */
@@ -108,18 +96,6 @@ export const issueChallenge = internalAction({
   },
 });
 
-/**
- * Verify a fresh App Attest attestation, store the credential public key,
- * and consume the challenge.
- *
- * Throws on any verification failure. On success returns
- * `{ keyId, publicKey, environment }` for the caller to record on the
- * authenticated user. Storage is handled here; callers don't write to
- * `appAttestKeys` directly.
- *
- * `bundleId` and `teamId` are the App Identifier components used to
- * compute `rpIdHash`. They default to env vars set by `vexpo apple`.
- */
 export const verifyAttestation = internalAction({
   args: {
     keyId: v.string(),
@@ -171,10 +147,6 @@ export const verifyAttestation = internalAction({
   },
 });
 
-/**
- * Verify an App Attest assertion against a previously-attested key and
- * the payload the client signed. Bumps the stored counter on success.
- */
 export const verifyAssertion = internalAction({
   args: {
     keyId: v.string(),
@@ -211,10 +183,6 @@ export const verifyAssertion = internalAction({
     return { counter: newCounter };
   },
 });
-
-// ----------------------------------------------------------------------------
-// Verifier (pure)
-// ----------------------------------------------------------------------------
 
 type AttestationInputs = {
   keyId: string;
@@ -367,10 +335,6 @@ export function verifyAssertionBytes(inputs: AssertionInputs): number {
   }
   return ad.counter;
 }
-
-// ----------------------------------------------------------------------------
-// Helpers
-// ----------------------------------------------------------------------------
 
 function sha256(input: Buffer): Buffer {
   return createHash("sha256").update(input).digest();

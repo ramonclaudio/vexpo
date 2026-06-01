@@ -1,22 +1,3 @@
-/**
- * `vexpo env convex-key`. Syncs the Convex deploy key + deployment selector to
- * EAS env so builds and the deploy-production workflow target the right Convex
- * deployment. env push deliberately skips these (CONVEX_DEPLOY_KEY is a
- * secret-visibility MANUAL_EAS_SECRET, CONVEX_DEPLOYMENT is an IGNORED_KEY), so
- * after a deployment migration the EAS-side key + selector go stale and the
- * build pipeline keeps deploying to the old project. This is the one path that
- * refreshes them.
- *
- *   dev key/selector  → EAS development
- *   prod key          → EAS production (the deploy-production job runs there)
- *   prod selector     → EAS production + preview (matches the URL routing)
- *
- * The prod deploy key is a secret that lives on EAS, minted via --mint (the same
- * path eas-rotation-secrets uses), not stored in .env.prod. .env.prod carries
- * only the CONVEX_DEPLOYMENT selector, which is what `vexpo convex:migrate --prod`
- * targets prod with over login.
- */
-
 import { access } from "node:fs/promises";
 
 import { deploymentSlug } from "../../lib/convex-env.ts";

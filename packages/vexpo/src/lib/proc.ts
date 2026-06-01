@@ -1,9 +1,3 @@
-/**
- * Cross-runtime subprocess + stream helpers. Wraps node:child_process
- * with a Bun.spawn-shaped interface so call sites read the same regardless
- * of whether they run under bun, node, or tsx.
- */
-
 import { spawn as nodeSpawn, spawnSync as nodeSpawnSync } from "node:child_process";
 import type { Readable, Writable } from "node:stream";
 

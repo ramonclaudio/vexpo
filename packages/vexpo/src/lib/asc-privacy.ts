@@ -51,8 +51,6 @@ export type PrivacyDataEntry = {
 
 export type PrivacyConfig = {
   $schema?: string;
-  // Whether any of the listed data types are collected at all. False = the
-  // "Data Not Collected" label.
   collectsData: boolean;
   entries: PrivacyDataEntry[];
 };

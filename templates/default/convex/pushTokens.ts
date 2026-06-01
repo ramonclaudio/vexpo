@@ -16,8 +16,6 @@ export const upsert = authMutation({
   handler: async (ctx, { token, deviceType }) => {
     await rateLimitWithThrow(ctx, "userAction", ctx.user._id.toString());
     const now = Date.now();
-    // Token may belong to a different user (device transferred), so read it
-    // by token first and reassign if needed.
     const existing = await ctx.db
       .query("pushTokens")
       .withIndex("by_token", (q) => q.eq("token", token))
@@ -37,7 +35,6 @@ export const upsert = authMutation({
         });
         return existing._id;
       }
-      // Reassign token to current user (device changed owners).
       await ctx.db.patch(existing._id, {
         userId: ctx.user._id,
         deviceType,
@@ -117,10 +114,6 @@ export const removeAll = authMutation({
   },
 });
 
-/**
- * Return active (non-revoked) tokens for a user. Used by senders so a
- * dead token doesn't cost an Expo Push API roundtrip every send.
- */
 export const listActiveByUser = internalQuery({
   args: { userId: v.id("users") },
   returns: v.array(

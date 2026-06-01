@@ -1,12 +1,3 @@
-/**
- * Form validation schemas.
- *
- * Each form parses raw input via `schema.safeParse(values)` inside
- * `useActionState`. Errors flatten to inline `Section.footer` text under each
- * field. Constants and reserved-name helpers come from `@/convex/constants`
- * to keep client/server in sync.
- */
-
 import { z } from "zod";
 
 import {
@@ -32,9 +23,6 @@ const usernameSchema = z
   .regex(USERNAME_FORMAT_REGEX, { error: "Letters, numbers, dots, and underscores only" })
   .refine((value) => !isReservedUsername(value), { error: "That username is reserved" });
 
-// Optional variant used at sign-up: empty string is valid (the user can pick
-// a handle later from the profile screen). Format and reserved checks only
-// apply when the user actually typed something.
 const optionalUsernameSchema = z
   .string()
   .trim()
@@ -125,10 +113,6 @@ export type ForgotPasswordValues = z.infer<typeof forgotPasswordSchema>;
 export type ResetPasswordValues = z.infer<typeof resetPasswordSchema>;
 export type ProfileUpdateValues = z.infer<typeof profileUpdateSchema>;
 
-/**
- * Extract the first error message from a zod safeParse result, formatted for
- * inline display. Returns `null` if validation succeeded.
- */
 export function firstError(
   result: { success: false; error: z.ZodError } | { success: true; data: unknown },
 ): string | null {
@@ -136,10 +120,6 @@ export function firstError(
   return result.error.issues[0]?.message ?? "Invalid input";
 }
 
-/**
- * Top-level field key of the first validation issue. Pair with `scrollPosition`
- * and `id('field-<key>')` to auto-scroll the form to the failing field.
- */
 export function firstErrorField(
   result: { success: false; error: z.ZodError } | { success: true; data: unknown },
 ): string | null {

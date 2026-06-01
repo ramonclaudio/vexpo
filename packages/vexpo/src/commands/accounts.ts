@@ -1,28 +1,3 @@
-/**
- * `vexpo accounts`. Phase 0 of `vexpo full`. Single uniform contract for
- * every external account vexpo touches: tell the user what we need, where
- * to get it, and how to provide it. We don't run signup wizards.
- *
- *   Apple Developer Program  → membership ($99/yr, 24-48h)
- *   Domain + DNS access      → any registrar (you add records at Resend's dashboard)
- *   Convex                   → logged-in CLI (free tier)
- *   Expo                     → logged-in CLI (free tier)
- *   Resend                   → full-access API key in env (free tier)
- *
- * For Convex/Expo, the official CLIs (`npx convex login` / `npx eas login`)
- * handle auth lazily. they prompt when first invoked. We offer to run
- * them now if the user wants to front-load auth, but it's not required.
- *
- * Things vexpo will prompt for in later phases:
- *   - ASC API key + .p8   → vexpo apple asc-key
- *   - Sign In with Apple .p8  → vexpo apple jwt
- *
- * After vexpo resend, you'll add the DNS records Resend shows you at your
- * registrar yourself. We don't automate this. Resend's dashboard verifies.
- *
- * Idempotent: re-runs detect already-authenticated accounts and skip.
- */
-
 import { isLoggedIn as convexLoggedIn } from "../lib/convex-env.ts";
 import { whoami as easWhoami } from "../lib/eas-env.ts";
 import { dlx } from "../lib/pkg-manager.ts";
@@ -48,11 +23,6 @@ import { recordStep } from "../lib/state.ts";
 
 export type AccountsOptions = {
   check?: boolean;
-  /**
-   * Lite mode: only walk the Convex signup. Skips Apple, Domain, Expo, Resend.
-   * Used by `vexpo lite --new` for first-time users who just need Convex to
-   * boot the simulator.
-   */
   lite?: boolean;
 };
 

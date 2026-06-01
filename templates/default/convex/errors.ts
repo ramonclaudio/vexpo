@@ -1,10 +1,3 @@
-/**
- * Structured Errors
- *
- * Error factories emit ConvexError with a stable code so clients can
- * branch on `error.data.code` without parsing messages.
- */
-
 import { ConvexError } from "convex/values";
 
 export const ErrorCode = {

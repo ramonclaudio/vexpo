@@ -1,12 +1,3 @@
-/**
- * `vexpo review-account`. seeds the App Review demo account on the current
- * Convex deployment so Apple's reviewer can sign in without an OTP.
- *
- * Reads `apple.review.demoUsername` + `demoPassword` from `store.config.json`,
- * calls the internal `admin:createReviewAccount` action, and marks the email
- * verified. Idempotent: re-runs no-op if the user exists with the right email.
- */
-
 import { readFile } from "node:fs/promises";
 
 import { bad, line, note, ok, section } from "../lib/output.ts";

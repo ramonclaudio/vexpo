@@ -94,11 +94,6 @@ function InfoCard({ children }: { children: React.ReactNode }) {
   );
 }
 
-// Surface the last hour of expo-updates log entries so bsdiff patch success,
-// signature failures, and runtime-version mismatches are visible at runtime.
-// Chronological order, newest at the bottom of a bounded scrollable card
-// anchored via defaultScrollAnchor("bottom"). Refetches on every update
-// lifecycle transition.
 function useUpdateLogEntries(isUpdatePending: boolean, restartCount: number) {
   const [entries, setEntries] = useState<UpdatesLogEntry[]>([]);
   useEffect(() => {
@@ -108,9 +103,7 @@ function useUpdateLogEntries(isUpdatePending: boolean, restartCount: number) {
       try {
         const all = await readLogEntries();
         if (!cancelled) setEntries(all);
-      } catch {
-        // expo-updates internal log is best-effort; quietly skip failures.
-      }
+      } catch {}
     })();
     return () => {
       cancelled = true;
@@ -168,9 +161,7 @@ export default function DebugScreen() {
       await Sharing.shareAsync(`App v${appVersion} (${buildNumber})`, {
         dialogTitle: "Share build info",
       });
-    } catch {
-      // share canceled
-    }
+    } catch {}
   };
 
   const sectionLabelModifiers = [
