@@ -252,9 +252,13 @@ export const hardDeleteExpired = internalMutation({
   returns: v.number(),
   handler: async (ctx) => {
     const cutoff = Date.now() - ACCOUNT_DELETION_GRACE_MS;
+    // Range to rows that have `deletedAt` set. Convex orders
+    // `undefined < null < numbers`, so an unbounded scan returns every active
+    // user (deletedAt unset) before any tombstone, and the purge would never
+    // reach a soft-deleted row once active users exceed the batch size.
     const expired = await ctx.db
       .query("users")
-      .withIndex("by_deletedAt")
+      .withIndex("by_deletedAt", (q) => q.gt("deletedAt", undefined))
       .order("asc")
       .take(HARD_DELETE_BATCH);
 

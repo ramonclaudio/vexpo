@@ -47,8 +47,9 @@ describe("pushTokens.upsert", () => {
     expect(row.createdAt).toBeLessThanOrEqual(after);
     expect(row.updatedAt).toBe(row.createdAt);
     expect(row.lastSeenAt).toBe(row.createdAt);
-    // Fresh insert is not revoked and carries no error code.
-    expect(row.revoked).toBeUndefined();
+    // Fresh insert is active (revoked: false) so the cleanup index range
+    // [revoked, updatedAt] covers it, and carries no error code.
+    expect(row.revoked).toBe(false);
     expect(row.revokedAt).toBeUndefined();
     expect(row.lastErrorCode).toBeUndefined();
   });

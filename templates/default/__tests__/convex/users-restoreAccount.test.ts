@@ -76,4 +76,21 @@ describe("users.restoreAccount", () => {
     // authMutation -> requireAuthenticatedUser -> authenticationRequired().
     await expect(t.mutation(api.users.restoreAccount, {})).rejects.toThrowError(ConvexError);
   });
+
+  test("throttles the criticalAction bucket: the call past capacity throws", async () => {
+    const t = initConvexTest();
+    const { authUserId, sessionId } = await seedAuthedUser(t); // no tombstone
+    const asUser = t.withIdentity(identityFor(authUserId, sessionId));
+
+    // criticalAction is a capacity-5 token bucket. restoreAccount runs the rate
+    // check before its idempotent early-return and (unlike deleteAccount) never
+    // revokes the session, so it's safely repeatable with one identity. The
+    // first 5 rapid calls consume the bucket; the 6th has no token and throws.
+    // Guards rateLimitWithThrow against a dropped `throws`, a wrong bucket name,
+    // or a removed call. (A throttled real user just retries after refill.)
+    for (let i = 0; i < 5; i++) {
+      await asUser.mutation(api.users.restoreAccount, {});
+    }
+    await expect(asUser.mutation(api.users.restoreAccount, {})).rejects.toThrowError(ConvexError);
+  });
 });
