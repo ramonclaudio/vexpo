@@ -28,7 +28,9 @@ interface ForegroundOptions {
 }
 
 export function setForegroundHandler(options?: ForegroundOptions) {
-  if (!Device.isDevice) return;
+  // No Device guard: setNotificationHandler is pure JS (no APNs, no native
+  // gate) and runs fine on the simulator, where local notifications scheduled
+  // via the helpers below still surface a foreground banner.
   try {
     Notifications.setNotificationHandler({
       handleNotification: async () => ({
@@ -45,11 +47,11 @@ export function setForegroundHandler(options?: ForegroundOptions) {
 
 export function registerBackgroundTask() {
   if (!Device.isDevice) return;
-  try {
-    Notifications.registerTaskAsync(BACKGROUND_NOTIFICATION_TASK);
-  } catch (e) {
+  // registerTaskAsync is async: a try/catch around the un-awaited call can't
+  // trap its rejection (e.g. UnavailabilityError), so attach .catch instead.
+  Notifications.registerTaskAsync(BACKGROUND_NOTIFICATION_TASK).catch((e) => {
     if (__DEV__) console.warn("[Notification] registerTaskAsync failed:", e);
-  }
+  });
 }
 
 export async function getPermissionStatus() {
