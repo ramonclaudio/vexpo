@@ -12,9 +12,10 @@ name: E2E tests
 # environment (populated by `vexpo full` or `eas env:create`). The flow
 # yaml at .maestro/launch.yaml reads it as `appId: ${MAESTRO_APP_ID}`.
 
+# Auto-run on PRs is OFF by default to conserve EAS build credits (each run
+# builds an iOS Simulator binary). Trigger manually, or restore the
+# `pull_request` trigger below to run it on every PR.
 on:
-  pull_request:
-    branches: ["main"]
   workflow_dispatch: {}
 
 concurrency:
