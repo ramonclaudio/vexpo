@@ -30,7 +30,7 @@ jobs:
     name: Sign + push fresh client_secret
     type: custom
     runs_on: linux-medium
-    environment: production # pulls EAS env vars from production
+    environment: production
     steps:
       - uses: eas/checkout
       - uses: eas/install_node_modules

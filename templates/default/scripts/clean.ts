@@ -1,14 +1,6 @@
 /**
  * vexpo clean script.
  *
- * Wipes every regenerable cache and build artifact:
- * - Project artifacts: node_modules, ios/, .expo/, dist/, tsconfig.tsbuildinfo, coverage/, .vitest-cache/, expo-env.d.ts, bun-error.*, *.log
- * - .eas/ per-project state (keeps .eas/workflows/)
- * - .DS_Store files repo-wide
- * - $TMPDIR caches: metro-*, haste-map-*, react-*, node-compile-cache, expo-*, RN*
- * - System caches: ~/Library/Caches/CocoaPods, ~/.expo
- * - Xcode build outputs: ~/Library/Developer/Xcode/DerivedData/<project>-*
- *
  * Never wiped (user data / secrets):
  * - .env / .env.* (auth values)
  * - .p8 / .p12 / AuthKey_* / SubscriptionKey_* (Apple keys)
@@ -21,17 +13,7 @@
  *   `<pm> install --frozen-lockfile` when present)
  * - convex/_generated/ (regenerated via `npx convex codegen` after --all)
  *
- * Then reinstalls deps via the detected package manager.
- *
  * Uses macOS `trash` for every delete so anything wiped is recoverable.
- *
- * Usage:
- *   npm run clean                wipe caches, keep lockfile + convex codegen, frozen install
- *   npm run clean --all          also wipe lockfile + convex/_generated, then convex codegen
- *   npm run clean --metro        just Metro/Haste/Babel caches (fast, no reinstall)
- *   npm run clean --state        also wipe .setup-state.json (next setup re-probes everything)
- *   npm run clean --no-install   wipe everything but skip the reinstall
- *   npm run clean --help
  */
 
 import { spawn as nodeSpawn } from "node:child_process";
@@ -113,13 +95,7 @@ async function fileExists(p: string): Promise<boolean> {
 
 type PM = "bun" | "pnpm" | "yarn" | "npm";
 
-/**
- * Capture which PM ran this script BEFORE any wipes. Two signals:
- * 1. `npm_execpath`. every modern PM (npm/bun/pnpm/yarn) sets this to its
- *    own binary path when running scripts. Most reliable.
- * 2. Lockfile presence. fallback when running outside `<pm> run` (e.g.
- *    direct `node scripts/clean.ts`). Read while the lockfile still exists.
- */
+// Capture which PM ran this script BEFORE any wipes: --all trashes the lockfile.
 async function detectPackageManager(): Promise<PM> {
   const execpath = (process.env.npm_execpath ?? "").toLowerCase();
   if (execpath.includes("bun")) return "bun";
@@ -141,8 +117,6 @@ function installCmdFor(pm: PM, frozen: boolean): string {
 
 const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 process.chdir(REPO_ROOT);
-
-// ─── Output ──────────────────────────────────────────────────────────────────
 
 const RESET = "\x1b[0m";
 const BOLD = "\x1b[1m";
@@ -172,8 +146,6 @@ function section(title: string): void {
   const fill = "─".repeat(Math.max(0, w - stringWidth(title) - 3));
   line(`\n${BOLD}${VIOLET}${title}${RESET} ${DIM}${fill}${RESET}`);
 }
-
-// ─── Args ────────────────────────────────────────────────────────────────────
 
 const HELP = `${BOLD}vexpo clean${RESET}
 
@@ -238,8 +210,6 @@ if (args.help) {
   process.exit(0);
 }
 
-// ─── Helpers ─────────────────────────────────────────────────────────────────
-
 async function pathExists(p: string): Promise<boolean> {
   try {
     await stat(p);
@@ -269,15 +239,12 @@ async function trashPaths(paths: string[]): Promise<void> {
 
 async function expandGlob(dir: string, pattern: string): Promise<string[]> {
   if (!(await pathExists(dir))) return [];
-  // Convert simple glob (only * supported) to regex. Sufficient for our patterns.
   const re = new RegExp(
     "^" + pattern.replace(/[.+^${}()|[\]\\]/g, "\\$&").replace(/\*/g, ".*") + "$",
   );
   const entries = await readdir(dir);
   return entries.filter((e) => re.test(e)).map((e) => `${dir}/${e}`);
 }
-
-// ─── Targets ─────────────────────────────────────────────────────────────────
 
 const REPO = REPO_ROOT;
 const TMPDIR = process.env.TMPDIR?.replace(/\/$/, "") ?? "/tmp";
@@ -310,26 +277,18 @@ const PROJECT_TARGETS = [
 // round-trip via `npx convex codegen` to come back.
 const PROJECT_TARGETS_ALL = ["bun.lock", "package-lock.json", "convex/_generated"];
 
-// Globs evaluated at REPO root. bun-error.* and *.log are cheap to wipe and
-// almost never wanted across runs.
 const PROJECT_GLOBS = ["bun-error.*", "*.log"];
 
 const TMP_GLOBS = ["metro-*", "haste-map-*", "react-*", "node-compile-cache", "expo-*", "RN*"];
-
-// ─── Steps ───────────────────────────────────────────────────────────────────
 
 /**
  * Stop bundlers before wiping their caches. macOS `trash` silently skips
  * files held open by a running process, so caches survive the wipe and the
  * bundler restarts onto stale state. Killing first prevents that.
- *
- * Bundlers are killed automatically. `convex dev` is the user's data layer,
- * not a bundler. left alone, with a warning.
  */
 async function stepStopBundlers(): Promise<void> {
   section("Stop bundlers");
 
-  // Patterns are pgrep -f extended regex over the full command line.
   // Order: kill the parent CLI first so it can tear down its child Metro.
   const targets: { pattern: string; name: string }[] = [
     { pattern: "node .*\\.bin/expo (run:|start)", name: "expo CLI" },
@@ -347,7 +306,6 @@ async function stepStopBundlers(): Promise<void> {
     killed += pids.length;
   }
 
-  // Watchman has its own clean shutdown. No-op if not installed (exit 127).
   const wm = await spawn(["watchman", "shutdown-server"], {
     stdio: ["ignore", "ignore", "ignore"],
   }).exited;
@@ -504,8 +462,6 @@ async function stepExpoCache(): Promise<void> {
     nop("~/.expo not present");
     return;
   }
-  // .expo holds the user-level Expo cache (devices.json, telemetry, sdk
-  // metadata). Safe to wipe; Expo regenerates on next CLI invocation.
   await trashPaths([path]);
   ok("trashed ~/.expo");
 }
@@ -558,8 +514,6 @@ async function stepConvexCodegen(): Promise<void> {
   }
   ok(cmd.join(" "));
 }
-
-// ─── Entry ───────────────────────────────────────────────────────────────────
 
 // Wrapped in an async IIFE so the file works under both ESM (top-level await
 // supported) and CJS-via-tsx (no top-level await).

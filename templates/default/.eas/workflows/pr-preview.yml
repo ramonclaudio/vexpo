@@ -1,18 +1,7 @@
 name: PR preview
 
-# Builds + auto-posts a comment on the PR with build/update IDs and QR codes
-# via the `github-comment` job. Mirrors the canonical EAS workflow pattern at
+# Mirrors the canonical EAS workflow pattern at
 # https://docs.expo.dev/eas/workflows/pre-packaged-jobs/#github-comment.
-#
-# Flow (canonical fingerprint-gated branch model):
-#   1. fingerprint → compute the iOS fingerprint for the PR's dev env.
-#   2. get_existing_build → check if any development:simulator build with
-#      that fingerprint already exists (returns build_id if so).
-#   3a. Path A (no compatible build): build a fresh dev-client simulator
-#       binary + publish a preview OTA to branch `pr-<n>` so the build
-#       picks it up on launch.
-#   3b. Path B (compatible build exists): publish a preview OTA only.
-#   4. github-comment → post the QR / build / update IDs.
 #
 # Either path publishes an update so a) the PR is always testable via a QR
 # scan and b) `pr-<n>` is a real EAS branch from the first commit, not the
