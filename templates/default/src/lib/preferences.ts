@@ -6,8 +6,6 @@ export type ReduceMotionPref = "system" | "always" | "never";
 
 const hapticsStore = createStorage<boolean>("pref.hapticsEnabled", true);
 const reduceMotionStore = createStorage<ReduceMotionPref>("pref.reduceMotion", "system");
-// Default on in dev, off in production. Reveals the Debug screen with version,
-// device, OTA update, and push diagnostics.
 const debugEnabledStore = createStorage<boolean>("pref.debugEnabled", __DEV__);
 
 export const preferences = {

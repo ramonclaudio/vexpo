@@ -1,21 +1,8 @@
 #!/usr/bin/env node
 /**
- * Runtime-agnostic launcher for vexpo's TypeScript setup scripts.
- *
- * Picks the first available runtime that handles full TypeScript syntax:
- *
- *   1. bun. native TS, fastest startup
- *   2. tsx (devDep). esbuild-based TS runner, works under any node 18+
- *
- * Note: we don't use node's `--experimental-strip-types` because it's
- * strip-only. it doesn't transform syntax (parameter properties, enums,
- * namespaces, etc all error out). bun and tsx handle full TS.
- *
- * Then re-execs the target script with the selected runtime, forwarding
- * argv and stdio. Exit code mirrors the child.
- *
- * Usage (from package.json scripts):
- *   node scripts/_run.mjs scripts/setup.ts [args...]
+ * We don't use node's `--experimental-strip-types` because it's strip-only.
+ * It doesn't transform syntax (parameter properties, enums, namespaces, etc
+ * all error out). bun and tsx handle full TS.
  */
 
 import { spawn, spawnSync } from "node:child_process";
@@ -46,18 +33,14 @@ function which(bin) {
 }
 
 function pickRuntime() {
-  // Already running under bun? Use it directly (fastest).
   if (process.versions.bun) return { cmd: process.execPath, args: [target] };
 
-  // bun on PATH
   const bun = which("bun");
   if (bun) return { cmd: bun, args: [target] };
 
-  // tsx fallback (any node 18+)
   const tsx = resolve(REPO, "node_modules", ".bin", "tsx");
   if (existsSync(tsx)) return { cmd: tsx, args: [target] };
 
-  // tsx via npx as last resort
   const npx = which("npx");
   if (npx) return { cmd: npx, args: ["tsx", target] };
 

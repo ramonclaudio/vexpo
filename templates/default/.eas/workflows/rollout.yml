@@ -1,22 +1,10 @@
 name: Rollout
 
-# Manually run a gradual rollout: publish a fresh OTA at a non-100%
-# percentage, or bump/lower the % of the most recent rollout group on a
-# branch. Mirrors the canonical EAS Update rollout flow:
-#   https://docs.expo.dev/eas-update/rollouts/
-#
-# Two paths, controlled by `action`:
-#
-#   "publish"  → `eas update --branch <b> --rollout-percentage <%>`
-#                Publishes a fresh OTA from the current HEAD at the given %.
-#                Use to start a new rollout (e.g. 5% → 25% → 100%).
-#
-#   "edit"     → `eas update:edit --branch <b> --rollout-percentage <%>`
-#                Bumps the percentage of the currently-active rollout group
-#                on the branch. Use to ramp an existing rollout.
-#
-# After confirming adoption looks healthy on the Insights dashboard, set
-# the rollout to 100. To kill a bad rollout, use the `rollback` workflow.
+# Two paths, controlled by `action`, mirroring the EAS Update rollout flow
+# (https://docs.expo.dev/eas-update/rollouts/):
+#   "publish" → `eas update` publishes a fresh OTA from HEAD at the given %.
+#   "edit"    → `eas update:edit` bumps the % of the active rollout group.
+# To kill a bad rollout, use the `rollback` workflow.
 
 on:
   workflow_dispatch:
