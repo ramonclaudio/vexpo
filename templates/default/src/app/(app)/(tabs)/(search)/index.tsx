@@ -107,7 +107,7 @@ function score(d: Destination, query: string): number {
   if (title.startsWith(q)) return 80;
   if (title.includes(q)) return 60;
   if (d.subtitle.toLowerCase().includes(q)) return 40;
-  if (d.keywords.includes(q)) return 20;
+  if (d.keywords.toLowerCase().includes(q)) return 20;
   return 0;
 }
 
