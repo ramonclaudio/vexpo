@@ -144,7 +144,6 @@ function ChangePasswordForm({ email }: { email: string }) {
             <Text modifiers={labelModifiers}>Account</Text>
             <TextField
               text={emailState}
-              onTextChange={() => {}}
               modifiers={[
                 textFieldStyle("plain"),
                 padding({ horizontal: 16 }),
