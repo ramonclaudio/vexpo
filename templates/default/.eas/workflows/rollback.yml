@@ -4,17 +4,21 @@ name: Rollback
 # canonical eas-cli surface:
 #
 #   "previous"  → republish an earlier update group on the same branch.
-#                 Picks the most recent successful update before the
-#                 currently-active one. Use this when a recent OTA broke
+#                 Requires the `group` input (the update-group ID): the
+#                 workflow runner has no TTY, and `update:republish --branch`
+#                 only works interactively, so `--group` is mandatory under
+#                 `--non-interactive`. Use this when a recent OTA broke
 #                 something users on previous builds didn't see.
 #                 Maps to `eas update:republish`.
 #                 https://docs.expo.dev/eas-update/rollbacks/
 #
 #   "embedded"  → roll back to the build's embedded bundle (the JS that
-#                 shipped with the .ipa). Effectively makes the next-OTA-check
-#                 ignore the current rollout and serve the binary as-is.
-#                 Use this when a broken OTA shouldn't ship to ANYONE on
-#                 that build. Maps to `eas update:roll-back-to-embedded`.
+#                 shipped with the .ipa). Requires the `runtime_version` input
+#                 (`--runtime-version` is mandatory under `--non-interactive`).
+#                 Effectively makes the next-OTA-check ignore the current
+#                 rollout and serve the binary as-is. Use this when a broken
+#                 OTA shouldn't ship to ANYONE on that build.
+#                 Maps to `eas update:roll-back-to-embedded`.
 #                 https://docs.expo.dev/eas-update/rollbacks/
 #
 # Pair with the asc-events workflow's Slack notify so the team knows.
@@ -38,6 +42,14 @@ on:
         description: Optional message stored on the update group
         type: string
         required: false
+      group:
+        description: Update group ID to republish (required for the "previous" flavor)
+        type: string
+        required: false
+      runtime_version:
+        description: Build runtimeVersion to roll back to (required for the "embedded" flavor)
+        type: string
+        required: false
 
 # No concurrency block on purpose. EAS only accepts `cancel_in_progress: true`
 # (and no custom group yet), but cancelling a half-applied rollback is worse than
@@ -56,16 +68,32 @@ jobs:
       ROLLBACK_BRANCH: ${{ inputs.branch }}
       ROLLBACK_TYPE: ${{ inputs.type }}
       ROLLBACK_MSG: ${{ inputs.message }}
+      ROLLBACK_GROUP: ${{ inputs.group }}
+      ROLLBACK_RUNTIME: ${{ inputs.runtime_version }}
     steps:
       - uses: eas/checkout
       - uses: eas/install_node_modules
       - name: Roll back
         run: |
-          args=(--branch "$ROLLBACK_BRANCH" --platform ios --non-interactive)
-          if [ -n "$ROLLBACK_MSG" ]; then args+=(--message "$ROLLBACK_MSG"); fi
           if [ "$ROLLBACK_TYPE" = "embedded" ]; then
+            # --runtime-version and --message are both required in non-interactive
+            # mode; the interactive runtime picker never runs on a TTY-less runner.
+            if [ -z "$ROLLBACK_RUNTIME" ]; then
+              echo "embedded rollback requires a 'runtime_version' input (the build's runtimeVersion)" >&2
+              exit 1
+            fi
+            msg="${ROLLBACK_MSG:-roll back to embedded}"
+            args=(--branch "$ROLLBACK_BRANCH" --platform ios --runtime-version "$ROLLBACK_RUNTIME" --message "$msg" --non-interactive)
             npx eas-cli update:roll-back-to-embedded "${args[@]}"
           else
+            # update:republish --branch is interactive-only; a TTY-less runner
+            # must pass the update-group ID via --group.
+            if [ -z "$ROLLBACK_GROUP" ]; then
+              echo "previous rollback requires a 'group' input (the update-group ID to republish)" >&2
+              exit 1
+            fi
+            args=(--group "$ROLLBACK_GROUP" --platform ios --non-interactive)
+            if [ -n "$ROLLBACK_MSG" ]; then args+=(--message "$ROLLBACK_MSG"); fi
             npx eas-cli update:republish "${args[@]}"
           fi
 
