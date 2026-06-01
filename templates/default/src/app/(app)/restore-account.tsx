@@ -25,6 +25,7 @@ import {
   background,
   buttonStyle,
   clipShape,
+  disabled,
   foregroundStyle,
   frame,
   multilineTextAlignment,
@@ -76,7 +77,7 @@ export default function RestoreAccountScreen() {
   }, initialState);
 
   const handleSignOut = async () => {
-    if (signingOut) return;
+    if (signingOut || restorePending) return;
     setSigningOut(true);
     haptics.medium();
     try {
@@ -123,7 +124,12 @@ export default function RestoreAccountScreen() {
           padding({ horizontal: 24, vertical: 48 }),
         ]}
       >
-        <ExpoImage source={brandIcon} style={{ width: 72, height: 72 }} contentFit="contain" />
+        <ExpoImage
+          source={brandIcon}
+          style={{ width: 72, height: 72 }}
+          contentFit="contain"
+          accessibilityLabel=""
+        />
 
         <VStack spacing={12} alignment="center">
           <Text
@@ -158,6 +164,7 @@ export default function RestoreAccountScreen() {
               frame({ maxWidth: 10000, height: ButtonTokens.height }),
               background(colors.muted as string),
               clipShape("capsule"),
+              disabled(restorePending || signingOut),
             ]}
             onPress={handleSignOut}
           >
