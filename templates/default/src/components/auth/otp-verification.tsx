@@ -144,10 +144,17 @@ export function OtpVerification({
   const [resendState, resend, isResending] = useActionState<OtpState, void>(async () => {
     haptics.light();
     try {
-      await authClient.emailOtp.sendVerificationOtp({
+      const response = await authClient.emailOtp.sendVerificationOtp({
         email: email.trim(),
         type: isSignIn ? "sign-in" : "email-verification",
       });
+      // Better Auth surfaces a 429 (the send-verification-otp rate limit) as a
+      // returned error, not a throw, so announcing success unconditionally
+      // would tell the user a code was sent when none was.
+      if (response.error) {
+        haptics.error();
+        return { error: "Failed to send code. Please try again." };
+      }
       haptics.success();
       announce("New verification code sent");
       return { ok: true };
@@ -251,12 +258,12 @@ export function OtpVerification({
           />
 
           <Button
-            modifiers={[buttonStyle("plain"), frame({ maxWidth: 10000 }), disabled(isResending)]}
+            modifiers={[buttonStyle("plain"), frame({ maxWidth: Infinity }), disabled(isResending)]}
             onPress={runResend}
           >
             <Text
               modifiers={[
-                frame({ maxWidth: 10000, height: ButtonTokens.height }),
+                frame({ maxWidth: Infinity, height: ButtonTokens.height }),
                 multilineTextAlignment("center"),
                 dfont({ size: ButtonTokens.fontSize, weight: ButtonTokens.secondaryFontWeight }),
                 foregroundStyle(colors.primary as string),

@@ -120,7 +120,7 @@ export default function RestoreAccountScreen() {
         spacing={24}
         alignment="center"
         modifiers={[
-          frame({ maxWidth: 10000, maxHeight: 10000 }),
+          frame({ maxWidth: Infinity, maxHeight: Infinity }),
           padding({ horizontal: 24, vertical: 48 }),
         ]}
       >
@@ -152,7 +152,7 @@ export default function RestoreAccountScreen() {
           </Text>
         </VStack>
 
-        <VStack spacing={12} alignment="center" modifiers={[frame({ maxWidth: 10000 })]}>
+        <VStack spacing={12} alignment="center" modifiers={[frame({ maxWidth: Infinity })]}>
           <ProminentButton
             label={restorePending ? "Restoring…" : "Restore Account"}
             onPress={() => restore()}
@@ -161,7 +161,7 @@ export default function RestoreAccountScreen() {
           <Button
             modifiers={[
               buttonStyle("plain"),
-              frame({ maxWidth: 10000, height: ButtonTokens.height }),
+              frame({ maxWidth: Infinity, height: ButtonTokens.height }),
               background(colors.muted as string),
               clipShape("capsule"),
               disabled(restorePending || signingOut),

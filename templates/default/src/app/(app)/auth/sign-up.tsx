@@ -86,7 +86,7 @@ export default function SignUpScreen() {
   const showApple = appleAvailable && providers?.apple === true;
   // When `emailFeatures` is false (minimal-tier setup, no Resend), the
   // server auto-verifies on sign-up and the user is signed in immediately
-  //. no OTP step. When true (testflight tier+), the OTP verification
+  // no OTP step. When true (testflight tier+), the OTP verification
   // screen renders after sign-up.
   const emailFeatures = providers?.emailFeatures === true;
 
@@ -387,7 +387,7 @@ export default function SignUpScreen() {
 
           {error && <ErrorText>{error}</ErrorText>}
 
-          <VStack spacing={10} alignment="leading" modifiers={[frame({ maxWidth: 10000 })]}>
+          <VStack spacing={10} alignment="leading" modifiers={[frame({ maxWidth: Infinity })]}>
             <Text modifiers={labelModifiers}>Profile photo (optional)</Text>
             <ConfirmationDialog
               title="Profile photo"
@@ -400,7 +400,7 @@ export default function SignUpScreen() {
                   spacing={16}
                   alignment="center"
                   modifiers={[
-                    frame({ maxWidth: 10000 }),
+                    frame({ maxWidth: Infinity }),
                     onTapGesture(() => {
                       haptics.light();
                       setAvatarPicker(true);

@@ -38,7 +38,7 @@ export function SegmentedToggle<T extends string>({
       modifiers={[
         pickerStyle("segmented"),
         controlSize("large"),
-        frame({ maxWidth: 10000, height: ButtonTokens.height }),
+        frame({ maxWidth: Infinity, height: ButtonTokens.height }),
         accessibilityLabel(a11yLabel),
       ]}
       selection={value}

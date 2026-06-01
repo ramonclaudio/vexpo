@@ -23,9 +23,12 @@ vi.mock("expo-linking", () => {
 
 import { parse } from "expo-linking";
 
+import { redirectSystemPath } from "@/app/+native-intent";
 import { resolveDeepLink } from "@/lib/deep-link";
 
 const parseMock = parse as unknown as ReturnType<typeof vi.fn>;
+
+const redirect = (path: string) => redirectSystemPath!({ path, initial: false });
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -87,5 +90,23 @@ describe("resolveDeepLink", () => {
     });
     const result = resolveDeepLink("vexpo://app/linked");
     expect(result.params).toEqual({ a: "1", tags: "x,y" });
+  });
+});
+
+describe("redirectSystemPath (native-intent)", () => {
+  it("reattaches the query so params reach the route on the router's own navigation", () => {
+    expect(redirect("vexpo://app/linked?foo=bar&n=1")).toBe("/linked?foo=bar&n=1");
+  });
+
+  it("returns the bare href when there's no query", () => {
+    expect(redirect("vexpo://app/about")).toBe("/help");
+  });
+
+  it("carries the query across an alias rewrite", () => {
+    expect(redirect("vexpo://app/about?ref=email")).toBe("/help?ref=email");
+  });
+
+  it("blocks unknown paths to /", () => {
+    expect(redirect("vexpo://app/admin")).toBe("/");
   });
 });

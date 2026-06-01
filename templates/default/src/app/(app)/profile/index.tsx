@@ -1,7 +1,7 @@
 import { startTransition, useActionState, useEffect, useState } from "react";
 import { Image as ExpoImage, useImage } from "expo-image";
 import * as ImagePicker from "expo-image-picker";
-import * as LocalAuthentication from "expo-local-authentication";
+import { useDeleteAccount } from "@/hooks/use-delete-account";
 import { router, Stack } from "expo-router";
 import { useMutation, useQuery } from "convex/react";
 import {
@@ -85,7 +85,7 @@ export default function ProfileScreen() {
   const hasPasswordResult = useQuery(api.auth.hasPassword);
   // Email change requires the email-OTP flow which requires Resend. In lite
   // mode (`REQUIRE_EMAIL_VERIFICATION` unset) the email field is read-only
-  //. no way to send a verification code to the new address.
+  // no way to send a verification code to the new address.
   const providers = useQuery(api.auth.getEnabledProviders);
   const emailFeatures = providers?.emailFeatures === true;
   const updateProfile = useMutation(api.users.updateProfile);
@@ -93,7 +93,7 @@ export default function ProfileScreen() {
   const updateAvatar = useMutation(api.users.updateAvatar);
   const deleteAvatar = useMutation(api.users.deleteAvatar);
   const removeAllTokens = useMutation(api.pushTokens.removeAll);
-  const deleteAccountMutation = useMutation(api.users.deleteAccount);
+  const { deleteAccount, deleteError } = useDeleteAccount();
 
   // SwiftUI source of truth via useNativeState; mirrored to React state via
   // onTextChange so derived values like `hasChanges` stay reactive. Username
@@ -310,17 +310,7 @@ export default function ProfileScreen() {
     await authClient.signOut();
   };
 
-  const handleDeleteAccount = async () => {
-    haptics.error();
-    const result = await LocalAuthentication.authenticateAsync({
-      promptMessage: "Confirm with Face ID",
-    });
-    if (!result.success) return;
-    await deleteAccountMutation();
-    await authClient.signOut();
-  };
-
-  const error = saveState.error ?? otpState.error ?? avatarError;
+  const error = saveState.error ?? otpState.error ?? avatarError ?? deleteError;
   const success = saveState.success ?? otpState.success;
 
   if (!me) {
@@ -381,7 +371,7 @@ export default function ProfileScreen() {
                   spacing={16}
                   alignment="center"
                   modifiers={[
-                    frame({ maxWidth: 10000 }),
+                    frame({ maxWidth: Infinity }),
                     onTapGesture(() => {
                       haptics.light();
                       setAvatarPicker(true);
@@ -615,7 +605,7 @@ export default function ProfileScreen() {
                   <Button
                     modifiers={[
                       buttonStyle("plain"),
-                      frame({ maxWidth: 10000 }),
+                      frame({ maxWidth: Infinity }),
                       background(colors.muted as string),
                       clipShape("capsule"),
                     ]}
@@ -626,7 +616,7 @@ export default function ProfileScreen() {
                   >
                     <Text
                       modifiers={[
-                        frame({ maxWidth: 10000, height: ButtonTokens.height }),
+                        frame({ maxWidth: Infinity, height: ButtonTokens.height }),
                         multilineTextAlignment("center"),
                         dfont({
                           size: ButtonTokens.fontSize,
@@ -650,7 +640,7 @@ export default function ProfileScreen() {
                     <Button
                       modifiers={[
                         buttonStyle("plain"),
-                        frame({ maxWidth: 10000 }),
+                        frame({ maxWidth: Infinity }),
                         background(colors.muted as string),
                         clipShape("capsule"),
                       ]}
@@ -661,7 +651,7 @@ export default function ProfileScreen() {
                     >
                       <Text
                         modifiers={[
-                          frame({ maxWidth: 10000, height: ButtonTokens.height }),
+                          frame({ maxWidth: Infinity, height: ButtonTokens.height }),
                           multilineTextAlignment("center"),
                           dfont({
                             size: ButtonTokens.fontSize,
@@ -694,7 +684,7 @@ export default function ProfileScreen() {
                     <Button
                       modifiers={[
                         buttonStyle("plain"),
-                        frame({ maxWidth: 10000 }),
+                        frame({ maxWidth: Infinity }),
                         clipShape("capsule"),
                       ]}
                       onPress={() => {
@@ -704,7 +694,7 @@ export default function ProfileScreen() {
                     >
                       <Text
                         modifiers={[
-                          frame({ maxWidth: 10000, height: ButtonTokens.height }),
+                          frame({ maxWidth: Infinity, height: ButtonTokens.height }),
                           multilineTextAlignment("center"),
                           dfont({
                             size: ButtonTokens.fontSize,
@@ -718,11 +708,7 @@ export default function ProfileScreen() {
                     </Button>
                   </Alert.Trigger>
                   <Alert.Actions>
-                    <Button
-                      label="Delete Account"
-                      role="destructive"
-                      onPress={handleDeleteAccount}
-                    />
+                    <Button label="Delete Account" role="destructive" onPress={deleteAccount} />
                     <Button label="Cancel" role="cancel" />
                   </Alert.Actions>
                   <Alert.Message>

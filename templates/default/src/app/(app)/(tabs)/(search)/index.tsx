@@ -177,7 +177,7 @@ export default function SearchScreen() {
                     key={d.href as string}
                     modifiers={[
                       buttonStyle("plain"),
-                      frame({ maxWidth: 10000 }),
+                      frame({ maxWidth: Infinity }),
                       background(colors.muted as string),
                       clipShape("capsule"),
                     ]}
@@ -187,7 +187,7 @@ export default function SearchScreen() {
                       spacing={14}
                       alignment="center"
                       modifiers={[
-                        frame({ maxWidth: 10000 }),
+                        frame({ maxWidth: Infinity }),
                         padding({ horizontal: 16, vertical: 12 }),
                       ]}
                     >

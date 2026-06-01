@@ -81,7 +81,7 @@ export default function PreferencesScreen() {
       spacing={12}
       alignment="center"
       modifiers={[
-        frame({ maxWidth: 10000, height: ButtonTokens.height }),
+        frame({ maxWidth: Infinity, height: ButtonTokens.height }),
         padding({ horizontal: 16 }),
         background(colors.muted as string),
         clipShape("capsule"),
@@ -126,7 +126,7 @@ export default function PreferencesScreen() {
               modifiers={[
                 pickerStyle("segmented"),
                 controlSize("large"),
-                frame({ maxWidth: 10000, height: ButtonTokens.height }),
+                frame({ maxWidth: Infinity, height: ButtonTokens.height }),
                 accessibilityLabel("Appearance"),
               ]}
               selection={INDEX_BY_MODE[mode]}
@@ -147,7 +147,7 @@ export default function PreferencesScreen() {
               modifiers={[
                 pickerStyle("segmented"),
                 controlSize("large"),
-                frame({ maxWidth: 10000, height: ButtonTokens.height }),
+                frame({ maxWidth: Infinity, height: ButtonTokens.height }),
                 accessibilityLabel("Reduce motion"),
               ]}
               selection={INDEX_BY_MOTION[motion]}

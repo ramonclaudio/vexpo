@@ -64,24 +64,30 @@ export default function SessionsScreen() {
   const { data: current } = authClient.useSession();
   const currentToken = current?.session?.token ?? null;
   const [sessions, setSessions] = useState<SessionRow[] | null>(null);
+  const [loadError, setLoadError] = useState(false);
   const [revoking, setRevoking] = useState<string | null>(null);
   const [confirmToken, setConfirmToken] = useState<string | null>(null);
 
   const load = async () => {
-    const res = await authClient.listSessions();
-    if (res.error) {
-      setSessions([]);
-      return;
+    try {
+      const res = await authClient.listSessions();
+      if (res.error) {
+        setLoadError(true);
+        return;
+      }
+      setLoadError(false);
+      const rows = (res.data ?? []).map((s) => ({
+        id: s.id,
+        token: s.token,
+        ipAddress: s.ipAddress ?? null,
+        userAgent: s.userAgent ?? null,
+        createdAt: new Date(s.createdAt),
+        expiresAt: new Date(s.expiresAt),
+      }));
+      setSessions(rows);
+    } catch {
+      setLoadError(true);
     }
-    const rows = (res.data ?? []).map((s) => ({
-      id: s.id,
-      token: s.token,
-      ipAddress: s.ipAddress ?? null,
-      userAgent: s.userAgent ?? null,
-      createdAt: new Date(s.createdAt),
-      expiresAt: new Date(s.expiresAt),
-    }));
-    setSessions(rows);
   };
 
   useEffect(() => {
@@ -92,7 +98,14 @@ export default function SessionsScreen() {
     haptics.medium();
     setRevoking(token);
     try {
-      await authClient.revokeSession({ token });
+      // revokeSession resolves with an `error` object (not a throw) on a
+      // server-side failure, so check it before announcing success, matching
+      // load()'s `res.error` handling above.
+      const res = await authClient.revokeSession({ token });
+      if (res.error) {
+        haptics.error();
+        return;
+      }
       haptics.success();
       announce("Session revoked");
       await load();
@@ -106,7 +119,15 @@ export default function SessionsScreen() {
   return (
     <Host style={{ flex: 1, backgroundColor: colors.background }}>
       {sessions === null ? (
-        <SkeletonSessions />
+        loadError ? (
+          <ContentUnavailable
+            title="Couldn't load sessions"
+            systemImage="exclamationmark.triangle"
+            description="Check your connection and try again."
+          />
+        ) : (
+          <SkeletonSessions />
+        )
       ) : sessions.length === 0 ? (
         <ContentUnavailable
           title="No active sessions"
@@ -136,7 +157,7 @@ export default function SessionsScreen() {
                   spacing={12}
                   alignment="center"
                   modifiers={[
-                    frame({ maxWidth: 10000 }),
+                    frame({ maxWidth: Infinity }),
                     padding({ horizontal: 20, vertical: 14 }),
                     background(colors.muted as string),
                     cornerRadius(20),
@@ -226,7 +247,7 @@ export default function SessionsScreen() {
                   dfont({ size: 13 }),
                   foregroundStyle(colors.mutedForeground as string),
                   multilineTextAlignment("center"),
-                  frame({ maxWidth: 10000 }),
+                  frame({ maxWidth: Infinity }),
                 ]}
               >
                 Revoking session...

@@ -4,14 +4,13 @@ import { router } from "expo-router";
 import {
   Host,
   VStack,
-  HStack,
-  ScrollView,
+  Spacer,
   Text,
   Button,
   Image,
   ProgressView,
   RNHostView,
-  useNativeState,
+  TabView,
 } from "@expo/ui/swift-ui";
 import {
   foregroundStyle,
@@ -24,11 +23,7 @@ import {
   tint,
   accessibilityLabel,
   accessibilityValue,
-  containerRelativeFrame,
-  scrollTargetBehavior,
-  scrollTargetLayout,
-  scrollPosition,
-  id,
+  tabViewStyle,
 } from "@expo/ui/swift-ui/modifiers";
 import { useDynamicFont } from "@/lib/dynamic-font";
 import { useSymbolSize } from "@/lib/dynamic-symbol-size";
@@ -37,7 +32,6 @@ import { ProminentButton } from "@/components/ui/prominent-button";
 
 import { assets } from "@/lib/assets";
 import { haptics } from "@/lib/haptics";
-import { setNativeValue } from "@/lib/native-state";
 import { useColors, useThemedAsset } from "@/hooks/use-theme";
 import { useOnboarding } from "@/hooks/use-onboarding";
 
@@ -71,7 +65,6 @@ export default function WelcomeScreen() {
   const symbolSize = useSymbolSize();
   const colors = useColors();
   const brandIcon = useThemedAsset(assets.brandIconLight, assets.brandIconDark);
-  const activeID = useNativeState<string | null>(STEPS[0].id);
   const [step, setStep] = useState(0);
   const { markSeen } = useOnboarding();
 
@@ -82,13 +75,14 @@ export default function WelcomeScreen() {
   }, [markSeen]);
 
   const handleNext = useCallback(() => {
-    if (step >= STEPS.length - 1) return;
     haptics.light();
-    setNativeValue(activeID, STEPS[step + 1].id);
-  }, [activeID, step]);
+    setStep((s) => Math.min(s + 1, STEPS.length - 1));
+  }, []);
 
-  const handlePageChange = useCallback((nextID: string | null) => {
-    if (!nextID) return;
+  // TabView page style drives selection by the step's id; a swipe reports the
+  // new id here and we mirror it back into `step` so the progress bar and the
+  // Next/Get Started button stay in sync.
+  const handlePageChange = useCallback((nextID: string) => {
     const idx = STEPS.findIndex((s) => s.id === nextID);
     if (idx < 0) return;
     setStep((current) => {
@@ -113,29 +107,25 @@ export default function WelcomeScreen() {
           />
         </VStack>
 
-        <ScrollView
-          axes="horizontal"
-          showsIndicators={false}
+        <TabView
+          selection={STEPS[step].id}
+          onSelectionChange={handlePageChange}
           modifiers={[
-            frame({ maxWidth: 10000, maxHeight: 10000 }),
-            // upstream expo/expo#43955: scrollTargetBehavior("paging") + scrollTargetLayout()
-            scrollTargetBehavior("paging"),
-            // upstream expo/expo#44652: scrollPosition + id() for two-way binding
-            scrollPosition(activeID, { anchor: "center", onChange: handlePageChange }),
+            frame({ maxWidth: Infinity, maxHeight: Infinity }),
+            tabViewStyle({ type: "page", indexDisplayMode: "never" }),
           ]}
         >
-          <HStack spacing={0} modifiers={[scrollTargetLayout()]}>
-            {STEPS.map((s) => (
+          {STEPS.map((s) => (
+            <TabView.Tab key={s.id} value={s.id}>
               <VStack
-                key={s.id}
                 spacing={20}
                 alignment="center"
                 modifiers={[
-                  id(s.id),
-                  containerRelativeFrame({ axes: "horizontal" }),
+                  frame({ maxWidth: Infinity, maxHeight: Infinity }),
                   padding({ horizontal: 24 }),
                 ]}
               >
+                <Spacer />
                 {"brand" in s ? (
                   <RNHostView matchContents>
                     <ExpoImage
@@ -165,10 +155,11 @@ export default function WelcomeScreen() {
                 >
                   {s.subtitle}
                 </Text>
+                <Spacer />
               </VStack>
-            ))}
-          </HStack>
-        </ScrollView>
+            </TabView.Tab>
+          ))}
+        </TabView>
 
         <VStack spacing={12} modifiers={[padding({ horizontal: 24, bottom: 24 })]}>
           <ProminentButton

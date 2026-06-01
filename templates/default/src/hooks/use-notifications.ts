@@ -46,18 +46,37 @@ export function useNotifications(options?: UseNotificationsOptions) {
     registered.current = true;
 
     (async () => {
-      const { granted } = await requestPermission();
-      if (!granted) return;
+      try {
+        const { granted } = await requestPermission();
+        if (!granted) return;
 
-      const token = await getExpoPushToken();
-      if (!token) return;
+        const token = await getExpoPushToken();
+        if (!token) return;
 
-      setExpoPushToken(token);
-      await upsertToken({ token, deviceType: "ios" });
+        setExpoPushToken(token);
+        await upsertToken({ token, deviceType: "ios" });
+      } catch (e) {
+        // Reset so a transient failure (permission throw, network) retries on
+        // the next render instead of silently dropping push registration for
+        // the session. The early returns above intentionally keep it true.
+        registered.current = false;
+        if (__DEV__) console.warn("[Notification] registration failed:", e);
+      }
     })();
   }, [isAuthenticated, upsertToken]);
 
   useEffect(() => {
+    // Cold-start deep link: the launch tap arrives via the last-response
+    // getter, not the runtime listener below, so handle it once here.
+    // (useLastNotificationResponse would fire for BOTH cold-start and runtime,
+    // double-navigating every runtime tap.)
+    Notifications.getLastNotificationResponseAsync().then((initial) => {
+      if (!initial) return;
+      handleNotificationResponse(initial);
+      options?.onNotificationResponse?.(initial);
+      clearLastNotificationResponse();
+    });
+
     const receivedSub = Notifications.addNotificationReceivedListener((notification) => {
       if (__DEV__) console.log("[Notification] Received:", notification.request.identifier);
       options?.onNotificationReceived?.(notification);
@@ -77,7 +96,11 @@ export function useNotifications(options?: UseNotificationsOptions) {
     const tokenSub = Notifications.addPushTokenListener(async (token) => {
       if (__DEV__) console.log("[Notification] Token rotated:", token.data);
       if (isAuthenticated && typeof token.data === "string") {
-        await upsertToken({ token: token.data, deviceType: "ios" });
+        try {
+          await upsertToken({ token: token.data, deviceType: "ios" });
+        } catch (e) {
+          if (__DEV__) console.warn("[Notification] token upsert failed:", e);
+        }
       }
     });
 
@@ -88,13 +111,6 @@ export function useNotifications(options?: UseNotificationsOptions) {
       tokenSub.remove();
     };
   }, [isAuthenticated, options, upsertToken]);
-
-  const lastResponse = Notifications.useLastNotificationResponse();
-  useEffect(() => {
-    if (!lastResponse) return;
-    handleNotificationResponse(lastResponse);
-    clearLastNotificationResponse();
-  }, [lastResponse]);
 
   return { expoPushToken };
 }
