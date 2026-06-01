@@ -1,6 +1,6 @@
 import { Image as ExpoImage } from "expo-image";
 import { Host, ProgressView, Spacer, VStack, RNHostView } from "@expo/ui/swift-ui";
-import { progressViewStyle, tint } from "@expo/ui/swift-ui/modifiers";
+import { accessibilityLabel, progressViewStyle, tint } from "@expo/ui/swift-ui/modifiers";
 
 import { assets } from "@/lib/assets";
 import { useColors, useThemedAsset } from "@/hooks/use-theme";
@@ -23,7 +23,7 @@ export function LoadingScreen() {
             accessibilityLabel="App icon"
           />
         </RNHostView>
-        <ProgressView modifiers={[progressViewStyle("circular")]} />
+        <ProgressView modifiers={[progressViewStyle("circular"), accessibilityLabel("Loading")]} />
         <Spacer />
       </VStack>
     </Host>

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import * as Sharing from "expo-sharing";
+import { Share } from "react-native";
 import { Stack } from "expo-router";
 import Constants from "expo-constants";
 import * as Application from "expo-application";
@@ -155,12 +155,10 @@ export default function DebugScreen() {
 
   const handleShare = async () => {
     haptics.light();
+    // expo-sharing's shareAsync takes a local file URL, not arbitrary text, so
+    // it can't share a build string. RN's Share sheet takes a plain message.
     try {
-      const available = await Sharing.isAvailableAsync();
-      if (!available) return;
-      await Sharing.shareAsync(`App v${appVersion} (${buildNumber})`, {
-        dialogTitle: "Share build info",
-      });
+      await Share.share({ message: `App v${appVersion} (${buildNumber})` });
     } catch {}
   };
 

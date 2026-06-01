@@ -27,6 +27,7 @@ export function OfflineBanner() {
     <Material
       accessibilityLiveRegion="assertive"
       accessibilityRole="alert"
+      accessibilityLabel="You're offline"
       variant="chrome"
       tintColor={colors.destructive as string}
       style={{

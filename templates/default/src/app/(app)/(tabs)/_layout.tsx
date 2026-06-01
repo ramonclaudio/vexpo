@@ -47,12 +47,11 @@ export default function TabLayout() {
       >
         <NativeTabs.Trigger.Icon sf={{ default: "house", selected: "house.fill" }} />
         <NativeTabs.Trigger.Label>Home</NativeTabs.Trigger.Label>
-        <NativeTabs.Trigger.Badge hidden />
       </NativeTabs.Trigger>
 
       <NativeTabs.Trigger
         name="settings"
-        contentStyle={{ backgroundColor: colors.background as string }}
+        contentStyle={{ backgroundColor: colors.background }}
         listeners={{
           tabPress: () => haptics.light(),
         }}
@@ -64,7 +63,7 @@ export default function TabLayout() {
       <NativeTabs.Trigger
         name="(search)"
         role="search"
-        contentStyle={{ backgroundColor: colors.background as string }}
+        contentStyle={{ backgroundColor: colors.background }}
         listeners={{
           tabPress: () => haptics.light(),
         }}

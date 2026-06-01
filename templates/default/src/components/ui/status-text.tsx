@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { AccessibilityInfo } from "react-native";
 import { HStack, Image, Text } from "@expo/ui/swift-ui";
-import { foregroundStyle } from "@expo/ui/swift-ui/modifiers";
+import { accessibilityLabel, foregroundStyle } from "@expo/ui/swift-ui/modifiers";
 
 import { useDynamicFont } from "@/lib/dynamic-font";
 import { useSymbolSize } from "@/lib/dynamic-symbol-size";
@@ -26,6 +26,7 @@ export function ErrorText({ children, size = 14 }: Props) {
         systemName="exclamationmark.triangle.fill"
         size={symbolSize(size)}
         color={Colors.destructive as string}
+        modifiers={[accessibilityLabel("")]}
       />
       <Text modifiers={[dfont({ size }), foregroundStyle(Colors.destructive as string)]}>
         {children}
@@ -47,6 +48,7 @@ export function SuccessText({ children, size = 14 }: Props) {
         systemName="checkmark.circle.fill"
         size={symbolSize(size)}
         color={Colors.success as string}
+        modifiers={[accessibilityLabel("")]}
       />
       <Text modifiers={[dfont({ size }), foregroundStyle(Colors.success as string)]}>
         {children}

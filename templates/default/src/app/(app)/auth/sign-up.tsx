@@ -549,7 +549,7 @@ export default function SignUpScreen() {
                 keyboardType("email-address"),
                 autocorrectionDisabled(),
                 textInputAutocapitalization("never"),
-                textContentType("username"),
+                textContentType("emailAddress"),
                 disabled(isLoading),
                 submitLabel("next"),
                 accessibilityLabel("Email address"),

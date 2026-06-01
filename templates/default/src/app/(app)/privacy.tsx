@@ -71,7 +71,12 @@ export default function PrivacyScreen() {
           padding({ horizontal: 16 }),
         ]}
       >
-        <Image systemName={systemImage} size={symbolSize(18)} color={colors.foreground as string} />
+        <Image
+          systemName={systemImage}
+          size={symbolSize(18)}
+          color={colors.foreground as string}
+          modifiers={[accessibilityLabel("")]}
+        />
         <Text
           modifiers={[
             dfont({ size: 16, weight: "medium" }),
@@ -135,6 +140,7 @@ export default function PrivacyScreen() {
               systemName="chart.bar.fill"
               size={symbolSize(18)}
               color={colors.foreground as string}
+              modifiers={[accessibilityLabel("")]}
             />
             <Text
               modifiers={[

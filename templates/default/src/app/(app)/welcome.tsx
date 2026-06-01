@@ -75,9 +75,9 @@ export default function WelcomeScreen() {
   const [step, setStep] = useState(0);
   const { markSeen } = useOnboarding();
 
-  const handleContinue = useCallback(async () => {
+  const handleContinue = useCallback(() => {
     haptics.medium();
-    await markSeen();
+    markSeen();
     router.replace("/");
   }, [markSeen]);
 
