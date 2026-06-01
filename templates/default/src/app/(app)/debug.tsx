@@ -330,7 +330,7 @@ export default function DebugScreen() {
             <HStack
               alignment="center"
               modifiers={[
-                frame({ maxWidth: Infinity, height: ButtonTokens.height }),
+                frame({ maxWidth: Infinity, minHeight: ButtonTokens.height }),
                 padding({ horizontal: 16 }),
                 background(colors.muted as string),
                 clipShape("capsule"),
@@ -390,7 +390,7 @@ function UpdateActionButton({
     >
       <Text
         modifiers={[
-          frame({ maxWidth: Infinity, height: ButtonTokens.height }),
+          frame({ maxWidth: Infinity, minHeight: ButtonTokens.height }),
           dfont({ size: 16, weight: "medium" }),
           foregroundStyle(colors.foreground as string),
         ]}

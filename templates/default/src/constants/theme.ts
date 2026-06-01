@@ -5,8 +5,6 @@ import { DefaultTheme as RNDefaultTheme } from "expo-router";
 import type { Theme as RNTheme } from "expo-router/react-navigation";
 import { DynamicColorIOS } from "react-native";
 
-import { FontFamily } from "@/constants/layout";
-
 // `DynamicColorIOS` returns an `OpaqueColorValue`. React Native's StyleSheet
 // processor resolves it natively, but several @expo/ui props and our own
 // `as string` call-sites expect a string. The runtime payload behaves like
@@ -366,11 +364,3 @@ export const Radius = {
   "4xl": Math.round(RADIUS_BASE * 2.6),
   full: 9999,
 } as const;
-
-export const Typography = {
-  default: { fontSize: 16, lineHeight: 24, fontFamily: FontFamily.regular },
-  defaultSemiBold: { fontSize: 16, lineHeight: 24, fontFamily: FontFamily.semiBold },
-  title: { fontSize: 30, lineHeight: 38, fontFamily: FontFamily.bold, letterSpacing: -0.5 },
-  subtitle: { fontSize: 20, lineHeight: 26, fontFamily: FontFamily.semiBold },
-  link: { fontSize: 16, lineHeight: 24, fontFamily: FontFamily.regular },
-};

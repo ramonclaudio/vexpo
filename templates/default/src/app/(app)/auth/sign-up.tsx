@@ -331,7 +331,7 @@ export default function SignUpScreen() {
   const inputModifiers = [
     textFieldStyle("plain"),
     padding({ horizontal: 16 }),
-    frame({ maxWidth: Infinity, height: ButtonTokens.height }),
+    frame({ maxWidth: Infinity, minHeight: ButtonTokens.height }),
     background(colors.muted as string),
     clipShape("capsule"),
     dfont({ size: 16 }),
@@ -584,7 +584,7 @@ export default function SignUpScreen() {
           {showApple && (
             <VStack
               alignment="center"
-              modifiers={[frame({ maxWidth: Infinity, height: ButtonTokens.height })]}
+              modifiers={[frame({ maxWidth: Infinity, minHeight: ButtonTokens.height })]}
             >
               <RNHostView>
                 <AppleAuthentication.AppleAuthenticationButton

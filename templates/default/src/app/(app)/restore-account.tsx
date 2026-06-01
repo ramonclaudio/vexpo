@@ -161,7 +161,7 @@ export default function RestoreAccountScreen() {
           <Button
             modifiers={[
               buttonStyle("plain"),
-              frame({ maxWidth: Infinity, height: ButtonTokens.height }),
+              frame({ maxWidth: Infinity, minHeight: ButtonTokens.height }),
               background(colors.muted as string),
               clipShape("capsule"),
               disabled(restorePending || signingOut),

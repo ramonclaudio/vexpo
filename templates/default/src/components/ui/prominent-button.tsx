@@ -52,7 +52,7 @@ export function ProminentButton({
     >
       <Text
         modifiers={[
-          frame({ maxWidth: Infinity, height: ButtonTokens.height }),
+          frame({ maxWidth: Infinity, minHeight: ButtonTokens.height }),
           multilineTextAlignment("center"),
           dfont({ size: ButtonTokens.fontSize, weight: ButtonTokens.fontWeight }),
           foregroundStyle(colors.primaryForeground as string),

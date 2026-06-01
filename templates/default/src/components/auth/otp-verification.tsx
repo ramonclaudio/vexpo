@@ -227,7 +227,7 @@ export function OtpVerification({
             modifiers={[
               textFieldStyle("plain"),
               padding({ horizontal: 16 }),
-              frame({ maxWidth: Infinity, height: ButtonTokens.height }),
+              frame({ maxWidth: Infinity, minHeight: ButtonTokens.height }),
               background(colors.muted as string),
               clipShape("capsule"),
               dfont({ size: 24, design: "monospaced" }),
@@ -263,7 +263,7 @@ export function OtpVerification({
           >
             <Text
               modifiers={[
-                frame({ maxWidth: Infinity, height: ButtonTokens.height }),
+                frame({ maxWidth: Infinity, minHeight: ButtonTokens.height }),
                 multilineTextAlignment("center"),
                 dfont({ size: ButtonTokens.fontSize, weight: ButtonTokens.secondaryFontWeight }),
                 foregroundStyle(colors.primary as string),

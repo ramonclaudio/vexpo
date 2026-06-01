@@ -61,7 +61,11 @@ export function AppErrorBoundary({ error, retry }: ErrorBoundaryProps) {
           <ProminentButton label="Try Again" onPress={retry} />
           <Button
             label="Go Home"
-            modifiers={[buttonStyle("plain"), foregroundStyle(colors.mutedForeground as string)]}
+            modifiers={[
+              buttonStyle("plain"),
+              dfont({ size: 16, weight: "medium" }),
+              foregroundStyle(colors.mutedForeground as string),
+            ]}
             onPress={() => router.replace("/")}
           />
         </VStack>

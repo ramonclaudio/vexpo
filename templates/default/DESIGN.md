@@ -158,7 +158,7 @@ In-app typography uses the same Geist face but caps at Bold (700) for nav titles
 | Body emphasis                   | 600 SemiBold | 16    | 24          | 0              |
 | Caption                         | 400 Regular  | 13-14 | 20-22       | 0              |
 
-Body and label text scales with the user's Larger Text accessibility setting via `lib/dynamic-font.ts`. The `useDynamicFont` hook multiplies the declared size by `useWindowDimensions().fontScale` before passing to `@expo/ui/swift-ui`'s `font()` modifier. Don't bypass this hook. If you do, your screen breaks at Larger Text.
+Every label scales with the user's Larger Text accessibility setting via `src/lib/dynamic-font.ts`. The `useDynamicFont` hook maps the declared point size to a SwiftUI `Font.TextStyle` and passes it to `@expo/ui/swift-ui`'s `font()` modifier (upstream `expo/expo#46007`), so the Geist family rides Apple's Dynamic Type curves natively. SwiftUI rescales the text when the setting changes, no JS re-render. The declared size is the base, so default-size rendering is unchanged. Don't bypass this hook. If you do, your text stops scaling at Larger Text.
 
 Geist's variable axes are not currently exercised at runtime (we use static TTFs for individual weights via `expo-font`). The variable TTF ships in `assets/fonts/` for future use. If runtime needs variable weight interpolation, point `expo-font` at the variable file and use SwiftUI's `.fontWeight()` modifier.
 

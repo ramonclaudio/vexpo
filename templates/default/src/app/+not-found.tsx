@@ -4,13 +4,18 @@ import { padding, tint } from "@expo/ui/swift-ui/modifiers";
 import { ProminentButton } from "@/components/ui/prominent-button";
 import { ContentUnavailable } from "@/components/ui/content-unavailable";
 import { useColors } from "@/hooks/use-theme";
+import { FontFamily } from "@/constants/layout";
 
 export default function NotFoundScreen() {
   const colors = useColors();
   return (
     <>
       <Stack.Header>
-        <Stack.Screen.Title>Lost?</Stack.Screen.Title>
+        <Stack.Screen.Title
+          style={{ color: colors.foreground as string, fontFamily: FontFamily.semiBold }}
+        >
+          Lost?
+        </Stack.Screen.Title>
       </Stack.Header>
       <Host style={{ flex: 1 }}>
         <VStack

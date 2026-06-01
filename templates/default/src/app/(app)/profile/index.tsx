@@ -326,7 +326,7 @@ export default function ProfileScreen() {
   const inputModifiers = [
     textFieldStyle("plain"),
     padding({ horizontal: 16 }),
-    frame({ maxWidth: Infinity, height: ButtonTokens.height }),
+    frame({ maxWidth: Infinity, minHeight: ButtonTokens.height }),
     background(colors.muted as string),
     clipShape("capsule"),
     dfont({ size: 16 }),
@@ -616,7 +616,7 @@ export default function ProfileScreen() {
                   >
                     <Text
                       modifiers={[
-                        frame({ maxWidth: Infinity, height: ButtonTokens.height }),
+                        frame({ maxWidth: Infinity, minHeight: ButtonTokens.height }),
                         multilineTextAlignment("center"),
                         dfont({
                           size: ButtonTokens.fontSize,
@@ -651,7 +651,7 @@ export default function ProfileScreen() {
                     >
                       <Text
                         modifiers={[
-                          frame({ maxWidth: Infinity, height: ButtonTokens.height }),
+                          frame({ maxWidth: Infinity, minHeight: ButtonTokens.height }),
                           multilineTextAlignment("center"),
                           dfont({
                             size: ButtonTokens.fontSize,
@@ -694,7 +694,7 @@ export default function ProfileScreen() {
                     >
                       <Text
                         modifiers={[
-                          frame({ maxWidth: Infinity, height: ButtonTokens.height }),
+                          frame({ maxWidth: Infinity, minHeight: ButtonTokens.height }),
                           multilineTextAlignment("center"),
                           dfont({
                             size: ButtonTokens.fontSize,

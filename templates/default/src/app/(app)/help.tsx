@@ -126,7 +126,7 @@ export default function HelpScreen() {
         spacing={12}
         alignment="center"
         modifiers={[
-          frame({ maxWidth: Infinity, height: ButtonTokens.height }),
+          frame({ maxWidth: Infinity, minHeight: ButtonTokens.height }),
           padding({ horizontal: 16 }),
         ]}
       >
@@ -227,6 +227,7 @@ export default function HelpScreen() {
                       label={item.question}
                       isExpanded={!!expanded[item.question]}
                       onIsExpandedChange={(v) => toggleExpanded(item.question, v)}
+                      modifiers={[dfont({ size: 16, weight: "medium" })]}
                     >
                       <Text
                         modifiers={[

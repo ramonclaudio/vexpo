@@ -124,7 +124,7 @@ export default function ForgotPasswordScreen() {
               modifiers={[
                 textFieldStyle("plain"),
                 padding({ horizontal: 16 }),
-                frame({ maxWidth: Infinity, height: ButtonTokens.height }),
+                frame({ maxWidth: Infinity, minHeight: ButtonTokens.height }),
                 background(colors.muted as string),
                 clipShape("capsule"),
                 dfont({ size: 16 }),
