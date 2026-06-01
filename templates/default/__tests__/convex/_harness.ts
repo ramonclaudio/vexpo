@@ -115,3 +115,18 @@ export async function auditRowsFor(t: AuthedTest, userId: Id<"users">) {
       .collect(),
   );
 }
+
+/**
+ * Better Auth component `session` rows for one auth user. `runInComponent`
+ * exposes a real ctx but its public type only narrows `db.insert`, so cast to
+ * read; filtering in JS avoids depending on the component's index names.
+ */
+export async function componentSessionsFor(t: AuthedTest, authUserId: string) {
+  return t.runInComponent("betterAuth", async (ctx) => {
+    const db = ctx.db as unknown as {
+      query: (table: string) => { collect: () => Promise<Array<{ userId: string }>> };
+    };
+    const all = await db.query("session").collect();
+    return all.filter((s) => s.userId === authUserId);
+  });
+}

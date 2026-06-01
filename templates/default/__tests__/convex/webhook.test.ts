@@ -290,6 +290,37 @@ describe("withWebhook (HMAC signature verification)", () => {
     expect(res.status).toBe(200);
   });
 
+  test("401 when replay timestamp is in the future", async () => {
+    // The window is two-sided (Math.abs of the age), so a forward-skewed clock
+    // is rejected too. A one-sided `age > max` check would pass every other
+    // replay test but accept arbitrarily-future timestamps; this pins that.
+    const handler = withWebhook(
+      {
+        source: "test",
+        signatureHeader: "x-signature",
+        secretEnv: "TEST_WEBHOOK_SECRET",
+        algorithm: "sha256",
+        replay: { header: "x-timestamp", maxAgeSeconds: 60 },
+      },
+      () => new Response("ok"),
+    );
+    const body = "{}";
+    const signature = await sign("sha256", SECRET, body);
+    const future = Date.now() + 120_000; // 2 minutes ahead, exceeds 60s window
+    const res = await handler(
+      ctx,
+      makeRequest({
+        body,
+        signatureHeader: "x-signature",
+        signatureValue: signature,
+        timestampHeader: "x-timestamp",
+        timestampValue: String(future),
+      }),
+    );
+    expect(res.status).toBe(401);
+    expect(await res.text()).toContain("timestamp out of window");
+  });
+
   test("X-Request-Id header is set on every response", async () => {
     const handler = withWebhook(
       {

@@ -21,7 +21,13 @@ import { describe, expect, test } from "vitest";
 
 import { api } from "@/convex/_generated/api";
 
-import { auditRowsFor, identityFor, initConvexTest, seedAuthedUser } from "./_harness";
+import {
+  auditRowsFor,
+  componentSessionsFor,
+  identityFor,
+  initConvexTest,
+  seedAuthedUser,
+} from "./_harness";
 
 const FAR_FUTURE = Date.now() + 7 * 24 * 60 * 60 * 1000;
 
@@ -42,9 +48,10 @@ describe("users.deleteAccount", () => {
       }),
     );
 
-    // Sanity: the row starts un-tombstoned.
+    // Sanity: the row starts un-tombstoned with one live session.
     const before = await t.run(async (ctx) => ctx.db.get(appUserId));
     expect(before?.deletedAt).toBeUndefined();
+    expect(await componentSessionsFor(t, authUserId)).toHaveLength(1);
 
     const asUser = t.withIdentity(identityFor(authUserId, sessionId));
     const beforeCall = Date.now();
@@ -64,6 +71,11 @@ describe("users.deleteAccount", () => {
     // Push token deleted so notifications stop.
     const tokenGone = await t.run(async (ctx) => ctx.db.get(pushTokenId));
     expect(tokenGone).toBeNull();
+
+    // Better Auth sessions revoked so the user's other devices are signed out.
+    // Without this assertion, dropping the session-revocation line would leave
+    // every deleteAccount test green.
+    expect(await componentSessionsFor(t, authUserId)).toHaveLength(0);
 
     // Exactly one "requested" audit row keyed to this user.
     const audit = await auditRowsFor(t, appUserId);
