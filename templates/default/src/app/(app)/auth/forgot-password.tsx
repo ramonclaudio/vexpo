@@ -67,8 +67,6 @@ export default function ForgotPasswordScreen() {
     }
 
     try {
-      // OTP-based reset: server emails a 6-digit code, the next screen
-      // collects code + new password and calls emailOtp.resetPassword.
       const response = await authClient.emailOtp.sendVerificationOtp({
         email: parsed.data.email,
         type: "forget-password",

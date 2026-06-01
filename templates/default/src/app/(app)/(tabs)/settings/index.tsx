@@ -67,8 +67,6 @@ export default function SettingsScreen() {
 
   const handleSignOut = async () => {
     haptics.medium();
-    // Push-token cleanup is best-effort. A stale token gets garbage-collected
-    // by `pushTokens.cleanupStale` after 30 days, so don't gate sign-out on it.
     try {
       await removeAllTokens();
     } catch (err) {
@@ -159,7 +157,6 @@ export default function SettingsScreen() {
           alignment="leading"
           modifiers={[padding({ horizontal: 24, top: 24, bottom: 40 })]}
         >
-          {/* Profile header */}
           <Button
             modifiers={[
               buttonStyle("plain"),

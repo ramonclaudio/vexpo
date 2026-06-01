@@ -1,17 +1,3 @@
-/**
- * `vexpo rebrand`. interactive wizard for vexpo forks. Detects template
- * defaults (com.example.vexpo, slug "vexpo", placeholder review contact) and
- * walks the user through replacing them. Edits:
- *   app.config.ts     name, slug, scheme, BUNDLE_ID/APPLE_TEAM_ID/EXPO_OWNER fallbacks
- *   app.json          clears extra.eas.projectId (eas init will regenerate)
- *   package.json      name (lowercase, hyphenated)
- *   store.config.json full ASC metadata regenerated from prompts
- *
- * Idempotent: re-runs detect "already rebranded" via state.json and exit
- * unless --force is passed. Backups go to .rebrand-backup/<timestamp>/
- * inside the project root before any edit.
- */
-
 import { access, mkdir, readFile, writeFile } from "node:fs/promises";
 
 import {
@@ -111,7 +97,6 @@ async function promptInputs(overrides: Partial<RebrandInputs>): Promise<RebrandI
     overrides.reviewEmail ?? (await ask(`  ${BOLD}Apple review contact email${RESET} > `)).trim();
   if (!reviewEmail) fail("review email required");
 
-  // Derive everything else with sensible defaults. Override via flags.
   const packageName = overrides.packageName ?? defaultPkg;
   const scheme = overrides.scheme ?? bundleSlug(packageName);
   const githubHint = `https://github.com/${slug(ownerName)}/${packageName}`;
@@ -161,22 +146,18 @@ async function rewriteAppConfig(inputs: RebrandInputs): Promise<void> {
   const file = "app.config.ts";
   let text = await readFile(file, "utf8");
 
-  // BUNDLE_ID fallback
   text = text.replace(
     /const BUNDLE_ID = process\.env\.EXPO_PUBLIC_APP_BUNDLE_ID \?\? `com\.example\.\$\{pkg\.name\}`;/,
     `const BUNDLE_ID = process.env.EXPO_PUBLIC_APP_BUNDLE_ID ?? "${inputs.bundleId}";`,
   );
 
-  // name
   text = text.replace(
     /name: IS_DEV \? "[^"]+" : "[^"]+",/,
     `name: IS_DEV ? "${inputs.appName} (Dev)" : "${inputs.appName}",`,
   );
 
-  // slug
   text = text.replace(/slug: "[^"]+",/, `slug: "${inputs.packageName}",`);
 
-  // scheme
   text = text.replace(/scheme: "[^"]+",/, `scheme: "${inputs.scheme}",`);
 
   await writeFile(file, text);
@@ -204,10 +185,6 @@ async function rewritePackageJson(inputs: RebrandInputs): Promise<void> {
 
 async function rewriteStoreConfig(inputs: RebrandInputs): Promise<void> {
   const file = "store.config.json";
-  // Read an existing store.config.json if the user has one; otherwise build
-  // from the inline template below. The template lives in this CLI (not in
-  // the scaffolded project) so a 0-to-1 user doesn't see App Store metadata
-  // until they're ready to ship.
   let json: StoreConfigShape;
   try {
     await access(file);

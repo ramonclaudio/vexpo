@@ -8,12 +8,10 @@ import type { DataModel } from "./_generated/dataModel";
 import { internalMutation } from "./_generated/server";
 import { env } from "./env";
 
-// testMode defaults to true so dev can't accidentally email real users.
-// Set RESEND_TEST_MODE=false in production to send to real addresses.
-// Note: @convex-dev/resend's testMode only permits @resend.dev sandbox
-// addresses and throws otherwise. To keep dev sign-up working with real-shaped
-// emails, sendAuthOTP below short-circuits when testMode is on and logs the
-// OTP to the Convex deployment console instead of calling sendEmail.
+// @convex-dev/resend's testMode only permits @resend.dev sandbox addresses and
+// throws otherwise. To keep dev sign-up working with real-shaped emails,
+// sendAuthOTP below short-circuits when testMode is on and logs the OTP to the
+// Convex deployment console instead of calling sendEmail.
 // Explicit `: Resend` annotation is required because `onEmailEvent` references
 // a function in this same module, which would otherwise cause TS inference to
 // loop on itself.
@@ -24,15 +22,6 @@ export const resend: Resend = new Resend(components.resend, {
   onEmailEvent: internal.email.handleEmailEvent,
 });
 
-/**
- * Receives delivery events from the Resend webhook (mounted in convex/http.ts).
- * The event payload is also automatically persisted to the component's
- * `deliveryEvents` table for inspection in the Convex dashboard.
- *
- * Logs the 4 actionable failure events (bounced, complained, suppressed,
- * failed). Extend this handler to flag the user's email as unreachable if
- * you want to stop sending auth OTPs to addresses that will never arrive.
- */
 const ACTIONABLE_FAILURE_EVENTS = new Set([
   "email.bounced",
   "email.complained",
@@ -76,15 +65,6 @@ const OTP_COPY: Record<OTPType, { subject: string; heading: string; body: string
   },
 };
 
-/**
- * Send an auth OTP email via Resend. Used by Better Auth's emailOTP plugin
- * inside the `sendVerificationOTP` callback in convex/auth.ts.
- *
- * In test mode (dev default), logs the OTP to the Convex deployment console
- * instead of calling Resend. Read it from `npx convex dev` output or the
- * deployment logs in the Convex dashboard. Production sets RESEND_TEST_MODE
- * to "false" and sends real emails.
- */
 export async function sendAuthOTP(
   ctx: GenericCtx<DataModel>,
   { email, otp, type }: { email: string; otp: string; type: OTPType },

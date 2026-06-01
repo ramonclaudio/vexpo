@@ -1,11 +1,3 @@
-/**
- * User Queries and Mutations
- *
- * CRUD operations for the app users table.
- * Identity fields (name, email, username, image) live on the Better Auth user
- * and are merged in at read time by safeGetAuthenticatedUser in auth.ts.
- */
-
 import { v } from "convex/values";
 
 import { components, internal } from "./_generated/api";
@@ -23,14 +15,6 @@ import {
   validateBio,
 } from "./validators";
 
-// ============================================================================
-// Queries
-// ============================================================================
-
-/**
- * Get the current authenticated user's profile with resolved avatar URL.
- * Returns null when unauthenticated.
- */
 export const getMe = optionalAuthQuery({
   args: {},
   returns: v.union(authUserValidator, v.null()),
@@ -40,10 +24,8 @@ export const getMe = optionalAuthQuery({
 });
 
 /**
- * Get a user by app user id with Better Auth identity fields merged in.
  * Accepts an arbitrary string and normalizes it via `ctx.db.normalizeId`,
- * so untrusted inputs can be passed straight through. Returns null when the
- * id is malformed or either record is missing.
+ * so untrusted inputs can be passed straight through.
  */
 export const getUser = optionalAuthQuery({
   args: { userId: v.string() },
@@ -76,10 +58,6 @@ export const getUser = optionalAuthQuery({
   },
 });
 
-/**
- * List users (paginated) with Better Auth identity fields merged in.
- * Entries with a missing Better Auth record are skipped.
- */
 export const listUsers = optionalAuthQuery({
   args: {
     cursor: v.optional(v.string()),
@@ -123,14 +101,6 @@ export const listUsers = optionalAuthQuery({
   },
 });
 
-// ============================================================================
-// Mutations
-// ============================================================================
-
-/**
- * Update the current user's bio. Name and username changes go through
- * Better Auth directly via authClient.updateUser on the client.
- */
 export const updateProfile = authMutation({
   args: userProfileUpdateFields,
   returns: v.id("users"),
@@ -151,10 +121,6 @@ export const updateProfile = authMutation({
   },
 });
 
-/**
- * Generate an upload URL for avatar images.
- * The URL expires in 1 hour.
- */
 export const generateAvatarUploadUrl = authMutation({
   args: {},
   returns: v.string(),
@@ -165,8 +131,6 @@ export const generateAvatarUploadUrl = authMutation({
 });
 
 /**
- * Update the current user's avatar with a storage id.
- * Deletes the previous uploaded avatar from storage if one exists.
  * Does not touch Better Auth's image field - that's for provider-supplied URLs.
  */
 export const updateAvatar = authMutation({
@@ -186,11 +150,6 @@ export const updateAvatar = authMutation({
   },
 });
 
-/**
- * Delete the current user's uploaded avatar.
- * Removes the file from storage and clears the avatar field. After deletion,
- * Better Auth's image (e.g. OAuth provider avatar) is used as the fallback.
- */
 export const deleteAvatar = authMutation({
   args: {},
   returns: v.object({ success: v.boolean() }),
@@ -210,20 +169,14 @@ export const deleteAvatar = authMutation({
 
 // 30-day grace window between a user requesting deletion and the row
 // being permanently purged. Apple's 5.1.1(v) requires deletability from
-// within the app; the window itself is industry convention so a confused
-// tap can be recovered. After it expires, `internal.users.hardDeleteExpired`
-// purges everything irreversibly.
+// within the app; the window lets a confused tap be recovered. After it
+// expires, `internal.users.hardDeleteExpired` purges everything irreversibly.
 export const ACCOUNT_DELETION_GRACE_MS = 30 * 24 * 60 * 60 * 1000;
 const HARD_DELETE_BATCH = 50;
 
 /**
- * Tombstone the current user's account.
- *
- * Signs the user out everywhere, drops push tokens so notifications stop,
- * marks the user row with `deletedAt`. Better Auth credentials (the user
- * record + email/password account, Apple account) stay intact until the
- * 30-day window expires so a returning user can call `restoreAccount`
- * to undo the request.
+ * Better Auth credentials stay intact until the 30-day window expires so a
+ * returning user can call `restoreAccount` to undo the request.
  *
  * Apple `revokeRefreshToken` runs at the hard-delete pass, not here, so
  * a user who restores within the window can still use Sign in with Apple
@@ -233,29 +186,21 @@ export const deleteAccount = authMutation({
   args: {},
   returns: v.object({ success: v.boolean(), deletedAt: v.number() }),
   handler: async (ctx) => {
-    // Reversible within the window, but still a destructive action by
-    // intent. Strictest rate limit bucket. Reserves let a legitimate
-    // single call succeed even if the bucket is empty from earlier writes.
     await rateLimitWithThrow(ctx, "criticalAction", ctx.user._id.toString());
     const authUserId = ctx.user.authUserId;
     const userId = ctx.user._id;
     const now = Date.now();
 
-    // Already tombstoned: no-op. Idempotent in case the client retries.
     if (ctx.user.deletedAt) {
       return { success: true, deletedAt: ctx.user.deletedAt };
     }
 
-    // Stop notifications immediately. Push tokens carry no recovery value,
-    // and a re-signed-in client re-registers via `pushTokens.upsert`.
     const pushTokens = await ctx.db
       .query("pushTokens")
       .withIndex("by_user", (q) => q.eq("userId", userId))
       .collect();
     await Promise.all(pushTokens.map((t) => ctx.db.delete(t._id)));
 
-    // Sign the user out everywhere. Better Auth keeps the user record so
-    // the account can be restored.
     await deleteAllByUserId(ctx, "session", authUserId);
 
     await ctx.db.patch(userId, { deletedAt: now, updatedAt: now });
@@ -271,10 +216,6 @@ export const deleteAccount = authMutation({
   },
 });
 
-/**
- * Lift a pending deletion. Called when a tombstoned user signs back in
- * within the grace window and chooses to restore.
- */
 export const restoreAccount = authMutation({
   args: {},
   returns: v.object({ success: v.boolean() }),
@@ -282,7 +223,6 @@ export const restoreAccount = authMutation({
     await rateLimitWithThrow(ctx, "criticalAction", ctx.user._id.toString());
     const now = Date.now();
 
-    // Not tombstoned: idempotent no-op, matching deleteAccount's retry safety.
     if (!ctx.user.deletedAt) return { success: true };
 
     await ctx.db.patch(ctx.user._id, { deletedAt: undefined, updatedAt: now });
@@ -299,22 +239,13 @@ export const restoreAccount = authMutation({
 });
 
 /**
- * Daily cron pass: irreversibly purge users whose tombstone is older
- * than the grace window.
+ * Revokes Apple Sign In refresh tokens per Apple App Store guideline
+ * 5.1.1(v): "If people used Sign in with Apple to create an account
+ * within your app, you revoke the associated tokens when they delete
+ * their account."
  *
- * For each expired user:
- *   - revoke any Apple Sign In refresh tokens (Apple App Store guideline
- *     5.1.1(v): "If people used Sign in with Apple to create an account
- *     within your app, you revoke the associated tokens when they delete
- *     their account.")
- *   - drop every Better Auth row keyed to the user (sessions, accounts,
- *     twoFactor, oauth, verification)
- *   - delete the Better Auth user, which fires the `onDelete` trigger
- *     that drops the app users row and frees the avatar blob
- *   - write an audit row for compliance
- *
- * Processed in bounded batches; reschedules itself when more rows remain
- * so the mutation never holds an unbounded set in memory.
+ * Deleting the Better Auth user fires the `onDelete` trigger that drops
+ * the app users row and frees the avatar blob.
  */
 export const hardDeleteExpired = internalMutation({
   args: {},
@@ -379,8 +310,6 @@ async function purgeUser(ctx: MutationCtx, authUserId: string, userId: Id<"users
   await deleteAllByUserId(ctx, "oauthApplication", authUserId);
   if (authUser?.email) await deleteVerificationByIdentifier(ctx, authUser.email);
 
-  // Deleting the Better Auth user fires the `onDelete` trigger which
-  // drops the matching app users row and frees the avatar blob.
   await ctx.runMutation(components.betterAuth.adapter.deleteOne, {
     input: { model: "user", where: [{ field: "_id", value: authUserId }] },
   });

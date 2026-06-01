@@ -70,7 +70,6 @@ export type Build = {
 
 export function testflight(client: AscClient) {
   return {
-    /* beta groups -------------------------------------------------------- */
     betaGroups: {
       list(filter?: { appId?: string; name?: string }): Promise<BetaGroup[]> {
         const query: Record<string, string> = {};
@@ -136,7 +135,6 @@ export function testflight(client: AscClient) {
       },
     },
 
-    /* beta testers ------------------------------------------------------- */
     betaTesters: {
       list(filter?: { email?: string; appId?: string }): Promise<BetaTester[]> {
         const query: Record<string, string> = {};
@@ -185,7 +183,6 @@ export function testflight(client: AscClient) {
       },
     },
 
-    /* invitations -------------------------------------------------------- */
     betaTesterInvitations: {
       async create(args: { appId: string; testerId: string }): Promise<BetaTesterInvitation> {
         const body = {
@@ -206,7 +203,6 @@ export function testflight(client: AscClient) {
       },
     },
 
-    /* beta build localizations ------------------------------------------ */
     betaBuildLocalizations: {
       list(buildId: string): Promise<BetaBuildLocalization[]> {
         return client.paginatedList<BetaBuildLocalization>(
@@ -255,7 +251,6 @@ export function testflight(client: AscClient) {
       },
     },
 
-    /* builds (read-only) ------------------------------------------------- */
     builds: {
       list(filter?: {
         appId?: string;

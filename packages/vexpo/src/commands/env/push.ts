@@ -1,24 +1,3 @@
-/**
- * `vexpo env push`. lite-mode env sync. Reads .env.local + .env.prod (or
- * .env.production), classifies each key by destination via the routing table
- * in env-files.ts, and pushes to Convex env (dev + prod) and EAS env
- * (development + preview + production).
- *
- * Does NOT provision Resend keys, sign Apple JWTs, run `eas init`, or walk
- * signups. For greenfield setup with full provisioning, use `vexpo full`.
- *
- * After sync, runs the same verification battery as `vexpo doctor` -
- * auth-checks each credential and cross-references bundle id / team id /
- * Services ID. Exits non-zero on credential failures (e.g. Resend key
- * rejected, Apple JWT expired, bundle id mismatch). Pass --no-verify
- * to skip.
- *
- * Secret-visibility EAS env vars (the JWT rotation cron consumes these) are
- * NOT pushed by env push. They need explicit `eas env:create --visibility
- * secret`. We print the exact commands when we see those keys in source
- * files. See MANUAL_EAS_SECRETS in env-files.ts.
- */
-
 import {
   envMap as convexEnvMap,
   envSetFromFile as convexEnvSetFromFile,
@@ -131,7 +110,6 @@ function resolveDestination(
     if (current === newValue) return { destination: dest, current, status: "noop" };
     return { destination: dest, current, status: current === undefined ? "create" : "update" };
   }
-  // eas
   if (!remote.hasEasProject) {
     return {
       destination: dest,
@@ -211,11 +189,6 @@ function printFilePlan(plan: FilePlan): {
   return { actionable, conflicts, blocked };
 }
 
-/**
- * Batch writes by destination so we do one shellout per (target, env-set)
- * instead of one per key. Convex bulk via `convex env set --from-file`,
- * EAS bulk via `eas env:push`.
- */
 async function applyPlan(
   plan: FilePlan,
   opts: { force?: boolean } = {},
@@ -386,7 +359,6 @@ export async function runEnvPush(options: EnvPushOptions): Promise<number> {
     totalBlocked += blocked;
   }
 
-  // Dry-run exits early with no side effects (no state writes, no API calls).
   if (options.dryRun) {
     line();
     if (totalActionable === 0 && totalBlocked === 0) {

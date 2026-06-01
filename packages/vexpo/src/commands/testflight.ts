@@ -1,13 +1,3 @@
-/**
- * `vexpo testflight` group. Manages beta groups + testers via the ASC API
- * because eas-cli stops at uploading the build.
- *
- *   vexpo testflight groups (list|create|view|delete)
- *   vexpo testflight testers (list|add|remove)
- *   vexpo testflight invite <email> --group <id>
- *   vexpo testflight whats-new <buildId> --locale en-US "release notes"
- */
-
 import { ascBootstrap } from "../lib/asc-state.ts";
 import { testflight } from "../lib/asc-testflight.ts";
 import { BOLD, DIM, RESET, bad, line, nop, ok, section } from "../lib/output.ts";
@@ -21,8 +11,6 @@ async function bootstrap() {
   }
   return { tf: testflight(client), ascAppId };
 }
-
-/* groups -------------------------------------------------------------- */
 
 export async function runTestflightGroupsList(opts: { json?: boolean } = {}): Promise<number> {
   try {
@@ -118,8 +106,6 @@ export async function runTestflightGroupsDelete(groupId: string): Promise<number
   }
 }
 
-/* testers ------------------------------------------------------------- */
-
 export async function runTestflightTestersList(opts: {
   email?: string;
   json?: boolean;
@@ -202,8 +188,6 @@ export async function runTestflightRemove(email: string): Promise<number> {
     return 1;
   }
 }
-
-/* "what's new" release notes ----------------------------------------- */
 
 export async function runTestflightWhatsNew(opts: {
   buildId: string;

@@ -1,21 +1,3 @@
-/**
- * Verification engine for setup-lite and setup-verify. Runs a battery of
- * checks across local files, Convex env, EAS env, GitHub secrets, and
- * external service auth (Resend, ASC, Apple JWT) to make sure:
- *
- *   1. Credentials authenticate (Resend key works, ASC key works, JWT
- *      decodes correctly).
- *   2. Credentials match the project (bundle id, team id, services id,
- *      Convex deployment URLs all line up across .env.local, Convex env,
- *      EAS env, app.config.ts).
- *   3. Time-sensitive credentials are still fresh (Apple JWT expires in
- *      <30 days warns).
- *
- * Pure logic. no I/O outside fetch + the existing CLI shellouts. Returns
- * Check[] for the caller to format. Never throws on failed checks. they
- * become Check objects with severity "fail" or "warn".
- */
-
 import { existsSync, readFileSync } from "node:fs";
 
 import { validate as ascValidate, makeAscClient, type AscCredentials } from "./asc-api.ts";
@@ -107,8 +89,6 @@ const skip = (category: Category, name: string, message: string, details?: strin
   details,
 });
 
-// ---------- helpers ----------
-
 function decodeJwt(
   jwt: string,
 ): { header: Record<string, unknown>; payload: Record<string, unknown> } | null {
@@ -133,7 +113,6 @@ function hostnameOf(url: string): string | null {
 }
 
 function deploymentSlugFromHost(host: string): string | null {
-  // happy-frog-12.convex.cloud → happy-frog-12
   const m = /^([a-z0-9-]+)\.convex\.(cloud|site)$/i.exec(host);
   return m ? m[1] : null;
 }
@@ -150,8 +129,6 @@ async function fetchOk(url: string, timeoutMs = 5000): Promise<{ ok: boolean; st
     clearTimeout(t);
   }
 }
-
-// ---------- Convex ----------
 
 async function verifyConvex(ctx: VerifyContext): Promise<Check[]> {
   const checks: Check[] = [];
@@ -252,8 +229,6 @@ async function verifyConvex(ctx: VerifyContext): Promise<Check[]> {
 
   return checks;
 }
-
-// ---------- Resend ----------
 
 async function verifyResend(ctx: VerifyContext): Promise<Check[]> {
   const checks: Check[] = [];
@@ -389,8 +364,6 @@ async function verifyResend(ctx: VerifyContext): Promise<Check[]> {
     } else {
       checks.push(ok("resend", "webhook-endpoint", `→ ${expectedEndpoint}`));
     }
-    // Confirm subscription covers the 4 actionable failure events. Without
-    // these, you don't learn when an address goes dead.
     if (match) {
       const required = ["email.bounced", "email.complained", "email.suppressed", "email.failed"];
       const events = (match as { events?: string[] }).events ?? [];
@@ -411,8 +384,6 @@ async function verifyResend(ctx: VerifyContext): Promise<Check[]> {
 
   return checks;
 }
-
-// ---------- Apple ----------
 
 async function verifyApple(ctx: VerifyContext): Promise<Check[]> {
   const checks: Check[] = [];
@@ -523,10 +494,6 @@ async function verifyApple(ctx: VerifyContext): Promise<Check[]> {
         }
       }
 
-      // Customer reviews left unanswered for >7 days. App Review guideline 5.6
-      // explicitly asks developers to "treat customers with respect when
-      // responding to their comments". neglected reviews are an operational
-      // hygiene concern, not just an Apple-rule one.
       const bundleId =
         ctx.envLocal.get("EXPO_PUBLIC_APP_BUNDLE_ID") ??
         ctx.appConfig.bundleIdFallback ??
@@ -573,8 +540,6 @@ async function verifyApple(ctx: VerifyContext): Promise<Check[]> {
 
   return checks;
 }
-
-// ---------- EAS ----------
 
 async function verifyEas(ctx: VerifyContext): Promise<Check[]> {
   const checks: Check[] = [];
@@ -790,8 +755,6 @@ async function verifyEas(ctx: VerifyContext): Promise<Check[]> {
   return checks;
 }
 
-// ---------- Coherence (cross-references) ----------
-
 function verifyCoherence(ctx: VerifyContext): Check[] {
   const checks: Check[] = [];
   const env = ctx.channel === "prod" ? ctx.convexProdEnv : ctx.convexEnv;
@@ -894,8 +857,6 @@ function verifyCoherence(ctx: VerifyContext): Check[] {
   return checks;
 }
 
-// ---------- Files ----------
-
 function verifyFiles(ctx: VerifyContext): Check[] {
   const checks: Check[] = [];
   const expectedKeys = [
@@ -925,8 +886,6 @@ function verifyFiles(ctx: VerifyContext): Check[] {
     );
   return checks;
 }
-
-// ---------- Top-level ----------
 
 export async function readContext(channel: Channel): Promise<VerifyContext> {
   // A dev CONVEX_DEPLOY_KEY in .env.local shadows `--prod`, so reading prod env

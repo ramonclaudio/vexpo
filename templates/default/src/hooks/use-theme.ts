@@ -42,11 +42,6 @@ export function useColors(): ColorPalette {
   return Colors;
 }
 
-// Theme-aware asset selector. Pass the light variant first, dark second.
-// Returns whichever matches the active appearance (which honors the in-app
-// override from `setTheme` in addition to the system setting).
-//
-//   const icon = useThemedAsset(assets.brandIconLight, assets.brandIconDark);
 export function useThemedAsset<L, D>(light: L, dark: D): L | D {
   const scheme = useColorScheme();
   return scheme === "dark" ? dark : light;

@@ -1,12 +1,3 @@
-/**
- * `vexpo asc:accessibility` group. Apple's WWDC25 Accessibility
- * Nutrition Labels: declare which accessibility features your app
- * actually supports.
- *
- *   show       Pull the app's current accessibility declarations.
- *   lint <f>   Validate a local `app-store/accessibility.config.json`.
- */
-
 import { readFileSync } from "node:fs";
 
 import { ascBootstrap } from "../lib/asc-state.ts";

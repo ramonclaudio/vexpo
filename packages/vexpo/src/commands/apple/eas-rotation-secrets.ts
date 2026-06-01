@@ -1,23 +1,7 @@
 /**
- * `vexpo apple eas-rotation-secrets`. sets the 5 EAS production env secrets
- * the JWT rotation cron needs.
- *
- * The cron at `.eas/workflows/rotate-apple-jwt.yml` reads these every 90 days
- * to re-sign the Apple Sign In `client_secret` JWT. They have to be set
- * manually because they're secret-visibility EAS env vars: `eas env:push`
- * doesn't accept a visibility flag, and we don't push real secrets at default
- * visibility.
- *
- *   APPLE_P8_PRIVATE_KEY    path to the SIWA .p8 (EAS reads + base64-encodes it)
- *   APPLE_TEAM_ID           10-char team id
- *   APPLE_KEY_ID            10-char SIWA key id
- *   APPLE_SERVICES_ID       services id (e.g. com.you.app.signin)
- *   CONVEX_DEPLOY_KEY       prod deploy key (minted via the Platform API)
- *
- * For the 4 Apple values: read from .env.local + state cache, push idempotently.
- * For CONVEX_DEPLOY_KEY: mint one for the project's prod deployment via the
- * Convex Platform API (no dashboard), falling back to an interactive paste only
- * when the deployment can't be resolved (offline / not logged in).
+ * These have to be set manually because they're secret-visibility EAS env vars:
+ * `eas env:push` doesn't accept a visibility flag, and we don't push real
+ * secrets at default visibility.
  */
 
 import { access } from "node:fs/promises";
@@ -134,9 +118,6 @@ export async function runEasRotationSecrets(options: RotationSecretsOptions): Pr
       }
     };
 
-    // Mint a prod deploy key via the Platform API (resolves the project's prod
-    // deployment from the dev selector in .env.local). The prod key lives on EAS,
-    // not in .env.prod, so there's nothing to read off disk.
     let minted = false;
     try {
       const result = await mintProdDeployKey(
@@ -154,7 +135,6 @@ export async function runEasRotationSecrets(options: RotationSecretsOptions): Pr
       yep(`couldn't mint a deploy key: ${err instanceof Error ? err.message : err}`);
     }
 
-    // Fallback: interactive paste only when minting wasn't possible.
     if (!minted) {
       if (process.stdin.isTTY) {
         const key = (

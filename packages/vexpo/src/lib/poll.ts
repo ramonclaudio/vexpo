@@ -1,15 +1,3 @@
-/**
- * Polling primitive for async-wait gates.
- *
- * Calls `check()` every `intervalMs` until it returns `{ done: true }` or
- * total elapsed exceeds `timeoutMs`. Optionally calls `tick()` per attempt
- * (e.g. to print a progress dot or update a status line).
- *
- * Returns:
- *   - `{ done: true, attempts, elapsedMs, value }` on success
- *   - `{ done: false, attempts, elapsedMs }` on timeout
- */
-
 export type PollResult<T> =
   | { done: true; value: T; attempts: number; elapsedMs: number }
   | { done: false; attempts: number; elapsedMs: number };

@@ -11,10 +11,6 @@ import { useDynamicFont } from "@/lib/dynamic-font";
 import { Button as ButtonTokens } from "@/constants/layout";
 import { haptics } from "@/lib/haptics";
 
-// Native iOS segmented control via @expo/ui's SwiftUI Picker. Mirrors the
-// affordance of tanvex's web SegmentedToggle (Sign in/Sign up, Email/Username
-// /Email OTP) but renders as the platform-native control on iOS.
-
 export type SegmentedOption<T extends string> = {
   value: T;
   label: string;

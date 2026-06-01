@@ -66,7 +66,6 @@ export type AgeRatingDeclaration = {
 
 export function versions(client: AscClient) {
   return {
-    /* app store versions ------------------------------------------------ */
     appStoreVersions: {
       list(filter?: {
         appId?: string;
@@ -103,7 +102,6 @@ export function versions(client: AscClient) {
       },
     },
 
-    /* review submissions ------------------------------------------------ */
     reviewSubmissions: {
       list(filter?: {
         appId?: string;
@@ -125,7 +123,6 @@ export function versions(client: AscClient) {
       },
     },
 
-    /* phased release ---------------------------------------------------- */
     phasedReleases: {
       async getForVersion(versionId: string): Promise<AppStoreVersionPhasedRelease | null> {
         try {

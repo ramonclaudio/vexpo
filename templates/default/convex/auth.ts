@@ -31,9 +31,6 @@ const FIVE_MINUTES = 5 * ONE_MINUTE;
 
 const authFunctions: AuthFunctions = internal.auth;
 
-/**
- * Get the app user doc by Better Auth id, using the indexed lookup.
- */
 export async function getUserByAuthId(
   ctx: QueryCtx | MutationCtx,
   authId: string,
@@ -44,15 +41,6 @@ export async function getUserByAuthId(
     .unique();
 }
 
-/**
- * Merged representation of the authenticated user.
- *
- * Identity fields (email, name, username, image, emailVerified) come from the
- * Better Auth user. App-specific fields (_id, bio, avatar, timestamps) come
- * from our users table. `avatarUrl` is resolved: user-uploaded storage id
- * takes precedence, otherwise falls back to Better Auth's `image` (e.g. OAuth
- * provider avatar).
- */
 export type AuthUser = Doc<"users"> & {
   authUserId: string;
   email: string;
@@ -65,15 +53,11 @@ export type AuthUser = Doc<"users"> & {
   hasUploadedAvatar: boolean;
 };
 
-// The component client has methods needed for integrating Convex with Better
-// Auth, plus helper methods for general use.
 export const authComponent = createClient<DataModel>(components.betterAuth, {
   authFunctions,
   triggers: {
     user: {
       onCreate: async (ctx, authUser) => {
-        // Create the app user row with defaults. Identity fields live on the
-        // Better Auth user record, not here.
         await ctx.db.insert("users", {
           authId: authUser._id,
           createdAt: Date.now(),
@@ -91,10 +75,8 @@ export const authComponent = createClient<DataModel>(components.betterAuth, {
   },
 });
 
-// Export trigger handlers - these become available at internal.auth
 export const { onCreate, onDelete } = authComponent.triggersApi();
 
-// Export client API for AuthBoundary and other client-side auth checks
 export const { getAuthUser } = authComponent.clientApi();
 
 export const createAuth = (ctx: GenericCtx<DataModel>) =>
@@ -178,7 +160,6 @@ export const createAuth = (ctx: GenericCtx<DataModel>) =>
     },
     plugins: [
       convex({ authConfig }),
-      // Email OTP for sign-in, verification, password reset, and change-email.
       emailOTP({
         otpLength: 6,
         expiresIn: FIVE_MINUTES,
@@ -208,11 +189,6 @@ export const createAuth = (ctx: GenericCtx<DataModel>) =>
     ],
   } satisfies BetterAuthOptions);
 
-/**
- * Safely get the current authenticated user. Returns undefined if not
- * authenticated or if the app user row is missing (shouldn't happen in
- * practice, but we handle it gracefully).
- */
 export async function safeGetAuthenticatedUser(
   ctx: QueryCtx | MutationCtx,
 ): Promise<AuthUser | undefined> {
@@ -222,7 +198,6 @@ export async function safeGetAuthenticatedUser(
   const user = await getUserByAuthId(ctx, authUser._id);
   if (!user) return undefined;
 
-  // Resolve avatar: user upload takes precedence over Better Auth image.
   const hasUploadedAvatar = !!user.avatar;
   const avatarUrl = hasUploadedAvatar
     ? await ctx.storage.getUrl(user.avatar!)
@@ -242,18 +217,12 @@ export async function safeGetAuthenticatedUser(
   };
 }
 
-/**
- * Get the current authenticated user, throwing if not authenticated.
- */
 export async function requireAuthenticatedUser(ctx: QueryCtx | MutationCtx): Promise<AuthUser> {
   const user = await safeGetAuthenticatedUser(ctx);
   if (!user) throw authenticationRequired();
   return user;
 }
 
-/**
- * Validator for AuthUser return type.
- */
 export const authUserValidator = v.object({
   _id: v.id("users"),
   _creationTime: v.number(),
@@ -277,18 +246,10 @@ export const authUserValidator = v.object({
   hasUploadedAvatar: v.boolean(),
 });
 
-// ============================================================================
-// Queries
-// ============================================================================
 // These use the raw `query` builder because this file IS the auth primitive
 // that functions.ts depends on. Importing wrappers from ./functions would
 // create a circular dependency.
 
-/**
- * Check if the current user has a password-based account.
- * Useful for detecting social-only accounts that need password setup.
- * Returns false if not authenticated.
- */
 export const hasPassword = query({
   args: {},
   returns: v.boolean(),
@@ -323,10 +284,6 @@ export const getEnabledProviders = query({
   },
 });
 
-/**
- * Rotate JWKS keys for JWT signing.
- * Run with: npx convex run auth:rotateKeys
- */
 export const rotateKeys = internalAction({
   args: {},
   // Better Auth's `rotateKeys()` returns implementation-specific JWKS metadata

@@ -1,12 +1,3 @@
-/**
- * `vexpo convex`. connects to or provisions a Convex deployment for the
- * project, then writes connection details to .env.local.
- *
- * Idempotent: if .env.local already has CONVEX_DEPLOYMENT, it just verifies
- * codegen by running `convex dev --once`. Pass --fresh to provision a brand
- * new deployment (wipes existing CONVEX_DEPLOYMENT lines).
- */
-
 import { appleTeamIdFallback, bundleIdFallback, pkgName, scheme } from "../lib/app.ts";
 import { envSet as convexEnvSet } from "../lib/convex-env.ts";
 import { checkToken } from "../lib/convex-management.ts";
@@ -39,10 +30,9 @@ const BUNDLE_ID_RE = /^[A-Za-z0-9.-]+$/;
 const TEAM_ID_RE = /^[A-Z0-9]{10}$/;
 
 /**
- * Plan the `convex dev` invocation. `--local` on `convex dev` is a deprecated
- * option that crashes (convex 1.39+), so a local target is selected the
- * supported way: `--dev-deployment local` when provisioning fresh, or a prior
- * `convex deployment select local` for an existing one. Pure, for testability.
+ * `--local` on `convex dev` is a deprecated option that crashes (convex 1.39+),
+ * so a local target is selected the supported way: `--dev-deployment local` when
+ * provisioning fresh, or a prior `convex deployment select local` for an existing one.
  */
 export function planConvexDev(
   options: { local?: boolean },
@@ -92,8 +82,6 @@ export async function runConvex(options: ConvexOptions): Promise<number> {
     const projectName = options.name ?? (await pkgName());
 
     const plan = planConvexDev(options, needsProvisioning, projectName);
-    // For an existing local deployment, select it before running dev (the dev
-    // `--local` flag is deprecated and crashes).
     if (plan.selectLocalFirst) {
       const sel = spawn([dlx(), "convex", "deployment", "select", "local"], {
         stdin: "inherit",
@@ -156,9 +144,6 @@ export async function runConvex(options: ConvexOptions): Promise<number> {
 
     await ensureIdentity(refreshed);
 
-    // Persist the step so the orchestrator's probe + doctor can read it.
-    // Without this, `.setup-state.json.steps.convex` stays empty and `vexpo
-    // doctor` shows the phase as "-" even when the deployment is live.
     await recordStep("convex", {
       deployment,
       slug,
@@ -175,12 +160,6 @@ export async function runConvex(options: ConvexOptions): Promise<number> {
   }
 }
 
-/**
- * Prompt for, persist, and push the iOS bundle id + Apple Team id. These are
- * needed in two places: (a) `.env.local` so `app.config.ts` resolves them at
- * Expo build time, and (b) the Convex deployment env so `convex/http.ts` can
- * serve the apple-app-site-association file with the right appID.
- */
 async function ensureIdentity(localEnv: Map<string, string>): Promise<void> {
   const haveBundle = localEnv.has("EXPO_PUBLIC_APP_BUNDLE_ID");
   const haveTeam = localEnv.has("EXPO_PUBLIC_APPLE_TEAM_ID");

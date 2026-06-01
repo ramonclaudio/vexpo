@@ -86,7 +86,6 @@ export async function load(): Promise<SetupState> {
     if (s.isDirectory()) throw new Error(`${STATE_FILE} is a directory, not a file`);
   } catch (err) {
     if (err instanceof Error && err.message.includes("is a directory")) throw err;
-    // Other stat failures (ENOENT after fileExists, permission). fall through.
   }
   let raw: unknown;
   try {
@@ -99,9 +98,6 @@ export async function load(): Promise<SetupState> {
   if (raw === null || raw === undefined) throw new Error(`${STATE_FILE} is empty or null`);
   if (Array.isArray(raw)) throw new Error(`${STATE_FILE} is an array, expected object`);
   if (typeof raw !== "object") throw new Error(`${STATE_FILE} is not an object`);
-  // Normalize partial state. Old/manual edits may omit any of these fields.
-  // The orchestrator assumes they're present. defaulting here means a
-  // hand-edited `{}` state file doesn't crash the probe.
   const parsed = raw as Partial<SetupState>;
   const now = new Date().toISOString();
   return {
@@ -199,14 +195,6 @@ export function fingerprint(value: string): string {
   return h.toString(16).padStart(8, "0");
 }
 
-/**
- * Look up a previously-recorded `.p8` path (or any string output) from
- * any of the steps that record paths. Returns the first non-empty match
- * after verifying the file still exists. Returns null otherwise.
- *
- * Used by setup-asc-key, setup-apple to avoid
- * re-prompting the user for the same file path multiple times.
- */
 export async function lookupCachedPath(
   state: SetupState,
   steps: readonly StepName[],
@@ -220,9 +208,7 @@ export async function lookupCachedPath(
     try {
       await access(value);
       return value;
-    } catch {
-      // file moved or deleted; try the next step's cache
-    }
+    } catch {}
   }
   return null;
 }

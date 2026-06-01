@@ -260,11 +260,6 @@ export function makeAscClient(creds: AscCredentials) {
   }
 
   return {
-    /**
-     * Low-level primitives. Exposed so resource-specific modules
-     * (asc-testflight.ts, asc-reviews.ts, asc-versions.ts, asc-sandbox.ts)
-     * can extend the client without re-implementing auth + retry.
-     */
     request,
     paginatedList,
     bundleIds: {

@@ -100,9 +100,6 @@ export default function SignUpScreen() {
   // form so that field aligns with the top of the viewport.
   const activeField = useNativeState<string | null>(null);
 
-  // Live username availability via the better-auth `username` plugin. Status
-  // is null while idle, true when the server says the handle is free, false
-  // when reserved or already taken. Format errors are left to the schema.
   const [usernameAvailable, setUsernameAvailable] = useState<boolean | null>(null);
   const [isCheckingUsername, setIsCheckingUsername] = useState(false);
   const usernameCheckRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -194,8 +191,6 @@ export default function SignUpScreen() {
   const navigation = useNavigation();
   const hasInput =
     name.length > 0 || username.length > 0 || email.length > 0 || password.length > 0;
-  // Hold the pending navigation action while we show the discard-changes
-  // ConfirmationDialog. Cleared on Discard (after dispatch) or Cancel.
   const [pendingNavAction, setPendingNavAction] = useState<
     Parameters<typeof navigation.dispatch>[0] | null
   >(null);

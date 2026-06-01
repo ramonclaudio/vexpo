@@ -1,11 +1,3 @@
-/**
- * `vexpo better-auth`. sets SITE_URL, BETTER_AUTH_SECRET, APP_NAME on the
- * current Convex deployment. Idempotent: skips already-set vars unless you
- * pass --rotate-secret.
- *
- * Rotating the secret invalidates every existing session.
- */
-
 import { appName, scheme } from "../lib/app.ts";
 import { envMap, envSet } from "../lib/convex-env.ts";
 import { bad, nop, ok, section } from "../lib/output.ts";
@@ -56,8 +48,6 @@ export async function runBetterAuth(options: BetterAuthOptions): Promise<number>
       ok(`set APP_NAME=${desiredAppName}`);
     }
 
-    // Persist for the orchestrator's probe + doctor. Mirrors what other
-    // phases (resend, apple, asc-key, eas) already do.
     await recordStep("better-auth", {
       siteUrl,
       appName: desiredAppName,

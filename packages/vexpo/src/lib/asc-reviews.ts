@@ -102,10 +102,6 @@ export function reviews(client: AscClient) {
   };
 }
 
-/**
- * Reviews older than `daysAgo` with no response. Used by `vexpo doctor`
- * to surface neglected reviews and by `vexpo reviews unanswered` directly.
- */
 export function unansweredOlderThan(
   list: readonly CustomerReview[],
   daysAgo: number,

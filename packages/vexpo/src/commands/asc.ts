@@ -84,10 +84,7 @@ export async function runAscConnect(opts: { force?: boolean } = {}): Promise<num
         });
         return 0;
       }
-    } catch {
-      // ascStatus failed (no EAS project yet, eas-cli too old, etc).
-      // Fall through and attempt to spawn the connect wizard.
-    }
+    } catch {}
   }
 
   const asc = await loadAscFromState();

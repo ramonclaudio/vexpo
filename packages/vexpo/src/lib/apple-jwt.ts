@@ -4,7 +4,6 @@ import { access, readFile } from "node:fs/promises";
 import { expandTilde } from "./path.ts";
 
 export type AppleJwtArgs = {
-  /** PEM-encoded private key contents OR a path to a `.p8` file. */
   privateKey: { contents: string } | { path: string };
   teamId: string;
   keyId: string;
@@ -24,10 +23,6 @@ async function readPrivateKey(source: AppleJwtArgs["privateKey"]): Promise<strin
   return readFile(path, "utf8");
 }
 
-/**
- * Sign a Sign In with Apple ES256 JWT (`client_secret`) from a `.p8` private
- * key. Apple caps the lifetime at 180 days; default to that.
- */
 export async function signClientSecret(opts: AppleJwtArgs): Promise<string> {
   const days = opts.expirationDays ?? 180;
   const now = Math.floor(Date.now() / 1000);

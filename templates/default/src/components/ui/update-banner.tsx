@@ -19,18 +19,6 @@ import { ZIndex } from "@/constants/ui";
 import { useColors } from "@/hooks/use-theme";
 import { useDynamicFont } from "@/lib/dynamic-font";
 
-// In-app surface for the EAS Update lifecycle. Mirrors `OfflineBanner`
-// (translucent material overlaying the nav layer per HIG) and is only
-// visible while the update state machine is doing something the user
-// would want to see:
-//
-//   - downloading      progress %, no tap target. auto-applies on finish
-//   - download failed  tap to retry
-//   - check failed     silent unless the user previously asked for an update
-//
-// `isUpdatePending` (downloaded, awaiting reload) is handled by the
-// `useAppUpdates` hook (auto-reload with reload screen), so we don't
-// surface it here. The splash-screen overlay does the visual work.
 export function UpdateBanner() {
   const updates = useAppUpdates();
   const insets = useSafeAreaInsets();

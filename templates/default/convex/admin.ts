@@ -1,8 +1,3 @@
-/**
- * Admin actions for fixture / review accounts. Internal-only, never exposed
- * to client code. Run via `npx convex run admin:<fn>` (or your PM's dlx).
- */
-
 import { v } from "convex/values";
 
 import { components } from "./_generated/api";
@@ -11,9 +6,6 @@ import { createAuth } from "./auth";
 import { rateLimiter, type RateLimitName } from "./rateLimit";
 
 /**
- * Create a fully verified review account. Used by `setup:review-account`
- * to seed Apple's App Review with a working sign-in.
- *
  * Idempotent: if the user already exists, just re-asserts emailVerified=true.
  * Does NOT rotate the password on re-run, delete the user from the dashboard
  * first if you need a fresh password.
@@ -83,11 +75,6 @@ export const createReviewAccount = internalAction({
   },
 });
 
-/**
- * Reset a rate-limit bucket. Run from the dashboard:
- * `npx convex run admin:resetRateLimit '{"name":"avatarUpload","key":"<userId>"}'`
- * Omit `key` to reset the shared bucket.
- */
 export const resetRateLimit = internalMutation({
   args: { name: v.string(), key: v.optional(v.string()) },
   returns: v.object({

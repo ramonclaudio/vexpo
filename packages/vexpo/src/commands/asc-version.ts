@@ -1,8 +1,3 @@
-/**
- * `vexpo asc:version` group. Inspect App Store version + review submission
- * state via the ASC API. Doctor uses this to surface stalled submissions.
- */
-
 import { ascBootstrap } from "../lib/asc-state.ts";
 import { versions, type AppStoreVersionState, type Platform } from "../lib/asc-versions.ts";
 import { BOLD, DIM, RESET, bad, line, nop, ok, section } from "../lib/output.ts";

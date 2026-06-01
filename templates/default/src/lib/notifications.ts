@@ -3,10 +3,6 @@ import * as Device from "expo-device";
 import * as TaskManager from "expo-task-manager";
 import Constants from "expo-constants";
 
-// ---------------------------------------------------------------------------
-// Background task
-// ---------------------------------------------------------------------------
-
 export const BACKGROUND_NOTIFICATION_TASK = "BACKGROUND_NOTIFICATION";
 
 try {
@@ -23,10 +19,6 @@ try {
 } catch (e) {
   if (__DEV__) console.warn("[Notification] defineTask failed:", e);
 }
-
-// ---------------------------------------------------------------------------
-// Foreground handler
-// ---------------------------------------------------------------------------
 
 interface ForegroundOptions {
   shouldShowBanner?: boolean;
@@ -60,10 +52,6 @@ export function registerBackgroundTask() {
   }
 }
 
-// ---------------------------------------------------------------------------
-// Permissions
-// ---------------------------------------------------------------------------
-
 export async function getPermissionStatus() {
   const settings = await Notifications.getPermissionsAsync();
   return {
@@ -92,10 +80,6 @@ export async function requestPermission() {
     ios: settings.ios,
   };
 }
-
-// ---------------------------------------------------------------------------
-// Push tokens
-// ---------------------------------------------------------------------------
 
 export async function getExpoPushToken(): Promise<string | null> {
   if (!Device.isDevice) return null;
@@ -126,10 +110,6 @@ export async function getDevicePushToken(): Promise<string | null> {
     return null;
   }
 }
-
-// ---------------------------------------------------------------------------
-// Scheduling
-// ---------------------------------------------------------------------------
 
 type ContentInput = Notifications.NotificationContentInput;
 type TriggerInput = Notifications.NotificationTriggerInput;
@@ -212,10 +192,6 @@ export function scheduleYearly(
   });
 }
 
-// ---------------------------------------------------------------------------
-// Schedule management
-// ---------------------------------------------------------------------------
-
 export function getAllScheduled() {
   return Notifications.getAllScheduledNotificationsAsync();
 }
@@ -235,10 +211,6 @@ export async function getNextTriggerDate(
   return timestamp ? new Date(timestamp) : null;
 }
 
-// ---------------------------------------------------------------------------
-// Badge
-// ---------------------------------------------------------------------------
-
 export function getBadgeCount() {
   return Notifications.getBadgeCountAsync();
 }
@@ -246,10 +218,6 @@ export function getBadgeCount() {
 export function setBadgeCount(count: number) {
   return Notifications.setBadgeCountAsync(count);
 }
-
-// ---------------------------------------------------------------------------
-// Dismiss
-// ---------------------------------------------------------------------------
 
 export function dismissNotification(id: string) {
   return Notifications.dismissNotificationAsync(id);
@@ -259,17 +227,9 @@ export function dismissAllNotifications() {
   return Notifications.dismissAllNotificationsAsync();
 }
 
-// ---------------------------------------------------------------------------
-// Presented notifications
-// ---------------------------------------------------------------------------
-
 export function getPresentedNotifications() {
   return Notifications.getPresentedNotificationsAsync();
 }
-
-// ---------------------------------------------------------------------------
-// Last notification response
-// ---------------------------------------------------------------------------
 
 export function clearLastNotificationResponse() {
   Notifications.clearLastNotificationResponse();

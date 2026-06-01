@@ -63,9 +63,6 @@ const GLASS_STYLE: Record<MaterialVariant, GlassStyle> = {
 
 const TINT_OVERLAY_OPACITY = 0.35;
 
-// Inherits `ViewProps` so callers can pass `style`, `accessibilityRole`,
-// `accessibilityLiveRegion`, etc. directly on the material surface without
-// needing an outer wrapper View just for positioning or accessibility.
 export type MaterialProps = ViewProps & {
   children?: ReactNode;
   variant?: MaterialVariant;

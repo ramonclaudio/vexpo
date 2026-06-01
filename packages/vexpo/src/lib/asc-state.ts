@@ -1,9 +1,3 @@
-/**
- * Load cached ASC API credentials from `.setup-state.json` and resolve
- * the ASC app id for the current bundle. Used by every command that talks
- * directly to the App Store Connect API.
- */
-
 import { existsSync } from "node:fs";
 
 import { makeAscClient, type AscClient, type AscCredentials } from "./asc-api.ts";
@@ -32,10 +26,6 @@ export async function loadAscCreds(): Promise<AscCredentials | null> {
   return { issuerId, keyId, privateKey: { path: p8Path } };
 }
 
-/**
- * Bootstrap an authenticated AscClient + resolve the current app's bundle
- * id and ASC app id from `.env.local`. Throws when state isn't ready.
- */
 export async function ascBootstrap(): Promise<AscBootstrap> {
   const creds = await loadAscCreds();
   if (!creds) {
@@ -52,10 +42,7 @@ export async function ascBootstrap(): Promise<AscBootstrap> {
         attributes: { bundleId?: string };
       }>("/v1/apps", { "filter[bundleId]": bundleId }, 5);
       ascAppId = apps[0]?.id;
-    } catch {
-      // app lookup is best-effort; commands that need it will throw with a
-      // clearer error than the bootstrap.
-    }
+    } catch {}
   }
   return { client, bundleId, ascAppId, creds };
 }

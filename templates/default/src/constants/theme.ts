@@ -13,9 +13,6 @@ import { FontFamily } from "@/constants/layout";
 // any other ColorValue for RN, so we cast at the boundary instead of
 // littering every call-site with `as unknown as string`.
 
-// Shadcn `b1VlJDbW` preset (luma + neutral + Geist + Hugeicons + radius default).
-// Source: shadcn-ui/ui apps/v4/registry/themes.ts, "neutral" entry.
-// OKLCH values converted to sRGB hex via the standard Björn Ottosson matrix.
 // Each token carries a light + dark variant plus a high-contrast pair for the
 // iOS Increase Contrast accessibility setting (HIG: "If you define a custom
 // color, make sure to supply light and dark variants, and an increased
@@ -29,28 +26,27 @@ type Tone = {
 
 const tone = (t: Tone): string => DynamicColorIOS(t) as unknown as string;
 
-// Shadcn neutral palette in hex. Indexed by Tailwind v4 neutral step.
 const NEUTRAL = {
   white: "#FFFFFF",
   black: "#000000",
-  n50: "#FAFAFA", // oklch(0.985)
-  n100: "#F5F5F5", // oklch(0.97)
-  n150: "#EBEBEB", // contrast bump for n100
-  n200: "#E5E5E5", // oklch(0.922)
-  n300: "#D4D4D4", // oklch(0.87)
-  n400: "#A1A1A1", // oklch(0.708)
-  n500: "#737373", // oklch(0.556)
-  n600: "#525252", // oklch(0.439)
-  n700: "#404040", // oklch(0.371)
-  n800: "#262626", // oklch(0.269)
-  n850: "#1C1C1C", // contrast bump for n900 in dark mode
-  n900: "#171717", // oklch(0.205)
-  n950: "#0A0A0A", // oklch(0.145)
+  n50: "#FAFAFA",
+  n100: "#F5F5F5",
+  n150: "#EBEBEB",
+  n200: "#E5E5E5",
+  n300: "#D4D4D4",
+  n400: "#A1A1A1",
+  n500: "#737373",
+  n600: "#525252",
+  n700: "#404040",
+  n800: "#262626",
+  n850: "#1C1C1C",
+  n900: "#171717",
+  n950: "#0A0A0A",
 } as const;
 
 const DESTRUCTIVE = {
-  light: "#E7000B", // oklch(0.577 0.245 27.325)
-  dark: "#FF6467", // oklch(0.704 0.191 22.216)
+  light: "#E7000B",
+  dark: "#FF6467",
   hcLight: "#B30009",
   hcDark: "#FFA0A2",
 } as const;
@@ -59,10 +55,10 @@ const DESTRUCTIVE = {
 // the alpha to hover over translucent layers. iOS DynamicColorIOS accepts
 // 8-digit hex, so we encode RGBA inline.
 const ALPHA_DARK = {
-  border: "#FFFFFF1A", // 10%
-  borderHC: "#FFFFFF40", // ~25% bump for high contrast
-  input: "#FFFFFF26", // 15%
-  inputHC: "#FFFFFF59", // ~35% bump
+  border: "#FFFFFF1A",
+  borderHC: "#FFFFFF40",
+  input: "#FFFFFF26",
+  inputHC: "#FFFFFF59",
 } as const;
 
 const t = {
@@ -220,7 +216,7 @@ const t = {
   }),
   sidebarPrimary: tone({
     light: NEUTRAL.n900,
-    dark: "#1447E6", // oklch(0.488 0.243 264.376), shadcn dark sidebar accent
+    dark: "#1447E6",
     highContrastLight: NEUTRAL.black,
     highContrastDark: "#3D6FFA",
   }),
@@ -255,8 +251,6 @@ const t = {
     highContrastDark: NEUTRAL.n400,
   }),
 
-  // Translucent fills. Same hue as primary, layered for surface tinting,
-  // press states, focus glows.
   primaryFill: tone({
     light: "rgba(23,23,23,0.06)",
     dark: "rgba(229,229,229,0.10)",
@@ -295,23 +289,14 @@ const t = {
   }),
 } as const;
 
-// Shadcn neutral tokens plus the handful of aliases the app actually
-// references. Add an entry here the first time you need it. don't ship
-// dead palette rows.
 export const Colors = {
   ...t,
 
-  // Separator is a fork of the border token so navigation chrome can swap
-  // it independently without touching shadcn `border`.
   separator: t.border,
 
-  // Tab bar inactive/active states. Mapped to muted-foreground / primary
-  // so the bar reads as part of the navigation chrome.
   tabIconDefault: t.mutedForeground,
   tabIconSelected: t.primary,
 
-  // Tertiary label (third-rank caption text) sits between muted and
-  // background. too faint for body copy, dark enough to read.
   tertiaryLabel: tone({
     light: NEUTRAL.n400,
     dark: NEUTRAL.n500,
@@ -319,7 +304,6 @@ export const Colors = {
     highContrastDark: NEUTRAL.n400,
   }),
 
-  // Inverse of destructive (white text on destructive fill).
   destructiveForeground: tone({
     light: NEUTRAL.white,
     dark: NEUTRAL.n900,
@@ -327,8 +311,6 @@ export const Colors = {
     highContrastDark: NEUTRAL.black,
   }),
 
-  // Status green for "available" / "completed" markers (HIG-aligned, not
-  // shadcn. shadcn doesn't define a success token).
   success: tone({
     light: "#16A34A",
     dark: "#22C55E",
@@ -344,9 +326,7 @@ export type ColorPalette = typeof Colors;
 // React Navigation `Theme` consumers (NavigationThemeProvider, header tint,
 // back chevron, screen background) read flat color strings, not
 // DynamicColorIOS values. We export one theme per appearance and pick at
-// the root layout based on `useColorScheme()` so every nav-rendered surface
-// (back chevron, badge, header text) tracks the shadcn neutral palette
-// instead of iOS systemBlue and the React Navigation defaults.
+// the root layout based on `useColorScheme()`.
 export const NavigationLight: RNTheme = {
   dark: false,
   colors: {
@@ -373,14 +353,6 @@ export const NavigationDark: RNTheme = {
   fonts: RNDefaultTheme.fonts,
 };
 
-// shadcn radius scale, --radius = 0.625rem = 10px.
-//   sm  = radius * 0.6  =  6
-//   md  = radius * 0.8  =  8
-//   lg  = radius * 1.0  = 10  (shadcn default)
-//   xl  = radius * 1.4  = 14
-//   2xl = radius * 1.8  = 18
-//   3xl = radius * 2.2  = 22
-//   4xl = radius * 2.6  = 26
 const RADIUS_BASE = 10;
 export const Radius = {
   none: 0,

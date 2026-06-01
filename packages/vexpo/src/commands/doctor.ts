@@ -1,15 +1,3 @@
-/**
- * `vexpo doctor`. cross-source drift detection.
- *
- * Auth-checks every credential and cross-references bundle id / team id /
- * Services ID across .env.local, Convex env, EAS env, and app.config.ts.
- * Decodes the Apple JWT to confirm its claims match the configured Team ID +
- * Services ID + Key ID, and warns when the JWT is close to expiry.
- *
- * Exit status: 0 if all ok (warnings allowed), 1 if any fail (or any warn
- * under --strict), 2 if the runner itself crashed.
- */
-
 import { access } from "node:fs/promises";
 
 import { BOLD, DIM, GREEN, RED, RESET, YELLOW, bad, line, note, section } from "../lib/output.ts";
@@ -22,8 +10,6 @@ import {
   type Channel,
 } from "../lib/verify.ts";
 
-// A vexpo project must have at minimum these files at the root. If none are
-// present, the user is in the wrong directory.
 const PROJECT_SENTINELS = ["app.config.ts", "convex", "eas.json"];
 
 async function isInVexpoProject(): Promise<boolean> {
@@ -82,9 +68,6 @@ function printResults(checks: Check[]): void {
 
 export async function runDoctor(options: DoctorOptions): Promise<number> {
   try {
-    // Reject early when run from a non-project directory. Without this guard,
-    // the probe runs against an unrelated CWD and surfaces failures that look
-    // like a misconfigured vexpo project (it's the wrong directory).
     if (!(await isInVexpoProject())) {
       if (options.json) {
         process.stdout.write(
@@ -99,8 +82,6 @@ export async function runDoctor(options: DoctorOptions): Promise<number> {
       return 1;
     }
 
-    // Accept `dev` (default), `prod`, or `production`. Reject anything else
-    // with a clear message; silently coercing typos to dev hides config errors.
     let channel: Channel;
     if (options.channel === undefined || options.channel === "dev") {
       channel = "dev";

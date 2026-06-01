@@ -16,18 +16,15 @@ export function SuspenseFallback() {
   return <LoadingScreen />;
 }
 
-// Anchor the back-stack root so a guard flip lands users on the tabs root,
-// not whichever screen happens to declare first.
+// Anchor the back-stack root so a guard flip lands on the tabs root, not
+// whichever screen declares first.
 export const unstable_settings = { anchor: "(tabs)" } as const;
 
 export default function AppLayout() {
-  // Better Auth is the canonical session signal. Convex follows via the bridge.
   const { data: session } = authClient.useSession();
   const isAuthenticated = !!session?.session;
 
-  // Soft-delete state. Skipped while unauthed because Convex queries need a
-  // live JWT; the auth modal renders behind a separate Stack.Protected and
-  // doesn't care about deletion.
+  // Skipped while unauthed because Convex queries need a live JWT.
   const me = useQuery(api.users.getMe, isAuthenticated ? {} : "skip");
   const isAccountDeleted = !!me?.deletedAt;
 
@@ -53,11 +50,6 @@ export default function AppLayout() {
       <Stack.Protected guard={isAuthenticated && !isAccountDeleted}>
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
 
-        {/*
-          Onboarding blocks the rest of the tree. Full-screen modal so the
-          tabs stay mounted underneath but are visually replaced until the
-          user finishes the carousel.
-        */}
         <Stack.Screen
           name="welcome"
           options={{
@@ -88,11 +80,6 @@ export default function AppLayout() {
           </Stack.Screen.BackButton>
         </Stack.Screen>
 
-        {/*
-          Diagnostic inspector — sheet detents fit the short list of params.
-          Anchored to (tabs) so a deep link directly to the sheet leaves the
-          tab stack mounted underneath.
-        */}
         <Stack.Screen
           name="linked"
           options={{
@@ -112,10 +99,6 @@ export default function AppLayout() {
           <Stack.Screen.BackButton>Settings</Stack.Screen.BackButton>
         </Stack.Screen>
 
-        {/*
-          Password change is a transient task — full slide-up modal matches
-          Apple Settings.app, gives the user clear "modal mode" semantics.
-        */}
         <Stack.Screen
           name="profile/change-password"
           options={{ headerShown: true, presentation: "modal" }}
@@ -132,12 +115,8 @@ export default function AppLayout() {
         </Stack.Screen>
       </Stack.Protected>
 
-      {/*
-        Soft-delete intercept. Lives in its own Stack.Protected so the entire
-        authed tree above un-mounts when `deletedAt` is set, and re-mounts
-        when the user restores. Replaces the imperative router.replace from
-        the old useAccountDeletionGuard hook.
-      */}
+      {/* Own Stack.Protected so the whole authed tree above un-mounts when
+          `deletedAt` is set and re-mounts on restore. */}
       <Stack.Protected guard={isAuthenticated && isAccountDeleted}>
         <Stack.Screen
           name="restore-account"

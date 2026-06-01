@@ -5,13 +5,6 @@ import { router, type Href } from "expo-router";
 import { authClient } from "@/lib/auth-client";
 import { resolveDeepLink } from "@/lib/deep-link";
 
-/**
- * Listens for deep-link URLs and pushes to the typed destination.
- *
- * Only runs once authenticated. Invalid or disallowed links are ignored.
- * Query params forward as route params. The typed `Href` comes from
- * `DeepLinkRoutes` in `lib/deep-link.ts`; consumers don't cast.
- */
 export function useDeepLinkHandler() {
   // See note in app/_layout.tsx: Better Auth session is the canonical signal.
   // `useConvexAuth` is unreliable due to the bridge's sessionId churn.

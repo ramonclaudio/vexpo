@@ -1,5 +1,4 @@
 import {
-  // Constants
   isEnabled,
   updateId,
   channel,
@@ -11,8 +10,6 @@ import {
   manifest,
   createdAt,
   launchDuration,
-
-  // Methods
   checkForUpdateAsync,
   fetchUpdateAsync,
   reloadAsync,
@@ -24,15 +21,11 @@ import {
   setUpdateURLAndRequestHeadersOverride,
   showReloadScreen,
   hideReloadScreen,
-
-  // Enums (runtime values)
   UpdateCheckResultNotAvailableReason,
   UpdatesLogEntryCode,
   UpdatesLogEntryLevel,
   UpdatesCheckAutomaticallyValue,
   UpdateInfoType,
-
-  // Hook
   useUpdates,
 } from "expo-updates";
 
