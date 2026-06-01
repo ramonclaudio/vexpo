@@ -1,6 +1,6 @@
 import type { GenericActionCtx } from "convex/server";
 
-import { log, newRequestId } from "./log.ts";
+import { log, newRequestId } from "./log";
 
 export type SignatureAlgorithm = "sha1" | "sha256";
 
