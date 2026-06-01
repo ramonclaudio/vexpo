@@ -31,8 +31,7 @@
     "create-vexpo": "./dist/index.js"
   },
   "files": [
-    "dist",
-    "templates"
+    "dist"
   ],
   "type": "module",
   "exports": {
@@ -47,6 +46,7 @@
   "scripts": {
     "build": "tsup",
     "dev": "tsup --watch",
+    "prepublishOnly": "npm run build",
     "typecheck": "tsc --noEmit",
     "test": "echo '(create-vexpo: no per-package tests yet. covered by template e2e)'"
   },
