@@ -6,6 +6,7 @@ All notable changes to vexpo are tracked here. Format follows [Keep a Changelog]
 
 Scope narrowed to 0 to 1: every command must help an empty directory reach a first shipped iOS app. Post-launch ops are out.
 
+- Scale template typography with native iOS Dynamic Type (`textStyle` on the `font` modifier, upstream `expo/expo#46007`): text follows the user's Larger Text setting, rescaled by SwiftUI with no JS re-render.
 - Drop `reviews`, `sandbox`, `asc:version`, and `asc:submissions`: post-launch ops that all need a live app with users (`sandbox` tests in-app purchases the template doesn't ship).
 - Drop `testflight remove` and the beta-group `--public-link` options: post-launch tester management, not first-ship machinery.
 - Drop the `doctor` reviews-answered check and ~60 lines of unused TestFlight lib.
