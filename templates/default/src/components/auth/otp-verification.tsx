@@ -84,6 +84,7 @@ export function OtpVerification({
   const colors = useColors();
   const otpState = useNativeState("");
   const [otp, setOtp] = useState("");
+  const [lastAction, setLastAction] = useState<"verify" | "resend">("verify");
   const generateAvatarUploadUrl = useMutation(api.users.generateAvatarUploadUrl);
   const updateAvatar = useMutation(api.users.updateAvatar);
   const isSignIn = flow === "sign-in";
@@ -156,7 +157,19 @@ export function OtpVerification({
     }
   }, initialState);
 
-  const error = verifyState.error ?? resendState.error;
+  const runVerify = () => {
+    setLastAction("verify");
+    startTransition(() => verify());
+  };
+  const runResend = () => {
+    setLastAction("resend");
+    startTransition(() => resend());
+  };
+
+  // Show the error from the action the user last ran. A plain
+  // `verifyState.error ?? resendState.error` keeps a stale verify error on
+  // screen after a successful resend, since resend never clears verifyState.
+  const error = lastAction === "resend" ? resendState.error : verifyState.error;
 
   return (
     <Host style={{ flex: 1, backgroundColor: colors.background }}>
@@ -216,7 +229,7 @@ export function OtpVerification({
               multilineTextAlignment("center"),
               keyboardType("numeric"),
               textContentType("oneTimeCode"),
-              onSubmit(() => startTransition(() => verify())),
+              onSubmit(runVerify),
               submitLabel("done"),
               accessibilityLabel("Verification code"),
               accessibilityHint("Enter the 6 digit code sent to your email"),
@@ -233,13 +246,13 @@ export function OtpVerification({
                   ? "Sign in"
                   : "Verify"
             }
-            onPress={() => startTransition(() => verify())}
+            onPress={runVerify}
             disabled={isVerifying || otp.length !== 6}
           />
 
           <Button
             modifiers={[buttonStyle("plain"), frame({ maxWidth: 10000 }), disabled(isResending)]}
-            onPress={() => startTransition(() => resend())}
+            onPress={runResend}
           >
             <Text
               modifiers={[
