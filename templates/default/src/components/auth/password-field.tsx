@@ -1,5 +1,14 @@
-import { type ComponentProps, useState } from "react";
-import { Button, HStack, Image, SecureField, TextField, useNativeState } from "@expo/ui/swift-ui";
+import { type ComponentProps, useEffect, useRef, useState } from "react";
+import {
+  Button,
+  HStack,
+  Image,
+  SecureField,
+  type SecureFieldRef,
+  TextField,
+  type TextFieldRef,
+  useNativeState,
+} from "@expo/ui/swift-ui";
 import {
   accessibilityHint,
   accessibilityLabel,
@@ -74,6 +83,25 @@ export function PasswordField({
   const [visible, setVisible] = useState(false);
   const internalState = useNativeState("");
   const sharedState = text ?? internalState;
+  const textRef = useRef<TextFieldRef>(null);
+  const secureRef = useRef<SecureFieldRef>(null);
+  const focused = useRef(false);
+  const pendingRefocus = useRef(false);
+  const didMount = useRef(false);
+
+  // The eye toggle swaps SecureField <-> TextField, two different native views.
+  // React unmounts the focused one and mounts the other, so iOS drops the
+  // keyboard and caret. When the field was focused at the tap, refocus the
+  // now-active field after the swap so typing isn't interrupted.
+  useEffect(() => {
+    if (!didMount.current) {
+      didMount.current = true;
+      return;
+    }
+    if (!pendingRefocus.current) return;
+    pendingRefocus.current = false;
+    (visible ? textRef.current : secureRef.current)?.focus();
+  }, [visible]);
 
   const fieldModifiers = [
     textFieldStyle("plain"),
@@ -101,16 +129,24 @@ export function PasswordField({
     >
       {visible ? (
         <TextField
+          ref={textRef}
           text={sharedState}
           placeholder={placeholder}
           onTextChange={onTextChange}
+          onFocusChange={(f) => {
+            focused.current = f;
+          }}
           modifiers={fieldModifiers}
         />
       ) : (
         <SecureField
+          ref={secureRef}
           text={sharedState}
           placeholder={placeholder}
           onTextChange={onTextChange}
+          onFocusChange={(f) => {
+            focused.current = f;
+          }}
           modifiers={fieldModifiers}
         />
       )}
@@ -119,11 +155,13 @@ export function PasswordField({
           buttonStyle("plain"),
           frame({ width: 44, height: 44 }),
           contentShape(shapes.rectangle()),
+          disabledMod(disabled),
           accessibilityLabel(visible ? "Hide password" : "Show password"),
           accessibilityHint(visible ? "Tap to mask the password" : "Tap to reveal the password"),
         ]}
         onPress={() => {
           haptics.light();
+          pendingRefocus.current = focused.current;
           setVisible((v) => !v);
         }}
       >
