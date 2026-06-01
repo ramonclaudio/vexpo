@@ -59,8 +59,11 @@ export async function signRequest(
   if (!isSupported) {
     throw new Error("app-attest: device does not support App Attest");
   }
-  const { nonce } = await client.issueChallenge();
-  const assertion = await generateAssertionAsync(keyId, nonce);
+  // Sign the exact bytes the server reconstructs: it hashes `payload` and
+  // verifies the signature over sha256(authData || sha256(payload)). Replay is
+  // blocked server-side by the strictly-increasing assertion counter, so no
+  // per-request challenge is needed here (challenges are an attestation step).
+  const assertion = await generateAssertionAsync(keyId, payload);
   return client.verifyAssertion({ keyId, assertion, payload });
 }
 
