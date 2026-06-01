@@ -85,7 +85,7 @@ export default function HelpScreen() {
     if (!support.email) return;
     haptics.light();
     setEmailError(null);
-    const url = `mailto:${support.email}?subject=App Support`;
+    const url = `mailto:${support.email}?subject=${encodeURIComponent("App Support")}`;
     const canOpen = await canOpenURL(url);
     if (canOpen) {
       openURL(url);
