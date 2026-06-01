@@ -39,8 +39,6 @@ export async function runTestflightGroupsList(opts: { json?: boolean } = {}): Pr
 
 export async function runTestflightGroupsCreate(opts: {
   name: string;
-  publicLink?: boolean;
-  publicLimit?: number;
   feedback?: boolean;
 }): Promise<number> {
   try {
@@ -48,13 +46,10 @@ export async function runTestflightGroupsCreate(opts: {
     const created = await tf.betaGroups.create({
       name: opts.name,
       appId: ascAppId,
-      publicLinkEnabled: opts.publicLink,
-      publicLinkLimit: opts.publicLimit,
       feedbackEnabled: opts.feedback,
     });
     section(`Beta group ${created.attributes.name}`);
     ok(`id ${created.id}`);
-    if (created.attributes.publicLink) line(`  public link: ${created.attributes.publicLink}`);
     return 0;
   } catch (err) {
     bad(err instanceof Error ? err.message : String(err));
@@ -164,24 +159,6 @@ export async function runTestflightInvite(opts: {
     const inv = await tf.betaTesterInvitations.create({ appId: ascAppId, testerId });
     section(`Invited ${opts.email}`);
     ok(`invitation ${inv.id}`);
-    return 0;
-  } catch (err) {
-    bad(err instanceof Error ? err.message : String(err));
-    return 1;
-  }
-}
-
-export async function runTestflightRemove(email: string): Promise<number> {
-  try {
-    const { tf, ascAppId } = await bootstrap();
-    const matches = await tf.betaTesters.list({ email, appId: ascAppId });
-    if (matches.length === 0) {
-      bad(`no tester with email ${email}`);
-      return 1;
-    }
-    for (const t of matches) await tf.betaTesters.delete(t.id);
-    section(`Removed ${matches.length} tester${matches.length === 1 ? "" : "s"}`);
-    ok("done");
     return 0;
   } catch (err) {
     bad(err instanceof Error ? err.message : String(err));

@@ -1,8 +1,8 @@
 /**
  * App Store Connect API: TestFlight resources.
  *
- * Beta groups, beta testers, invitations, beta build localizations, beta
- * app review submissions. eas-cli does not expose any of this. it hands a
+ * Beta groups, beta testers, invitations, and beta build localizations:
+ * what you need to get a first build in front of testers. eas-cli hands a
  * build to TestFlight and stops there.
  *
  * Sits on top of the request/paginatedList primitives exposed by
@@ -18,11 +18,7 @@ export type BetaGroup = {
     name?: string;
     isInternalGroup?: boolean;
     publicLink?: string;
-    publicLinkEnabled?: boolean;
-    publicLinkLimit?: number;
-    publicLinkLimitEnabled?: boolean;
     feedbackEnabled?: boolean;
-    iosBuildsAvailableForAppleSiliconMac?: boolean;
     createdDate?: string;
   };
   relationships?: { app?: { data?: { id: string } } };
@@ -52,22 +48,6 @@ export type BetaBuildLocalization = {
   attributes: { whatsNew?: string; locale?: string };
 };
 
-export type Build = {
-  type: "builds";
-  id: string;
-  attributes: {
-    version?: string;
-    uploadedDate?: string;
-    expirationDate?: string;
-    expired?: boolean;
-    minOsVersion?: string;
-    iconAssetToken?: { templateUrl?: string };
-    processingState?: "PROCESSING" | "FAILED" | "INVALID" | "VALID";
-    buildAudienceType?: "INTERNAL_ONLY" | "APP_STORE_ELIGIBLE";
-    usesNonExemptEncryption?: boolean;
-  };
-};
-
 export function testflight(client: AscClient) {
   return {
     betaGroups: {
@@ -84,8 +64,6 @@ export function testflight(client: AscClient) {
       async create(args: {
         name: string;
         appId: string;
-        publicLinkEnabled?: boolean;
-        publicLinkLimit?: number;
         feedbackEnabled?: boolean;
       }): Promise<BetaGroup> {
         const body = {
@@ -93,12 +71,6 @@ export function testflight(client: AscClient) {
             type: "betaGroups",
             attributes: {
               name: args.name,
-              ...(args.publicLinkEnabled !== undefined
-                ? { publicLinkEnabled: args.publicLinkEnabled }
-                : {}),
-              ...(args.publicLinkLimit !== undefined
-                ? { publicLinkLimit: args.publicLinkLimit, publicLinkLimitEnabled: true }
-                : {}),
               ...(args.feedbackEnabled !== undefined
                 ? { feedbackEnabled: args.feedbackEnabled }
                 : {}),
@@ -121,14 +93,6 @@ export function testflight(client: AscClient) {
         const body = { data: testerIds.map((id) => ({ type: "betaTesters", id })) };
         await client.request<void>(
           "POST",
-          `/v1/betaGroups/${groupId}/relationships/betaTesters`,
-          body,
-        );
-      },
-      async removeTesters(groupId: string, testerIds: readonly string[]): Promise<void> {
-        const body = { data: testerIds.map((id) => ({ type: "betaTesters", id })) };
-        await client.request<void>(
-          "DELETE",
           `/v1/betaGroups/${groupId}/relationships/betaTesters`,
           body,
         );
@@ -178,9 +142,6 @@ export function testflight(client: AscClient) {
         const res = await client.request<{ data: BetaTester }>("POST", "/v1/betaTesters", body);
         return res.data;
       },
-      async delete(id: string): Promise<void> {
-        await client.request<void>("DELETE", `/v1/betaTesters/${id}`);
-      },
     },
 
     betaTesterInvitations: {
@@ -204,11 +165,6 @@ export function testflight(client: AscClient) {
     },
 
     betaBuildLocalizations: {
-      list(buildId: string): Promise<BetaBuildLocalization[]> {
-        return client.paginatedList<BetaBuildLocalization>(
-          `/v1/builds/${buildId}/betaBuildLocalizations`,
-        );
-      },
       async upsert(args: {
         buildId: string;
         locale: string;
@@ -247,25 +203,6 @@ export function testflight(client: AscClient) {
           "/v1/betaBuildLocalizations",
           body,
         );
-        return res.data;
-      },
-    },
-
-    builds: {
-      list(filter?: {
-        appId?: string;
-        version?: string;
-        processingState?: string;
-        limit?: number;
-      }): Promise<Build[]> {
-        const query: Record<string, string> = {};
-        if (filter?.appId) query["filter[app]"] = filter.appId;
-        if (filter?.version) query["filter[version]"] = filter.version;
-        if (filter?.processingState) query["filter[processingState]"] = filter.processingState;
-        return client.paginatedList<Build>("/v1/builds", query, filter?.limit ?? 50);
-      },
-      async get(id: string): Promise<Build> {
-        const res = await client.request<{ data: Build }>("GET", `/v1/builds/${id}`);
         return res.data;
       },
     },

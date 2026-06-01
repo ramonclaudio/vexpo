@@ -493,42 +493,6 @@ async function verifyApple(ctx: VerifyContext): Promise<Check[]> {
           );
         }
       }
-
-      const bundleId =
-        ctx.envLocal.get("EXPO_PUBLIC_APP_BUNDLE_ID") ??
-        ctx.appConfig.bundleIdFallback ??
-        undefined;
-      if (bundleId) {
-        try {
-          const apps = await client.paginatedList<{ id: string }>(
-            "/v1/apps",
-            { "filter[bundleId]": bundleId },
-            5,
-          );
-          const ascAppId = apps[0]?.id;
-          if (ascAppId) {
-            const { reviews: reviewsApi, unansweredOlderThan } = await import("./asc-reviews.ts");
-            const all = await reviewsApi(client).customerReviews.list({
-              appId: ascAppId,
-              limit: 100,
-            });
-            const stale = unansweredOlderThan(all, 7);
-            if (stale.length === 0)
-              checks.push(ok("apple", "reviews-answered", "no stale reviews"));
-            else
-              checks.push(
-                warn(
-                  "apple",
-                  "reviews-answered",
-                  `${stale.length} review${stale.length === 1 ? "" : "s"} unanswered for >7 days`,
-                  "run `vexpo reviews unanswered --days 7` to triage",
-                ),
-              );
-          }
-        } catch {
-          checks.push(skip("apple", "reviews-answered", "could not query customer reviews"));
-        }
-      }
     } else {
       checks.push(fail("apple", "asc-key-valid", v.reason));
     }
