@@ -73,13 +73,24 @@ async function call<T>(method: string, path: string, key: string, body?: unknown
 }
 
 export async function probeAccess(key: string): Promise<"full" | "sending" | "invalid"> {
-  const res = await fetch(`${BASE}/api-keys`, {
-    headers: { Authorization: `Bearer ${key}` },
-  });
-  if (res.ok) return "full";
-  const text = await res.text();
-  if (text.includes("restricted_api_key")) return "sending";
-  return "invalid";
+  // Bound the gating probe like every other Resend call (see `call`), so a
+  // silent network stall can't hang `vexpo resend` forever. Can't route through
+  // `call` because that throws on non-2xx; we need the 4xx body to tell a
+  // restricted key from an invalid one.
+  const ctl = new AbortController();
+  const timer = setTimeout(() => ctl.abort(), REQUEST_TIMEOUT_MS);
+  try {
+    const res = await fetch(`${BASE}/api-keys`, {
+      headers: { Authorization: `Bearer ${key}` },
+      signal: ctl.signal,
+    });
+    if (res.ok) return "full";
+    const text = await res.text();
+    if (text.includes("restricted_api_key")) return "sending";
+    return "invalid";
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 export async function listDomains(key: string): Promise<ResendDomain[]> {
