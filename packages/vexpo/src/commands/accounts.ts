@@ -11,7 +11,6 @@ import {
   YELLOW,
   askYesNo,
   bad,
-  fail,
   line,
   nop,
   note,
@@ -178,9 +177,12 @@ async function walkConvex(): Promise<void> {
     const proc = spawn([dlx(), "convex", "login"], {
       stdio: ["inherit", "inherit", "inherit"],
     });
-    if ((await proc.exited) !== 0) fail("convex login did not complete");
+    if ((await proc.exited) !== 0) {
+      yep("convex login did not complete; run `npx convex login` later");
+      return;
+    }
     if ((await statusConvex()).status === "ok") ok("Convex authenticated");
-    else fail("still not signed in");
+    else yep("still not signed in; run `npx convex login` later");
   } else {
     nop("`npx convex login` will prompt automatically when `npx vexpo convex` runs");
   }
@@ -210,10 +212,13 @@ async function walkExpo(): Promise<void> {
   }
   if (await askYesNo(`Run \`${dlx()} eas login\` now?`, false)) {
     const proc = spawn([dlx(), "eas", "login"], { stdio: ["inherit", "inherit", "inherit"] });
-    if ((await proc.exited) !== 0) fail("eas login did not complete");
+    if ((await proc.exited) !== 0) {
+      yep("eas login did not complete; run `npx eas login` later");
+      return;
+    }
     const after = await statusExpo();
     if (after.status === "ok") ok(`signed in as ${after.detail}`);
-    else fail("still not signed in");
+    else yep("still not signed in; run `npx eas login` later");
   } else {
     nop("`npx eas login` will prompt automatically when the EAS phase of `npx vexpo full` runs");
   }

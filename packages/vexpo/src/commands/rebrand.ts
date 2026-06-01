@@ -15,6 +15,7 @@ import {
   section,
   yep,
 } from "../lib/output.ts";
+import { ensureLine } from "../lib/env-local.ts";
 import { load, recordStep } from "../lib/state.ts";
 
 export type RebrandOptions = {
@@ -372,6 +373,13 @@ export async function runRebrand(options: RebrandOptions): Promise<number> {
     await rewriteAppJson();
     await rewritePackageJson(inputs);
     await rewriteStoreConfig(inputs);
+
+    // app.config.ts reads `owner` from EXPO_PUBLIC_EXPO_OWNER; persist the slug
+    // so team/org accounts actually get it (env-files.ts routes it to EAS too).
+    if (inputs.expoOwner) {
+      await ensureLine("EXPO_PUBLIC_EXPO_OWNER", inputs.expoOwner);
+      ok(`wrote EXPO_PUBLIC_EXPO_OWNER=${inputs.expoOwner} to .env.local`);
+    }
 
     await recordStep("rebrand", {
       appName: inputs.appName,

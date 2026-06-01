@@ -1021,7 +1021,7 @@ async function printSummary(useLocal: boolean, elapsedMs: number): Promise<void>
 
   line(`\n  ${GREEN}ok${RESET}   setup complete in ${(elapsedMs / 1000).toFixed(2)}s`);
   line(
-    `\n  next: ${BOLD}${useLocal ? "npx convex dev --local" : "npm run convex:dev"}${RESET} ${DIM}then${RESET} ${BOLD}npm run ios${RESET}\n`,
+    `\n  next: ${BOLD}${useLocal ? "npx convex dev" : "npm run convex:dev"}${RESET} ${DIM}then${RESET} ${BOLD}npm run ios${RESET}\n`,
   );
 }
 
