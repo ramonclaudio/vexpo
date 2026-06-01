@@ -252,9 +252,9 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       // Inject the resolved projectId so eas-cli commands that read
       // `extra.eas.projectId` directly (e.g. `eas project:info`) see the
       // env-var fallback too, not just `updates.url`. Existing
-      // `config.extra.eas` keys (if any) survive the merge. Stripped from
-      // the fingerprint hash via `ExpoConfigEASProject` in
-      // `fingerprint.config.js`.
+      // `config.extra.eas` keys (if any) survive the merge. projectId stays
+      // in fingerprint parity because local and EAS both resolve it from the
+      // plaintext `EAS_PROJECT_ID` env var, so no `sourceSkips` are needed.
       ...(projectId
         ? {
             eas: {
