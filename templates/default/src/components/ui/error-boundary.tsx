@@ -3,6 +3,7 @@ import { AccessibilityInfo } from "react-native";
 import { router, type ErrorBoundaryProps } from "expo-router";
 import { Host, VStack, Text, Button, Image, Spacer } from "@expo/ui/swift-ui";
 import {
+  accessibilityLabel,
   foregroundStyle,
   buttonStyle,
   frame,
@@ -42,6 +43,7 @@ export function AppErrorBoundary({ error, retry }: ErrorBoundaryProps) {
           systemName="exclamationmark.triangle"
           size={symbolSize(72)}
           color={colors.destructive as string}
+          modifiers={[accessibilityLabel("")]}
         />
         <Text modifiers={[dfont({ size: 28, weight: "bold" }), multilineTextAlignment("center")]}>
           Something went wrong

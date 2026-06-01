@@ -59,7 +59,7 @@ export default function HelpScreen() {
   const colors = useColors();
   const [searchText, setSearchText] = useState("");
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
-  const [emailError, setEmailError] = useState<string | null>(null);
+  const [linkError, setLinkError] = useState<string | null>(null);
   const toggleExpanded = (question: string, next: boolean) => {
     haptics.selection();
     setExpanded((m) => ({ ...m, [question]: next }));
@@ -75,23 +75,30 @@ export default function HelpScreen() {
 
   const issuesUrl = support.issuesUrl || support.githubUrl;
 
-  const handleOpenIssues = () => {
+  const handleOpenIssues = async () => {
     if (!issuesUrl) return;
     haptics.light();
-    openURL(issuesUrl);
+    setLinkError(null);
+    const canOpen = await canOpenURL(issuesUrl);
+    if (canOpen) {
+      openURL(issuesUrl);
+    } else {
+      haptics.error();
+      setLinkError("Couldn't open the issues page.");
+    }
   };
 
   const handleOpenEmail = async () => {
     if (!support.email) return;
     haptics.light();
-    setEmailError(null);
+    setLinkError(null);
     const url = `mailto:${support.email}?subject=${encodeURIComponent("App Support")}`;
     const canOpen = await canOpenURL(url);
     if (canOpen) {
       openURL(url);
     } else {
       haptics.error();
-      setEmailError(`No email app configured. Contact ${support.email} directly.`);
+      setLinkError(`No email app configured. Contact ${support.email} directly.`);
     }
   };
 
@@ -109,7 +116,7 @@ export default function HelpScreen() {
     <Button
       modifiers={[
         buttonStyle("plain"),
-        frame({ maxWidth: 10000 }),
+        frame({ maxWidth: Infinity }),
         background(colors.muted as string),
         clipShape("capsule"),
       ]}
@@ -119,7 +126,7 @@ export default function HelpScreen() {
         spacing={12}
         alignment="center"
         modifiers={[
-          frame({ maxWidth: 10000, height: ButtonTokens.height }),
+          frame({ maxWidth: Infinity, height: ButtonTokens.height }),
           padding({ horizontal: 16 }),
         ]}
       >
@@ -167,7 +174,7 @@ export default function HelpScreen() {
             alignment="leading"
             modifiers={[padding({ horizontal: 24, top: 24, bottom: 40 })]}
           >
-            {emailError ? <ErrorText>{emailError}</ErrorText> : null}
+            {linkError ? <ErrorText>{linkError}</ErrorText> : null}
 
             {(support.email || issuesUrl) && (
               <VStack spacing={8} modifiers={[frame({ maxWidth: Infinity })]}>
@@ -210,7 +217,7 @@ export default function HelpScreen() {
                     key={item.question}
                     alignment="leading"
                     modifiers={[
-                      frame({ maxWidth: 10000 }),
+                      frame({ maxWidth: Infinity }),
                       padding({ horizontal: 20, vertical: 4 }),
                       background(colors.muted as string),
                       cornerRadius(20),

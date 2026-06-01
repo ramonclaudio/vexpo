@@ -1,5 +1,5 @@
 import { useLocalSearchParams } from "expo-router";
-import { Host, ScrollView, Text, VStack, HStack, Spacer } from "@expo/ui/swift-ui";
+import { Host, ScrollView, Text, VStack, LabeledContent } from "@expo/ui/swift-ui";
 import {
   background,
   cornerRadius,
@@ -58,30 +58,29 @@ export default function LinkedScreen() {
                 spacing={0}
                 alignment="leading"
                 modifiers={[
-                  frame({ maxWidth: 10000 }),
+                  frame({ maxWidth: Infinity }),
                   background(colors.muted as string),
                   cornerRadius(20),
                 ]}
               >
                 {entries.map(([key, value]) => (
-                  <HStack
+                  <LabeledContent
                     key={key}
-                    spacing={12}
-                    alignment="center"
+                    label={
+                      <Text
+                        modifiers={[
+                          dfont({ size: 15 }),
+                          foregroundStyle(colors.mutedForeground as string),
+                        ]}
+                      >
+                        {key}
+                      </Text>
+                    }
                     modifiers={[
-                      frame({ maxWidth: 10000 }),
+                      frame({ maxWidth: Infinity }),
                       padding({ horizontal: 16, vertical: 12 }),
                     ]}
                   >
-                    <Text
-                      modifiers={[
-                        dfont({ size: 15 }),
-                        foregroundStyle(colors.mutedForeground as string),
-                      ]}
-                    >
-                      {key}
-                    </Text>
-                    <Spacer />
                     <Text
                       modifiers={[
                         dfont({ size: 13, design: "monospaced" }),
@@ -91,7 +90,7 @@ export default function LinkedScreen() {
                     >
                       {Array.isArray(value) ? value.join(", ") : String(value)}
                     </Text>
-                  </HStack>
+                  </LabeledContent>
                 ))}
               </VStack>
             </VStack>

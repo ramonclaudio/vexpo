@@ -25,12 +25,9 @@ import { useColors } from "@/hooks/use-theme";
 // SwiftUI's Button label is content-sized. `frame(maxWidth:.infinity)` on the
 // Button itself wraps the styled button in an invisible flex frame without
 // expanding it. Putting the frame on the LABEL inside the button is the fix.
-//
-// Why 10000 instead of Infinity:
-// `Infinity` serialized through the @expo/ui modifier bridge gets ignored by
-// the SwiftUI button's content-sizing logic, leaving the button content-sized.
-// A large finite number behaves as effectively infinite (capped by the parent
-// VStack's available width) and is honored by the bridge.
+// The value is `Infinity` (SwiftUI's `.frame(maxWidth: .infinity)` fill idiom);
+// it survives the @expo/ui modifier bridge intact and is what Expo ships in its
+// own ScrollView/BottomSheet and documents in tabview.mdx.
 export function ProminentButton({
   label,
   onPress,
@@ -46,7 +43,7 @@ export function ProminentButton({
     <Button
       modifiers={[
         buttonStyle("plain"),
-        frame({ maxWidth: 10000 }),
+        frame({ maxWidth: Infinity }),
         background(colors.primary as string),
         clipShape("capsule"),
         disabledModifier(disabled ?? false),
@@ -55,7 +52,7 @@ export function ProminentButton({
     >
       <Text
         modifiers={[
-          frame({ maxWidth: 10000, height: ButtonTokens.height }),
+          frame({ maxWidth: Infinity, height: ButtonTokens.height }),
           multilineTextAlignment("center"),
           dfont({ size: ButtonTokens.fontSize, weight: ButtonTokens.fontWeight }),
           foregroundStyle(colors.primaryForeground as string),

@@ -1,7 +1,7 @@
 import { useState, type ComponentProps } from "react";
 import Constants from "expo-constants";
 import * as Clipboard from "expo-clipboard";
-import * as LocalAuthentication from "expo-local-authentication";
+import { useDeleteAccount } from "@/hooks/use-delete-account";
 import { Image as ExpoImage, useImage } from "expo-image";
 import { router, type Href } from "expo-router";
 
@@ -43,6 +43,7 @@ import { api } from "@/convex/_generated/api";
 import { authClient } from "@/lib/auth-client";
 import { haptics } from "@/lib/haptics";
 import { announce } from "@/lib/a11y";
+import { ErrorText } from "@/components/ui/status-text";
 import { useColors } from "@/hooks/use-theme";
 import { useDebugEnabled } from "@/lib/preferences";
 
@@ -54,7 +55,7 @@ export default function SettingsScreen() {
   const colors = useColors();
   const me = useQuery(api.users.getMe);
   const removeAllTokens = useMutation(api.pushTokens.removeAll);
-  const deleteAccountMutation = useMutation(api.users.deleteAccount);
+  const { deleteAccount, deleteError } = useDeleteAccount();
 
   const [showSignOut, setShowSignOut] = useState(false);
   const [showDeleteAccount, setShowDeleteAccount] = useState(false);
@@ -72,16 +73,6 @@ export default function SettingsScreen() {
     } catch (err) {
       if (__DEV__) console.warn("[signOut] removeAllTokens failed:", err);
     }
-    await authClient.signOut();
-  };
-
-  const handleDeleteAccount = async () => {
-    haptics.error();
-    const result = await LocalAuthentication.authenticateAsync({
-      promptMessage: "Confirm with Face ID",
-    });
-    if (!result.success) return;
-    await deleteAccountMutation();
     await authClient.signOut();
   };
 
@@ -115,7 +106,7 @@ export default function SettingsScreen() {
       <Button
         modifiers={[
           buttonStyle("plain"),
-          frame({ maxWidth: 10000 }),
+          frame({ maxWidth: Infinity }),
           background(colors.muted as string),
           clipShape("capsule"),
         ]}
@@ -125,7 +116,7 @@ export default function SettingsScreen() {
           spacing={12}
           alignment="center"
           modifiers={[
-            frame({ maxWidth: 10000, height: ButtonTokens.height }),
+            frame({ maxWidth: Infinity, height: ButtonTokens.height }),
             padding({ horizontal: 16 }),
           ]}
         >
@@ -160,7 +151,7 @@ export default function SettingsScreen() {
           <Button
             modifiers={[
               buttonStyle("plain"),
-              frame({ maxWidth: 10000 }),
+              frame({ maxWidth: Infinity }),
               background(colors.muted as string),
               clipShape("capsule"),
               accessibilityLabel("Open profile"),
@@ -174,7 +165,7 @@ export default function SettingsScreen() {
               spacing={16}
               alignment="center"
               modifiers={[
-                frame({ maxWidth: 10000, height: 80 }),
+                frame({ maxWidth: Infinity, height: 80 }),
                 padding({ leading: 8, trailing: 16 }),
               ]}
             >
@@ -293,7 +284,7 @@ export default function SettingsScreen() {
                 })}
               </Alert.Trigger>
               <Alert.Actions>
-                <Button label="Delete Account" role="destructive" onPress={handleDeleteAccount} />
+                <Button label="Delete Account" role="destructive" onPress={deleteAccount} />
                 <Button label="Cancel" role="cancel" />
               </Alert.Actions>
               <Alert.Message>
@@ -305,7 +296,9 @@ export default function SettingsScreen() {
             </Alert>
           </VStack>
 
-          <HStack modifiers={[frame({ maxWidth: 10000 }), padding({ top: 16 })]}>
+          {deleteError ? <ErrorText>{deleteError}</ErrorText> : null}
+
+          <HStack modifiers={[frame({ maxWidth: Infinity }), padding({ top: 16 })]}>
             <Spacer />
             <Text
               modifiers={[dfont({ size: 12 }), foregroundStyle(colors.tertiaryLabel as string)]}

@@ -223,7 +223,6 @@ export default function ResetPasswordScreen() {
             <Text modifiers={labelModifiers}>Account</Text>
             <TextField
               text={emailIdentityState}
-              onTextChange={() => {}}
               modifiers={[
                 ...inputModifiers,
                 foregroundStyle(colors.mutedForeground as string),

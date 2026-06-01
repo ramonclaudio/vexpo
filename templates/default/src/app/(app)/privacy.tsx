@@ -57,7 +57,7 @@ export default function PrivacyScreen() {
     <Button
       modifiers={[
         buttonStyle("plain"),
-        frame({ maxWidth: 10000 }),
+        frame({ maxWidth: Infinity }),
         background(colors.muted as string),
         clipShape("capsule"),
       ]}
@@ -67,7 +67,7 @@ export default function PrivacyScreen() {
         spacing={12}
         alignment="center"
         modifiers={[
-          frame({ maxWidth: 10000, height: ButtonTokens.height }),
+          frame({ maxWidth: Infinity, height: ButtonTokens.height }),
           padding({ horizontal: 16 }),
         ]}
       >
@@ -130,7 +130,7 @@ export default function PrivacyScreen() {
             spacing={12}
             alignment="center"
             modifiers={[
-              frame({ maxWidth: 10000, height: ButtonTokens.height }),
+              frame({ maxWidth: Infinity, height: ButtonTokens.height }),
               padding({ horizontal: 16 }),
               background(colors.muted as string),
               clipShape("capsule"),
