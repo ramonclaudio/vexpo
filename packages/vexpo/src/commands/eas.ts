@@ -8,7 +8,9 @@ import {
   init,
   resolveProjectId,
   whoami,
+  type EasEnvironment,
 } from "../lib/eas-env.ts";
+import { ROUTING, readEnvFile } from "../lib/env-files.ts";
 import { BOLD, RESET, askYesNo, bad, line, nop, note, ok, section, yep } from "../lib/output.ts";
 import { dlx } from "../lib/pkg-manager.ts";
 import { spawn } from "../lib/proc.ts";
@@ -26,6 +28,40 @@ async function fileExists(p: string): Promise<boolean> {
     return true;
   } catch {
     return false;
+  }
+}
+
+/**
+ * Pushes ONLY the EAS-routed keys (the `EXPO_PUBLIC_*` vars) from an env file
+ * to EAS. Server-side secrets (`BETTER_AUTH_SECRET`, `RESEND_API_KEY`,
+ * `CONVEX_DEPLOY_KEY`, …) route to the Convex deployment per `env-files.ts`
+ * and must never land on EAS at default Sensitive (locally-pullable)
+ * visibility. The filtered subset is written to a 0600 temp file so the
+ * plaintext never touches a predictable path. Returns the pushed key names.
+ */
+async function pushEasRoutedKeys(
+  file: string,
+  environments: readonly EasEnvironment[],
+): Promise<string[]> {
+  const entries = await readEnvFile(file);
+  const easKeys: Array<[string, string]> = [];
+  for (const [key, value] of entries) {
+    if (ROUTING[key]?.routes("dev").some((d) => d.type === "eas")) easKeys.push([key, value]);
+  }
+  if (easKeys.length === 0) return [];
+
+  const { writeFile, unlink, mkdtemp, rmdir } = await import("node:fs/promises");
+  const { tmpdir } = await import("node:os");
+  const { join } = await import("node:path");
+  const dir = await mkdtemp(join(tmpdir(), "vexpo-env-"));
+  const tmp = join(dir, "eas.env");
+  try {
+    await writeFile(tmp, easKeys.map(([k, v]) => `${k}=${v}`).join("\n") + "\n", { mode: 0o600 });
+    await envPush({ path: tmp, environments, force: true });
+    return easKeys.map(([k]) => k);
+  } finally {
+    await unlink(tmp).catch(() => {});
+    await rmdir(dir).catch(() => {});
   }
 }
 
@@ -90,8 +126,14 @@ export async function runEas(options: EasOptions): Promise<number> {
     if (!options.skipEnv) {
       if (await fileExists(".env.local")) {
         try {
-          await envPush({ path: ".env.local", environments: ["development"], force: true });
-          ok(`pushed .env.local → EAS env (development)`);
+          const pushed = await pushEasRoutedKeys(".env.local", ["development"]);
+          if (pushed.length > 0) {
+            ok(
+              `pushed ${pushed.length} EXPO_PUBLIC_* var${pushed.length === 1 ? "" : "s"} → EAS env (development)`,
+            );
+          } else {
+            nop(".env.local has no EAS-routed keys yet (run `vexpo convex` first)");
+          }
         } catch (err) {
           bad(err instanceof Error ? err.message : String(err));
         }
@@ -107,12 +149,14 @@ export async function runEas(options: EasOptions): Promise<number> {
             : null;
         if (prodFile) {
           try {
-            await envPush({
-              path: prodFile,
-              environments: ["production", "preview"],
-              force: true,
-            });
-            ok(`pushed ${prodFile} → EAS env (production, preview)`);
+            const pushed = await pushEasRoutedKeys(prodFile, ["production", "preview"]);
+            if (pushed.length > 0) {
+              ok(
+                `pushed ${pushed.length} EXPO_PUBLIC_* var${pushed.length === 1 ? "" : "s"} → EAS env (production, preview)`,
+              );
+            } else {
+              nop(`${prodFile} has no EAS-routed keys`);
+            }
           } catch (err) {
             bad(err instanceof Error ? err.message : String(err));
           }
@@ -120,6 +164,9 @@ export async function runEas(options: EasOptions): Promise<number> {
           nop("--with-prod set but no .env.prod or .env.production found");
         }
       }
+      note(
+        `server-side secrets route to Convex, not EAS. run ${BOLD}vexpo env push${RESET} to sync those`,
+      );
     }
 
     if (projectId) {
