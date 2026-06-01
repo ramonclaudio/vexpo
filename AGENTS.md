@@ -7,7 +7,7 @@ Guidance for AI coding agents working in this repository. Complements the README
 Monorepo for vexpo: a one-shot Expo + Convex + Better Auth + Resend starter targeting iOS. Three pieces:
 
 - `packages/create-vexpo`: npm scaffolder, ~200 lines. Runs as `npm create @ramonclaudio/vexpo@latest my-app`. Copies `templates/default/`, rewrites `package.json` (project name, version, sets `private`, strips publish metadata), installs dependencies via the detected package manager (sniffed from `npm_config_user_agent`; defaults to `npm`), inits git.
-- `packages/vexpo`: operational CLI. Runs as `vexpo <subcommand>` from inside a scaffolded project. Deliberately small: doesn't wrap what `eas` already does well. Surfaces only the things `eas-cli` doesn't do: two-mode setup orchestration (`lite`, `full`) with standalone phases (`accounts`, `rebrand`, `review-account`, `convex`, `better-auth`, `resend`), cross-source drift detection (`doctor`), Apple-side work `eas-cli` doesn't expose (`apple {asc-key, credentials, services-id, jwt, eas-rotation-secrets}`), ASC API endpoints `eas-cli` doesn't expose (`testflight`, `reviews`, `sandbox`, `asc:version`, `asc:submissions`, `asc:privacy`, `asc:accessibility`), and multi-destination env sync (`env push`). Commander-based tree, around 600 lines of CLI wiring on top of around 9.5k lines of orchestration logic in `src/lib/` and `src/commands/`.
+- `packages/vexpo`: operational CLI. Runs as `vexpo <subcommand>` from inside a scaffolded project. Deliberately small: doesn't wrap what `eas` already does well. Scope test for every command: does it help an empty directory become a first shipped, authenticated, backed iOS app? Surfaces two-mode setup orchestration (`lite`, `full`) with standalone phases (`accounts`, `rebrand`, `review-account`, `convex`, `better-auth`, `resend`), cross-source drift detection (`doctor`), Apple-side work `eas-cli` doesn't expose (`apple {asc-key, credentials, services-id, jwt, eas-rotation-secrets}`), the last ASC mile to a first ship (`testflight` delivery, `asc:privacy` + `asc:accessibility` labels, `asc:connect`), and multi-destination env sync (`env push`). Post-launch ops (customer reviews, IAP sandbox testing, release management) are out of scope, not added just because `eas-cli` lacks them. Commander-based tree, around 480 lines of CLI wiring on top of around 9.2k lines of orchestration logic in `src/lib/` and `src/commands/`.
 - `templates/default/`: the Expo SDK 56 + Convex + Better Auth app that gets copied. Production-ready: real auth, real push, real OTA, real App Store submission. Standalone (its own `package-lock.json`, `node_modules`), not a workspace member.
 
 npm workspace at the root with `packages/*` as members. Templates intentionally stay outside the workspace because Expo's hoisting expectations don't survive npm's workspace install layout. The `vexpo` CLI links into the template via `npm link` for monorepo dev (`npm run link:dev`).
@@ -47,7 +47,7 @@ npm workspace at the root with `packages/*` as members. Templates intentionally 
 - Each command exports a `run<Name>(options)` function returning a numeric exit code. `cli.ts` handles `process.exit`.
 - Cross-cutting helpers (logging, prompts, state cache, proc helpers, lib clients, path expansion) under `src/lib/`.
 - Node-only. No `_run.mjs` runtime selector, the published CLI is a single ESM bundle that runs anywhere Node 20+ works.
-- Tests live in `packages/vexpo/__tests__/`: 357 vitest unit tests across `lib/` (25 files) and `commands/` (7 files), plus 14 bash e2e tests in `e2e/run.sh` against the built dist.
+- Tests live in `packages/vexpo/__tests__/`: 348 vitest unit tests across `lib/` (24 files) and `commands/` (6 files), plus 14 bash e2e tests in `e2e/run.sh` against the built dist.
 
 ### Apple ASC API workarounds
 
@@ -64,7 +64,7 @@ When Apple loosens any of these, the CLI continues to work.
 
 1. Read this file, the template's `AGENTS.md`, and `README.md`.
 2. From the root: `npm run typecheck` to confirm packages compile.
-3. From the root: `npm run test:all` to run all unit + e2e tests (357 unit + 14 e2e + 110 template = 481).
+3. From the root: `npm run test:all` to run all unit + e2e tests (348 unit + 14 e2e + 110 template = 472).
 4. If touching the CLI: `npm run build -w @ramonclaudio/vexpo` then `npm run test:e2e -w @ramonclaudio/vexpo` to confirm the dist behaves.
 
 ## Common tasks

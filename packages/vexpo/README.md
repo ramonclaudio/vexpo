@@ -3,13 +3,13 @@
 [![npm](https://img.shields.io/npm/v/@ramonclaudio/vexpo)](https://www.npmjs.com/package/@ramonclaudio/vexpo)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-Operational CLI for [vexpo](https://github.com/ramonclaudio/vexpo) projects: Expo + Convex + Better Auth + Resend, end-to-end iOS. Provisions the stack, validates every credential, keeps env values in sync across `.env.local` / Convex env / EAS env, and exposes the App Store Connect API endpoints `eas-cli` doesn't.
+Operational CLI for [vexpo](https://github.com/ramonclaudio/vexpo) projects: Expo + Convex + Better Auth + Resend, end-to-end iOS. Provisions the stack, validates every credential, keeps env values in sync across `.env.local` / Convex env / EAS env, and covers the last App Store Connect mile to a first ship: TestFlight delivery plus the privacy and accessibility labels Apple requires before review.
 
 Scaffolded by [`create-vexpo`](https://www.npmjs.com/package/@ramonclaudio/create-vexpo) into your project's devDependencies. Invoke via `npx vexpo`.
 
 ## Design rule: don't reinvent EAS
 
-If `eas <subcommand>` is the canonical answer, the recipe is `npx eas <subcommand>`, not `vexpo`. This CLI only surfaces what `eas-cli` doesn't do: setup orchestration, cross-source drift detection, Apple SIWA work, and the App Store Connect API endpoints that aren't in `eas-cli`. Wrapping every `eas` command would add no value over `eas-cli` itself, expand the maintenance surface, and signal a lack of trust in the platform.
+If `eas <subcommand>` is the canonical answer, the recipe is `npx eas <subcommand>`, not `vexpo`. This CLI only surfaces what `eas-cli` doesn't do: setup orchestration, cross-source drift detection, Apple SIWA work, and the last App Store Connect mile to a first ship. Scope test for any command: does it help an empty directory become a first shipped, authenticated, backed iOS app? Post-launch ops (customer reviews, IAP sandbox testing, release management) are out, that's `eas` and App Store Connect once you have users. Wrapping every `eas` command would add no value over `eas-cli` itself, expand the maintenance surface, and signal a lack of trust in the platform.
 
 ## Setup
 
@@ -44,7 +44,9 @@ vexpo apple jwt --rotate          Re-sign the JWT only
 vexpo apple eas-rotation-secrets  Push the 5 EAS production secrets the JWT cron needs
 ```
 
-## App Store Connect API (endpoints `eas-cli` doesn't expose)
+## App Store Connect (the last mile to a first ship)
+
+TestFlight delivery, plus the privacy and accessibility labels Apple requires before a submission clears review. `eas-cli` hands a build to TestFlight and stops there.
 
 ```
 vexpo testflight groups list                 List beta groups
@@ -53,22 +55,12 @@ vexpo testflight groups view <id>            View a beta group + its testers
 vexpo testflight groups delete <id>          Delete a beta group
 vexpo testflight testers list                List beta testers
 vexpo testflight invite <email>              Add a tester + send invite
-vexpo testflight remove <email>              Remove a tester
 vexpo testflight whats-new <buildId> <text>  Set "What's new" notes
 
-vexpo reviews list                           List customer reviews
-vexpo reviews unanswered                     Reviews without a response
-vexpo reviews respond <reviewId> <body>      Post a response
-vexpo reviews delete-response <responseId>   Delete a response
-
-vexpo sandbox list                           List sandbox testers
-vexpo sandbox create --email <e> ...         Create a sandbox tester
-vexpo sandbox delete <id>                    Delete a sandbox tester
-
-vexpo asc:version list                       List App Store versions
-vexpo asc:version view <versionId>           Phased-release state
-vexpo asc:version phased <id> <action>       Pause | resume | complete the phased release
-vexpo asc:submissions                        List review submissions
+vexpo asc:privacy show [file]                Show the declared privacy nutrition label
+vexpo asc:privacy lint <file>                Validate privacy.config.json against Apple's enums
+vexpo asc:accessibility show                 Fetch the app's accessibility declarations
+vexpo asc:accessibility lint <file>          Validate accessibility.config.json against Apple's enums
 ```
 
 ## What `vexpo` doesn't wrap
