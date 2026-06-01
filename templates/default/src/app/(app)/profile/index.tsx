@@ -59,7 +59,11 @@ import { authClient } from "@/lib/auth-client";
 import { haptics } from "@/lib/haptics";
 import { maskOtp, maskUsername } from "@/lib/masks";
 import { setNativeValue } from "@/lib/native-state";
-import { firstError, profileUpdateSchema } from "@/lib/schemas";
+import {
+  firstError,
+  profileUpdateOptionalUsernameSchema,
+  profileUpdateSchema,
+} from "@/lib/schemas";
 import { validateBio } from "@/convex/validators";
 import { useColors } from "@/hooks/use-theme";
 import { ProminentButton } from "@/components/ui/prominent-button";
@@ -141,7 +145,10 @@ export default function ProfileScreen() {
     if (!me) return { error: "Not loaded" };
     haptics.light();
 
-    const parsed = profileUpdateSchema.safeParse({ name, username, email });
+    // Accounts without a username must still save name/email/bio; the strict
+    // schema would reject the empty username field they never set.
+    const schema = me.username ? profileUpdateSchema : profileUpdateOptionalUsernameSchema;
+    const parsed = schema.safeParse({ name, username, email });
     if (!parsed.success) {
       haptics.error();
       return { error: firstError(parsed)! };

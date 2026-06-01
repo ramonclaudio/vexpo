@@ -105,6 +105,17 @@ export const profileUpdateSchema = z.object({
   email: emailSchema,
 });
 
+// Accounts can exist without a username (the column is nullable), and the
+// profile field shows "" for them. The strict `usernameSchema` rejects ""
+// (min length 3), which would block those users from saving name/email/bio
+// they never touched. This variant accepts "" so the username stays untouched
+// while the other fields update, mirroring how `signUpSchema` treats it.
+export const profileUpdateOptionalUsernameSchema = z.object({
+  name: nameSchema,
+  username: optionalUsernameSchema,
+  email: emailSchema,
+});
+
 export type SignInValues = z.infer<typeof signInSchema>;
 export type SignInEmailValues = z.infer<typeof signInEmailSchema>;
 export type SignInUsernameValues = z.infer<typeof signInUsernameSchema>;
