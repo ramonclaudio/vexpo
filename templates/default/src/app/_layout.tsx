@@ -55,14 +55,19 @@ function RootNavigator() {
   const colorScheme = useColorScheme();
   const colors = useColors();
   const motion = useMotionScreenOptions("default");
-  const [assets] = useAssets(assetModules);
+  const [assets, assetError] = useAssets(assetModules);
 
   useNotifications();
   useNavigationTracking();
 
   useEffect(() => {
-    if (!isPending && assets) SplashScreen.hideAsync();
-  }, [isPending, assets]);
+    // Dismiss once auth resolves and assets either load or fail. Gating on
+    // `assets` alone hangs on the native splash forever if a bundled asset
+    // fails, since `useAssets` then returns `[undefined, error]` and never an
+    // asset array.
+    if (assetError && __DEV__) console.warn("[assets] failed to load:", assetError);
+    if (!isPending && (assets || assetError)) SplashScreen.hideAsync();
+  }, [isPending, assets, assetError]);
 
   return (
     <GestureHandlerRootView style={{ flex: 1, backgroundColor: colors.background as string }}>
