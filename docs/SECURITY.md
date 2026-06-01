@@ -39,7 +39,7 @@ The Better Auth routes (registered via `authComponent.registerRoutesLazy`) handl
 
 ### OTA updates
 
-- **`runtimeVersion: { policy: "fingerprint" }`.** A native change automatically forces a fresh build because the hash auto-bumps. OTAs can never load against an incompatible binary, no manual version-bump discipline required. Two upstream-non-determinism workarounds make the policy stable on this stack: `fingerprint.config.js` sets `useRNCoreAutolinkingFromExpo: false` (so reanimated/worklets hash via the autolinker's JSON output rather than per-directory), and `.fingerprintignore` excludes `node_modules/expo-modules-jsi/apple/**` (skips the pod-install-stamped `Products/` stubs). Real version bumps still flip the fingerprint via package.json + the `expoAutolinkingConfig:ios` JSON, so safety holds.
+- **`runtimeVersion: { policy: "fingerprint" }`.** A native change automatically forces a fresh build because the hash auto-bumps. OTAs can never load against an incompatible binary, no manual version-bump discipline required. `@expo/fingerprint >= 0.19.3` makes the policy deterministic across machines and CI out of the box (precompiled modules + codegen land in `ios/`, and the `expo-modules-jsi/apple` artifacts are in its default ignore set), so the template needs no `fingerprint.config.js` and no jsi `.fingerprintignore` entry. Real version bumps still flip the fingerprint via `package.json` + the `expoAutolinkingConfig:ios` JSON, so safety holds.
 - **End-to-end code signing is wired.** `app.config.ts` detects `certs/certificate.pem` at config-eval time and turns on `codeSigningCertificate` / `codeSigningMetadata` automatically. `.eas/workflows/deploy-production.yml`'s `update_ios` job passes `private_key_path: "$EAS_UPDATE_PRIVATE_KEY"` so `eas update` signs locally before publish. Two one-time steps activate it:
   1. Generate the keypair:
      ```bash
@@ -123,15 +123,15 @@ If a developer's machine is taken, what does the attacker learn?
 
 ## Secret rotation
 
-| Secret                         | Rotation cadence          | How                                                                                                 |
-| ------------------------------ | ------------------------- | --------------------------------------------------------------------------------------------------- |
-| Apple SIWA `client_secret` JWT | Every 90 days             | Automated via `rotate-apple-jwt.yml` EAS Workflow cron                                              |
-| Convex production deploy key   | When suspected compromise | `npx convex auth` → revoke + reissue                                                               |
-| Apple distribution cert        | Annual (Apple's choice)   | `eas credentials -p ios` interactive flow                                                           |
-| Apple APNs push key            | When suspected compromise | Apple Developer Portal → Keys → Revoke + Create                                                     |
-| ASC API key                    | When suspected compromise | App Store Connect → Users and Access → Keys → Revoke + Create                                       |
+| Secret                         | Rotation cadence          | How                                                                                               |
+| ------------------------------ | ------------------------- | ------------------------------------------------------------------------------------------------- |
+| Apple SIWA `client_secret` JWT | Every 90 days             | Automated via `rotate-apple-jwt.yml` EAS Workflow cron                                            |
+| Convex production deploy key   | When suspected compromise | `npx convex auth` → revoke + reissue                                                              |
+| Apple distribution cert        | Annual (Apple's choice)   | `eas credentials -p ios` interactive flow                                                         |
+| Apple APNs push key            | When suspected compromise | Apple Developer Portal → Keys → Revoke + Create                                                   |
+| ASC API key                    | When suspected compromise | App Store Connect → Users and Access → Keys → Revoke + Create                                     |
 | `EAS_WEBHOOK_SECRET`           | When suspected compromise | `npx eas webhook:update --id <id> --secret <new>` + `npx convex env set EAS_WEBHOOK_SECRET <new>` |
-| `RESEND_WEBHOOK_SECRET`        | When suspected compromise | Resend dashboard → reissue + `npx convex env set RESEND_WEBHOOK_SECRET <new>`                      |
+| `RESEND_WEBHOOK_SECRET`        | When suspected compromise | Resend dashboard → reissue + `npx convex env set RESEND_WEBHOOK_SECRET <new>`                     |
 
 The Apple SIWA JWT is the only one with automated rotation because it's the only one Apple's API will sign on our behalf. The others require human-in-the-loop rotation by Apple's design.
 
