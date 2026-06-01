@@ -37,7 +37,7 @@ npm workspace at the root with `packages/*` as members. Templates intentionally 
 - Better Auth via `@convex-dev/better-auth`.
 - Resend via `@convex-dev/resend`. Webhook events including `email.suppressed` for actionable failure tracking.
 - Native SwiftUI primitives via `@expo/ui/swift-ui`. Material translucency via `expo-glass-effect` (iOS 26+) + `expo-blur` fallback.
-- EAS Workflows for all CI/CD: dev builds, PR previews with `github-comment`, Maestro E2E, deploy-on-push, TestFlight, App Store Connect events, JWT rotation cron.
+- EAS Workflows for all CI/CD: dev builds, PR previews with `github-comment`, Maestro E2E, deploy-on-push, TestFlight, App Store Connect events, JWT rotation cron. PR previews and Maestro E2E ship manual-only (`workflow_dispatch`); their `pull_request` triggers are off by default to conserve EAS build credits.
 - GitHub Actions only for general-purpose checks (typecheck, lint, format, tests, fingerprint diff).
 - Setup is a one-shot CLI concern (`npx vexpo lite` / `npx vexpo full`), not a `package.json` script. The template only ships runtime scripts (dev, ios, convex:_, eas:_, test, lint, etc.).
 

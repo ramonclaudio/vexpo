@@ -55,7 +55,7 @@ Long-form walkthrough with every prompt, every env-var alternative, and recovery
 - Liquid Glass on iOS 26+ via `expo-glass-effect`, UIVisualEffectView blur fallback on iOS 16.4-25 via `expo-blur`, both behind a `<Material>` primitive
 - OTA updates code-signed end-to-end (`expo-updates` code signing; generate the cert with `npm run updates:gen-cert`), so only signed bundles install
 - EAS Build / Update / Submit / Metadata. `runtimeVersion: { policy: "fingerprint" }` (auto-bumps on native code changes), branch/channel model, `appVersionSource: "remote"`. ASC API key managed by EAS (`eas credentials -p ios`), no `eas.json` patches. `@expo/fingerprint >= 0.19.3` makes the policy deterministic across machines and CI out of the box, so the earlier `fingerprint.config.js` + `.fingerprintignore` jsi knobs were dropped.
-- 10 EAS Workflows under `.eas/workflows/`: dev builds, PR previews with `github-comment` + QR + fingerprint-gated OTA-or-build, deploy on `main`, TestFlight on `beta/*`, manual rollback / rollout, ASC event triggers to Slack, the SIWA JWT rotation cron, Maestro E2E
+- 10 EAS Workflows under `.eas/workflows/`: dev builds, PR previews with `github-comment` + QR + fingerprint-gated OTA-or-build, deploy on `main`, TestFlight on `beta/*`, manual rollback / rollout, ASC event triggers to Slack, the SIWA JWT rotation cron, Maestro E2E. PR previews and Maestro E2E are manual-only (`workflow_dispatch`) by default to conserve EAS build credits; restore their `pull_request` triggers to run on every PR
 - GitHub Actions for general-purpose checks: typecheck, lint, format, tests, fingerprint diff on PR + push to `main`
 
 ## Pre-reqs
