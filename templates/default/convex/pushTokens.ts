@@ -54,6 +54,7 @@ export const upsert = authMutation({
       createdAt: now,
       updatedAt: now,
       lastSeenAt: now,
+      revoked: false,
     });
   },
 });
@@ -183,18 +184,26 @@ export const cleanupStale = internalMutation({
     const revokedCutoff = now - THIRTY_DAYS_MS;
     const staleCutoff = now - NINETY_DAYS_MS;
 
-    const batch = await ctx.db
+    // The index is [revoked, updatedAt] and Convex orders `false < true`, so an
+    // unbounded ascending scan returns every active row before any tombstone;
+    // at scale the revoked rows would never be reached. Range each partition
+    // explicitly. Active rows are always written with `revoked: false`, so the
+    // two ranges together cover every row.
+    const revoked = await ctx.db
       .query("pushTokens")
-      .withIndex("by_revoked_updatedAt")
-      .order("asc")
+      .withIndex("by_revoked_updatedAt", (q) =>
+        q.eq("revoked", true).lt("updatedAt", revokedCutoff),
+      )
+      .take(CLEANUP_BATCH);
+    const stale = await ctx.db
+      .query("pushTokens")
+      .withIndex("by_revoked_updatedAt", (q) => q.eq("revoked", false).lt("updatedAt", staleCutoff))
       .take(CLEANUP_BATCH);
 
-    const removable = batch.filter((t) =>
-      t.revoked ? t.updatedAt < revokedCutoff : t.updatedAt < staleCutoff,
-    );
+    const removable = [...revoked, ...stale];
     await Promise.all(removable.map((t) => ctx.db.delete(t._id)));
 
-    if (batch.length === CLEANUP_BATCH) {
+    if (revoked.length === CLEANUP_BATCH || stale.length === CLEANUP_BATCH) {
       await ctx.scheduler.runAfter(0, internal.pushTokens.cleanupStale, {});
     }
     return removable.length;
