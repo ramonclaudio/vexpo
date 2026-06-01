@@ -90,16 +90,6 @@ export function versions(client: AscClient) {
         );
         return res.data;
       },
-      async getBuild(versionId: string): Promise<{ data: { id: string } } | null> {
-        try {
-          return await client.request<{ data: { id: string } }>(
-            "GET",
-            `/v1/appStoreVersions/${versionId}/relationships/build`,
-          );
-        } catch {
-          return null;
-        }
-      },
     },
 
     reviewSubmissions: {

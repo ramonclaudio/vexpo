@@ -41,36 +41,21 @@ export function reviews(client: AscClient) {
         appId?: string;
         territory?: string;
         rating?: 1 | 2 | 3 | 4 | 5;
+        sort?: "createdDate" | "-createdDate" | "rating" | "-rating";
         limit?: number;
       }): Promise<CustomerReview[]> {
         const query: Record<string, string> = {};
         if (filter?.territory) query["filter[territory]"] = filter.territory;
         if (filter?.rating) query["filter[rating]"] = String(filter.rating);
         query["include"] = "response";
+        // ASC has no guaranteed default order. Newest-first is what a triage
+        // command implies, and it makes the page-bounded `unanswered` scan
+        // cover the most recent reviews first.
+        query["sort"] = filter?.sort ?? "-createdDate";
         const path = filter?.appId
           ? `/v1/apps/${filter.appId}/customerReviews`
           : "/v1/customerReviews";
         return client.paginatedList<CustomerReview>(path, query, filter?.limit ?? 50);
-      },
-      async get(id: string): Promise<CustomerReview> {
-        const res = await client.request<{ data: CustomerReview }>(
-          "GET",
-          `/v1/customerReviews/${id}`,
-          undefined,
-          { include: "response" },
-        );
-        return res.data;
-      },
-      async getResponse(reviewId: string): Promise<CustomerReviewResponse | null> {
-        try {
-          const res = await client.request<{ data: CustomerReviewResponse }>(
-            "GET",
-            `/v1/customerReviews/${reviewId}/response`,
-          );
-          return res.data;
-        } catch {
-          return null;
-        }
       },
     },
 

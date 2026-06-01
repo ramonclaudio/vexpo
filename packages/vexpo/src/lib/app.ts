@@ -25,8 +25,14 @@ export async function pkgName(): Promise<string> {
 export async function appName(): Promise<string> {
   const text = await readTextOrNull("app.config.ts");
   if (text) {
-    const match = /\bname:\s*["']([^"']+)["']/.exec(text);
-    if (match) return match[1];
+    // The template (and `rebrand`) write the display name as a dev/prod
+    // ternary: `name: IS_DEV ? "Foo (Dev)" : "Foo"`. Match that first (same
+    // shape verify.ts parses), then a plain `name: "Foo"`, before falling back
+    // to title-casing the package slug.
+    const ternary = /name:\s*IS_DEV\s*\?\s*"[^"]+"\s*:\s*"([^"]+)"/.exec(text)?.[1];
+    if (ternary) return ternary;
+    const quoted = /\bname:\s*["']([^"']+)["']/.exec(text)?.[1];
+    if (quoted) return quoted;
   }
   const name = await pkgName();
   const clean = name.replace(/^@[^/]+\//, "");

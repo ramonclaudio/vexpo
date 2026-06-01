@@ -550,7 +550,7 @@ const reviewsCmd = program
 reviewsCmd
   .command("list")
   .description("List customer reviews.")
-  .option("--territory <code>", "filter by territory (e.g. US)")
+  .option("--territory <code>", "filter by territory (ISO-3166 alpha-3, e.g. USA)")
   .option("--rating <n>", "filter by rating (1-5)", (v) => parseInt(v, 10))
   .option("--limit <n>", "max items", (v) => parseInt(v, 10), 50)
   .option("--json", "JSON output", false)
