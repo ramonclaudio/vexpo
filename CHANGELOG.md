@@ -2,12 +2,15 @@
 
 All notable changes to vexpo are tracked here. Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.1.1] - 2026-05-31
+## [0.1.1] - 2026-06-01
 
-Patch release for the `@ramonclaudio/vexpo` CLI. `@ramonclaudio/create-vexpo` republishes in lockstep with no functional change.
+Scope narrowed to 0 to 1: every command must help an empty directory reach a first shipped iOS app. Post-launch ops are out.
 
-- `vexpo sandbox` degrades gracefully when Apple 404s the sandbox testers API: a plain pointer to App Store Connect instead of a raw `ASC 404 PATH_ERROR`. `list` exits 0.
-- `vexpo doctor` resend webhook check now names the wrong-Resend-account case (webhooks exist for other `convex.site` deployments but not this one) instead of reporting a missing webhook.
+- Drop `reviews`, `sandbox`, `asc:version`, and `asc:submissions`: post-launch ops that all need a live app with users (`sandbox` tests in-app purchases the template doesn't ship).
+- Drop `testflight remove` and the beta-group `--public-link` options: post-launch tester management, not first-ship machinery.
+- Drop the `doctor` reviews-answered check and ~60 lines of unused TestFlight lib.
+- Fix the `doctor` resend webhook check to flag the wrong-account case instead of a missing webhook.
+- Drop dead `$schema` refs from the template's `privacy.config.json` and `accessibility.config.json`.
 
 ## [0.1.0] - 2026-05-11
 

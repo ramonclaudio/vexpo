@@ -1,5 +1,4 @@
 {
-  "$schema": "../../docs/asc-privacy.schema.json",
   "_comment": "Drives `vexpo asc:privacy lint`. The dashboard form at App Store Connect is the source of truth for submission; this file is for keeping a versioned, reviewable copy alongside the code. Default state: the starter collects no data beyond what Better Auth needs for sign-in (email + opaque user id), which `IDENTIFIERS` covers. Tighten or expand to match your app.",
   "collectsData": true,
   "entries": [

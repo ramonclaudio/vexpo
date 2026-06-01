@@ -1,5 +1,4 @@
 {
-  "$schema": "../../docs/asc-accessibility.schema.json",
   "_comment": "Drives `vexpo asc:accessibility lint`. The starter template ships VoiceOver labels, DynamicType, reduced-motion respect, and DynamicColorIOS for high-contrast support. Audit each feature against your actual user flows before declaring FULLY_SUPPORTS in production.",
   "entries": [
     {

@@ -1,5 +1,11 @@
 // vexpo CLI surface. Deliberately small.
 //
+// Scope test: every command must help an empty directory become a first
+// shipped, authenticated, backed iOS app. If it only matters once you have
+// live users (customer reviews, IAP sandbox testing, release management),
+// it's out: that's `eas` and App Store Connect, not vexpo. "eas-cli doesn't
+// expose this ASC endpoint" is not a reason to add a command.
+//
 // Design principle: don't reinvent EAS. If `eas <subcommand>` already does
 // the job, vexpo doesn't wrap it. Users should reach for `eas` for the
 // canonical platform surface (init, build, update, submit, deploy, channel,
@@ -9,8 +15,9 @@
 //   1. Setup orchestration (probe state, run missing phases, idempotency)
 //   2. Cross-source drift detection (`vexpo doctor`)
 //   3. Apple SIWA JWT signing + Services ID flow (no eas-cli equivalent)
-//   4. ASC API endpoints eas-cli doesn't expose (TestFlight beta groups,
-//      customer review responses, sandbox testers, version state)
+//   4. The last ASC mile to a first ship: TestFlight delivery (beta groups,
+//      testers, invites) plus the privacy + accessibility labels Apple
+//      requires before a submission clears review
 //   5. Multi-destination env sync (Convex + EAS together)
 //
 // Everything else: use `npx eas <subcommand>` directly. The README
@@ -32,25 +39,11 @@ import { runAscConnect } from "./commands/asc.ts";
 import { runAccessibilityLint, runAccessibilityShow } from "./commands/asc-accessibility.ts";
 import { runPrivacyLint, runPrivacyShow } from "./commands/asc-privacy.ts";
 import {
-  runPhasedRelease,
-  runSubmissionsList,
-  runVersionList,
-  runVersionView,
-} from "./commands/asc-version.ts";
-import {
-  runReviewsDeleteResponse,
-  runReviewsList,
-  runReviewsRespond,
-  runReviewsUnanswered,
-} from "./commands/reviews.ts";
-import { runSandboxClearPurchases, runSandboxList, runSandboxUpdate } from "./commands/sandbox.ts";
-import {
   runTestflightGroupsCreate,
   runTestflightGroupsDelete,
   runTestflightGroupsList,
   runTestflightGroupsView,
   runTestflightInvite,
-  runTestflightRemove,
   runTestflightTestersList,
   runTestflightWhatsNew,
 } from "./commands/testflight.ts";
@@ -388,49 +381,6 @@ program
   .option("--force", "re-run even if already connected", false)
   .action((options: { force?: boolean }) => exitWith(runAscConnect(options)));
 
-const ascVersion = program.command("asc:version").description("App Store version inspection.");
-
-ascVersion
-  .command("list")
-  .description("List App Store versions.")
-  .option("-p, --platform <p>", "IOS | MAC_OS | TV_OS | VISION_OS")
-  .option("--state <state>", "filter by state (e.g. IN_REVIEW, READY_FOR_SALE)")
-  .option("--limit <n>", "max items", (v) => parseInt(v, 10), 25)
-  .option("--json", "JSON output", false)
-  .action((options) => exitWith(runVersionList(options)));
-
-ascVersion
-  .command("view <versionId>")
-  .description("View a single App Store version + phased-release state.")
-  .option("--json", "JSON output", false)
-  .action((versionId: string, options: { json?: boolean }) =>
-    exitWith(runVersionView(versionId, options)),
-  );
-
-ascVersion
-  .command("phased <versionId> <action>")
-  .description("Pause | resume | complete the phased release for a version.")
-  .action((versionId: string, action: string) => {
-    if (!["pause", "resume", "complete"].includes(action)) {
-      process.stderr.write(`unknown action '${action}' (pause|resume|complete)\n`);
-      process.exit(2);
-    }
-    exitWith(
-      runPhasedRelease({
-        versionId,
-        action: action as "pause" | "resume" | "complete",
-      }),
-    );
-  });
-
-program
-  .command("asc:submissions")
-  .description("List App Store review submissions for the current app.")
-  .option("-p, --platform <p>", "IOS | MAC_OS | TV_OS | VISION_OS")
-  .option("--state <state>", "filter by state")
-  .option("--json", "JSON output", false)
-  .action((options) => exitWith(runSubmissionsList(options)));
-
 const ascPrivacy = program.command("asc:privacy").description("Privacy nutrition labels (local).");
 
 ascPrivacy
@@ -476,19 +426,9 @@ tfGroups
 tfGroups
   .command("create <name>")
   .description("Create a beta group.")
-  .option("--public-link", "enable public link", false)
-  .option("--public-limit <n>", "public link tester limit", (v) => parseInt(v, 10))
   .option("--feedback", "enable in-app feedback", false)
-  .action(
-    (name: string, options: { publicLink?: boolean; publicLimit?: number; feedback?: boolean }) =>
-      exitWith(
-        runTestflightGroupsCreate({
-          name,
-          publicLink: options.publicLink,
-          publicLimit: options.publicLimit,
-          feedback: options.feedback,
-        }),
-      ),
+  .action((name: string, options: { feedback?: boolean }) =>
+    exitWith(runTestflightGroupsCreate({ name, feedback: options.feedback })),
   );
 
 tfGroups
@@ -531,87 +471,11 @@ testflight
   );
 
 testflight
-  .command("remove <email>")
-  .description("Remove a beta tester.")
-  .action((email: string) => exitWith(runTestflightRemove(email)));
-
-testflight
   .command("whats-new <buildId> <text>")
   .description('Set the "What\'s new" release notes for a TestFlight build.')
   .option("--locale <locale>", "ISO locale", "en-US")
   .action((buildId: string, text: string, options: { locale?: string }) =>
     exitWith(runTestflightWhatsNew({ buildId, locale: options.locale ?? "en-US", text })),
   );
-
-const reviewsCmd = program
-  .command("reviews")
-  .description("Customer reviews + responses via ASC API.");
-
-reviewsCmd
-  .command("list")
-  .description("List customer reviews.")
-  .option("--territory <code>", "filter by territory (ISO-3166 alpha-3, e.g. USA)")
-  .option("--rating <n>", "filter by rating (1-5)", (v) => parseInt(v, 10))
-  .option("--limit <n>", "max items", (v) => parseInt(v, 10), 50)
-  .option("--json", "JSON output", false)
-  .action((options) => exitWith(runReviewsList(options)));
-
-reviewsCmd
-  .command("unanswered")
-  .description("List reviews without a response.")
-  .option("--days <n>", "older than N days", (v) => parseInt(v, 10))
-  .option("--limit <n>", "max items to scan", (v) => parseInt(v, 10), 200)
-  .option("--json", "JSON output", false)
-  .action((options) => exitWith(runReviewsUnanswered(options)));
-
-reviewsCmd
-  .command("respond <reviewId> <body>")
-  .description("Post a response to a customer review.")
-  .action((reviewId: string, body: string) => exitWith(runReviewsRespond({ reviewId, body })));
-
-reviewsCmd
-  .command("delete-response <responseId>")
-  .description("Delete a review response.")
-  .action((responseId: string) => exitWith(runReviewsDeleteResponse(responseId)));
-
-const sandboxCmd = program
-  .command("sandbox")
-  .description("Sandbox testers for IAP testing via ASC API.");
-
-sandboxCmd
-  .command("list")
-  .description("List sandbox testers. (Create/delete testers in App Store Connect; the API can't.)")
-  .option("--json", "JSON output", false)
-  .action((options) => exitWith(runSandboxList(options)));
-
-sandboxCmd
-  .command("update <id>")
-  .description(
-    "Modify a sandbox tester: subscription renewal rate, interrupt purchases, or territory.",
-  )
-  .option("--renewal-rate <rate>", "subscription renewal rate (e.g. MONTHLY_RENEWAL_EVERY_HOUR)")
-  .option("--territory <code>", "App Store territory code (e.g. USA)")
-  .option("--interrupt-purchases <bool>", "interrupt purchases for testing (true|false)")
-  .action(
-    (
-      id: string,
-      options: { renewalRate?: string; territory?: string; interruptPurchases?: string },
-    ) =>
-      exitWith(
-        runSandboxUpdate(id, {
-          subscriptionRenewalRate: options.renewalRate,
-          territory: options.territory,
-          interruptPurchases:
-            options.interruptPurchases === undefined
-              ? undefined
-              : options.interruptPurchases === "true",
-        }),
-      ),
-  );
-
-sandboxCmd
-  .command("clear-purchases <ids...>")
-  .description("Clear purchase history for one or more sandbox testers (by id).")
-  .action((ids: string[]) => exitWith(runSandboxClearPurchases(ids)));
 
 program.parse();
