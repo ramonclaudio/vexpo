@@ -97,7 +97,7 @@ npx vexpo full --dry-run  # exercises the linked CLI
 Tests:
 
 ```bash
-npm run test               # 353 unit (vexpo) + 95 template = 448 total
+npm run test               # 357 unit (vexpo) + 110 template = 467 total
 npm run test:packages:e2e  # e2e suite against the built `vexpo` CLI dist
 npm run test:all           # everything
 ```
