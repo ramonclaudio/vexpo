@@ -26,7 +26,7 @@ import {
   tint,
 } from "@expo/ui/swift-ui/modifiers";
 import { useDynamicFont } from "@/lib/dynamic-font";
-import { Button as ButtonTokens } from "@/constants/layout";
+import { Button as ButtonTokens, TouchTarget } from "@/constants/layout";
 
 import { authClient } from "@/lib/auth-client";
 import { assets } from "@/lib/assets";
@@ -124,7 +124,7 @@ export default function ForgotPasswordScreen() {
               modifiers={[
                 textFieldStyle("plain"),
                 padding({ horizontal: 16 }),
-                frame({ maxWidth: Infinity, height: ButtonTokens.height }),
+                frame({ maxWidth: Infinity, minHeight: ButtonTokens.height }),
                 background(colors.muted as string),
                 clipShape("capsule"),
                 dfont({ size: 16 }),
@@ -154,6 +154,7 @@ export default function ForgotPasswordScreen() {
                 buttonStyle("plain"),
                 foregroundStyle(colors.mutedForeground as string),
                 dfont({ size: 14, weight: "semibold" }),
+                frame({ minHeight: TouchTarget.min }),
               ]}
               onPress={() => {
                 haptics.light();

@@ -149,7 +149,7 @@ export default function SearchScreen() {
     <>
       <Stack.SearchBar
         placement="automatic"
-        placeholder="Search the app"
+        placeholder="Search screens"
         onChangeText={(e) => setRaw(e.nativeEvent.text)}
       />
       <Host style={{ flex: 1, backgroundColor: colors.background }}>

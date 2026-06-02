@@ -116,7 +116,7 @@ export default function SettingsScreen() {
           spacing={12}
           alignment="center"
           modifiers={[
-            frame({ maxWidth: Infinity, height: ButtonTokens.height }),
+            frame({ maxWidth: Infinity, minHeight: ButtonTokens.height }),
             padding({ horizontal: 16 }),
           ]}
         >
@@ -165,7 +165,7 @@ export default function SettingsScreen() {
               spacing={16}
               alignment="center"
               modifiers={[
-                frame({ maxWidth: Infinity, height: 80 }),
+                frame({ maxWidth: Infinity, minHeight: 80 }),
                 padding({ leading: 8, trailing: 16 }),
               ]}
             >

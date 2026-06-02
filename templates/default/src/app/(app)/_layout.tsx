@@ -85,6 +85,7 @@ export default function AppLayout() {
           options={{
             headerShown: true,
             title: "Linked",
+            headerTitleStyle: titleStyle,
             presentation: "formSheet",
             sheetAllowedDetents: [0.5, 1],
             sheetGrabberVisible: true,

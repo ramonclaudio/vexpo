@@ -94,8 +94,10 @@ export default function WelcomeScreen() {
   const isLast = step === STEPS.length - 1;
 
   return (
-    <Host style={{ flex: 1 }}>
-      <VStack spacing={0} modifiers={[tint(colors.primary as string)]}>
+    // upstream expo/expo#45872: Host modifiers now apply, so the accent tint
+    // cascades from the Host into the ProgressView and buttons below.
+    <Host style={{ flex: 1 }} modifiers={[tint(colors.primary as string)]}>
+      <VStack spacing={0}>
         <VStack spacing={12} modifiers={[padding({ horizontal: 24, top: 24 })]}>
           <ProgressView
             value={(step + 1) / STEPS.length}

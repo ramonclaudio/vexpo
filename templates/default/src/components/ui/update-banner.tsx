@@ -7,13 +7,14 @@ import {
   contentShape,
   disabled as disabledModifier,
   foregroundStyle,
+  frame,
   padding,
   shapes,
 } from "@expo/ui/swift-ui/modifiers";
 
 import { Material } from "@/components/ui/material";
 import { useAppUpdates } from "@/hooks/use-updates";
-import { Spacing, FontSize } from "@/constants/layout";
+import { Spacing, FontSize, TouchTarget } from "@/constants/layout";
 import { Radius } from "@/constants/theme";
 import { ZIndex } from "@/constants/ui";
 import { useColors } from "@/hooks/use-theme";
@@ -62,6 +63,7 @@ export function UpdateBanner() {
           modifiers={[
             buttonStyle("plain"),
             padding({ vertical: Spacing.sm, horizontal: Spacing.lg }),
+            frame({ minHeight: TouchTarget.min }),
             contentShape(shapes.rectangle()),
             disabledModifier(!showError),
             accessibilityLabel(label),
@@ -69,7 +71,7 @@ export function UpdateBanner() {
           ]}
           onPress={showError ? () => updates.downloadAndApply() : () => {}}
         >
-          <Text modifiers={[dfont({ size: FontSize.md, weight: "semibold" }), foregroundStyle(fg)]}>
+          <Text modifiers={[dfont({ size: FontSize["3xl"], weight: "bold" }), foregroundStyle(fg)]}>
             {label}
           </Text>
         </Button>

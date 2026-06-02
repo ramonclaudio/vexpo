@@ -1,4 +1,4 @@
-import { type ComponentProps, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Button,
   HStack,
@@ -34,12 +34,10 @@ import { useDynamicFont } from "@/lib/dynamic-font";
 import { useSymbolSize } from "@/lib/dynamic-symbol-size";
 import { haptics } from "@/lib/haptics";
 
-type ObservableTextState = NonNullable<ComponentProps<typeof TextField>["text"]>;
 type SubmitLabel = "next" | "done" | "send" | "go" | "search" | "join" | "route" | "continue";
 type ContentType = "password" | "newPassword";
 
 type Props = {
-  text?: ObservableTextState;
   placeholder?: string;
   onTextChange: (next: string) => void;
   onSubmit?: () => void;
@@ -59,15 +57,12 @@ type Props = {
 /**
  * Password input with an inline eye toggle to reveal what was typed.
  *
- * The toggle swaps between SecureField (masked) and TextField (visible). Both
- * are bound to the same `useNativeState`, so the native value persists across
- * the swap. without it, React unmounts one component and mounts the other
- * and the new field starts empty. If the parent passes its own ObservableState
- * via `text`, that's used instead (e.g. profile.tsx clears the field after
- * submit by resetting the state from outside).
+ * The toggle swaps between SecureField (masked) and TextField (visible), two
+ * different native views. Both bind to the same `useNativeState`, so the native
+ * value survives the swap. Without it, React unmounts one and mounts the other
+ * and the new field starts empty.
  */
 export function PasswordField({
-  text,
   placeholder = "••••••••",
   onTextChange,
   onSubmit,
@@ -81,8 +76,7 @@ export function PasswordField({
   const symbolSize = useSymbolSize();
   const colors = useColors();
   const [visible, setVisible] = useState(false);
-  const internalState = useNativeState("");
-  const sharedState = text ?? internalState;
+  const state = useNativeState("");
   const textRef = useRef<TextFieldRef>(null);
   const secureRef = useRef<SecureFieldRef>(null);
   const focused = useRef(false);
@@ -122,7 +116,7 @@ export function PasswordField({
       spacing={8}
       modifiers={[
         padding({ horizontal: 16 }),
-        frame({ maxWidth: Infinity, height: ButtonTokens.height }),
+        frame({ maxWidth: Infinity, minHeight: ButtonTokens.height }),
         background(colors.muted as string),
         clipShape("capsule"),
       ]}
@@ -130,8 +124,8 @@ export function PasswordField({
       {visible ? (
         <TextField
           ref={textRef}
-          text={sharedState}
-          placeholder={placeholder}
+          text={state}
+          placeholder={a11yLabel}
           onTextChange={onTextChange}
           onFocusChange={(f) => {
             focused.current = f;
@@ -141,7 +135,7 @@ export function PasswordField({
       ) : (
         <SecureField
           ref={secureRef}
-          text={sharedState}
+          text={state}
           placeholder={placeholder}
           onTextChange={onTextChange}
           onFocusChange={(f) => {
@@ -169,7 +163,6 @@ export function PasswordField({
           systemName={visible ? "eye.slash" : "eye"}
           size={symbolSize(18)}
           color={colors.mutedForeground as string}
-          modifiers={[accessibilityLabel("")]}
         />
       </Button>
     </HStack>

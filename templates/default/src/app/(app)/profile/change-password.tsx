@@ -32,7 +32,7 @@ import { api } from "@/convex/_generated/api";
 import { authClient } from "@/lib/auth-client";
 import { announce } from "@/lib/a11y";
 import { haptics } from "@/lib/haptics";
-import { Button as ButtonTokens } from "@/constants/layout";
+import { Button as ButtonTokens, TouchTarget } from "@/constants/layout";
 import { PasswordField } from "@/components/auth/password-field";
 import { ProminentButton } from "@/components/ui/prominent-button";
 import { ErrorText } from "@/components/ui/status-text";
@@ -147,7 +147,7 @@ function ChangePasswordForm({ email }: { email: string }) {
               modifiers={[
                 textFieldStyle("plain"),
                 padding({ horizontal: 16 }),
-                frame({ maxWidth: Infinity, height: ButtonTokens.height }),
+                frame({ maxWidth: Infinity, minHeight: ButtonTokens.height }),
                 background(colors.muted as string),
                 clipShape("capsule"),
                 dfont({ size: 16 }),
@@ -210,6 +210,7 @@ function ChangePasswordForm({ email }: { email: string }) {
                 buttonStyle("plain"),
                 foregroundStyle(colors.mutedForeground as string),
                 dfont({ size: 14, weight: "semibold" }),
+                frame({ minHeight: TouchTarget.min }),
                 disabled(isPending),
               ]}
               onPress={() => {
