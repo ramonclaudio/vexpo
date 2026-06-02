@@ -55,7 +55,8 @@ import { SegmentedToggle } from "@/components/auth/segmented-toggle";
 import { ProminentButton } from "@/components/ui/prominent-button";
 import { ErrorText } from "@/components/ui/status-text";
 import { announce } from "@/lib/a11y";
-import { useColorScheme, useColors, useThemedAsset } from "@/hooks/use-theme";
+import { useColors, useThemedAsset } from "@/hooks/use-theme";
+import { AppleButton } from "@/components/auth/apple-button";
 
 type SignInState = { error?: string; ok?: boolean };
 const initialState: SignInState = {};
@@ -64,7 +65,6 @@ type SignInMethod = "email" | "username" | "otp";
 
 export default function SignInScreen() {
   const dfont = useDynamicFont();
-  const colorScheme = useColorScheme();
   const colors = useColors();
   const brandIcon = useThemedAsset(assets.brandIconLight, assets.brandIconDark);
 
@@ -457,28 +457,11 @@ export default function SignInScreen() {
           />
 
           {!isOtp && showApple && (
-            <VStack
-              alignment="center"
-              modifiers={[frame({ maxWidth: Infinity, minHeight: ButtonTokens.height })]}
-            >
-              <RNHostView>
-                <AppleAuthentication.AppleAuthenticationButton
-                  buttonType={AppleAuthentication.AppleAuthenticationButtonType.SIGN_IN}
-                  buttonStyle={
-                    colorScheme === "dark"
-                      ? AppleAuthentication.AppleAuthenticationButtonStyle.WHITE
-                      : AppleAuthentication.AppleAuthenticationButtonStyle.BLACK
-                  }
-                  cornerRadius={ButtonTokens.cornerRadius}
-                  style={{
-                    width: "100%",
-                    height: "100%",
-                    opacity: isLoading ? 0.5 : 1,
-                  }}
-                  onPress={() => startTransition(() => signInWithApple())}
-                />
-              </RNHostView>
-            </VStack>
+            <AppleButton
+              type={AppleAuthentication.AppleAuthenticationButtonType.SIGN_IN}
+              onPress={() => startTransition(() => signInWithApple())}
+              disabled={isLoading}
+            />
           )}
         </VStack>
       </ScrollView>
