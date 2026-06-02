@@ -20,7 +20,7 @@ export function LoadingScreen() {
             source={brandIcon}
             style={{ width: 80, height: 80 }}
             contentFit="contain"
-            accessibilityLabel="App icon"
+            accessibilityLabel=""
           />
         </RNHostView>
         <ProgressView modifiers={[progressViewStyle("circular"), accessibilityLabel("Loading")]} />

@@ -16,6 +16,7 @@ import {
   ShareLink,
 } from "@expo/ui/swift-ui";
 import {
+  accessibilityLabel,
   background,
   buttonStyle,
   clipShape,
@@ -218,7 +219,7 @@ export default function DebugScreen() {
                   <InfoRow
                     label="Emergency launch"
                     value={updates.currentlyRunning.emergencyLaunchReason ?? "Unknown error"}
-                    valueColor="orange"
+                    valueColor={colors.warning as string}
                   />
                 ) : null}
                 {updates.isDownloading ? (
@@ -230,7 +231,11 @@ export default function DebugScreen() {
                   >
                     <ProgressView
                       value={updates.downloadProgress ?? undefined}
-                      modifiers={[progressViewStyle("linear"), frame({ maxWidth: Infinity })]}
+                      modifiers={[
+                        progressViewStyle("linear"),
+                        frame({ maxWidth: Infinity }),
+                        accessibilityLabel("Downloading update"),
+                      ]}
                     />
                   </HStack>
                 ) : null}
@@ -352,7 +357,7 @@ export default function DebugScreen() {
           <HStack modifiers={[frame({ maxWidth: Infinity }), padding({ top: 8 })]}>
             <Spacer />
             <Text
-              modifiers={[dfont({ size: 12 }), foregroundStyle(colors.tertiaryLabel as string)]}
+              modifiers={[dfont({ size: 12 }), foregroundStyle(colors.mutedForeground as string)]}
             >
               v{appVersion} ({buildNumber})
             </Text>

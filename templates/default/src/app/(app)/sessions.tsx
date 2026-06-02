@@ -3,7 +3,9 @@ import { Host, ScrollView, Button, Text, VStack, HStack, Spacer, Alert } from "@
 import {
   background,
   buttonStyle,
+  contentShape,
   cornerRadius,
+  shapes,
   foregroundStyle,
   frame,
   multilineTextAlignment,
@@ -13,6 +15,7 @@ import {
   tint,
 } from "@expo/ui/swift-ui/modifiers";
 
+import { TouchTarget } from "@/constants/layout";
 import { ContentUnavailable } from "@/components/ui/content-unavailable";
 import { SkeletonSessions } from "@/components/ui/skeleton";
 import { useDynamicFont } from "@/lib/dynamic-font";
@@ -203,7 +206,11 @@ export default function SessionsScreen() {
                     >
                       <Alert.Trigger>
                         <Button
-                          modifiers={[buttonStyle("plain")]}
+                          modifiers={[
+                            buttonStyle("plain"),
+                            frame({ minHeight: TouchTarget.min }),
+                            contentShape(shapes.rectangle()),
+                          ]}
                           onPress={() => {
                             haptics.warning();
                             setConfirmToken(s.token);

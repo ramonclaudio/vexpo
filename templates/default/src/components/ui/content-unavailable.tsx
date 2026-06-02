@@ -1,6 +1,7 @@
 import { Platform } from "react-native";
 import { ContentUnavailableView, Image, Text, VStack } from "@expo/ui/swift-ui";
 import {
+  accessibilityLabel,
   foregroundStyle,
   frame,
   multilineTextAlignment,
@@ -47,6 +48,7 @@ function Fallback({ title, systemImage, description }: Props) {
         systemName={systemImage}
         size={symbolSize(40)}
         color={colors.mutedForeground as string}
+        modifiers={[accessibilityLabel("")]}
       />
       <Text modifiers={[dfont({ size: 17, weight: "semibold" }), multilineTextAlignment("center")]}>
         {title}

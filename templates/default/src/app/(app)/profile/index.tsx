@@ -41,16 +41,17 @@ import {
   multilineTextAlignment,
   padding,
   frame,
+  contentShape,
+  shapes,
   progressViewStyle,
   scrollDismissesKeyboard,
-  onTapGesture,
   accessibilityLabel,
   accessibilityHint,
   tint,
 } from "@expo/ui/swift-ui/modifiers";
 import { useDynamicFont } from "@/lib/dynamic-font";
 import { useSymbolSize } from "@/lib/dynamic-symbol-size";
-import { Button as ButtonTokens } from "@/constants/layout";
+import { Button as ButtonTokens, TouchTarget } from "@/constants/layout";
 
 import { runOnJS } from "react-native-worklets";
 
@@ -367,38 +368,44 @@ export default function ProfileScreen() {
               titleVisibility="visible"
             >
               <ConfirmationDialog.Trigger>
-                <HStack
-                  spacing={16}
-                  alignment="center"
+                <Button
                   modifiers={[
-                    frame({ maxWidth: Infinity }),
-                    onTapGesture(() => {
-                      haptics.light();
-                      setAvatarPicker(true);
-                    }),
+                    buttonStyle("plain"),
+                    frame({ maxWidth: Infinity, minHeight: TouchTarget.min }),
+                    contentShape(shapes.rectangle()),
                     accessibilityLabel("Change profile photo"),
                   ]}
+                  onPress={() => {
+                    haptics.light();
+                    setAvatarPicker(true);
+                  }}
                 >
-                  <AvatarView avatarUrl={me.avatarUrl} loading={avatarUpdating} />
-                  <VStack alignment="leading" spacing={4}>
-                    <Text modifiers={[dfont({ size: 17, weight: "semibold" })]}>{me.name}</Text>
-                    <Text
-                      modifiers={[
-                        dfont({ size: 14 }),
-                        foregroundStyle(colors.mutedForeground as string),
-                      ]}
-                    >
-                      {me.email}
-                    </Text>
-                  </VStack>
-                  <Spacer />
-                  <Image
-                    systemName="camera.circle.fill"
-                    size={symbolSize(28)}
-                    color={colors.primary as string}
-                    modifiers={[accessibilityLabel("")]}
-                  />
-                </HStack>
+                  <HStack
+                    spacing={16}
+                    alignment="center"
+                    modifiers={[frame({ maxWidth: Infinity })]}
+                  >
+                    <AvatarView avatarUrl={me.avatarUrl} loading={avatarUpdating} />
+                    <VStack alignment="leading" spacing={4}>
+                      <Text modifiers={[dfont({ size: 17, weight: "semibold" })]}>{me.name}</Text>
+                      <Text
+                        modifiers={[
+                          dfont({ size: 14 }),
+                          foregroundStyle(colors.mutedForeground as string),
+                        ]}
+                      >
+                        {me.email}
+                      </Text>
+                    </VStack>
+                    <Spacer />
+                    <Image
+                      systemName="camera.circle.fill"
+                      size={symbolSize(28)}
+                      color={colors.primary as string}
+                      modifiers={[accessibilityLabel("")]}
+                    />
+                  </HStack>
+                </Button>
               </ConfirmationDialog.Trigger>
               <ConfirmationDialog.Actions>
                 <Button
@@ -735,7 +742,9 @@ function AvatarView({ avatarUrl, loading }: { avatarUrl: string | null; loading:
         alignment="center"
         modifiers={[frame({ width: AVATAR_SIZE, height: AVATAR_SIZE }), clipShape("circle")]}
       >
-        <ProgressView modifiers={[progressViewStyle("circular")]} />
+        <ProgressView
+          modifiers={[progressViewStyle("circular"), accessibilityLabel("Updating profile photo")]}
+        />
       </VStack>
     );
   }

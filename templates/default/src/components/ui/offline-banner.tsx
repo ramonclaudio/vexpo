@@ -46,7 +46,7 @@ export function OfflineBanner() {
       <Host matchContents>
         <Text
           modifiers={[
-            dfont({ size: FontSize.md, weight: "semibold" }),
+            dfont({ size: FontSize["3xl"], weight: "bold" }),
             foregroundStyle(colors.destructiveForeground as string),
           ]}
         >

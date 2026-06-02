@@ -33,7 +33,9 @@ import {
   scrollDismissesKeyboard,
   accessibilityLabel,
   accessibilityHint,
-  onTapGesture,
+  buttonStyle,
+  contentShape,
+  shapes,
   tint,
   background,
   border,
@@ -44,7 +46,7 @@ import {
 } from "@expo/ui/swift-ui/modifiers";
 import { useDynamicFont } from "@/lib/dynamic-font";
 import { useSymbolSize } from "@/lib/dynamic-symbol-size";
-import { Button as ButtonTokens } from "@/constants/layout";
+import { Button as ButtonTokens, TouchTarget } from "@/constants/layout";
 
 import { api } from "@/convex/_generated/api";
 import { isReservedUsername, isValidUsernameFormat } from "@/convex/constants";
@@ -62,7 +64,8 @@ import { ProminentButton } from "@/components/ui/prominent-button";
 import { firstError, firstErrorField, signUpSchema } from "@/lib/schemas";
 import { ErrorText } from "@/components/ui/status-text";
 import { announce } from "@/lib/a11y";
-import { useColorScheme, useColors, useThemedAsset } from "@/hooks/use-theme";
+import { useColors, useThemedAsset } from "@/hooks/use-theme";
+import { AppleButton } from "@/components/auth/apple-button";
 
 type SignUpState = { error?: string; verify?: boolean };
 const initialState: SignUpState = {};
@@ -72,7 +75,6 @@ const AVATAR_SIZE = 56;
 export default function SignUpScreen() {
   const dfont = useDynamicFont();
   const symbolSize = useSymbolSize();
-  const colorScheme = useColorScheme();
   const colors = useColors();
   const brandIcon = useThemedAsset(assets.brandIconLight, assets.brandIconDark);
   const [name, setName] = useState("");
@@ -396,58 +398,64 @@ export default function SignUpScreen() {
               titleVisibility="visible"
             >
               <ConfirmationDialog.Trigger>
-                <HStack
-                  spacing={16}
-                  alignment="center"
+                <Button
                   modifiers={[
-                    frame({ maxWidth: Infinity }),
-                    onTapGesture(() => {
-                      haptics.light();
-                      setAvatarPicker(true);
-                    }),
+                    buttonStyle("plain"),
+                    frame({ maxWidth: Infinity, minHeight: TouchTarget.min }),
+                    contentShape(shapes.rectangle()),
                     accessibilityLabel(
                       pendingAvatar ? "Change profile photo" : "Add profile photo",
                     ),
                   ]}
+                  onPress={() => {
+                    haptics.light();
+                    setAvatarPicker(true);
+                  }}
                 >
-                  {pendingAvatar ? (
-                    <RNHostView matchContents>
-                      <ExpoImage
-                        source={{ uri: pendingAvatar.uri }}
-                        style={
-                          {
-                            width: AVATAR_SIZE,
-                            height: AVATAR_SIZE,
-                            borderRadius: AVATAR_SIZE / 2,
-                          } as never
-                        }
-                        contentFit="cover"
-                        accessibilityLabel="Selected profile photo"
-                      />
-                    </RNHostView>
-                  ) : (
-                    <VStack
-                      alignment="center"
-                      modifiers={[
-                        frame({ width: AVATAR_SIZE, height: AVATAR_SIZE }),
-                        background(colors.muted as string),
-                        border({ color: colors.border as string, width: 2 }),
-                        clipShape("circle"),
-                      ]}
-                    >
-                      <Image
-                        systemName="camera"
-                        size={symbolSize(20)}
-                        color={colors.mutedForeground as string}
-                        modifiers={[accessibilityLabel("")]}
-                      />
-                    </VStack>
-                  )}
-                  <Text modifiers={helperModifiers}>
-                    {pendingAvatar ? "Photo selected" : "Tap to upload"}
-                  </Text>
-                  <Spacer />
-                </HStack>
+                  <HStack
+                    spacing={16}
+                    alignment="center"
+                    modifiers={[frame({ maxWidth: Infinity })]}
+                  >
+                    {pendingAvatar ? (
+                      <RNHostView matchContents>
+                        <ExpoImage
+                          source={{ uri: pendingAvatar.uri }}
+                          style={
+                            {
+                              width: AVATAR_SIZE,
+                              height: AVATAR_SIZE,
+                              borderRadius: AVATAR_SIZE / 2,
+                            } as never
+                          }
+                          contentFit="cover"
+                          accessibilityLabel="Selected profile photo"
+                        />
+                      </RNHostView>
+                    ) : (
+                      <VStack
+                        alignment="center"
+                        modifiers={[
+                          frame({ width: AVATAR_SIZE, height: AVATAR_SIZE }),
+                          background(colors.muted as string),
+                          border({ color: colors.border as string, width: 2 }),
+                          clipShape("circle"),
+                        ]}
+                      >
+                        <Image
+                          systemName="camera"
+                          size={symbolSize(20)}
+                          color={colors.mutedForeground as string}
+                          modifiers={[accessibilityLabel("")]}
+                        />
+                      </VStack>
+                    )}
+                    <Text modifiers={helperModifiers}>
+                      {pendingAvatar ? "Photo selected" : "Tap to upload"}
+                    </Text>
+                    <Spacer />
+                  </HStack>
+                </Button>
               </ConfirmationDialog.Trigger>
               <ConfirmationDialog.Actions>
                 <Button
@@ -582,28 +590,11 @@ export default function SignUpScreen() {
           />
 
           {showApple && (
-            <VStack
-              alignment="center"
-              modifiers={[frame({ maxWidth: Infinity, minHeight: ButtonTokens.height })]}
-            >
-              <RNHostView>
-                <AppleAuthentication.AppleAuthenticationButton
-                  buttonType={AppleAuthentication.AppleAuthenticationButtonType.SIGN_UP}
-                  buttonStyle={
-                    colorScheme === "dark"
-                      ? AppleAuthentication.AppleAuthenticationButtonStyle.WHITE
-                      : AppleAuthentication.AppleAuthenticationButtonStyle.BLACK
-                  }
-                  cornerRadius={ButtonTokens.cornerRadius}
-                  style={{
-                    width: "100%",
-                    height: "100%",
-                    opacity: isLoading ? 0.5 : 1,
-                  }}
-                  onPress={() => startTransition(() => signUpWithApple())}
-                />
-              </RNHostView>
-            </VStack>
+            <AppleButton
+              type={AppleAuthentication.AppleAuthenticationButtonType.SIGN_UP}
+              onPress={() => startTransition(() => signUpWithApple())}
+              disabled={isLoading}
+            />
           )}
         </VStack>
       </ScrollView>

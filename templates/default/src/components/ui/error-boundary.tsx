@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { AccessibilityInfo } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { router, type ErrorBoundaryProps } from "expo-router";
 import { Host, VStack, Text, Button, Image, Spacer } from "@expo/ui/swift-ui";
 import {
@@ -15,11 +16,13 @@ import { useDynamicFont } from "@/lib/dynamic-font";
 import { useSymbolSize } from "@/lib/dynamic-symbol-size";
 import { ProminentButton } from "@/components/ui/prominent-button";
 import { useColors } from "@/hooks/use-theme";
+import { TouchTarget } from "@/constants/layout";
 
 export function AppErrorBoundary({ error, retry }: ErrorBoundaryProps) {
   const dfont = useDynamicFont();
   const symbolSize = useSymbolSize();
   const colors = useColors();
+  const insets = useSafeAreaInsets();
 
   // VoiceOver users won't notice the visual change to a destructive surface
   // unless we explicitly announce. Fires once on mount per crash. Logging the
@@ -36,7 +39,10 @@ export function AppErrorBoundary({ error, retry }: ErrorBoundaryProps) {
       <VStack
         spacing={20}
         alignment="center"
-        modifiers={[padding({ horizontal: 24, vertical: 32 }), tint(colors.primary as string)]}
+        modifiers={[
+          padding({ horizontal: 24, top: insets.top + 32, bottom: insets.bottom + 32 }),
+          tint(colors.primary as string),
+        ]}
       >
         <Spacer />
         <Image
@@ -65,6 +71,7 @@ export function AppErrorBoundary({ error, retry }: ErrorBoundaryProps) {
               buttonStyle("plain"),
               dfont({ size: 16, weight: "medium" }),
               foregroundStyle(colors.mutedForeground as string),
+              frame({ minHeight: TouchTarget.min }),
             ]}
             onPress={() => router.replace("/")}
           />

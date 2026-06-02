@@ -17,6 +17,7 @@ import {
   buttonStyle,
   background,
   clipShape,
+  contentShape,
   disabled,
   keyboardType,
   monospacedDigit,
@@ -26,6 +27,7 @@ import {
   submitLabel,
   padding,
   frame,
+  shapes,
   accessibilityLabel,
   accessibilityHint,
   tint,
@@ -34,7 +36,7 @@ import {
 } from "@expo/ui/swift-ui/modifiers";
 import { useDynamicFont } from "@/lib/dynamic-font";
 import { useSymbolSize } from "@/lib/dynamic-symbol-size";
-import { Button as ButtonTokens } from "@/constants/layout";
+import { Button as ButtonTokens, TouchTarget } from "@/constants/layout";
 
 import { api } from "@/convex/_generated/api";
 import { authClient } from "@/lib/auth-client";
@@ -282,7 +284,12 @@ export function OtpVerification({
           </Text>
           <Button
             label="Go back"
-            modifiers={[buttonStyle("plain"), dfont({ size: 14, weight: "semibold" })]}
+            modifiers={[
+              buttonStyle("plain"),
+              dfont({ size: 14, weight: "semibold" }),
+              frame({ minHeight: TouchTarget.min }),
+              contentShape(shapes.rectangle()),
+            ]}
             onPress={() => {
               haptics.light();
               onBack();

@@ -43,10 +43,19 @@ const NEUTRAL = {
 } as const;
 
 const DESTRUCTIVE = {
-  light: "#E7000B",
+  // Light darkened from #E7000B to clear WCAG AA (4.5:1) for sub-17pt text on
+  // the muted (n100) capsule fill, not just on the white page background.
+  light: "#B30009",
   dark: "#FF6467",
-  hcLight: "#B30009",
+  hcLight: "#990007",
   hcDark: "#FFA0A2",
+} as const;
+
+const WARNING = {
+  light: "#B45309",
+  dark: "#F59E0B",
+  hcLight: "#92400E",
+  hcDark: "#FCD34D",
 } as const;
 
 // shadcn dark `border` is `oklch(1 0 0 / 10%)`, `input` is `15%`. These need
@@ -127,9 +136,11 @@ const t = {
     highContrastDark: NEUTRAL.n850,
   }),
   mutedForeground: tone({
-    light: NEUTRAL.n500,
+    // n500 -> n600 so secondary text clears 4.5:1 on the muted card by default,
+    // not only under Increase Contrast.
+    light: NEUTRAL.n600,
     dark: NEUTRAL.n400,
-    highContrastLight: NEUTRAL.n600,
+    highContrastLight: NEUTRAL.n700,
     highContrastDark: NEUTRAL.n300,
   }),
   accent: tone({
@@ -310,10 +321,19 @@ export const Colors = {
   }),
 
   success: tone({
-    light: "#16A34A",
+    // Light darkened from #16A34A (~3.3:1 on white) to clear WCAG AA for the
+    // sub-17pt success copy in SuccessText and the username-available row.
+    light: "#15803D",
     dark: "#22C55E",
-    highContrastLight: "#15803D",
+    highContrastLight: "#166534",
     highContrastDark: "#4ADE80",
+  }),
+
+  warning: tone({
+    light: WARNING.light,
+    dark: WARNING.dark,
+    highContrastLight: WARNING.hcLight,
+    highContrastDark: WARNING.hcDark,
   }),
 } as const;
 
