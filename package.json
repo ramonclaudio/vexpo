@@ -1,11 +1,21 @@
 {
   "name": "vexpo",
-  "description": "The all-in-one starting point for shipping a real Expo app. Native SwiftUI, Convex, Better Auth, Resend, EAS top-to-bottom.",
   "private": true,
-  "type": "module",
+  "description": "The all-in-one starting point for shipping a real Expo app. Native SwiftUI, Convex, Better Auth, Resend, EAS top-to-bottom.",
+  "homepage": "https://github.com/ramonclaudio/vexpo",
+  "bugs": {
+    "url": "https://github.com/ramonclaudio/vexpo/issues"
+  },
+  "license": "MIT",
+  "author": "Ramon Claudio <hello@ramonclaudio.com> (https://github.com/ramonclaudio)",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ramonclaudio/vexpo.git"
+  },
   "workspaces": [
     "packages/*"
   ],
+  "type": "module",
   "scripts": {
     "build": "npm run build --workspaces --if-present",
     "typecheck": "npm run typecheck --workspaces --if-present",
@@ -26,18 +36,8 @@
     "template:test": "cd templates/default && npm run test"
   },
   "devDependencies": {
-    "oxfmt": "^0.52.0",
-    "oxlint": "^1.67.0",
+    "oxfmt": "^0.53.0",
+    "oxlint": "^1.68.0",
     "typescript": "^6.0.3"
-  },
-  "license": "MIT",
-  "author": "Ramon Claudio <hello@ramonclaudio.com> (https://github.com/ramonclaudio)",
-  "homepage": "https://github.com/ramonclaudio/vexpo",
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/ramonclaudio/vexpo.git"
-  },
-  "bugs": {
-    "url": "https://github.com/ramonclaudio/vexpo/issues"
   }
 }
