@@ -18,10 +18,10 @@ jobs:
     name: packages (typecheck, lint, format, build, test, e2e)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
         with:
-          node-version: "20"
+          node-version: "22"
           cache: npm
       - run: npm ci
       - run: npm run typecheck
@@ -38,10 +38,10 @@ jobs:
       run:
         working-directory: templates/default
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
         with:
-          node-version: "20"
+          node-version: "22"
           cache: npm
           cache-dependency-path: templates/default/package-lock.json
       # `@ramonclaudio/vexpo` is on npm, so the template installs directly
