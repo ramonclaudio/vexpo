@@ -2,6 +2,13 @@
 
 All notable changes to vexpo are tracked here. Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+- Tag the full testable surface with stable `testID`s for Maestro and XCUITest, which `@expo/ui` maps to the native iOS `accessibilityIdentifier` (upstream `expo/expo#46556`). Beyond every interactive control (fields, submits, toggles, pickers, Apple buttons, dialog and alert actions), this covers the assertable surface: error and status messages, dynamic values (name, email, app version, OTA channel, dates), screen titles, the empty/loading/offline/update-banner state containers, the debug info rows, and a `<screen>-screen` id on each screen root for scoping. Ten content and state wrappers (`ErrorText`, `SuccessText`, `ContentUnavailable`, `LoadingScreen`, `ConvexErrorView`, the offline and update banners, the skeletons, `InfoRow`, plus the four control wrappers) forward a `testID` prop so each instance is addressable. 194 unique ids plus 39 per-item dynamic ones, across every screen and layout. Pure layout, static labels, and silenced decorative icons stay untagged on purpose; expo-router's native nav-config components (the tab triggers, back buttons, and toolbar buttons) can't take an id, their prop types don't expose `testID`. No runtime change: `testID` already resolved to `accessibilityIdentifier`.
+- Update the SDK 56 dependency set: `expo` and six `expo-*` modules to the current SDK 56 matrix via `expo install --fix`, plus `better-auth` 1.6.14, `convex` 1.40.0, and the dev toolchain (`vitest` 4.1.8, `oxlint` 1.68.0, `oxfmt` 0.53.0, `tsx` 4.22.4). The React Native packages (`react`, `react-native-reanimated`, `react-native-gesture-handler`, `react-native-worklets`, `react-native-safe-area-context`) stay pinned to the SDK 56 native matrix; the newer versions `npm outdated` lists for them are ahead of what SDK 56 bundles.
+- Bump the CLI's `commander` to 15 and the root dev tooling (`oxlint` 1.68.0, `oxfmt` 0.53.0).
+- Bump CI to `actions/checkout@v6`, `actions/setup-node@v6`, `softprops/action-gh-release@v3`, and the runner to Node 22.
+
 ## [0.1.1] - 2026-06-01
 
 Scope narrowed to 0 to 1: every command must help an empty directory reach a first shipped iOS app. Post-launch ops are out.
@@ -29,5 +36,6 @@ First public release.
 
 See [`README.md`](./README.md) for the feature list, [`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md) for the trade-off log, [`docs/SECURITY.md`](./docs/SECURITY.md) for the threat model, [`docs/OPERATIONS.md`](./docs/OPERATIONS.md) for the on-call runbook, and [`docs/UPSTREAM.md`](./docs/UPSTREAM.md) for the ledger of every upstream PR we shipped to `expo/expo` that the template depends on.
 
+[Unreleased]: https://github.com/ramonclaudio/vexpo/compare/v0.1.1...HEAD
 [0.1.1]: https://github.com/ramonclaudio/vexpo/releases/tag/v0.1.1
 [0.1.0]: https://github.com/ramonclaudio/vexpo/releases/tag/v0.1.0
