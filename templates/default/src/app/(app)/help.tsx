@@ -43,10 +43,12 @@ const support = (Constants.expoConfig?.extra?.support ?? {}) as SupportConfig;
 
 const FAQ_ITEMS = [
   {
+    id: "delete-account",
     question: "How do I delete my account?",
     answer: "Go to Settings, then Delete Account. This will permanently remove all your data.",
   },
   {
+    id: "notifications",
     question: "Why aren't notifications working?",
     answer:
       "Make sure notifications are enabled in Settings, then Notifications. You must use a physical device.",
@@ -105,15 +107,18 @@ export default function HelpScreen() {
   type SFSymbol = NonNullable<ComponentProps<typeof Image>["systemName"]>;
 
   const rowButton = ({
+    testID,
     label,
     systemImage,
     onPress,
   }: {
+    testID: string;
     label: string;
     systemImage: SFSymbol;
     onPress: () => void;
   }) => (
     <Button
+      testID={testID}
       modifiers={[
         buttonStyle("plain"),
         frame({ maxWidth: Infinity }),
@@ -167,19 +172,20 @@ export default function HelpScreen() {
           />
         </Stack.Toolbar>
       ) : null}
-      <Host style={{ flex: 1, backgroundColor: colors.background }}>
+      <Host testID="help-screen" style={{ flex: 1, backgroundColor: colors.background }}>
         <ScrollView modifiers={[tint(colors.primary as string)]}>
           <VStack
             spacing={12}
             alignment="leading"
             modifiers={[padding({ horizontal: 24, top: 24, bottom: 40 })]}
           >
-            {linkError ? <ErrorText>{linkError}</ErrorText> : null}
+            {linkError ? <ErrorText testID="help-link-error">{linkError}</ErrorText> : null}
 
             {(support.email || issuesUrl) && (
               <VStack spacing={8} modifiers={[frame({ maxWidth: Infinity })]}>
                 {support.email
                   ? rowButton({
+                      testID: "help-email-support",
                       label: "Email Support",
                       systemImage: "envelope.fill",
                       onPress: handleOpenEmail,
@@ -187,6 +193,7 @@ export default function HelpScreen() {
                   : null}
                 {issuesUrl
                   ? rowButton({
+                      testID: "help-report-issue",
                       label: "Report an Issue",
                       systemImage: "exclamationmark.bubble.fill",
                       onPress: handleOpenIssues,
@@ -197,6 +204,7 @@ export default function HelpScreen() {
 
             {filteredFaq.length === 0 ? (
               <ContentUnavailable
+                testID="help-faq-empty"
                 title="No results"
                 systemImage="magnifyingglass"
                 description="Try a different search term"
@@ -204,6 +212,7 @@ export default function HelpScreen() {
             ) : (
               <VStack spacing={8} modifiers={[frame({ maxWidth: Infinity })]}>
                 <Text
+                  testID="help-faq-heading"
                   modifiers={[
                     dfont({ size: 13, weight: "semibold" }),
                     foregroundStyle(colors.mutedForeground as string),
@@ -224,6 +233,7 @@ export default function HelpScreen() {
                     ]}
                   >
                     <DisclosureGroup
+                      testID={`help-faq-${item.id}`}
                       label={item.question}
                       isExpanded={!!expanded[item.question]}
                       onIsExpandedChange={(v) => toggleExpanded(item.question, v)}

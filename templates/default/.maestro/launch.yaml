@@ -1,12 +1,16 @@
-# Smoke test: the app cold-starts and renders without crashing.
+# Smoke test: the app cold-starts and renders without crashing, plus a screenshot.
 #
-# This app's UI is built entirely with @expo/ui SwiftUI, and those views are NOT
-# surfaced to Maestro's iOS accessibility query: plain <Text>, button labels, and
-# even explicit accessibilityLabel modifiers are all invisible to Maestro. So a
-# flow can't assert on or drive the UI without faking it. What it CAN verify, and
-# all this does, is that the app builds, installs, and launches to a stable first
-# frame without crashing. Screen and flow logic is covered by unit + Convex tests
-# (see __tests__), not here.
+# The UI is @expo/ui SwiftUI. `testID` props map to the native accessibilityIdentifier
+# and DO surface to Maestro as `resource-id`, so `assertVisible: { id: "..." }` resolves
+# against any tagged control or screen. Every interactive control and screen root
+# carries a stable id (grep `testID=` under src/), so real id-based flows are viable,
+# not just this no-crash smoke test.
+#
+# Driving note: Maestro taps an element's center. Buttons whose center holds content
+# (the profile card, the ProminentButton submits) tap fine by `id`. The capsule list
+# rows put a Spacer in the middle, so tap those by their label text (`tapOn: "Debug"`),
+# not by `id`, or the tap lands on empty space. Native tab-bar taps can be flaky;
+# assert-then-tap or retry.
 #
 # Maestro auto-derives the appId from the build's bundle id, so the same flow
 # runs against the dev simulator binary (`com.example.<pkg>` fallback in

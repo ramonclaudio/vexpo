@@ -20,10 +20,12 @@ export function AppleButton({
   type,
   onPress,
   disabled,
+  testID,
 }: {
   type: AppleAuthentication.AppleAuthenticationButtonType;
   onPress: () => void;
   disabled?: boolean;
+  testID?: string;
 }) {
   const colorScheme = useColorScheme();
   const { fontScale } = useWindowDimensions();
@@ -32,6 +34,7 @@ export function AppleButton({
     <VStack alignment="center" modifiers={[frame({ maxWidth: Infinity, height })]}>
       <RNHostView>
         <AppleAuthentication.AppleAuthenticationButton
+          testID={testID}
           buttonType={type}
           buttonStyle={
             colorScheme === "dark"

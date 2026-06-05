@@ -13,7 +13,7 @@ import { LoadingScreen } from "@/components/ui/loading-screen";
 export { AppErrorBoundary as ErrorBoundary } from "@/components/ui/error-boundary";
 
 export function SuspenseFallback() {
-  return <LoadingScreen />;
+  return <LoadingScreen testID="app-content-loading" />;
 }
 
 // Anchor the back-stack root so a guard flip lands on the tabs root, not

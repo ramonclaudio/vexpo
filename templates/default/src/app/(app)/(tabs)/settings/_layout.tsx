@@ -11,7 +11,7 @@ export const unstable_settings = {
 };
 
 export function SuspenseFallback() {
-  return <LoadingScreen />;
+  return <LoadingScreen testID="settings-loading" />;
 }
 
 export default function SettingsLayout() {

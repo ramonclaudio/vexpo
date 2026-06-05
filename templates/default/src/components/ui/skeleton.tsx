@@ -60,9 +60,14 @@ function Circle({ size }: { size: number }): React.ReactNode {
   );
 }
 
-export function SkeletonProfile(): React.ReactNode {
+export function SkeletonProfile({ testID }: { testID?: string } = {}): React.ReactNode {
   return (
-    <VStack alignment="leading" spacing={Spacing.xl} modifiers={[padding({ all: 24 })]}>
+    <VStack
+      testID={testID}
+      alignment="leading"
+      spacing={Spacing.xl}
+      modifiers={[padding({ all: 24 })]}
+    >
       <HStack spacing={Spacing.lg}>
         <Circle size={72} />
         <VStack alignment="leading" spacing={Spacing.sm}>
@@ -87,9 +92,14 @@ export function SkeletonProfile(): React.ReactNode {
   );
 }
 
-export function SkeletonSessions(): React.ReactNode {
+export function SkeletonSessions({ testID }: { testID?: string } = {}): React.ReactNode {
   return (
-    <VStack alignment="leading" spacing={Spacing.md} modifiers={[padding({ all: 24 })]}>
+    <VStack
+      testID={testID}
+      alignment="leading"
+      spacing={Spacing.md}
+      modifiers={[padding({ all: 24 })]}
+    >
       <SkeletonSessionRow />
       <SkeletonSessionRow />
       <SkeletonSessionRow />

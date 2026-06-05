@@ -316,8 +316,8 @@ export default function ProfileScreen() {
 
   if (!me) {
     return (
-      <Host style={{ flex: 1, backgroundColor: colors.background }}>
-        <SkeletonProfile />
+      <Host testID="profile-loading" style={{ flex: 1, backgroundColor: colors.background }}>
+        <SkeletonProfile testID="profile-skeleton" />
       </Host>
     );
   }
@@ -345,7 +345,7 @@ export default function ProfileScreen() {
         />
       </Stack.Toolbar>
 
-      <Host style={{ flex: 1, backgroundColor: colors.background }}>
+      <Host testID="profile-screen" style={{ flex: 1, backgroundColor: colors.background }}>
         <ScrollView
           modifiers={[
             scrollDismissesKeyboard("interactively"),
@@ -369,6 +369,7 @@ export default function ProfileScreen() {
             >
               <ConfirmationDialog.Trigger>
                 <Button
+                  testID="profile-avatar"
                   modifiers={[
                     buttonStyle("plain"),
                     frame({ maxWidth: Infinity, minHeight: TouchTarget.min }),
@@ -387,8 +388,14 @@ export default function ProfileScreen() {
                   >
                     <AvatarView avatarUrl={me.avatarUrl} loading={avatarUpdating} />
                     <VStack alignment="leading" spacing={4}>
-                      <Text modifiers={[dfont({ size: 17, weight: "semibold" })]}>{me.name}</Text>
                       <Text
+                        testID="profile-name-value"
+                        modifiers={[dfont({ size: 17, weight: "semibold" })]}
+                      >
+                        {me.name}
+                      </Text>
+                      <Text
+                        testID="profile-email-value"
                         modifiers={[
                           dfont({ size: 14 }),
                           foregroundStyle(colors.mutedForeground as string),
@@ -409,30 +416,40 @@ export default function ProfileScreen() {
               </ConfirmationDialog.Trigger>
               <ConfirmationDialog.Actions>
                 <Button
+                  testID="profile-avatar-choose"
                   label="Choose Photo"
                   systemImage="photo.on.rectangle"
                   onPress={() => pickAvatar("library")}
                 />
                 <Button
+                  testID="profile-avatar-take"
                   label="Take Photo"
                   systemImage="camera"
                   onPress={() => pickAvatar("camera")}
                 />
                 {me.hasUploadedAvatar && (
-                  <Button label="Remove Photo" role="destructive" onPress={removeAvatar} />
+                  <Button
+                    testID="profile-avatar-remove"
+                    label="Remove Photo"
+                    role="destructive"
+                    onPress={removeAvatar}
+                  />
                 )}
-                <Button label="Cancel" role="cancel" />
+                <Button testID="profile-avatar-cancel" label="Cancel" role="cancel" />
               </ConfirmationDialog.Actions>
             </ConfirmationDialog>
 
-            {error ? <ErrorText>{error}</ErrorText> : null}
-            {success && !pendingEmail ? <SuccessText>{success}</SuccessText> : null}
+            {error ? <ErrorText testID="profile-error">{error}</ErrorText> : null}
+            {success && !pendingEmail ? (
+              <SuccessText testID="profile-success">{success}</SuccessText>
+            ) : null}
 
             {pendingEmail ? (
               <>
                 <VStack spacing={6} alignment="leading" modifiers={[frame({ maxWidth: Infinity })]}>
                   <Text modifiers={labelModifiers}>Verify new email</Text>
                   <TextField
+                    testID="profile-email-otp"
                     text={otpCodeState}
                     placeholder="000000"
                     onTextChange={(text) => {
@@ -457,12 +474,13 @@ export default function ProfileScreen() {
                       accessibilityHint("Enter the 6 digit code sent to your new email"),
                     ]}
                   />
-                  <Text modifiers={helperModifiers}>
+                  <Text testID="profile-email-otp-sent" modifiers={helperModifiers}>
                     A 6-digit code was sent to {pendingEmail}.
                   </Text>
                 </VStack>
 
                 <ProminentButton
+                  testID="profile-email-verify"
                   label={isVerifying ? "Verifying..." : "Verify"}
                   onPress={() => startTransition(() => verifyOtp())}
                   disabled={isVerifying || otp.length !== 6}
@@ -470,6 +488,7 @@ export default function ProfileScreen() {
 
                 <VStack alignment="center" modifiers={[frame({ maxWidth: Infinity })]}>
                   <Button
+                    testID="profile-email-verify-cancel"
                     label="Cancel"
                     modifiers={[
                       buttonStyle("plain"),
@@ -490,6 +509,7 @@ export default function ProfileScreen() {
                 <VStack spacing={6} alignment="leading" modifiers={[frame({ maxWidth: Infinity })]}>
                   <Text modifiers={labelModifiers}>Name</Text>
                   <TextField
+                    testID="profile-name"
                     text={nameState}
                     placeholder="Name"
                     onTextChange={setName}
@@ -508,6 +528,7 @@ export default function ProfileScreen() {
                 <VStack spacing={6} alignment="leading" modifiers={[frame({ maxWidth: Infinity })]}>
                   <Text modifiers={labelModifiers}>Username</Text>
                   <TextField
+                    testID="profile-username"
                     text={usernameState}
                     placeholder="johndoe"
                     onTextChange={(text) => {
@@ -536,6 +557,7 @@ export default function ProfileScreen() {
                 <VStack spacing={6} alignment="leading" modifiers={[frame({ maxWidth: Infinity })]}>
                   <Text modifiers={labelModifiers}>Email</Text>
                   <TextField
+                    testID="profile-email"
                     text={emailState}
                     placeholder="you@example.com"
                     onTextChange={setEmail}
@@ -565,6 +587,7 @@ export default function ProfileScreen() {
                 <VStack spacing={6} alignment="leading" modifiers={[frame({ maxWidth: Infinity })]}>
                   <Text modifiers={labelModifiers}>Bio</Text>
                   <TextField
+                    testID="profile-bio"
                     text={bioState}
                     placeholder="Tell others about yourself"
                     onTextChange={setBio}
@@ -591,6 +614,7 @@ export default function ProfileScreen() {
                 <VStack spacing={6} alignment="leading" modifiers={[frame({ maxWidth: Infinity })]}>
                   <Text modifiers={labelModifiers}>Member since</Text>
                   <Text
+                    testID="profile-member-since-value"
                     modifiers={[
                       dfont({ size: 16 }),
                       foregroundStyle(colors.mutedForeground as string),
@@ -602,6 +626,7 @@ export default function ProfileScreen() {
 
                 {hasChanges ? (
                   <ProminentButton
+                    testID="profile-save"
                     label={isSaving ? "Saving..." : "Save changes"}
                     onPress={() => startTransition(() => save())}
                     disabled={isSaving}
@@ -610,6 +635,7 @@ export default function ProfileScreen() {
 
                 {hasPasswordResult ? (
                   <Button
+                    testID="profile-change-password"
                     modifiers={[
                       buttonStyle("plain"),
                       frame({ maxWidth: Infinity }),
@@ -645,6 +671,7 @@ export default function ProfileScreen() {
                 >
                   <ConfirmationDialog.Trigger>
                     <Button
+                      testID="profile-sign-out"
                       modifiers={[
                         buttonStyle("plain"),
                         frame({ maxWidth: Infinity }),
@@ -672,8 +699,13 @@ export default function ProfileScreen() {
                     </Button>
                   </ConfirmationDialog.Trigger>
                   <ConfirmationDialog.Actions>
-                    <Button label="Sign Out" role="destructive" onPress={handleSignOut} />
-                    <Button label="Cancel" role="cancel" />
+                    <Button
+                      testID="profile-sign-out-confirm"
+                      label="Sign Out"
+                      role="destructive"
+                      onPress={handleSignOut}
+                    />
+                    <Button testID="profile-sign-out-cancel" label="Cancel" role="cancel" />
                   </ConfirmationDialog.Actions>
                   <ConfirmationDialog.Message>
                     <Text modifiers={[dfont({ size: 16 })]}>
@@ -689,6 +721,7 @@ export default function ProfileScreen() {
                 >
                   <Alert.Trigger>
                     <Button
+                      testID="profile-delete-account"
                       modifiers={[
                         buttonStyle("plain"),
                         frame({ maxWidth: Infinity }),
@@ -715,8 +748,13 @@ export default function ProfileScreen() {
                     </Button>
                   </Alert.Trigger>
                   <Alert.Actions>
-                    <Button label="Delete Account" role="destructive" onPress={deleteAccount} />
-                    <Button label="Cancel" role="cancel" />
+                    <Button
+                      testID="profile-delete-account-confirm"
+                      label="Delete Account"
+                      role="destructive"
+                      onPress={deleteAccount}
+                    />
+                    <Button testID="profile-delete-account-cancel" label="Cancel" role="cancel" />
                   </Alert.Actions>
                   <Alert.Message>
                     <Text modifiers={[dfont({ size: 16 })]}>

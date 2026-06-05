@@ -17,7 +17,7 @@ export default function NotFoundScreen() {
           Lost?
         </Stack.Screen.Title>
       </Stack.Header>
-      <Host style={{ flex: 1 }}>
+      <Host testID="not-found-screen" style={{ flex: 1 }}>
         <VStack
           spacing={20}
           alignment="center"
@@ -25,11 +25,16 @@ export default function NotFoundScreen() {
         >
           <Spacer />
           <ContentUnavailable
+            testID="not-found-empty"
             title="This page doesn't exist"
             systemImage="questionmark.circle"
             description="The page you were looking for moved or was never here."
           />
-          <ProminentButton label="Take me home" onPress={() => router.replace("/")} />
+          <ProminentButton
+            testID="not-found-home"
+            label="Take me home"
+            onPress={() => router.replace("/")}
+          />
           <Spacer />
         </VStack>
       </Host>

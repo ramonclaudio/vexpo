@@ -67,11 +67,13 @@ export default function PreferencesScreen() {
   ];
 
   const toggleRow = ({
+    testID,
     icon,
     label,
     value,
     onChange,
   }: {
+    testID: string;
     icon: NonNullable<React.ComponentProps<typeof Image>["systemName"]>;
     label: string;
     value: boolean;
@@ -103,6 +105,7 @@ export default function PreferencesScreen() {
       </Text>
       <Spacer />
       <Toggle
+        testID={testID}
         isOn={value}
         onIsOnChange={onChange}
         modifiers={[tint(colors.primary as string), accessibilityLabel(label)]}
@@ -111,7 +114,7 @@ export default function PreferencesScreen() {
   );
 
   return (
-    <Host style={{ flex: 1, backgroundColor: colors.background }}>
+    <Host testID="preferences-screen" style={{ flex: 1, backgroundColor: colors.background }}>
       <ScrollView
         modifiers={[scrollDismissesKeyboard("interactively"), tint(colors.primary as string)]}
       >
@@ -123,6 +126,7 @@ export default function PreferencesScreen() {
           <VStack spacing={8} alignment="leading" modifiers={[frame({ maxWidth: Infinity })]}>
             <Text modifiers={sectionLabelModifiers}>APPEARANCE</Text>
             <Picker
+              testID="preferences-appearance"
               modifiers={[
                 pickerStyle("segmented"),
                 controlSize("large"),
@@ -135,15 +139,31 @@ export default function PreferencesScreen() {
                 setMode(MODE_BY_INDEX[v as number] ?? "system");
               }}
             >
-              <Text modifiers={[tag(0), dfont({ size: 14, weight: "medium" })]}>Light</Text>
-              <Text modifiers={[tag(1), dfont({ size: 14, weight: "medium" })]}>Dark</Text>
-              <Text modifiers={[tag(2), dfont({ size: 14, weight: "medium" })]}>System</Text>
+              <Text
+                testID="preferences-appearance-light"
+                modifiers={[tag(0), dfont({ size: 14, weight: "medium" })]}
+              >
+                Light
+              </Text>
+              <Text
+                testID="preferences-appearance-dark"
+                modifiers={[tag(1), dfont({ size: 14, weight: "medium" })]}
+              >
+                Dark
+              </Text>
+              <Text
+                testID="preferences-appearance-system"
+                modifiers={[tag(2), dfont({ size: 14, weight: "medium" })]}
+              >
+                System
+              </Text>
             </Picker>
           </VStack>
 
           <VStack spacing={8} alignment="leading" modifiers={[frame({ maxWidth: Infinity })]}>
             <Text modifiers={sectionLabelModifiers}>REDUCE MOTION</Text>
             <Picker
+              testID="preferences-reduce-motion"
               modifiers={[
                 pickerStyle("segmented"),
                 controlSize("large"),
@@ -156,15 +176,31 @@ export default function PreferencesScreen() {
                 setMotion(MOTION_BY_INDEX[v as number] ?? "system");
               }}
             >
-              <Text modifiers={[tag(0), dfont({ size: 14, weight: "medium" })]}>System</Text>
-              <Text modifiers={[tag(1), dfont({ size: 14, weight: "medium" })]}>Always</Text>
-              <Text modifiers={[tag(2), dfont({ size: 14, weight: "medium" })]}>Never</Text>
+              <Text
+                testID="preferences-reduce-motion-system"
+                modifiers={[tag(0), dfont({ size: 14, weight: "medium" })]}
+              >
+                System
+              </Text>
+              <Text
+                testID="preferences-reduce-motion-always"
+                modifiers={[tag(1), dfont({ size: 14, weight: "medium" })]}
+              >
+                Always
+              </Text>
+              <Text
+                testID="preferences-reduce-motion-never"
+                modifiers={[tag(2), dfont({ size: 14, weight: "medium" })]}
+              >
+                Never
+              </Text>
             </Picker>
           </VStack>
 
           <VStack spacing={8} alignment="leading" modifiers={[frame({ maxWidth: Infinity })]}>
             <Text modifiers={sectionLabelModifiers}>HAPTICS</Text>
             {toggleRow({
+              testID: "preferences-haptics",
               icon: "iphone.radiowaves.left.and.right",
               label: "Haptic feedback",
               value: hapticsOn,
@@ -178,6 +214,7 @@ export default function PreferencesScreen() {
           <VStack spacing={8} alignment="leading" modifiers={[frame({ maxWidth: Infinity })]}>
             <Text modifiers={sectionLabelModifiers}>DEBUG</Text>
             {toggleRow({
+              testID: "preferences-debug",
               icon: "ant.circle.fill",
               label: "Debug mode",
               value: debugOn,

@@ -23,18 +23,26 @@ type Props = {
   title: string;
   systemImage: SFSymbol;
   description?: string;
+  testID?: string;
 };
 
-export function ContentUnavailable({ title, systemImage, description }: Props) {
+export function ContentUnavailable({ title, systemImage, description, testID }: Props) {
   if (NATIVE) {
     return (
-      <ContentUnavailableView title={title} systemImage={systemImage} description={description} />
+      <ContentUnavailableView
+        testID={testID}
+        title={title}
+        systemImage={systemImage}
+        description={description}
+      />
     );
   }
-  return <Fallback title={title} systemImage={systemImage} description={description} />;
+  return (
+    <Fallback title={title} systemImage={systemImage} description={description} testID={testID} />
+  );
 }
 
-function Fallback({ title, systemImage, description }: Props) {
+function Fallback({ title, systemImage, description, testID }: Props) {
   const dfont = useDynamicFont();
   const symbolSize = useSymbolSize();
   const colors = useColors();
@@ -50,11 +58,15 @@ function Fallback({ title, systemImage, description }: Props) {
         color={colors.mutedForeground as string}
         modifiers={[accessibilityLabel("")]}
       />
-      <Text modifiers={[dfont({ size: 17, weight: "semibold" }), multilineTextAlignment("center")]}>
+      <Text
+        testID={description ? undefined : testID}
+        modifiers={[dfont({ size: 17, weight: "semibold" }), multilineTextAlignment("center")]}
+      >
         {title}
       </Text>
       {description ? (
         <Text
+          testID={testID}
           modifiers={[
             dfont({ size: 14 }),
             foregroundStyle(colors.mutedForeground as string),

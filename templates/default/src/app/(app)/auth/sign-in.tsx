@@ -255,7 +255,7 @@ export default function SignInScreen() {
   ];
 
   return (
-    <Host style={{ flex: 1, backgroundColor: colors.background }}>
+    <Host testID="sign-in-screen" style={{ flex: 1, backgroundColor: colors.background }}>
       <ScrollView
         modifiers={[
           scrollDismissesKeyboard("interactively"),
@@ -282,7 +282,9 @@ export default function SignInScreen() {
           </RNHostView>
 
           <VStack spacing={6} alignment="leading">
-            <Text modifiers={[dfont({ size: 28, weight: "bold" })]}>Sign in</Text>
+            <Text testID="sign-in-title" modifiers={[dfont({ size: 28, weight: "bold" })]}>
+              Sign in
+            </Text>
             <Text
               modifiers={[dfont({ size: 16 }), foregroundStyle(colors.mutedForeground as string)]}
             >
@@ -293,6 +295,7 @@ export default function SignInScreen() {
           </VStack>
 
           <SegmentedToggle
+            testID="sign-in-auth-mode"
             accessibilityLabel="Sign in or sign up"
             value="sign-in"
             options={[
@@ -305,6 +308,7 @@ export default function SignInScreen() {
           />
 
           <SegmentedToggle
+            testID="sign-in-method"
             accessibilityLabel="Sign-in method"
             value={signInMethod}
             options={
@@ -322,13 +326,14 @@ export default function SignInScreen() {
             onChange={(value) => setSignInMethod(value as SignInMethod)}
           />
 
-          {error && <ErrorText>{error}</ErrorText>}
+          {error && <ErrorText testID="sign-in-error">{error}</ErrorText>}
 
           {signInMethod === "email" && (
             <>
               <VStack spacing={6} alignment="leading" modifiers={[frame({ maxWidth: Infinity })]}>
                 <Text modifiers={labelModifiers}>Email</Text>
                 <TextField
+                  testID="sign-in-email"
                   placeholder="you@example.com"
                   onTextChange={setEmailValue}
                   modifiers={[
@@ -348,6 +353,7 @@ export default function SignInScreen() {
               <VStack spacing={6} alignment="leading" modifiers={[frame({ maxWidth: Infinity })]}>
                 <Text modifiers={labelModifiers}>Password</Text>
                 <PasswordField
+                  testID="sign-in-email-password"
                   onTextChange={setPassword}
                   onSubmit={() => startTransition(() => signInWithEmail())}
                   disabled={isLoading}
@@ -357,6 +363,7 @@ export default function SignInScreen() {
               </VStack>
               {emailFeatures && (
                 <Button
+                  testID="sign-in-email-forgot-password"
                   label="Forgot password?"
                   modifiers={[
                     buttonStyle("plain"),
@@ -377,6 +384,7 @@ export default function SignInScreen() {
               <VStack spacing={6} alignment="leading" modifiers={[frame({ maxWidth: Infinity })]}>
                 <Text modifiers={labelModifiers}>Username</Text>
                 <TextField
+                  testID="sign-in-username"
                   text={usernameFieldState}
                   placeholder="johndoe"
                   onTextChange={(text) => {
@@ -401,6 +409,7 @@ export default function SignInScreen() {
               <VStack spacing={6} alignment="leading" modifiers={[frame({ maxWidth: Infinity })]}>
                 <Text modifiers={labelModifiers}>Password</Text>
                 <PasswordField
+                  testID="sign-in-username-password"
                   onTextChange={setPassword}
                   onSubmit={() => startTransition(() => signInWithUsername())}
                   disabled={isLoading}
@@ -410,6 +419,7 @@ export default function SignInScreen() {
               </VStack>
               {emailFeatures && (
                 <Button
+                  testID="sign-in-username-forgot-password"
                   label="Forgot password?"
                   modifiers={[
                     buttonStyle("plain"),
@@ -429,6 +439,7 @@ export default function SignInScreen() {
             <VStack spacing={6} alignment="leading" modifiers={[frame({ maxWidth: Infinity })]}>
               <Text modifiers={labelModifiers}>Email</Text>
               <TextField
+                testID="sign-in-otp-email"
                 placeholder="you@example.com"
                 onTextChange={setOtpEmail}
                 modifiers={[
@@ -451,6 +462,7 @@ export default function SignInScreen() {
           )}
 
           <ProminentButton
+            testID="sign-in-submit"
             label={primaryLabel}
             onPress={() => startTransition(onSubmit)}
             disabled={isLoading}
@@ -458,6 +470,7 @@ export default function SignInScreen() {
 
           {!isOtp && showApple && (
             <AppleButton
+              testID="sign-in-apple"
               type={AppleAuthentication.AppleAuthenticationButtonType.SIGN_IN}
               onPress={() => startTransition(() => signInWithApple())}
               disabled={isLoading}

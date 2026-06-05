@@ -146,7 +146,10 @@ export default function ResetPasswordScreen() {
 
   if (state.ok) {
     return (
-      <Host style={{ flex: 1, backgroundColor: colors.background }}>
+      <Host
+        testID="reset-password-success-screen"
+        style={{ flex: 1, backgroundColor: colors.background }}
+      >
         <VStack
           spacing={16}
           alignment="center"
@@ -154,12 +157,18 @@ export default function ResetPasswordScreen() {
         >
           <Spacer />
           <Image
+            testID="reset-password-success-icon"
             systemName="checkmark.circle.fill"
             size={symbolSize(56)}
             color={colors.success}
             modifiers={[accessibilityLabel("")]}
           />
-          <Text modifiers={[dfont({ size: 28, weight: "bold" })]}>Password reset!</Text>
+          <Text
+            testID="reset-password-success-title"
+            modifiers={[dfont({ size: 28, weight: "bold" })]}
+          >
+            Password reset!
+          </Text>
           <Text
             modifiers={[
               dfont({ size: 15 }),
@@ -170,6 +179,7 @@ export default function ResetPasswordScreen() {
             Your password has been reset. You can now sign in with your new password.
           </Text>
           <ProminentButton
+            testID="reset-password-success-sign-in"
             label="Sign in"
             onPress={() => {
               haptics.light();
@@ -185,7 +195,7 @@ export default function ResetPasswordScreen() {
   const labelModifiers = [dfont({ size: 17, weight: "semibold" })];
 
   return (
-    <Host style={{ flex: 1, backgroundColor: colors.background }}>
+    <Host testID="reset-password-screen" style={{ flex: 1, backgroundColor: colors.background }}>
       <ScrollView
         modifiers={[
           scrollDismissesKeyboard("interactively"),
@@ -211,7 +221,9 @@ export default function ResetPasswordScreen() {
           </RNHostView>
 
           <VStack spacing={6} alignment="leading">
-            <Text modifiers={[dfont({ size: 28, weight: "bold" })]}>Reset password</Text>
+            <Text testID="reset-password-title" modifiers={[dfont({ size: 28, weight: "bold" })]}>
+              Reset password
+            </Text>
             <Text
               modifiers={[dfont({ size: 16 }), foregroundStyle(colors.mutedForeground as string)]}
             >
@@ -222,6 +234,7 @@ export default function ResetPasswordScreen() {
           <VStack spacing={6} alignment="leading" modifiers={[frame({ maxWidth: Infinity })]}>
             <Text modifiers={labelModifiers}>Account</Text>
             <TextField
+              testID="reset-password-account"
               text={emailIdentityState}
               modifiers={[
                 ...inputModifiers,
@@ -235,9 +248,10 @@ export default function ResetPasswordScreen() {
 
           {error && (
             <VStack spacing={8} alignment="leading">
-              <ErrorText>{error}</ErrorText>
+              <ErrorText testID="reset-password-error">{error}</ErrorText>
               {isExpiredError && (
                 <Button
+                  testID="reset-password-request-code"
                   label="Request a new code"
                   modifiers={[buttonStyle("plain"), dfont({ size: 14 })]}
                   onPress={() => {
@@ -252,6 +266,7 @@ export default function ResetPasswordScreen() {
           <VStack spacing={6} alignment="leading" modifiers={[frame({ maxWidth: Infinity })]}>
             <Text modifiers={labelModifiers}>Verification code</Text>
             <TextField
+              testID="reset-password-code"
               text={otpState}
               placeholder="000000"
               onTextChange={(text) => {
@@ -280,6 +295,7 @@ export default function ResetPasswordScreen() {
           <VStack spacing={6} alignment="leading" modifiers={[frame({ maxWidth: Infinity })]}>
             <Text modifiers={labelModifiers}>New password</Text>
             <PasswordField
+              testID="reset-password-new"
               onTextChange={setPassword}
               contentType="newPassword"
               disabled={isPending}
@@ -297,6 +313,7 @@ export default function ResetPasswordScreen() {
           <VStack spacing={6} alignment="leading" modifiers={[frame({ maxWidth: Infinity })]}>
             <Text modifiers={labelModifiers}>Confirm password</Text>
             <PasswordField
+              testID="reset-password-confirm"
               onTextChange={setConfirmPassword}
               onSubmit={() => startTransition(() => submit())}
               contentType="newPassword"
@@ -307,6 +324,7 @@ export default function ResetPasswordScreen() {
           </VStack>
 
           <ProminentButton
+            testID="reset-password-submit"
             label={isPending ? "Resetting..." : "Reset password"}
             onPress={() => startTransition(() => submit())}
             disabled={isPending}
@@ -314,6 +332,7 @@ export default function ResetPasswordScreen() {
 
           <VStack alignment="center" modifiers={[frame({ maxWidth: Infinity })]}>
             <Button
+              testID="reset-password-back-to-sign-in"
               label="Back to sign in"
               modifiers={[
                 buttonStyle("plain"),
@@ -342,6 +361,7 @@ export default function ResetPasswordScreen() {
         </ConfirmationDialog.Trigger>
         <ConfirmationDialog.Actions>
           <Button
+            testID="reset-password-discard"
             label="Discard"
             role="destructive"
             onPress={() => {
@@ -351,7 +371,7 @@ export default function ResetPasswordScreen() {
               if (action) navigation.dispatch(action);
             }}
           />
-          <Button label="Keep Editing" role="cancel" />
+          <Button testID="reset-password-keep-editing" label="Keep Editing" role="cancel" />
         </ConfirmationDialog.Actions>
         <ConfirmationDialog.Message>
           <Text modifiers={[dfont({ size: 16 })]}>Your password entries will be lost.</Text>

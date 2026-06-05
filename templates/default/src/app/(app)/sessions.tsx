@@ -120,19 +120,21 @@ export default function SessionsScreen() {
   };
 
   return (
-    <Host style={{ flex: 1, backgroundColor: colors.background }}>
+    <Host testID="sessions-screen" style={{ flex: 1, backgroundColor: colors.background }}>
       {sessions === null ? (
         loadError ? (
           <ContentUnavailable
+            testID="sessions-error"
             title="Couldn't load sessions"
             systemImage="exclamationmark.triangle"
             description="Check your connection and try again."
           />
         ) : (
-          <SkeletonSessions />
+          <SkeletonSessions testID="sessions-loading" />
         )
       ) : sessions.length === 0 ? (
         <ContentUnavailable
+          testID="sessions-empty"
           title="No active sessions"
           systemImage="list.bullet.rectangle.portrait"
           description="You have no other active sessions."
@@ -145,6 +147,7 @@ export default function SessionsScreen() {
             modifiers={[padding({ horizontal: 24, top: 24, bottom: 40 })]}
           >
             <Text
+              testID="sessions-heading"
               modifiers={[
                 dfont({ size: 13, weight: "semibold" }),
                 foregroundStyle(colors.mutedForeground as string),
@@ -157,6 +160,7 @@ export default function SessionsScreen() {
               return (
                 <HStack
                   key={s.id}
+                  testID={`session-row-${s.token}`}
                   spacing={12}
                   alignment="center"
                   modifiers={[
@@ -169,12 +173,14 @@ export default function SessionsScreen() {
                   <VStack alignment="leading" spacing={2}>
                     <HStack spacing={8} alignment="center">
                       <Text
+                        testID={`session-device-${s.token}`}
                         modifiers={[dfont({ size: 16, weight: "semibold" }), textSelection(true)]}
                       >
                         {deviceLabel(s.userAgent)}
                       </Text>
                       {isCurrent ? (
                         <Text
+                          testID={`session-current-badge-${s.token}`}
                           modifiers={[
                             dfont({ size: 11, weight: "semibold" }),
                             foregroundStyle(colors.primaryForeground as string),
@@ -188,6 +194,7 @@ export default function SessionsScreen() {
                       ) : null}
                     </HStack>
                     <Text
+                      testID={`session-meta-${s.token}`}
                       modifiers={[
                         dfont({ size: 13 }),
                         foregroundStyle(colors.mutedForeground as string),
@@ -206,6 +213,7 @@ export default function SessionsScreen() {
                     >
                       <Alert.Trigger>
                         <Button
+                          testID={`session-revoke-${s.token}`}
                           modifiers={[
                             buttonStyle("plain"),
                             frame({ minHeight: TouchTarget.min }),
@@ -228,6 +236,7 @@ export default function SessionsScreen() {
                       </Alert.Trigger>
                       <Alert.Actions>
                         <Button
+                          testID={`session-revoke-confirm-${s.token}`}
                           label="Revoke"
                           role="destructive"
                           onPress={() => {
@@ -235,7 +244,11 @@ export default function SessionsScreen() {
                             void revoke(s.token);
                           }}
                         />
-                        <Button label="Cancel" role="cancel" />
+                        <Button
+                          testID={`session-revoke-cancel-${s.token}`}
+                          label="Cancel"
+                          role="cancel"
+                        />
                       </Alert.Actions>
                       <Alert.Message>
                         <Text modifiers={[dfont({ size: 16 })]}>
@@ -250,6 +263,7 @@ export default function SessionsScreen() {
             })}
             {revoking ? (
               <Text
+                testID="sessions-revoking"
                 modifiers={[
                   dfont({ size: 13 }),
                   foregroundStyle(colors.mutedForeground as string),

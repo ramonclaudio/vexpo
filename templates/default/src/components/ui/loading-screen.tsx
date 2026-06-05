@@ -5,11 +5,12 @@ import { accessibilityLabel, progressViewStyle, tint } from "@expo/ui/swift-ui/m
 import { assets } from "@/lib/assets";
 import { useColors, useThemedAsset } from "@/hooks/use-theme";
 
-export function LoadingScreen() {
+export function LoadingScreen({ testID }: { testID?: string } = {}) {
   const colors = useColors();
   const brandIcon = useThemedAsset(assets.brandIconLight, assets.brandIconDark);
   return (
     <Host
+      testID={testID}
       style={{ flex: 1, backgroundColor: colors.background as string }}
       useViewportSizeMeasurement
     >
