@@ -1,5 +1,4 @@
 import { startTransition, useActionState, useState } from "react";
-import { useMutation } from "convex/react";
 import {
   Host,
   VStack,
@@ -38,7 +37,6 @@ import { useDynamicFont } from "@/lib/dynamic-font";
 import { useSymbolSize } from "@/lib/dynamic-symbol-size";
 import { Button as ButtonTokens, TouchTarget } from "@/constants/layout";
 
-import { api } from "@/convex/_generated/api";
 import { authClient } from "@/lib/auth-client";
 import { haptics } from "@/lib/haptics";
 import { useColors } from "@/hooks/use-theme";
@@ -46,8 +44,6 @@ import { maskOtp } from "@/lib/masks";
 import { ProminentButton } from "@/components/ui/prominent-button";
 import { ErrorText } from "@/components/ui/status-text";
 import { announce } from "@/lib/a11y";
-
-export type PendingAvatar = { uri: string; mimeType: string };
 
 export type OtpFlow = "verify-email" | "sign-in";
 
@@ -62,33 +58,18 @@ type OtpVerificationProps = {
    * returning user in passwordlessly.
    */
   flow?: OtpFlow;
-  /**
-   * Avatar picked during sign-up. Uploaded to Convex storage right after
-   * verifyEmail succeeds and autoSignInAfterVerification mints the session.
-   * Held in the parent's state so it's forgotten if the user backs out.
-   * Ignored when `flow` is "sign-in" (existing accounts already have an
-   * avatar configured from the profile screen).
-   */
-  pendingAvatar?: PendingAvatar | null;
 };
 
 type OtpState = { error?: string; ok?: boolean };
 const initialState: OtpState = {};
 
-export function OtpVerification({
-  email,
-  onBack,
-  flow = "verify-email",
-  pendingAvatar,
-}: OtpVerificationProps) {
+export function OtpVerification({ email, onBack, flow = "verify-email" }: OtpVerificationProps) {
   const dfont = useDynamicFont();
   const symbolSize = useSymbolSize();
   const colors = useColors();
   const otpState = useNativeState("");
   const [otp, setOtp] = useState("");
   const [lastAction, setLastAction] = useState<"verify" | "resend">("verify");
-  const generateAvatarUploadUrl = useMutation(api.users.generateAvatarUploadUrl);
-  const updateAvatar = useMutation(api.users.updateAvatar);
   const isSignIn = flow === "sign-in";
 
   const [verifyState, verify, isVerifying] = useActionState<OtpState, void>(async () => {
@@ -107,27 +88,6 @@ export function OtpVerification({
       if (response.error) {
         haptics.error();
         return { error: "Invalid or expired code. Please try again." };
-      }
-
-      // Upload the avatar picked at sign-up before this component unmounts.
-      // Stack.Protected swaps (auth) -> (app) on the next render once the
-      // session lands, but kicking off the requests here keeps them in flight
-      // server-side regardless of the unmount. Failures are non-fatal: the
-      // user is verified, they can set a photo from the profile screen.
-      if (!isSignIn && pendingAvatar) {
-        try {
-          const uploadUrl = await generateAvatarUploadUrl();
-          const blob = await (await fetch(pendingAvatar.uri)).blob();
-          const upload = await fetch(uploadUrl, {
-            method: "POST",
-            headers: { "Content-Type": pendingAvatar.mimeType },
-            body: blob,
-          });
-          if (upload.ok) {
-            const { storageId } = (await upload.json()) as { storageId: string };
-            await updateAvatar({ storageId: storageId as never });
-          }
-        } catch {}
       }
 
       haptics.success();

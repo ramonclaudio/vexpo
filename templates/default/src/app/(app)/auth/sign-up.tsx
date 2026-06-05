@@ -1,7 +1,6 @@
 import { startTransition, useActionState, useCallback, useEffect, useRef, useState } from "react";
 import * as AppleAuthentication from "expo-apple-authentication";
 import { Image as ExpoImage } from "expo-image";
-import * as ImagePicker from "expo-image-picker";
 import { router, useNavigation } from "expo-router";
 import { useQuery } from "convex/react";
 import {
@@ -33,12 +32,8 @@ import {
   scrollDismissesKeyboard,
   accessibilityLabel,
   accessibilityHint,
-  buttonStyle,
-  contentShape,
-  shapes,
   tint,
   background,
-  border,
   clipShape,
   id,
   scrollPosition,
@@ -46,7 +41,7 @@ import {
 } from "@expo/ui/swift-ui/modifiers";
 import { useDynamicFont } from "@/lib/dynamic-font";
 import { useSymbolSize } from "@/lib/dynamic-symbol-size";
-import { Button as ButtonTokens, TouchTarget } from "@/constants/layout";
+import { Button as ButtonTokens } from "@/constants/layout";
 
 import { api } from "@/convex/_generated/api";
 import { isReservedUsername, isValidUsernameFormat } from "@/convex/constants";
@@ -57,7 +52,7 @@ import { assets } from "@/lib/assets";
 import { haptics } from "@/lib/haptics";
 import { maskUsername } from "@/lib/masks";
 import { setNativeValue } from "@/lib/native-state";
-import { OtpVerification, type PendingAvatar } from "@/components/auth/otp-verification";
+import { OtpVerification } from "@/components/auth/otp-verification";
 import { PasswordField } from "@/components/auth/password-field";
 import { SegmentedToggle } from "@/components/auth/segmented-toggle";
 import { ProminentButton } from "@/components/ui/prominent-button";
@@ -69,8 +64,6 @@ import { AppleButton } from "@/components/auth/apple-button";
 
 type SignUpState = { error?: string; verify?: boolean };
 const initialState: SignUpState = {};
-
-const AVATAR_SIZE = 56;
 
 export default function SignUpScreen() {
   const dfont = useDynamicFont();
@@ -91,12 +84,6 @@ export default function SignUpScreen() {
   // no OTP step. When true (testflight tier+), the OTP verification
   // screen renders after sign-up.
   const emailFeatures = providers?.emailFeatures === true;
-
-  // Avatar picked at sign-up. Held until verifyEmail mints the session, then
-  // OtpVerification uploads it via generateAvatarUploadUrl + updateAvatar.
-  const [pendingAvatar, setPendingAvatar] = useState<PendingAvatar | null>(null);
-  const [avatarPicker, setAvatarPicker] = useState(false);
-  const [avatarError, setAvatarError] = useState<string | null>(null);
 
   // Bound to ScrollView via `scrollPosition`. Writing a field id scrolls the
   // form so that field aligns with the top of the viewport.
@@ -145,46 +132,6 @@ export default function SignUpScreen() {
     },
     [],
   );
-
-  const pickAvatar = useCallback(async (source: "library" | "camera") => {
-    haptics.light();
-    setAvatarPicker(false);
-    // Wait for the action sheet to finish dismissing before opening the
-    // picker. iOS refuses to present a second view controller while one is
-    // still animating away.
-    await new Promise((r) => setTimeout(r, 350));
-    const perm =
-      source === "camera"
-        ? await ImagePicker.requestCameraPermissionsAsync()
-        : await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!perm.granted) {
-      haptics.error();
-      setAvatarError(source === "camera" ? "Camera access denied" : "Photos access denied");
-      return;
-    }
-    const options: ImagePicker.ImagePickerOptions = {
-      mediaTypes: ["images"],
-      allowsEditing: true,
-      aspect: [1, 1],
-      quality: 0.8,
-    };
-    const result =
-      source === "camera"
-        ? await ImagePicker.launchCameraAsync(options)
-        : await ImagePicker.launchImageLibraryAsync(options);
-    if (result.canceled) return;
-    const asset = result.assets[0];
-    if (!asset) return;
-    setAvatarError(null);
-    setPendingAvatar({ uri: asset.uri, mimeType: asset.mimeType ?? "image/jpeg" });
-  }, []);
-
-  const removeAvatar = useCallback(() => {
-    setAvatarPicker(false);
-    haptics.medium();
-    setPendingAvatar(null);
-    setAvatarError(null);
-  }, []);
 
   useEffect(() => {
     AppleAuthentication.isAvailableAsync().then(setAppleAvailable);
@@ -285,7 +232,7 @@ export default function SignUpScreen() {
   );
 
   const isLoading = isPending || isApplePending;
-  const error = state.error ?? appleState.error ?? avatarError;
+  const error = state.error ?? appleState.error;
   // HIG: pair color with a non-color signal. The status row carries text +
   // color + an SF Symbol so a colorblind user gets the same answer.
   const usernameStatus: {
@@ -319,13 +266,7 @@ export default function SignUpScreen() {
   })();
 
   if (showVerification) {
-    return (
-      <OtpVerification
-        email={email}
-        pendingAvatar={pendingAvatar}
-        onBack={() => setShowVerification(false)}
-      />
-    );
+    return <OtpVerification email={email} onBack={() => setShowVerification(false)} />;
   }
 
   const labelModifiers = [dfont({ size: 17, weight: "semibold" })];
@@ -391,101 +332,6 @@ export default function SignUpScreen() {
           />
 
           {error && <ErrorText testID="sign-up-error">{error}</ErrorText>}
-
-          <VStack spacing={10} alignment="leading" modifiers={[frame({ maxWidth: Infinity })]}>
-            <Text modifiers={labelModifiers}>Profile photo (optional)</Text>
-            <ConfirmationDialog
-              title="Profile photo"
-              isPresented={avatarPicker}
-              onIsPresentedChange={setAvatarPicker}
-              titleVisibility="visible"
-            >
-              <ConfirmationDialog.Trigger>
-                <Button
-                  testID="sign-up-avatar"
-                  modifiers={[
-                    buttonStyle("plain"),
-                    frame({ maxWidth: Infinity, minHeight: TouchTarget.min }),
-                    contentShape(shapes.rectangle()),
-                    accessibilityLabel(
-                      pendingAvatar ? "Change profile photo" : "Add profile photo",
-                    ),
-                  ]}
-                  onPress={() => {
-                    haptics.light();
-                    setAvatarPicker(true);
-                  }}
-                >
-                  <HStack
-                    spacing={16}
-                    alignment="center"
-                    modifiers={[frame({ maxWidth: Infinity })]}
-                  >
-                    {pendingAvatar ? (
-                      <RNHostView matchContents>
-                        <ExpoImage
-                          source={{ uri: pendingAvatar.uri }}
-                          style={
-                            {
-                              width: AVATAR_SIZE,
-                              height: AVATAR_SIZE,
-                              borderRadius: AVATAR_SIZE / 2,
-                            } as never
-                          }
-                          contentFit="cover"
-                          accessibilityLabel="Selected profile photo"
-                        />
-                      </RNHostView>
-                    ) : (
-                      <VStack
-                        alignment="center"
-                        modifiers={[
-                          frame({ width: AVATAR_SIZE, height: AVATAR_SIZE }),
-                          background(colors.muted as string),
-                          border({ color: colors.border as string, width: 2 }),
-                          clipShape("circle"),
-                        ]}
-                      >
-                        <Image
-                          systemName="camera"
-                          size={symbolSize(20)}
-                          color={colors.mutedForeground as string}
-                          modifiers={[accessibilityLabel("")]}
-                        />
-                      </VStack>
-                    )}
-                    <Text modifiers={helperModifiers}>
-                      {pendingAvatar ? "Photo selected" : "Tap to upload"}
-                    </Text>
-                    <Spacer />
-                  </HStack>
-                </Button>
-              </ConfirmationDialog.Trigger>
-              <ConfirmationDialog.Actions>
-                <Button
-                  testID="sign-up-avatar-choose"
-                  label="Choose Photo"
-                  systemImage="photo.on.rectangle"
-                  onPress={() => pickAvatar("library")}
-                />
-                <Button
-                  testID="sign-up-avatar-take"
-                  label="Take Photo"
-                  systemImage="camera"
-                  onPress={() => pickAvatar("camera")}
-                />
-                {pendingAvatar ? (
-                  <Button
-                    testID="sign-up-avatar-remove"
-                    label="Remove Photo"
-                    role="destructive"
-                    onPress={removeAvatar}
-                  />
-                ) : null}
-                <Button testID="sign-up-avatar-cancel" label="Cancel" role="cancel" />
-              </ConfirmationDialog.Actions>
-            </ConfirmationDialog>
-          </VStack>
 
           <VStack
             spacing={6}
