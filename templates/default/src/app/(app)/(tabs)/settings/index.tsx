@@ -87,12 +87,14 @@ export default function SettingsScreen() {
 
   type SFSymbol = NonNullable<ComponentProps<typeof Image>["systemName"]>;
   const rowButton = ({
+    testID,
     label,
     systemImage,
     onPress,
     role,
     fg,
   }: {
+    testID: string;
     label: string;
     systemImage: SFSymbol;
     onPress: () => void;
@@ -104,6 +106,7 @@ export default function SettingsScreen() {
       (role === "destructive" ? (colors.destructive as string) : (colors.foreground as string));
     return (
       <Button
+        testID={testID}
         modifiers={[
           buttonStyle("plain"),
           frame({ maxWidth: Infinity }),
@@ -139,7 +142,7 @@ export default function SettingsScreen() {
   };
 
   return (
-    <Host style={{ flex: 1, backgroundColor: colors.background }}>
+    <Host testID="settings-screen" style={{ flex: 1, backgroundColor: colors.background }}>
       <ScrollView
         modifiers={[scrollDismissesKeyboard("interactively"), tint(colors.primary as string)]}
       >
@@ -149,6 +152,7 @@ export default function SettingsScreen() {
           modifiers={[padding({ horizontal: 24, top: 24, bottom: 40 })]}
         >
           <Button
+            testID="settings-profile"
             modifiers={[
               buttonStyle("plain"),
               frame({ maxWidth: Infinity }),
@@ -172,6 +176,7 @@ export default function SettingsScreen() {
               <ProfileHeaderAvatar avatarUrl={me?.avatarUrl ?? null} />
               <VStack alignment="leading" spacing={2}>
                 <Text
+                  testID="settings-profile-name"
                   modifiers={[
                     dfont({ size: 17, weight: "semibold" }),
                     foregroundStyle(colors.foreground as string),
@@ -183,6 +188,7 @@ export default function SettingsScreen() {
                 </Text>
                 {me?.email ? (
                   <Text
+                    testID="settings-profile-email"
                     modifiers={[
                       dfont({ size: 14 }),
                       foregroundStyle(colors.mutedForeground as string),
@@ -207,11 +213,13 @@ export default function SettingsScreen() {
 
           <VStack spacing={8} modifiers={[frame({ maxWidth: Infinity })]}>
             {rowButton({
+              testID: "settings-sessions",
               label: "Sessions",
               systemImage: "list.bullet.rectangle.portrait",
               onPress: () => navigate("/sessions"),
             })}
             {rowButton({
+              testID: "settings-preferences",
               label: "Preferences",
               systemImage: "slider.horizontal.3",
               onPress: () => navigate("/settings/preferences"),
@@ -220,22 +228,26 @@ export default function SettingsScreen() {
 
           <VStack spacing={8} modifiers={[frame({ maxWidth: Infinity })]}>
             {rowButton({
+              testID: "settings-help",
               label: "Help & Feedback",
               systemImage: "questionmark.bubble.fill",
               onPress: () => navigate("/help"),
             })}
             {rowButton({
+              testID: "settings-privacy",
               label: "Privacy",
               systemImage: "lock.shield.fill",
               onPress: () => navigate("/privacy"),
             })}
             {rowButton({
+              testID: "settings-copy-version",
               label: "Copy version",
               systemImage: "doc.on.doc",
               onPress: handleCopyVersion,
             })}
             {debugOn
               ? rowButton({
+                  testID: "settings-debug",
                   label: "Debug",
                   systemImage: "ant.circle",
                   onPress: () => navigate(DEBUG_HREF),
@@ -252,6 +264,7 @@ export default function SettingsScreen() {
             >
               <ConfirmationDialog.Trigger>
                 {rowButton({
+                  testID: "settings-sign-out",
                   label: "Sign out",
                   systemImage: "rectangle.portrait.and.arrow.right",
                   onPress: () => setShowSignOut(true),
@@ -259,8 +272,13 @@ export default function SettingsScreen() {
                 })}
               </ConfirmationDialog.Trigger>
               <ConfirmationDialog.Actions>
-                <Button label="Sign Out" role="destructive" onPress={handleSignOut} />
-                <Button label="Cancel" role="cancel" />
+                <Button
+                  testID="settings-sign-out-confirm"
+                  label="Sign Out"
+                  role="destructive"
+                  onPress={handleSignOut}
+                />
+                <Button testID="settings-sign-out-cancel" label="Cancel" role="cancel" />
               </ConfirmationDialog.Actions>
               <ConfirmationDialog.Message>
                 <Text modifiers={[dfont({ size: 16 })]}>
@@ -277,6 +295,7 @@ export default function SettingsScreen() {
             >
               <Alert.Trigger>
                 {rowButton({
+                  testID: "settings-delete-account",
                   label: "Delete account",
                   systemImage: "trash",
                   onPress: () => setShowDeleteAccount(true),
@@ -284,8 +303,13 @@ export default function SettingsScreen() {
                 })}
               </Alert.Trigger>
               <Alert.Actions>
-                <Button label="Delete Account" role="destructive" onPress={deleteAccount} />
-                <Button label="Cancel" role="cancel" />
+                <Button
+                  testID="settings-delete-account-confirm"
+                  label="Delete Account"
+                  role="destructive"
+                  onPress={deleteAccount}
+                />
+                <Button testID="settings-delete-account-cancel" label="Cancel" role="cancel" />
               </Alert.Actions>
               <Alert.Message>
                 <Text modifiers={[dfont({ size: 16 })]}>
@@ -296,11 +320,12 @@ export default function SettingsScreen() {
             </Alert>
           </VStack>
 
-          {deleteError ? <ErrorText>{deleteError}</ErrorText> : null}
+          {deleteError ? <ErrorText testID="settings-delete-error">{deleteError}</ErrorText> : null}
 
           <HStack modifiers={[frame({ maxWidth: Infinity }), padding({ top: 16 })]}>
             <Spacer />
             <Text
+              testID="settings-version"
               modifiers={[dfont({ size: 12 }), foregroundStyle(colors.tertiaryLabel as string)]}
             >
               v{version}

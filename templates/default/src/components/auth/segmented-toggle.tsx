@@ -24,6 +24,7 @@ type Props<T extends string> = {
   // bare segmented Picker reads only the segment labels and would otherwise
   // leave the user without context for what the group controls.
   accessibilityLabel: string;
+  testID?: string;
 };
 
 export function SegmentedToggle<T extends string>({
@@ -31,10 +32,12 @@ export function SegmentedToggle<T extends string>({
   options,
   onChange,
   accessibilityLabel: a11yLabel,
+  testID,
 }: Props<T>) {
   const dfont = useDynamicFont();
   return (
     <Picker
+      testID={testID}
       modifiers={[
         pickerStyle("segmented"),
         controlSize("large"),
@@ -50,7 +53,11 @@ export function SegmentedToggle<T extends string>({
       }}
     >
       {options.map((opt) => (
-        <Text key={opt.value} modifiers={[tag(opt.value), dfont({ size: 14, weight: "medium" })]}>
+        <Text
+          key={opt.value}
+          testID={testID ? `${testID}-${opt.value}` : undefined}
+          modifiers={[tag(opt.value), dfont({ size: 14, weight: "medium" })]}
+        >
           {opt.label}
         </Text>
       ))}

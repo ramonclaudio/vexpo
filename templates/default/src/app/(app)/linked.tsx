@@ -23,7 +23,7 @@ export default function LinkedScreen() {
   const entries = Object.entries(params).filter(([, v]) => v != null);
 
   return (
-    <Host style={{ flex: 1, backgroundColor: colors.background }}>
+    <Host testID="linked-screen" style={{ flex: 1, backgroundColor: colors.background }}>
       <ScrollView
         modifiers={[scrollDismissesKeyboard("interactively"), tint(colors.primary as string)]}
       >
@@ -33,7 +33,7 @@ export default function LinkedScreen() {
           modifiers={[padding({ horizontal: 24, top: 24, bottom: 40 })]}
         >
           <VStack spacing={6} alignment="leading">
-            <Text modifiers={[dfont({ size: 22, weight: "bold" })]}>
+            <Text testID="linked-title" modifiers={[dfont({ size: 22, weight: "bold" })]}>
               You got here via a deep link
             </Text>
             <Text
@@ -82,6 +82,7 @@ export default function LinkedScreen() {
                     ]}
                   >
                     <Text
+                      testID={`linked-param-${key}`}
                       modifiers={[
                         dfont({ size: 13, design: "monospaced" }),
                         foregroundStyle(colors.foreground as string),
@@ -96,6 +97,7 @@ export default function LinkedScreen() {
             </VStack>
           ) : (
             <ContentUnavailable
+              testID="linked-empty"
               title="No params"
               systemImage="link.badge.plus"
               description="This deep link didn't include any parameters."

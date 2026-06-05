@@ -52,9 +52,10 @@ type InfoRowProps = {
   value: string;
   valueModifiers?: Parameters<typeof Text>[0]["modifiers"];
   valueColor?: string;
+  testID?: string;
 };
 
-function InfoRow({ label, value, valueModifiers, valueColor }: InfoRowProps) {
+function InfoRow({ label, value, valueModifiers, valueColor, testID }: InfoRowProps) {
   const colors = useColors();
   const dfont = useDynamicFont();
   return (
@@ -67,6 +68,7 @@ function InfoRow({ label, value, valueModifiers, valueColor }: InfoRowProps) {
       modifiers={[frame({ maxWidth: Infinity }), padding({ horizontal: 16, vertical: 12 })]}
     >
       <Text
+        testID={testID}
         modifiers={[
           dfont({ size: 15, weight: "medium" }),
           foregroundStyle((valueColor ?? colors.foreground) as string),
@@ -163,7 +165,7 @@ export default function DebugScreen() {
   ];
 
   return (
-    <Host style={{ flex: 1, backgroundColor: colors.background }}>
+    <Host testID="debug-screen" style={{ flex: 1, backgroundColor: colors.background }}>
       <ScrollView
         modifiers={[scrollDismissesKeyboard("interactively"), tint(colors.primary as string)]}
       >
@@ -175,13 +177,37 @@ export default function DebugScreen() {
           <VStack spacing={8} alignment="leading" modifiers={[frame({ maxWidth: Infinity })]}>
             <Text modifiers={sectionLabelModifiers}>BUILD</Text>
             <InfoCard>
-              <InfoRow label="Version" value={`${appVersion} (${buildNumber})`} />
-              <InfoRow label="Expo SDK" value={Constants.expoConfig?.sdkVersion ?? "Unknown"} />
-              <InfoRow label="App name" value={Application.applicationName ?? "N/A"} />
-              <InfoRow label="Bundle id" value={Application.applicationId ?? "N/A"} />
-              <InfoRow label="Environment" value={executionEnvironment} />
+              <InfoRow
+                testID="debug-version-value"
+                label="Version"
+                value={`${appVersion} (${buildNumber})`}
+              />
+              <InfoRow
+                testID="debug-sdk-value"
+                label="Expo SDK"
+                value={Constants.expoConfig?.sdkVersion ?? "Unknown"}
+              />
+              <InfoRow
+                testID="debug-app-name-value"
+                label="App name"
+                value={Application.applicationName ?? "N/A"}
+              />
+              <InfoRow
+                testID="debug-bundle-id-value"
+                label="Bundle id"
+                value={Application.applicationId ?? "N/A"}
+              />
+              <InfoRow
+                testID="debug-environment-value"
+                label="Environment"
+                value={executionEnvironment}
+              />
               {appInfo.installTime ? (
-                <InfoRow label="Installed" value={appInfo.installTime} />
+                <InfoRow
+                  testID="debug-installed-value"
+                  label="Installed"
+                  value={appInfo.installTime}
+                />
               ) : null}
             </InfoCard>
           </VStack>
@@ -190,33 +216,47 @@ export default function DebugScreen() {
             <VStack spacing={8} alignment="leading" modifiers={[frame({ maxWidth: Infinity })]}>
               <Text modifiers={sectionLabelModifiers}>OTA UPDATES</Text>
               <InfoCard>
-                <InfoRow label="Status" value={updates.statusText} />
-                <InfoRow label="Channel" value={updates.currentlyRunning.channel ?? "N/A"} />
                 <InfoRow
+                  testID="debug-ota-status-value"
+                  label="Status"
+                  value={updates.statusText}
+                />
+                <InfoRow
+                  testID="debug-ota-channel-value"
+                  label="Channel"
+                  value={updates.currentlyRunning.channel ?? "N/A"}
+                />
+                <InfoRow
+                  testID="debug-ota-runtime-value"
                   label="Runtime"
                   value={updates.currentlyRunning.runtimeVersion ?? expoRuntimeVersion ?? "N/A"}
                 />
                 <InfoRow
+                  testID="debug-ota-update-id-value"
                   label="Update id"
                   value={updates.currentlyRunning.updateId?.slice(0, 8) ?? "Embedded"}
                   valueModifiers={[dfont({ size: 13, design: "monospaced" })]}
                 />
                 <InfoRow
+                  testID="debug-ota-created-value"
                   label="Created"
                   value={updates.currentlyRunning.createdAt?.toLocaleDateString() ?? "N/A"}
                 />
                 <InfoRow
+                  testID="debug-ota-source-value"
                   label="Source"
                   value={updates.currentlyRunning.isEmbeddedLaunch ? "Embedded" : "OTA Update"}
                 />
                 {updates.currentlyRunning.launchDuration != null ? (
                   <InfoRow
+                    testID="debug-ota-launch-time-value"
                     label="Launch time"
                     value={`${updates.currentlyRunning.launchDuration}ms`}
                   />
                 ) : null}
                 {updates.currentlyRunning.isEmergencyLaunch ? (
                   <InfoRow
+                    testID="debug-ota-emergency-launch-value"
                     label="Emergency launch"
                     value={updates.currentlyRunning.emergencyLaunchReason ?? "Unknown error"}
                     valueColor={colors.warning as string}
@@ -230,6 +270,7 @@ export default function DebugScreen() {
                     ]}
                   >
                     <ProgressView
+                      testID="debug-ota-download-progress"
                       value={updates.downloadProgress ?? undefined}
                       modifiers={[
                         progressViewStyle("linear"),
@@ -241,6 +282,7 @@ export default function DebugScreen() {
                 ) : null}
                 {(updates.checkError ?? updates.downloadError) ? (
                   <InfoRow
+                    testID="debug-ota-error"
                     label="Error"
                     value={(updates.checkError ?? updates.downloadError)?.message ?? "Unknown"}
                     valueColor={colors.destructive as string}
@@ -248,6 +290,7 @@ export default function DebugScreen() {
                 ) : null}
                 {updates.lastCheckForUpdateTimeSinceRestart ? (
                   <InfoRow
+                    testID="debug-ota-last-checked-value"
                     label="Last checked"
                     value={updates.lastCheckForUpdateTimeSinceRestart.toLocaleTimeString()}
                   />
@@ -255,6 +298,7 @@ export default function DebugScreen() {
               </InfoCard>
               {updates.isUpdateAvailable && !updates.isDownloading ? (
                 <UpdateActionButton
+                  testID="debug-update-download"
                   label="Download & install"
                   onPress={updates.downloadAndApply}
                   colors={colors}
@@ -262,6 +306,7 @@ export default function DebugScreen() {
                 />
               ) : !updates.isChecking && !updates.isDownloading ? (
                 <UpdateActionButton
+                  testID="debug-update-check"
                   label="Check for updates"
                   onPress={updates.checkForUpdate}
                   colors={colors}
@@ -276,6 +321,7 @@ export default function DebugScreen() {
                     {updateLog.map((entry) => (
                       <InfoRow
                         key={`${entry.timestamp}-${entry.code}`}
+                        testID={`debug-ota-log-${entry.timestamp}-${entry.code}`}
                         label={entry.level.toUpperCase()}
                         value={`${entry.code}: ${entry.message}`}
                       />
@@ -291,13 +337,22 @@ export default function DebugScreen() {
               <Text modifiers={sectionLabelModifiers}>iOS</Text>
               <InfoCard>
                 {appInfo.iosReleaseType ? (
-                  <InfoRow label="Release type" value={appInfo.iosReleaseType} />
+                  <InfoRow
+                    testID="debug-ios-release-type-value"
+                    label="Release type"
+                    value={appInfo.iosReleaseType}
+                  />
                 ) : null}
                 {appInfo.iosPushEnv ? (
-                  <InfoRow label="Push env" value={appInfo.iosPushEnv} />
+                  <InfoRow
+                    testID="debug-ios-push-env-value"
+                    label="Push env"
+                    value={appInfo.iosPushEnv}
+                  />
                 ) : null}
                 {appInfo.iosVendorId ? (
                   <InfoRow
+                    testID="debug-ios-vendor-id-value"
                     label="Vendor id"
                     value={appInfo.iosVendorId}
                     valueModifiers={[dfont({ size: 13, design: "monospaced" })]}
@@ -311,23 +366,29 @@ export default function DebugScreen() {
             <Text modifiers={sectionLabelModifiers}>RUNTIME</Text>
             <InfoCard>
               <InfoRow
+                testID="debug-session-id-value"
                 label="Session id"
                 value={sessionId.slice(0, 8)}
                 valueModifiers={[dfont({ size: 13, design: "monospaced" })]}
               />
-              <InfoRow label="Build mode" value={debugMode ? "Debug" : "Release"} />
+              <InfoRow
+                testID="debug-build-mode-value"
+                label="Build mode"
+                value={debugMode ? "Debug" : "Release"}
+              />
             </InfoCard>
           </VStack>
 
           <VStack spacing={8} alignment="leading" modifiers={[frame({ maxWidth: Infinity })]}>
             <Text modifiers={sectionLabelModifiers}>DEVICE</Text>
             <InfoCard>
-              <InfoRow label="Model" value={deviceInfo} />
-              <InfoRow label="OS" value={osVersion} />
+              <InfoRow testID="debug-device-model-value" label="Model" value={deviceInfo} />
+              <InfoRow testID="debug-device-os-value" label="OS" value={osVersion} />
             </InfoCard>
           </VStack>
 
           <ShareLink
+            testID="debug-share-build-info"
             item={`App v${appVersion} (${buildNumber})`}
             subject="Build info"
             modifiers={[frame({ maxWidth: Infinity })]}
@@ -357,6 +418,7 @@ export default function DebugScreen() {
           <HStack modifiers={[frame({ maxWidth: Infinity }), padding({ top: 8 })]}>
             <Spacer />
             <Text
+              testID="debug-footer-version-value"
               modifiers={[dfont({ size: 12 }), foregroundStyle(colors.mutedForeground as string)]}
             >
               v{appVersion} ({buildNumber})
@@ -370,11 +432,13 @@ export default function DebugScreen() {
 }
 
 function UpdateActionButton({
+  testID,
   label,
   onPress,
   colors,
   dfont,
 }: {
+  testID: string;
   label: string;
   onPress: () => void;
   colors: ReturnType<typeof useColors>;
@@ -382,6 +446,7 @@ function UpdateActionButton({
 }) {
   return (
     <Button
+      testID={testID}
       modifiers={[
         buttonStyle("plain"),
         frame({ maxWidth: Infinity }),

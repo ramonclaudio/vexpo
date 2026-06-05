@@ -32,15 +32,18 @@ export function ProminentButton({
   label,
   onPress,
   disabled,
+  testID,
 }: {
   label: string;
   onPress: () => void;
   disabled?: boolean;
+  testID?: string;
 }) {
   const dfont = useDynamicFont();
   const colors = useColors();
   return (
     <Button
+      testID={testID}
       modifiers={[
         buttonStyle("plain"),
         frame({ maxWidth: Infinity }),

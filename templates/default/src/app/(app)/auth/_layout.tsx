@@ -7,7 +7,7 @@ import { LoadingScreen } from "@/components/ui/loading-screen";
 export { AppErrorBoundary as ErrorBoundary } from "@/components/ui/error-boundary";
 
 export function SuspenseFallback() {
-  return <LoadingScreen />;
+  return <LoadingScreen testID="auth-loading" />;
 }
 
 export default function AuthLayout() {

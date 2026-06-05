@@ -6,7 +6,7 @@ import { haptics } from "@/lib/haptics";
 import { LoadingScreen } from "@/components/ui/loading-screen";
 
 export function SuspenseFallback() {
-  return <LoadingScreen />;
+  return <LoadingScreen testID="tabs-loading" />;
 }
 
 export default function TabLayout() {

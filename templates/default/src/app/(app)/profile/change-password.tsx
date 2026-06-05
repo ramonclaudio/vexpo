@@ -45,7 +45,7 @@ const initialState: ChangePasswordState = {};
 
 export default function ChangePasswordScreen() {
   const me = useQuery(api.users.getMe);
-  if (!me) return <LoadingScreen />;
+  if (!me) return <LoadingScreen testID="change-password-loading" />;
   return <ChangePasswordForm email={me.email} />;
 }
 
@@ -115,7 +115,7 @@ function ChangePasswordForm({ email }: { email: string }) {
   const helperModifiers = [dfont({ size: 13 }), foregroundStyle(colors.mutedForeground as string)];
 
   return (
-    <Host style={{ flex: 1, backgroundColor: colors.background }}>
+    <Host testID="change-password-screen" style={{ flex: 1, backgroundColor: colors.background }}>
       <ScrollView
         modifiers={[
           scrollDismissesKeyboard("interactively"),
@@ -132,7 +132,9 @@ function ChangePasswordForm({ email }: { email: string }) {
           modifiers={[padding({ horizontal: 24, top: 24, bottom: 40 })]}
         >
           <VStack spacing={6} alignment="leading">
-            <Text modifiers={[dfont({ size: 28, weight: "bold" })]}>Change password</Text>
+            <Text testID="change-password-title" modifiers={[dfont({ size: 28, weight: "bold" })]}>
+              Change password
+            </Text>
             <Text
               modifiers={[dfont({ size: 14 }), foregroundStyle(colors.mutedForeground as string)]}
             >
@@ -143,6 +145,7 @@ function ChangePasswordForm({ email }: { email: string }) {
           <VStack spacing={6} alignment="leading" modifiers={[frame({ maxWidth: Infinity })]}>
             <Text modifiers={labelModifiers}>Account</Text>
             <TextField
+              testID="change-password-account"
               text={emailState}
               modifiers={[
                 textFieldStyle("plain"),
@@ -162,6 +165,7 @@ function ChangePasswordForm({ email }: { email: string }) {
           <VStack spacing={6} alignment="leading" modifiers={[frame({ maxWidth: Infinity })]}>
             <Text modifiers={labelModifiers}>Current password</Text>
             <PasswordField
+              testID="change-password-current"
               onTextChange={setCurrent}
               disabled={isPending}
               submitLabelType="next"
@@ -173,6 +177,7 @@ function ChangePasswordForm({ email }: { email: string }) {
           <VStack spacing={6} alignment="leading" modifiers={[frame({ maxWidth: Infinity })]}>
             <Text modifiers={labelModifiers}>New password</Text>
             <PasswordField
+              testID="change-password-new"
               onTextChange={setNext}
               contentType="newPassword"
               disabled={isPending}
@@ -186,6 +191,7 @@ function ChangePasswordForm({ email }: { email: string }) {
           <VStack spacing={6} alignment="leading" modifiers={[frame({ maxWidth: Infinity })]}>
             <Text modifiers={labelModifiers}>Confirm new password</Text>
             <PasswordField
+              testID="change-password-confirm"
               onTextChange={setConfirm}
               onSubmit={() => startTransition(() => submit())}
               contentType="newPassword"
@@ -195,9 +201,10 @@ function ChangePasswordForm({ email }: { email: string }) {
             />
           </VStack>
 
-          {state.error ? <ErrorText>{state.error}</ErrorText> : null}
+          {state.error ? <ErrorText testID="change-password-error">{state.error}</ErrorText> : null}
 
           <ProminentButton
+            testID="change-password-submit"
             label={isPending ? "Updating..." : "Update password"}
             onPress={() => startTransition(() => submit())}
             disabled={isPending}
@@ -205,6 +212,7 @@ function ChangePasswordForm({ email }: { email: string }) {
 
           <VStack alignment="center" modifiers={[frame({ maxWidth: Infinity })]}>
             <Button
+              testID="change-password-cancel"
               label="Cancel"
               modifiers={[
                 buttonStyle("plain"),
@@ -235,6 +243,7 @@ function ChangePasswordForm({ email }: { email: string }) {
         </ConfirmationDialog.Trigger>
         <ConfirmationDialog.Actions>
           <Button
+            testID="change-password-discard"
             label="Discard"
             role="destructive"
             onPress={() => {
@@ -244,7 +253,7 @@ function ChangePasswordForm({ email }: { email: string }) {
               if (action) navigation.dispatch(action);
             }}
           />
-          <Button label="Keep Editing" role="cancel" />
+          <Button testID="change-password-keep-editing" label="Keep Editing" role="cancel" />
         </ConfirmationDialog.Actions>
         <ConfirmationDialog.Message>
           <Text modifiers={[dfont({ size: 16 })]}>Your password entries will be lost.</Text>

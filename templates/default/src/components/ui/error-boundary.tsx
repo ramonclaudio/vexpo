@@ -18,7 +18,11 @@ import { ProminentButton } from "@/components/ui/prominent-button";
 import { useColors } from "@/hooks/use-theme";
 import { TouchTarget } from "@/constants/layout";
 
-export function AppErrorBoundary({ error, retry }: ErrorBoundaryProps) {
+export function AppErrorBoundary({
+  error,
+  retry,
+  testID,
+}: ErrorBoundaryProps & { testID?: string }) {
   const dfont = useDynamicFont();
   const symbolSize = useSymbolSize();
   const colors = useColors();
@@ -55,6 +59,7 @@ export function AppErrorBoundary({ error, retry }: ErrorBoundaryProps) {
           Something went wrong
         </Text>
         <Text
+          testID={testID}
           modifiers={[
             dfont({ size: 16 }),
             foregroundStyle(colors.mutedForeground as string),
@@ -64,8 +69,9 @@ export function AppErrorBoundary({ error, retry }: ErrorBoundaryProps) {
           Don&apos;t worry. Let&apos;s get you back on track.
         </Text>
         <VStack spacing={12} modifiers={[frame({ maxWidth: Infinity })]}>
-          <ProminentButton label="Try Again" onPress={retry} />
+          <ProminentButton testID="error-boundary-retry" label="Try Again" onPress={retry} />
           <Button
+            testID="error-boundary-home"
             label="Go Home"
             modifiers={[
               buttonStyle("plain"),

@@ -87,7 +87,7 @@ export default function ForgotPasswordScreen() {
   }, initialState);
 
   return (
-    <Host style={{ flex: 1, backgroundColor: colors.background }}>
+    <Host testID="forgot-password-screen" style={{ flex: 1, backgroundColor: colors.background }}>
       <ScrollView
         modifiers={[scrollDismissesKeyboard("interactively"), tint(colors.primary as string)]}
       >
@@ -106,7 +106,9 @@ export default function ForgotPasswordScreen() {
           </RNHostView>
 
           <VStack spacing={6} alignment="leading">
-            <Text modifiers={[dfont({ size: 28, weight: "bold" })]}>Reset your password</Text>
+            <Text testID="forgot-password-title" modifiers={[dfont({ size: 28, weight: "bold" })]}>
+              Reset your password
+            </Text>
             <Text
               modifiers={[dfont({ size: 16 }), foregroundStyle(colors.mutedForeground as string)]}
             >
@@ -114,11 +116,12 @@ export default function ForgotPasswordScreen() {
             </Text>
           </VStack>
 
-          {state.error && <ErrorText>{state.error}</ErrorText>}
+          {state.error && <ErrorText testID="forgot-password-error">{state.error}</ErrorText>}
 
           <VStack spacing={6} alignment="leading" modifiers={[frame({ maxWidth: Infinity })]}>
             <Text modifiers={[dfont({ size: 17, weight: "semibold" })]}>Email</Text>
             <TextField
+              testID="forgot-password-email"
               placeholder="you@example.com"
               onTextChange={setEmail}
               modifiers={[
@@ -142,6 +145,7 @@ export default function ForgotPasswordScreen() {
           </VStack>
 
           <ProminentButton
+            testID="forgot-password-submit"
             label={isPending ? "Sending..." : "Send reset code"}
             onPress={() => startTransition(() => submit())}
             disabled={isPending}
@@ -149,6 +153,7 @@ export default function ForgotPasswordScreen() {
 
           <VStack alignment="center" modifiers={[frame({ maxWidth: Infinity })]}>
             <Button
+              testID="forgot-password-back"
               label="Back to sign in"
               modifiers={[
                 buttonStyle("plain"),

@@ -340,7 +340,7 @@ export default function SignUpScreen() {
   ];
 
   return (
-    <Host style={{ flex: 1, backgroundColor: colors.background }}>
+    <Host testID="sign-up-screen" style={{ flex: 1, backgroundColor: colors.background }}>
       <ScrollView
         modifiers={[
           scrollDismissesKeyboard("interactively"),
@@ -367,7 +367,9 @@ export default function SignUpScreen() {
           </RNHostView>
 
           <VStack spacing={6} alignment="leading">
-            <Text modifiers={[dfont({ size: 28, weight: "bold" })]}>Create your account</Text>
+            <Text testID="sign-up-title" modifiers={[dfont({ size: 28, weight: "bold" })]}>
+              Create your account
+            </Text>
             <Text
               modifiers={[dfont({ size: 16 }), foregroundStyle(colors.mutedForeground as string)]}
             >
@@ -376,6 +378,7 @@ export default function SignUpScreen() {
           </VStack>
 
           <SegmentedToggle
+            testID="sign-up-auth-mode"
             accessibilityLabel="Sign in or sign up"
             value="sign-up"
             options={[
@@ -387,7 +390,7 @@ export default function SignUpScreen() {
             }}
           />
 
-          {error && <ErrorText>{error}</ErrorText>}
+          {error && <ErrorText testID="sign-up-error">{error}</ErrorText>}
 
           <VStack spacing={10} alignment="leading" modifiers={[frame({ maxWidth: Infinity })]}>
             <Text modifiers={labelModifiers}>Profile photo (optional)</Text>
@@ -399,6 +402,7 @@ export default function SignUpScreen() {
             >
               <ConfirmationDialog.Trigger>
                 <Button
+                  testID="sign-up-avatar"
                   modifiers={[
                     buttonStyle("plain"),
                     frame({ maxWidth: Infinity, minHeight: TouchTarget.min }),
@@ -459,19 +463,26 @@ export default function SignUpScreen() {
               </ConfirmationDialog.Trigger>
               <ConfirmationDialog.Actions>
                 <Button
+                  testID="sign-up-avatar-choose"
                   label="Choose Photo"
                   systemImage="photo.on.rectangle"
                   onPress={() => pickAvatar("library")}
                 />
                 <Button
+                  testID="sign-up-avatar-take"
                   label="Take Photo"
                   systemImage="camera"
                   onPress={() => pickAvatar("camera")}
                 />
                 {pendingAvatar ? (
-                  <Button label="Remove Photo" role="destructive" onPress={removeAvatar} />
+                  <Button
+                    testID="sign-up-avatar-remove"
+                    label="Remove Photo"
+                    role="destructive"
+                    onPress={removeAvatar}
+                  />
                 ) : null}
-                <Button label="Cancel" role="cancel" />
+                <Button testID="sign-up-avatar-cancel" label="Cancel" role="cancel" />
               </ConfirmationDialog.Actions>
             </ConfirmationDialog>
           </VStack>
@@ -483,6 +494,7 @@ export default function SignUpScreen() {
           >
             <Text modifiers={labelModifiers}>Name</Text>
             <TextField
+              testID="sign-up-name"
               placeholder="Your name"
               onTextChange={setName}
               modifiers={[
@@ -504,6 +516,7 @@ export default function SignUpScreen() {
           >
             <Text modifiers={labelModifiers}>Username (optional)</Text>
             <TextField
+              testID="sign-up-username"
               text={usernameState}
               placeholder="johndoe"
               onTextChange={(text) => {
@@ -533,6 +546,7 @@ export default function SignUpScreen() {
                   modifiers={[accessibilityLabel("")]}
                 />
                 <Text
+                  testID="sign-up-username-status"
                   modifiers={[dfont({ size: 13 }), foregroundStyle(usernameStatus.color as string)]}
                 >
                   {usernameStatus.text}
@@ -550,6 +564,7 @@ export default function SignUpScreen() {
           >
             <Text modifiers={labelModifiers}>Email</Text>
             <TextField
+              testID="sign-up-email"
               placeholder="you@example.com"
               onTextChange={setEmail}
               modifiers={[
@@ -573,6 +588,7 @@ export default function SignUpScreen() {
           >
             <Text modifiers={labelModifiers}>Password</Text>
             <PasswordField
+              testID="sign-up-password"
               onTextChange={setPassword}
               onSubmit={() => startTransition(() => signUp())}
               contentType="newPassword"
@@ -584,6 +600,7 @@ export default function SignUpScreen() {
           </VStack>
 
           <ProminentButton
+            testID="sign-up-submit"
             label={isPending ? "Creating account..." : "Create account"}
             onPress={() => startTransition(() => signUp())}
             disabled={isLoading}
@@ -591,6 +608,7 @@ export default function SignUpScreen() {
 
           {showApple && (
             <AppleButton
+              testID="sign-up-apple"
               type={AppleAuthentication.AppleAuthenticationButtonType.SIGN_UP}
               onPress={() => startTransition(() => signUpWithApple())}
               disabled={isLoading}
@@ -612,6 +630,7 @@ export default function SignUpScreen() {
         </ConfirmationDialog.Trigger>
         <ConfirmationDialog.Actions>
           <Button
+            testID="sign-up-discard"
             label="Discard"
             role="destructive"
             onPress={() => {
@@ -621,7 +640,7 @@ export default function SignUpScreen() {
               if (action) navigation.dispatch(action);
             }}
           />
-          <Button label="Keep Editing" role="cancel" />
+          <Button testID="sign-up-keep-editing" label="Keep Editing" role="cancel" />
         </ConfirmationDialog.Actions>
         <ConfirmationDialog.Message>
           <Text modifiers={[dfont({ size: 16 })]}>You have unsaved input that will be lost.</Text>

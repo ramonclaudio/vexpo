@@ -210,13 +210,16 @@ export function OtpVerification({
           >
             Enter the 6-digit code sent to
           </Text>
-          <Text modifiers={[dfont({ size: 15, weight: "semibold" })]}>{email}</Text>
+          <Text testID="otp-email-value" modifiers={[dfont({ size: 15, weight: "semibold" })]}>
+            {email}
+          </Text>
         </VStack>
 
-        {error && <ErrorText>{error}</ErrorText>}
+        {error && <ErrorText testID="otp-error">{error}</ErrorText>}
 
         <VStack spacing={12} modifiers={[frame({ maxWidth: Infinity })]}>
           <TextField
+            testID="otp-field"
             text={otpState}
             placeholder="000000"
             onTextChange={(text) => {
@@ -246,6 +249,7 @@ export function OtpVerification({
           />
 
           <ProminentButton
+            testID="otp-verify"
             label={
               isVerifying
                 ? isSignIn
@@ -260,6 +264,7 @@ export function OtpVerification({
           />
 
           <Button
+            testID="otp-resend"
             modifiers={[buttonStyle("plain"), frame({ maxWidth: Infinity }), disabled(isResending)]}
             onPress={runResend}
           >
@@ -283,6 +288,7 @@ export function OtpVerification({
             Wrong email?
           </Text>
           <Button
+            testID="otp-back"
             label="Go back"
             modifiers={[
               buttonStyle("plain"),

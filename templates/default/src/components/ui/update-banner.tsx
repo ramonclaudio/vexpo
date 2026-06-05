@@ -20,7 +20,7 @@ import { ZIndex } from "@/constants/ui";
 import { useColors } from "@/hooks/use-theme";
 import { useDynamicFont } from "@/lib/dynamic-font";
 
-export function UpdateBanner() {
+export function UpdateBanner({ testID }: { testID?: string } = {}) {
   const updates = useAppUpdates();
   const insets = useSafeAreaInsets();
   const colors = useColors();
@@ -60,6 +60,7 @@ export function UpdateBanner() {
     >
       <Host matchContents>
         <Button
+          testID="update-banner-retry"
           modifiers={[
             buttonStyle("plain"),
             padding({ vertical: Spacing.sm, horizontal: Spacing.lg }),
@@ -71,7 +72,10 @@ export function UpdateBanner() {
           ]}
           onPress={showError ? () => updates.downloadAndApply() : () => {}}
         >
-          <Text modifiers={[dfont({ size: FontSize["3xl"], weight: "bold" }), foregroundStyle(fg)]}>
+          <Text
+            testID={testID}
+            modifiers={[dfont({ size: FontSize["3xl"], weight: "bold" }), foregroundStyle(fg)]}
+          >
             {label}
           </Text>
         </Button>

@@ -7,13 +7,13 @@ import { useDynamicFont } from "@/lib/dynamic-font";
 import { useSymbolSize } from "@/lib/dynamic-symbol-size";
 import { Colors } from "@/constants/theme";
 
-type Props = { children: string; size?: number };
+type Props = { children: string; size?: number; testID?: string };
 
 function announce(prefix: string, message: string) {
   AccessibilityInfo.announceForAccessibility(`${prefix}: ${message}`);
 }
 
-export function ErrorText({ children, size = 14 }: Props) {
+export function ErrorText({ children, size = 14, testID }: Props) {
   const dfont = useDynamicFont();
   const symbolSize = useSymbolSize();
   useEffect(() => {
@@ -28,14 +28,17 @@ export function ErrorText({ children, size = 14 }: Props) {
         color={Colors.destructive as string}
         modifiers={[accessibilityLabel("")]}
       />
-      <Text modifiers={[dfont({ size }), foregroundStyle(Colors.destructive as string)]}>
+      <Text
+        testID={testID}
+        modifiers={[dfont({ size }), foregroundStyle(Colors.destructive as string)]}
+      >
         {children}
       </Text>
     </HStack>
   );
 }
 
-export function SuccessText({ children, size = 14 }: Props) {
+export function SuccessText({ children, size = 14, testID }: Props) {
   const dfont = useDynamicFont();
   const symbolSize = useSymbolSize();
   useEffect(() => {
@@ -50,7 +53,10 @@ export function SuccessText({ children, size = 14 }: Props) {
         color={Colors.success as string}
         modifiers={[accessibilityLabel("")]}
       />
-      <Text modifiers={[dfont({ size }), foregroundStyle(Colors.success as string)]}>
+      <Text
+        testID={testID}
+        modifiers={[dfont({ size }), foregroundStyle(Colors.success as string)]}
+      >
         {children}
       </Text>
     </HStack>

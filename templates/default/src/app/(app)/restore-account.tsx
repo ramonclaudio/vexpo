@@ -115,7 +115,7 @@ export default function RestoreAccountScreen() {
   }).format(permanentDeleteAt);
 
   return (
-    <Host style={{ flex: 1, backgroundColor: colors.background }}>
+    <Host testID="restore-account-screen" style={{ flex: 1, backgroundColor: colors.background }}>
       <VStack
         spacing={24}
         alignment="center"
@@ -133,6 +133,7 @@ export default function RestoreAccountScreen() {
 
         <VStack spacing={12} alignment="center">
           <Text
+            testID="restore-account-title"
             modifiers={[
               dfont({ size: 24, weight: "bold" }),
               foregroundStyle(colors.foreground as string),
@@ -142,6 +143,7 @@ export default function RestoreAccountScreen() {
             Account Scheduled for Deletion
           </Text>
           <Text
+            testID="restore-account-deletion-date"
             modifiers={[
               dfont({ size: 15 }),
               foregroundStyle(colors.mutedForeground as string),
@@ -154,11 +156,13 @@ export default function RestoreAccountScreen() {
 
         <VStack spacing={12} alignment="center" modifiers={[frame({ maxWidth: Infinity })]}>
           <ProminentButton
+            testID="restore-account-restore"
             label={restorePending ? "Restoring…" : "Restore Account"}
             onPress={() => restore()}
             disabled={restorePending || signingOut}
           />
           <Button
+            testID="restore-account-sign-out"
             modifiers={[
               buttonStyle("plain"),
               frame({ maxWidth: Infinity, minHeight: ButtonTokens.height }),
@@ -179,7 +183,9 @@ export default function RestoreAccountScreen() {
           </Button>
         </VStack>
 
-        {restoreState.error ? <ErrorText>{restoreState.error}</ErrorText> : null}
+        {restoreState.error ? (
+          <ErrorText testID="restore-account-error">{restoreState.error}</ErrorText>
+        ) : null}
       </VStack>
     </Host>
   );

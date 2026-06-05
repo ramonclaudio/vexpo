@@ -96,10 +96,11 @@ export default function WelcomeScreen() {
   return (
     // upstream expo/expo#45872: Host modifiers now apply, so the accent tint
     // cascades from the Host into the ProgressView and buttons below.
-    <Host style={{ flex: 1 }} modifiers={[tint(colors.primary as string)]}>
+    <Host testID="welcome-screen" style={{ flex: 1 }} modifiers={[tint(colors.primary as string)]}>
       <VStack spacing={0}>
         <VStack spacing={12} modifiers={[padding({ horizontal: 24, top: 24 })]}>
           <ProgressView
+            testID="welcome-progress"
             value={(step + 1) / STEPS.length}
             modifiers={[
               progressViewStyle("linear"),
@@ -145,10 +146,14 @@ export default function WelcomeScreen() {
                     modifiers={[frame({ width: 80, height: 80 }), accessibilityLabel("")]}
                   />
                 )}
-                <Text modifiers={[dfont({ size: 34, weight: "bold" }), kerning(-0.5)]}>
+                <Text
+                  testID={`welcome-step-${s.id}-title`}
+                  modifiers={[dfont({ size: 34, weight: "bold" }), kerning(-0.5)]}
+                >
                   {s.title}
                 </Text>
                 <Text
+                  testID={`welcome-step-${s.id}-subtitle`}
                   modifiers={[
                     dfont({ size: 17 }),
                     foregroundStyle(colors.mutedForeground as string),
@@ -165,11 +170,13 @@ export default function WelcomeScreen() {
 
         <VStack spacing={12} modifiers={[padding({ horizontal: 24, bottom: 24 })]}>
           <ProminentButton
+            testID="welcome-continue"
             label={isLast ? "Get Started" : "Next"}
             onPress={isLast ? handleContinue : handleNext}
           />
           {!isLast && (
             <Button
+              testID="welcome-skip"
               label="Skip"
               modifiers={[
                 buttonStyle("plain"),

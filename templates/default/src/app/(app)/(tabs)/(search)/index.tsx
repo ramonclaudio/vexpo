@@ -152,7 +152,7 @@ export default function SearchScreen() {
         placeholder="Search screens"
         onChangeText={(e) => setRaw(e.nativeEvent.text)}
       />
-      <Host style={{ flex: 1, backgroundColor: colors.background }}>
+      <Host testID="search-screen" style={{ flex: 1, backgroundColor: colors.background }}>
         <ScrollView
           modifiers={[scrollDismissesKeyboard("interactively"), tint(colors.primary as string)]}
         >
@@ -163,6 +163,7 @@ export default function SearchScreen() {
           >
             {results.length === 0 ? (
               <ContentUnavailable
+                testID="search-empty"
                 title="No results"
                 systemImage="magnifyingglass"
                 description={`Nothing matches "${query.trim()}"`}
@@ -175,6 +176,7 @@ export default function SearchScreen() {
                 {results.map((d) => (
                   <Button
                     key={d.href as string}
+                    testID={`search-result-${d.title.toLowerCase().replace(/\s+/g, "-")}`}
                     modifiers={[
                       buttonStyle("plain"),
                       frame({ maxWidth: Infinity }),

@@ -52,6 +52,7 @@ type Props = {
   disabled?: boolean;
   accessibilityLabel?: string;
   accessibilityHint?: string;
+  testID?: string;
 };
 
 /**
@@ -71,6 +72,7 @@ export function PasswordField({
   disabled = false,
   accessibilityLabel: a11yLabel = "Password",
   accessibilityHint: a11yHint = "Enter your password",
+  testID,
 }: Props) {
   const dfont = useDynamicFont();
   const symbolSize = useSymbolSize();
@@ -124,6 +126,7 @@ export function PasswordField({
       {visible ? (
         <TextField
           ref={textRef}
+          testID={testID}
           text={state}
           placeholder={a11yLabel}
           onTextChange={onTextChange}
@@ -135,6 +138,7 @@ export function PasswordField({
       ) : (
         <SecureField
           ref={secureRef}
+          testID={testID}
           text={state}
           placeholder={placeholder}
           onTextChange={onTextChange}
@@ -145,6 +149,7 @@ export function PasswordField({
         />
       )}
       <Button
+        testID={testID ? `${testID}-visibility` : undefined}
         modifiers={[
           buttonStyle("plain"),
           frame({ width: 44, height: 44 }),

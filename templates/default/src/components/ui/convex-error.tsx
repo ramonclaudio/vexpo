@@ -15,7 +15,7 @@ export function formatError(err: unknown): string {
   return "An unexpected error occurred";
 }
 
-export function ConvexErrorView({ error }: { error: unknown }) {
+export function ConvexErrorView({ error, testID }: { error: unknown; testID?: string }) {
   if (error === undefined || error === null) return null;
-  return <ErrorText>{formatError(error)}</ErrorText>;
+  return <ErrorText testID={testID}>{formatError(error)}</ErrorText>;
 }

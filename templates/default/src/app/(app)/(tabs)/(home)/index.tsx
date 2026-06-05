@@ -26,7 +26,7 @@ export default function HomeScreen() {
   };
 
   return (
-    <Host style={{ flex: 1 }}>
+    <Host testID="home-screen" style={{ flex: 1 }}>
       <ScrollView modifiers={[tint(colors.primary as string), refreshable(onRefresh)]}>
         <VStack
           spacing={24}
@@ -39,11 +39,13 @@ export default function HomeScreen() {
             modifiers={[frame({ maxWidth: Infinity, alignment: "leading" })]}
           >
             <Text
+              testID="home-date"
               modifiers={[dfont({ size: 14 }), foregroundStyle(colors.mutedForeground as string)]}
             >
               <Text date={now} dateStyle="date" />
             </Text>
             <Text
+              testID="home-greeting"
               modifiers={[dfont({ size: 32, weight: "bold", design: "rounded" }), kerning(-0.5)]}
             >
               Hey, {name}
@@ -51,6 +53,7 @@ export default function HomeScreen() {
           </VStack>
 
           <ContentUnavailable
+            testID="home-empty"
             title="Nothing here yet"
             systemImage="square.dashed"
             description="Home screen is ready to build."

@@ -15,7 +15,7 @@ import { useDynamicFont } from "@/lib/dynamic-font";
 // positioning, the live-region announcement, and the chrome surface in one
 // shot. The visible label renders through `Host` so it uses SwiftUI's text
 // system and respects Dynamic Type.
-export function OfflineBanner() {
+export function OfflineBanner({ testID }: { testID?: string } = {}) {
   const { isOffline } = useNetwork();
   const insets = useSafeAreaInsets();
   const colors = useColors();
@@ -45,6 +45,7 @@ export function OfflineBanner() {
     >
       <Host matchContents>
         <Text
+          testID={testID}
           modifiers={[
             dfont({ size: FontSize["3xl"], weight: "bold" }),
             foregroundStyle(colors.destructiveForeground as string),

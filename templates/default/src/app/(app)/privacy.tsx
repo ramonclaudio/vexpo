@@ -42,12 +42,14 @@ export default function PrivacyScreen() {
   type SFSymbol = NonNullable<ComponentProps<typeof Image>["systemName"]>;
 
   const rowButton = ({
+    testID,
     label,
     systemImage,
     onPress,
     chevron = true,
     trailing,
   }: {
+    testID: string;
     label: string;
     systemImage: SFSymbol;
     onPress: () => void;
@@ -55,6 +57,7 @@ export default function PrivacyScreen() {
     trailing?: React.ReactNode;
   }) => (
     <Button
+      testID={testID}
       modifiers={[
         buttonStyle("plain"),
         frame({ maxWidth: Infinity }),
@@ -100,7 +103,7 @@ export default function PrivacyScreen() {
   );
 
   return (
-    <Host style={{ flex: 1, backgroundColor: colors.background }}>
+    <Host testID="privacy-screen" style={{ flex: 1, backgroundColor: colors.background }}>
       <ScrollView modifiers={[tint(colors.primary as string)]}>
         <VStack
           spacing={12}
@@ -109,16 +112,19 @@ export default function PrivacyScreen() {
         >
           <VStack spacing={8} modifiers={[frame({ maxWidth: Infinity })]}>
             {rowButton({
+              testID: "privacy-camera-photos",
               label: "Camera & Photos",
               systemImage: "camera.fill",
               onPress: handleOpenSettings,
             })}
             {rowButton({
+              testID: "privacy-notifications",
               label: "Notifications",
               systemImage: "bell.fill",
               onPress: handleOpenSettings,
             })}
             {rowButton({
+              testID: "privacy-system-settings",
               label: "System Settings",
               systemImage: "gear",
               onPress: handleOpenSettings,
@@ -152,6 +158,7 @@ export default function PrivacyScreen() {
             </Text>
             <Spacer />
             <Toggle
+              testID="privacy-share-analytics"
               isOn={analyticsEnabled}
               onIsOnChange={(v) => {
                 haptics.selection();
@@ -162,6 +169,7 @@ export default function PrivacyScreen() {
           </HStack>
 
           <Text
+            testID="privacy-data-disclaimer"
             modifiers={[
               dfont({ size: 13 }),
               foregroundStyle(colors.mutedForeground as string),

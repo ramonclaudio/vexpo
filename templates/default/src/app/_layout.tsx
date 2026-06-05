@@ -41,7 +41,7 @@ registerBackgroundTask();
 export default function RootLayout() {
   return (
     <BetterAuthConvexProvider client={convex}>
-      <Suspense fallback={<LoadingScreen />}>
+      <Suspense fallback={<LoadingScreen testID="app-loading" />}>
         <RootNavigator />
       </Suspense>
     </BetterAuthConvexProvider>
@@ -84,8 +84,8 @@ function RootNavigator() {
             <Stack.Screen name="+not-found" />
           </Stack>
           <StatusBar style="auto" />
-          <OfflineBanner />
-          <UpdateBanner />
+          <OfflineBanner testID="offline-banner" />
+          <UpdateBanner testID="update-banner" />
         </NavigationThemeProvider>
       </KeyboardProvider>
     </GestureHandlerRootView>
