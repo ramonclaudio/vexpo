@@ -12,6 +12,7 @@ import {
   Toggle,
 } from "@expo/ui/swift-ui";
 import {
+  accessibilityHidden,
   accessibilityLabel,
   background,
   buttonStyle,
@@ -78,7 +79,7 @@ export default function PrivacyScreen() {
           systemName={systemImage}
           size={symbolSize(18)}
           color={colors.foreground as string}
-          modifiers={[accessibilityLabel("")]}
+          modifiers={[accessibilityHidden(true)]}
         />
         <Text
           modifiers={[
@@ -95,7 +96,7 @@ export default function PrivacyScreen() {
               systemName="chevron.right"
               size={symbolSize(13)}
               color={colors.mutedForeground as string}
-              modifiers={[accessibilityLabel("")]}
+              modifiers={[accessibilityHidden(true)]}
             />
           ) : null)}
       </HStack>
@@ -146,7 +147,7 @@ export default function PrivacyScreen() {
               systemName="chart.bar.fill"
               size={symbolSize(18)}
               color={colors.foreground as string}
-              modifiers={[accessibilityLabel("")]}
+              modifiers={[accessibilityHidden(true)]}
             />
             <Text
               modifiers={[

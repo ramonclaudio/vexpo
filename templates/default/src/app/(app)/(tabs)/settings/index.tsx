@@ -28,6 +28,7 @@ import {
   foregroundStyle,
   frame,
   padding,
+  accessibilityHidden,
   accessibilityLabel,
   lineLimit,
   truncationMode,
@@ -123,7 +124,12 @@ export default function SettingsScreen() {
             padding({ horizontal: 16 }),
           ]}
         >
-          <Image systemName={systemImage} size={symbolSize(18)} color={labelColor} />
+          <Image
+            systemName={systemImage}
+            size={symbolSize(18)}
+            color={labelColor}
+            modifiers={[accessibilityHidden(true)]}
+          />
           <Text modifiers={[dfont({ size: 16, weight: "medium" }), foregroundStyle(labelColor)]}>
             {label}
           </Text>
@@ -133,7 +139,7 @@ export default function SettingsScreen() {
               systemName="chevron.right"
               size={symbolSize(13)}
               color={colors.mutedForeground as string}
-              modifiers={[accessibilityLabel("")]}
+              modifiers={[accessibilityHidden(true)]}
             />
           ) : null}
         </HStack>
@@ -206,7 +212,7 @@ export default function SettingsScreen() {
                 systemName="chevron.right"
                 size={symbolSize(13)}
                 color={colors.mutedForeground as string}
-                modifiers={[accessibilityLabel("")]}
+                modifiers={[accessibilityHidden(true)]}
               />
             </HStack>
           </Button>
@@ -348,7 +354,10 @@ function ProfileHeaderAvatar({ avatarUrl }: { avatarUrl: string | null }) {
       systemName="person.crop.circle.fill"
       size={HEADER_AVATAR_SIZE}
       color={colors.mutedForeground as string}
-      modifiers={[frame({ width: HEADER_AVATAR_SIZE, height: HEADER_AVATAR_SIZE })]}
+      modifiers={[
+        frame({ width: HEADER_AVATAR_SIZE, height: HEADER_AVATAR_SIZE }),
+        accessibilityHidden(true),
+      ]}
     />
   );
 }
@@ -362,7 +371,7 @@ function RemoteAvatar({ url, size }: { url: string; size: number }) {
         systemName="person.crop.circle.fill"
         size={size}
         color={colors.mutedForeground as string}
-        modifiers={[frame({ width: size, height: size })]}
+        modifiers={[frame({ width: size, height: size }), accessibilityHidden(true)]}
       />
     );
   }

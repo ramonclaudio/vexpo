@@ -10,6 +10,7 @@ import {
   useNativeState,
 } from "@expo/ui/swift-ui";
 import {
+  accessibilityHidden,
   accessibilityHint,
   accessibilityLabel,
   autocorrectionDisabled,
@@ -168,6 +169,7 @@ export function PasswordField({
           systemName={visible ? "eye.slash" : "eye"}
           size={symbolSize(18)}
           color={colors.mutedForeground as string}
+          modifiers={[accessibilityHidden(true)]}
         />
       </Button>
     </HStack>

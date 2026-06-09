@@ -4,7 +4,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { router, type ErrorBoundaryProps } from "expo-router";
 import { Host, VStack, Text, Button, Image, Spacer } from "@expo/ui/swift-ui";
 import {
-  accessibilityLabel,
+  accessibilityHidden,
   foregroundStyle,
   buttonStyle,
   frame,
@@ -53,7 +53,7 @@ export function AppErrorBoundary({
           systemName="exclamationmark.triangle"
           size={symbolSize(72)}
           color={colors.destructive as string}
-          modifiers={[accessibilityLabel("")]}
+          modifiers={[accessibilityHidden(true)]}
         />
         <Text modifiers={[dfont({ size: 28, weight: "bold" }), multilineTextAlignment("center")]}>
           Something went wrong

@@ -14,7 +14,7 @@ import {
   DisclosureGroup,
 } from "@expo/ui/swift-ui";
 import {
-  accessibilityLabel,
+  accessibilityHidden,
   background,
   buttonStyle,
   clipShape,
@@ -135,7 +135,12 @@ export default function HelpScreen() {
           padding({ horizontal: 16 }),
         ]}
       >
-        <Image systemName={systemImage} size={symbolSize(18)} color={colors.foreground as string} />
+        <Image
+          systemName={systemImage}
+          size={symbolSize(18)}
+          color={colors.foreground as string}
+          modifiers={[accessibilityHidden(true)]}
+        />
         <Text
           modifiers={[
             dfont({ size: 16, weight: "medium" }),
@@ -149,7 +154,7 @@ export default function HelpScreen() {
           systemName="chevron.right"
           size={symbolSize(13)}
           color={colors.mutedForeground as string}
-          modifiers={[accessibilityLabel("")]}
+          modifiers={[accessibilityHidden(true)]}
         />
       </HStack>
     </Button>

@@ -16,6 +16,7 @@ import {
   ShareLink,
 } from "@expo/ui/swift-ui";
 import {
+  accessibilityHidden,
   accessibilityLabel,
   background,
   buttonStyle,
@@ -419,7 +420,13 @@ export default function DebugScreen() {
             <Spacer />
             <Text
               testID="debug-footer-version-value"
-              modifiers={[dfont({ size: 12 }), foregroundStyle(colors.mutedForeground as string)]}
+              // duplicates the BUILD > Version row above, so hide the footer
+              // stamp from VoiceOver instead of announcing the version twice.
+              modifiers={[
+                dfont({ size: 12 }),
+                foregroundStyle(colors.mutedForeground as string),
+                accessibilityHidden(true),
+              ]}
             >
               v{appVersion} ({buildNumber})
             </Text>
