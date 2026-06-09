@@ -2,6 +2,7 @@ import { Picker, Text } from "@expo/ui/swift-ui";
 import {
   accessibilityLabel,
   controlSize,
+  dynamicTypeSize,
   frame,
   pickerStyle,
   tag,
@@ -9,6 +10,7 @@ import {
 
 import { useDynamicFont } from "@/lib/dynamic-font";
 import { Button as ButtonTokens } from "@/constants/layout";
+import { DynamicType } from "@/constants/ui";
 import { haptics } from "@/lib/haptics";
 
 export type SegmentedOption<T extends string> = {
@@ -42,6 +44,9 @@ export function SegmentedToggle<T extends string>({
         pickerStyle("segmented"),
         controlSize("large"),
         frame({ maxWidth: Infinity, minHeight: ButtonTokens.height }),
+        // upstream expo/expo#46540: the two segments sit side by side and can't
+        // reflow, so cap Dynamic Type before the labels overflow at AX sizes.
+        dynamicTypeSize({ max: DynamicType.control }),
         accessibilityLabel(a11yLabel),
       ]}
       selection={value}
