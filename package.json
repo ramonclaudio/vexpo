@@ -36,7 +36,7 @@
     "template:test": "cd templates/default && npm run test"
   },
   "devDependencies": {
-    "oxfmt": "^0.53.0",
+    "oxfmt": "^0.54.0",
     "oxlint": "^1.68.0",
     "typescript": "^6.0.3"
   }
