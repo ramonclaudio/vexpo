@@ -27,6 +27,7 @@ import {
   clipShape,
   cornerRadius,
   defaultScrollAnchorForRole,
+  dynamicTypeSize,
   foregroundStyle,
   disabled,
   keyboardType,
@@ -45,6 +46,7 @@ import {
   shapes,
   progressViewStyle,
   scrollDismissesKeyboard,
+  accessibilityHidden,
   accessibilityLabel,
   accessibilityHint,
   tint,
@@ -52,6 +54,7 @@ import {
 import { useDynamicFont } from "@/lib/dynamic-font";
 import { useSymbolSize } from "@/lib/dynamic-symbol-size";
 import { Button as ButtonTokens, TouchTarget } from "@/constants/layout";
+import { DynamicType } from "@/constants/ui";
 
 import { runOnJS } from "react-native-worklets";
 
@@ -409,7 +412,7 @@ export default function ProfileScreen() {
                       systemName="camera.circle.fill"
                       size={symbolSize(28)}
                       color={colors.primary as string}
-                      modifiers={[accessibilityLabel("")]}
+                      modifiers={[accessibilityHidden(true)]}
                     />
                   </HStack>
                 </Button>
@@ -468,6 +471,9 @@ export default function ProfileScreen() {
                       monospacedDigit(),
                       kerning(8),
                       multilineTextAlignment("center"),
+                      // upstream expo/expo#46540: six monospaced glyphs in a
+                      // capsule that can't wrap, cap Dynamic Type so they fit.
+                      dynamicTypeSize({ max: DynamicType.otp }),
                       submitLabel("done"),
                       disabled(isVerifying),
                       accessibilityLabel("Verification code"),
@@ -794,7 +800,7 @@ function AvatarView({ avatarUrl, loading }: { avatarUrl: string | null; loading:
       systemName="person.crop.circle.fill"
       size={AVATAR_SIZE}
       color={colors.mutedForeground as string}
-      modifiers={[frame({ width: AVATAR_SIZE, height: AVATAR_SIZE }), accessibilityLabel("")]}
+      modifiers={[frame({ width: AVATAR_SIZE, height: AVATAR_SIZE }), accessibilityHidden(true)]}
     />
   );
 }
@@ -808,7 +814,7 @@ function RemoteAvatar({ url, size }: { url: string; size: number }) {
         systemName="person.crop.circle.fill"
         size={size}
         color={colors.mutedForeground as string}
-        modifiers={[frame({ width: size, height: size }), accessibilityLabel("")]}
+        modifiers={[frame({ width: size, height: size }), accessibilityHidden(true)]}
       />
     );
   }

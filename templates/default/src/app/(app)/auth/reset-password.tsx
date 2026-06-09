@@ -21,6 +21,7 @@ import {
   clipShape,
   defaultScrollAnchorForRole,
   disabled,
+  dynamicTypeSize,
   keyboardType,
   textFieldStyle,
   padding,
@@ -31,6 +32,7 @@ import {
   kerning,
   submitLabel,
   textContentType,
+  accessibilityHidden,
   accessibilityLabel,
   accessibilityHint,
   tint,
@@ -38,6 +40,7 @@ import {
 import { useDynamicFont } from "@/lib/dynamic-font";
 import { useSymbolSize } from "@/lib/dynamic-symbol-size";
 import { Button as ButtonTokens } from "@/constants/layout";
+import { DynamicType } from "@/constants/ui";
 
 import { runOnJS } from "react-native-worklets";
 
@@ -161,7 +164,7 @@ export default function ResetPasswordScreen() {
             systemName="checkmark.circle.fill"
             size={symbolSize(56)}
             color={colors.success}
-            modifiers={[accessibilityLabel("")]}
+            modifiers={[accessibilityHidden(true)]}
           />
           <Text
             testID="reset-password-success-title"
@@ -284,6 +287,9 @@ export default function ResetPasswordScreen() {
                 monospacedDigit(),
                 kerning(8),
                 multilineTextAlignment("center"),
+                // upstream expo/expo#46540: six monospaced glyphs in a capsule
+                // that can't wrap, cap Dynamic Type so they don't overflow.
+                dynamicTypeSize({ max: DynamicType.otp }),
                 submitLabel("next"),
                 disabled(isPending),
                 accessibilityLabel("Verification code"),

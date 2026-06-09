@@ -27,8 +27,10 @@ import {
   padding,
   frame,
   shapes,
+  accessibilityHidden,
   accessibilityLabel,
   accessibilityHint,
+  dynamicTypeSize,
   tint,
   textContentType,
   textFieldStyle,
@@ -36,6 +38,7 @@ import {
 import { useDynamicFont } from "@/lib/dynamic-font";
 import { useSymbolSize } from "@/lib/dynamic-symbol-size";
 import { Button as ButtonTokens, TouchTarget } from "@/constants/layout";
+import { DynamicType } from "@/constants/ui";
 
 import { authClient } from "@/lib/auth-client";
 import { haptics } from "@/lib/haptics";
@@ -153,7 +156,7 @@ export function OtpVerification({ email, onBack, flow = "verify-email" }: OtpVer
           systemName={isSignIn ? "lock.shield" : "envelope.badge"}
           size={symbolSize(56)}
           color={colors.primary}
-          modifiers={[accessibilityLabel("")]}
+          modifiers={[accessibilityHidden(true)]}
         />
 
         <Text modifiers={[dfont({ size: 28, weight: "bold" }), multilineTextAlignment("center")]}>
@@ -199,6 +202,9 @@ export function OtpVerification({ email, onBack, flow = "verify-email" }: OtpVer
               monospacedDigit(),
               kerning(8),
               multilineTextAlignment("center"),
+              // upstream expo/expo#46540: cap Dynamic Type on the fixed-height
+              // capsule so six 24pt monospaced glyphs can't scale past the box.
+              dynamicTypeSize({ max: DynamicType.otp }),
               keyboardType("numeric"),
               textContentType("oneTimeCode"),
               onSubmit(runVerify),
