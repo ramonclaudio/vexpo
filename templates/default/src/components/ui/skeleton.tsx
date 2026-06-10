@@ -1,6 +1,6 @@
 import { VStack, HStack, Spacer, Text } from "@expo/ui/swift-ui";
 import {
-  accessibilityLabel,
+  accessibilityHidden,
   background,
   clipShape,
   cornerRadius,
@@ -17,10 +17,8 @@ import { useColors } from "@/hooks/use-theme";
 // per-tick opacity tweens, and static skeletons satisfy the Reduce Motion
 // accessibility setting trivially (nothing to suppress). The whitespace
 // `Text` inside each bar forces SwiftUI to render the framed VStack with
-// its background fill, and `accessibilityLabel("")` keeps VoiceOver from
-// landing on the empty node. `@expo/ui` does not expose
-// `accessibilityHidden(_:)`, so an empty label is the supported way to
-// take the element out of the spoken hierarchy.
+// its background fill, and the placeholders use `accessibilityHidden(true)`
+// (shipped upstream in expo/expo#46579) to drop them from the spoken hierarchy.
 
 type BarProps = {
   width: number | "fill";
@@ -36,10 +34,10 @@ function Bar({ width, height, radius = 6 }: BarProps): React.ReactNode {
         frame(width === "fill" ? { maxWidth: Infinity, height } : { width, height }),
         background(colors.muted as string),
         cornerRadius(radius),
-        accessibilityLabel(""),
+        accessibilityHidden(true),
       ]}
     >
-      <Text modifiers={[accessibilityLabel("")]}> </Text>
+      <Text modifiers={[accessibilityHidden(true)]}> </Text>
     </VStack>
   );
 }
@@ -52,10 +50,10 @@ function Circle({ size }: { size: number }): React.ReactNode {
         frame({ width: size, height: size }),
         background(colors.muted as string),
         clipShape("circle"),
-        accessibilityLabel(""),
+        accessibilityHidden(true),
       ]}
     >
-      <Text modifiers={[accessibilityLabel("")]}> </Text>
+      <Text modifiers={[accessibilityHidden(true)]}> </Text>
     </VStack>
   );
 }

@@ -30,6 +30,7 @@ import {
   padding,
   frame,
   scrollDismissesKeyboard,
+  accessibilityHidden,
   accessibilityLabel,
   accessibilityHint,
   tint,
@@ -389,7 +390,7 @@ export default function SignUpScreen() {
                   systemName={usernameStatus.icon}
                   size={symbolSize(13)}
                   color={usernameStatus.color}
-                  modifiers={[accessibilityLabel("")]}
+                  modifiers={[accessibilityHidden(true)]}
                 />
                 <Text
                   testID="sign-up-username-status"

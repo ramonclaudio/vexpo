@@ -10,10 +10,12 @@ import {
   Image,
 } from "@expo/ui/swift-ui";
 import {
+  accessibilityHidden,
   accessibilityLabel,
   background,
   clipShape,
   controlSize,
+  dynamicTypeSize,
   foregroundStyle,
   frame,
   padding,
@@ -23,6 +25,7 @@ import {
   tint,
 } from "@expo/ui/swift-ui/modifiers";
 import { Button as ButtonTokens } from "@/constants/layout";
+import { DynamicType } from "@/constants/ui";
 
 import { haptics } from "@/lib/haptics";
 import { useColors, useThemeMode, type ThemeMode } from "@/hooks/use-theme";
@@ -93,7 +96,7 @@ export default function PreferencesScreen() {
         systemName={icon}
         size={symbolSize(18)}
         color={colors.foreground as string}
-        modifiers={[accessibilityLabel("")]}
+        modifiers={[accessibilityHidden(true)]}
       />
       <Text
         modifiers={[
@@ -131,6 +134,9 @@ export default function PreferencesScreen() {
                 pickerStyle("segmented"),
                 controlSize("large"),
                 frame({ maxWidth: Infinity, minHeight: ButtonTokens.height }),
+                // upstream expo/expo#46540: fixed segments can't reflow, so cap
+                // Dynamic Type before the labels truncate at AX sizes.
+                dynamicTypeSize({ max: DynamicType.control }),
                 accessibilityLabel("Appearance"),
               ]}
               selection={INDEX_BY_MODE[mode]}
@@ -168,6 +174,9 @@ export default function PreferencesScreen() {
                 pickerStyle("segmented"),
                 controlSize("large"),
                 frame({ maxWidth: Infinity, minHeight: ButtonTokens.height }),
+                // upstream expo/expo#46540: fixed segments can't reflow, so cap
+                // Dynamic Type before the labels truncate at AX sizes.
+                dynamicTypeSize({ max: DynamicType.control }),
                 accessibilityLabel("Reduce motion"),
               ]}
               selection={INDEX_BY_MOTION[motion]}

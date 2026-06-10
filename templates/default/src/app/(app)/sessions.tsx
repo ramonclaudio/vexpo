@@ -5,6 +5,7 @@ import {
   buttonStyle,
   contentShape,
   cornerRadius,
+  dynamicTypeSize,
   shapes,
   foregroundStyle,
   frame,
@@ -16,6 +17,7 @@ import {
 } from "@expo/ui/swift-ui/modifiers";
 
 import { TouchTarget } from "@/constants/layout";
+import { DynamicType } from "@/constants/ui";
 import { ContentUnavailable } from "@/components/ui/content-unavailable";
 import { SkeletonSessions } from "@/components/ui/skeleton";
 import { useDynamicFont } from "@/lib/dynamic-font";
@@ -187,6 +189,9 @@ export default function SessionsScreen() {
                             padding({ horizontal: 8, vertical: 2 }),
                             background(colors.primary as string),
                             cornerRadius(8),
+                            // upstream expo/expo#46540: fixed pill, cap Dynamic
+                            // Type so it can't balloon beside the device name.
+                            dynamicTypeSize({ max: DynamicType.control }),
                           ]}
                         >
                           This device

@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { router, Stack } from "expo-router";
 import { Host, ScrollView, Button, Text, VStack, HStack, Spacer, Image } from "@expo/ui/swift-ui";
 import {
-  accessibilityLabel,
+  accessibilityHidden,
   background,
   buttonStyle,
   clipShape,
@@ -197,6 +197,7 @@ export default function SearchScreen() {
                         systemName={d.icon}
                         size={symbolSize(20)}
                         color={colors.foreground as string}
+                        modifiers={[accessibilityHidden(true)]}
                       />
                       <VStack alignment="leading" spacing={2}>
                         <Text
@@ -221,7 +222,7 @@ export default function SearchScreen() {
                         systemName="chevron.right"
                         size={symbolSize(13)}
                         color={colors.mutedForeground as string}
-                        modifiers={[accessibilityLabel("")]}
+                        modifiers={[accessibilityHidden(true)]}
                       />
                     </HStack>
                   </Button>

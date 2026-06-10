@@ -21,6 +21,7 @@ import {
   padding,
   kerning,
   tint,
+  accessibilityHidden,
   accessibilityLabel,
   accessibilityValue,
   tabViewStyle,
@@ -143,7 +144,7 @@ export default function WelcomeScreen() {
                     systemName={s.icon}
                     size={symbolSize(48)}
                     color={colors.primary as string}
-                    modifiers={[frame({ width: 80, height: 80 }), accessibilityLabel("")]}
+                    modifiers={[frame({ width: 80, height: 80 }), accessibilityHidden(true)]}
                   />
                 )}
                 <Text

@@ -1,7 +1,7 @@
 import { Platform } from "react-native";
 import { ContentUnavailableView, Image, Text, VStack } from "@expo/ui/swift-ui";
 import {
-  accessibilityLabel,
+  accessibilityHidden,
   foregroundStyle,
   frame,
   multilineTextAlignment,
@@ -56,7 +56,7 @@ function Fallback({ title, systemImage, description, testID }: Props) {
         systemName={systemImage}
         size={symbolSize(40)}
         color={colors.mutedForeground as string}
-        modifiers={[accessibilityLabel("")]}
+        modifiers={[accessibilityHidden(true)]}
       />
       <Text
         testID={description ? undefined : testID}
