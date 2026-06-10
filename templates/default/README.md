@@ -155,4 +155,4 @@ Every `expo-*` package tracks the same SDK 56 release. Mismatched versions cause
 
 `@convex-dev/better-auth@0.12.0` is the minimum compatible with `better-auth@1.6.x` (peer-dep range is `>=1.6.9 <1.7.0`). Earlier versions peer-dep `better-auth <1.6.0` and reject the `mode` field newer better-auth adds to adapter queries, breaking signup. The template pins `better-auth@1.6.16` + `@convex-dev/better-auth@0.12.3`.
 
-`convex` holds at 1.40.0 for now: 1.41.0 adds a `transactionLimits` options param to `runMutation` that `@convex-dev/resend@0.2.4`'s ctx types reject, which breaks the `convex/http.ts` typecheck. The `^1.40.0` range picks 1.41 up automatically once resend widens its types.
+`convex` is pinned `~1.40.0` for now: 1.41.0 adds a `transactionLimits` options param to `runMutation` that `@convex-dev/resend@0.2.4`'s ctx types reject, which breaks the `convex/http.ts` typecheck. Widen the range back to `^1.40.0` once resend's types accept 1.41.

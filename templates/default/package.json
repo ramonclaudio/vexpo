@@ -53,7 +53,7 @@
     "@expo/ui": "~56.0.16",
     "better-auth": "1.6.16",
     "cbor-x": "^1.6.4",
-    "convex": "^1.40.0",
+    "convex": "~1.40.0",
     "convex-helpers": "^0.1.118",
     "expo": "~56.0.9",
     "expo-apple-authentication": "~56.0.4",
