@@ -17,6 +17,7 @@ const STRIPPED_DOTFILES = [
   ".easignore",
   ".fingerprintignore",
   ".env.convex.local",
+  ".npmrc",
 ];
 
 export default defineConfig({
@@ -94,11 +95,13 @@ export default defineConfig({
       /^bun-error\./,
       /\.tgz$/,
       /\.log$/,
-      // Non-canonical lockfiles. The template's lockfile is `package-lock.json`
-      // (npm). If a contributor accidentally runs `bun install` / `pnpm install`
-      // / `yarn install` in `templates/default/`, the resulting lockfile must
-      // NOT ship in the scaffolder tarball — two lockfiles in the same project
-      // confuse package managers and CI.
+      // No lockfile ships, npm's included. The committed `package-lock.json`
+      // freezes `@ramonclaudio/vexpo` at whatever version was published when
+      // the lock was last written — one release behind by definition at
+      // publish time — and `npm install` honors an in-range lock pin, so a
+      // fresh scaffold would install the previous CLI. Let install resolve
+      // `^0.1.x` fresh; the scaffolder's git commit captures the new lock.
+      /^package-lock\.json$/,
       /^bun\.lock$/,
       /^bun\.lockb$/,
       /^pnpm-lock\.yaml$/,

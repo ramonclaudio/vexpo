@@ -150,6 +150,7 @@ async function restoreStrippedDotfiles(target: string): Promise<void> {
     ["_easignore", ".easignore"],
     ["_fingerprintignore", ".fingerprintignore"],
     ["_env.convex.local", ".env.convex.local"],
+    ["_npmrc", ".npmrc"],
   ];
   for (const [from, to] of renames) {
     const src = join(target, from);
