@@ -4,6 +4,8 @@ All notable changes to vexpo are tracked here. Format follows [Keep a Changelog]
 
 ## [Unreleased]
 
+## [0.1.2] - 2026-06-10
+
 - Pin the template's `convex` to `~1.40.0`: scaffolds resolve deps fresh now, and `^1.40.0` floated to 1.41.0, whose new `transactionLimits` param on `runMutation` breaks the `convex/http.ts` typecheck against `@convex-dev/resend@0.2.4`. The monorepo dodged it through its lockfile; fresh scaffolds didn't. Caught by scaffolding from the published 0.1.1 packages. Widen back to `^1.40.0` once resend's ctx types accept 1.41.
 
 ## [0.1.1] - 2026-06-10
@@ -52,6 +54,7 @@ First public release.
 
 See [`README.md`](./README.md) for the feature list, [`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md) for the trade-off log, [`docs/SECURITY.md`](./docs/SECURITY.md) for the threat model, [`docs/OPERATIONS.md`](./docs/OPERATIONS.md) for the on-call runbook, and [`docs/UPSTREAM.md`](./docs/UPSTREAM.md) for the ledger of every upstream PR we shipped to `expo/expo` that the template depends on.
 
-[Unreleased]: https://github.com/ramonclaudio/vexpo/compare/v0.1.1...HEAD
+[Unreleased]: https://github.com/ramonclaudio/vexpo/compare/v0.1.2...HEAD
+[0.1.2]: https://github.com/ramonclaudio/vexpo/releases/tag/v0.1.2
 [0.1.1]: https://github.com/ramonclaudio/vexpo/releases/tag/v0.1.1
 [0.1.0]: https://github.com/ramonclaudio/vexpo/releases/tag/v0.1.0
