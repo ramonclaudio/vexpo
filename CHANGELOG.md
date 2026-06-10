@@ -4,6 +4,8 @@ All notable changes to vexpo are tracked here. Format follows [Keep a Changelog]
 
 ## [Unreleased]
 
+- Pin the template's `convex` to `~1.40.0`: scaffolds resolve deps fresh now, and `^1.40.0` floated to 1.41.0, whose new `transactionLimits` param on `runMutation` breaks the `convex/http.ts` typecheck against `@convex-dev/resend@0.2.4`. The monorepo dodged it through its lockfile; fresh scaffolds didn't. Caught by scaffolding from the published 0.1.1 packages. Widen back to `^1.40.0` once resend's ctx types accept 1.41.
+
 ## [0.1.1] - 2026-06-10
 
 Scope narrowed to 0 to 1: every command must help an empty directory reach a first shipped iOS app. Post-launch ops are out.
