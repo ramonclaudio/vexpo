@@ -2,7 +2,7 @@
 
 Expo SDK 56 + Convex + Better Auth + Resend, wired end-to-end for iOS. Native SwiftUI via `@expo/ui/swift-ui`, email + password + email OTP + Apple Sign In, APNs push, Universal Links, profile + active sessions with avatar uploads and device-by-device revocation. EAS for the whole build surface: 10 workflows, fingerprint-gated OTA-or-build, TestFlight, rollback, rollout, ASC events, and the Apple Sign In JWT rotation cron.
 
-A lot of the SwiftUI modifiers the template reaches for, `clipShape("capsule")`, `defaultScrollAnchorForRole`, `scrollTargetBehavior`, `scrollPosition`, `textInputAutocapitalization`, `textContentType`, the `Alert` component, are upstream PRs we wrote and got merged into `expo/expo`. Full ledger in [`../../docs/UPSTREAM.md`](../../docs/UPSTREAM.md).
+A lot of the SwiftUI modifiers the template reaches for, `clipShape("capsule")`, `defaultScrollAnchorForRole`, `scrollTargetBehavior`, `scrollPosition`, `textInputAutocapitalization`, `textContentType`, the `Alert` component, the Dynamic Type pair (`textStyle` scaling on `font`, `dynamicTypeSize` bounds), `accessibilityHidden`, are upstream PRs we wrote and got merged into `expo/expo`. Full ledger in [`../../docs/UPSTREAM.md`](../../docs/UPSTREAM.md).
 
 ## Quick start
 
@@ -48,7 +48,8 @@ Long-form walkthrough with every prompt, every env-var alternative, and recovery
 - Active sessions screen with device-by-device revocation
 - Account soft-delete with a 30-day grace window and a restore-or-confirm screen on next sign-in
 - Pull-to-refresh on home and sessions, plus an interactive update banner on iOS 26
-- Theme switching, haptics toggle, reduced motion, dynamic type, VoiceOver labels everywhere
+- Theme switching, haptics toggle, reduced motion, VoiceOver labels everywhere (decorative views hidden from the rotor)
+- Native Dynamic Type end to end: every label scales with the Larger Text setting via `textStyle`, bounded with `dynamicTypeSize` ceilings on the seven fixed-geometry controls that would clip instead of wrap
 - Spotlight-style search tab (debounced, scored, keyword-aware)
 - Skeleton placeholders during initial query loads
 - Debug screen at `/debug` gated by toggle, off in production by default
@@ -152,4 +153,6 @@ __tests__/                        Convex + lib unit tests (validators, HMAC, dee
 
 Every `expo-*` package tracks the same SDK 56 release. Mismatched versions cause subtle runtime crashes. `npm run upgrade:stable` runs `expo install expo@latest && expo install --fix` to roll all of them forward together; `npm run upgrade` (`expo@next`) tracks the next SDK preview.
 
-`@convex-dev/better-auth@0.12.0` is the minimum compatible with `better-auth@1.6.x` (peer-dep range is `>=1.6.9 <1.7.0`). Earlier versions peer-dep `better-auth <1.6.0` and reject the `mode` field newer better-auth adds to adapter queries, breaking signup. The template pins `better-auth@1.6.11` + `@convex-dev/better-auth@0.12.2`.
+`@convex-dev/better-auth@0.12.0` is the minimum compatible with `better-auth@1.6.x` (peer-dep range is `>=1.6.9 <1.7.0`). Earlier versions peer-dep `better-auth <1.6.0` and reject the `mode` field newer better-auth adds to adapter queries, breaking signup. The template pins `better-auth@1.6.16` + `@convex-dev/better-auth@0.12.3`.
+
+`convex` holds at 1.40.0 for now: 1.41.0 adds a `transactionLimits` options param to `runMutation` that `@convex-dev/resend@0.2.4`'s ctx types reject, which breaks the `convex/http.ts` typecheck. The `^1.40.0` range picks 1.41 up automatically once resend widens its types.

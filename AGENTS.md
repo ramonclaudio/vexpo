@@ -64,7 +64,7 @@ When Apple loosens any of these, the CLI continues to work.
 
 1. Read this file, the template's `AGENTS.md`, and `README.md`.
 2. From the root: `npm run typecheck` to confirm packages compile.
-3. From the root: `npm run test:all` to run all unit + e2e tests (348 unit + 14 e2e + 110 template = 472).
+3. From the root: `npm run test:all` to run all unit + e2e tests (348 unit + 14 e2e + 113 template = 475).
 4. If touching the CLI: `npm run build -w @ramonclaudio/vexpo` then `npm run test:e2e -w @ramonclaudio/vexpo` to confirm the dist behaves.
 
 ## Common tasks

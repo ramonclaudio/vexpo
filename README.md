@@ -42,7 +42,7 @@ State is cached in `.setup-state.json` so re-runs are fast. `npx vexpo doctor` a
 
 **Stack.** Expo SDK 56 + RN 0.85 + React 19 + Convex + Better Auth + Resend. Strict TypeScript, no NativeWind, no Tailwind.
 
-**Native UI.** Every screen renders SwiftUI through `@expo/ui/swift-ui`. Forms, lists, sections, segmented controls, sheets, alerts, dynamic colors, system materials. Liquid Glass on iOS 26+ via `expo-glass-effect`, UIVisualEffectView blur fallback on iOS 16.4-25 via `expo-blur`. DynamicColorIOS for every palette token (auto-adapts to dark mode + the Increase Contrast accessibility setting). SF Symbols via `expo-symbols`. Haptics, dynamic type, VoiceOver labels, reduced motion respected. Many of the SwiftUI modifiers the template reaches for, `clipShape("capsule")`, `defaultScrollAnchorForRole`, `scrollTargetBehavior`, `scrollPosition`, `textInputAutocapitalization`, `textContentType`, the `Alert` component, ship via upstream PRs we wrote and got merged into `expo/expo`. Full ledger in [`docs/UPSTREAM.md`](./docs/UPSTREAM.md).
+**Native UI.** Every screen renders SwiftUI through `@expo/ui/swift-ui`. Forms, lists, sections, segmented controls, sheets, alerts, dynamic colors, system materials. Liquid Glass on iOS 26+ via `expo-glass-effect`, UIVisualEffectView blur fallback on iOS 16.4-25 via `expo-blur`. DynamicColorIOS for every palette token (auto-adapts to dark mode + the Increase Contrast accessibility setting). SF Symbols via `expo-symbols`. Haptics, dynamic type, VoiceOver labels, reduced motion respected. Many of the SwiftUI modifiers the template reaches for, `clipShape("capsule")`, `defaultScrollAnchorForRole`, `scrollTargetBehavior`, `scrollPosition`, `textInputAutocapitalization`, `textContentType`, the `Alert` component, the Dynamic Type pair (`textStyle` scaling on `font`, `dynamicTypeSize` bounds), `accessibilityHidden`, ship via upstream PRs we wrote and got merged into `expo/expo`. Full ledger in [`docs/UPSTREAM.md`](./docs/UPSTREAM.md).
 
 **Auth.** Email + password + email OTP via Better Auth (`@convex-dev/better-auth`). Apple Sign In via Apple's official `AppleAuthenticationButton` (HIG-compliant, BLACK in dark mode and WHITE in light; the third HIG style, `WHITE_OUTLINE`, isn't used here). SIWA Services ID JWT signing (ES256, 180-day expiry, auto-rotated every 90 days by EAS Workflows cron). Active sessions screen with device-by-device revocation via `listSessions` + `revokeSession`. Profile editing with avatar uploads to Convex storage. Rate limiting on every endpoint via `@convex-dev/rate-limiter`. App Attest device attestation via `@expo/app-integrity`, verified server-side in Convex. Account soft-delete with a 30-day grace window and restore-on-next-sign-in.
 
@@ -79,7 +79,7 @@ vexpo/
 - Architecture: [`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md). Why Convex over Postgres+Redis+Node, why Better Auth, every EAS product wiring, the setup state machine, performance characteristics, deliberate non-goals.
 - Security: [`docs/SECURITY.md`](./docs/SECURITY.md). Threat model, webhook signature + replay protection, OTA code-signing, Apple credential rotation, the secret-rotation matrix.
 - Operations: [`docs/OPERATIONS.md`](./docs/OPERATIONS.md). Service map, daily checks, failure modes with concrete recovery steps, useful queries, when to escalate.
-- Upstream contributions: [`docs/UPSTREAM.md`](./docs/UPSTREAM.md). Ledger of every PR we wrote and got merged into `expo/expo` that the template depends on. `@expo/ui/swift-ui` modifiers (`clipShape` capsule + ellipse, `scaleEffect` per-axis, `defaultScrollAnchor`, `defaultScrollAnchorForRole`, `scrollTargetBehavior`, `scrollTargetLayout`, `scrollPosition`, `textInputAutocapitalization`, `textContentType`), the `Alert` component, an `expo-modules-core` race fix, an `expo-tools` scoped-package resolution fix, and two CI workflow guards that make every fork green.
+- Upstream contributions: [`docs/UPSTREAM.md`](./docs/UPSTREAM.md). Ledger of every PR we wrote and got merged into `expo/expo` that the template depends on. `@expo/ui/swift-ui` modifiers (`clipShape` capsule + ellipse, `scaleEffect` per-axis, `defaultScrollAnchor`, `defaultScrollAnchorForRole`, `scrollTargetBehavior`, `scrollTargetLayout`, `scrollPosition`, `textInputAutocapitalization`, `textContentType`, `dynamicTypeSize`, `accessibilityIdentifier`, `accessibilityHidden`), the `Alert` component, Dynamic Type via `textStyle` on `font` (plus its Text-concatenation fix), the `<Host>` modifiers fix, an `expo-modules-core` race fix, an `expo-tools` scoped-package resolution fix, and three CI workflow guards that make every fork green.
 - Design system: [`templates/default/DESIGN.md`](./templates/default/DESIGN.md). Color palette, typography, spacing, radius ladder, materials, the SwiftUI primitives + custom composition surface.
 
 ## Monorepo dev
@@ -97,7 +97,7 @@ npx vexpo full --dry-run  # exercises the linked CLI
 Tests:
 
 ```bash
-npm run test               # 348 unit (vexpo) + 110 template = 458 total
+npm run test               # 348 unit (vexpo) + 113 template = 461 total
 npm run test:packages:e2e  # e2e suite against the built `vexpo` CLI dist
 npm run test:all           # everything
 ```
