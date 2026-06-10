@@ -45,13 +45,13 @@
     "updates:gen-cert": "node scripts/gen-update-cert.mjs"
   },
   "dependencies": {
-    "@better-auth/expo": "1.6.15",
-    "@convex-dev/better-auth": "0.12.2",
+    "@better-auth/expo": "1.6.16",
+    "@convex-dev/better-auth": "0.12.3",
     "@convex-dev/rate-limiter": "^0.3.2",
     "@convex-dev/resend": "^0.2.4",
     "@expo/app-integrity": "~56.0.3",
     "@expo/ui": "~56.0.16",
-    "better-auth": "1.6.15",
+    "better-auth": "1.6.16",
     "cbor-x": "^1.6.4",
     "convex": "^1.40.0",
     "convex-helpers": "^0.1.118",
