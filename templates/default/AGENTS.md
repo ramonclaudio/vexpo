@@ -10,7 +10,7 @@ hand. These are conventions, not magic.
   calls. Everything goes through `convex/` (server) and `convex/react`
   (client). After running `npx convex ai-files install`, read
   `convex/_generated/ai/guidelines.md` before touching anything in `convex/`.
-- **Auth.** Better Auth via `@convex-dev/better-auth@0.12.2`. Email
+- **Auth.** Better Auth via `@convex-dev/better-auth@0.12.3`. Email
   verification is gated on the `REQUIRE_EMAIL_VERIFICATION` Convex env var.
 - **Mobile.** Expo SDK 56, RN 0.85, React 19. **iOS only today.**
   Native UI exclusively via `@expo/ui/swift-ui`. No NativeWind, no Tailwind,

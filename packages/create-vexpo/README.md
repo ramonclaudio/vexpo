@@ -41,7 +41,7 @@ npx vexpo full --new   # same + Apple/Convex/Expo/Resend signup walkthrough
 
 ## What gets scaffolded
 
-The CLI copies `templates/default/` from the published tarball, restores npm-stripped dotfiles (`.gitignore`, `.env.example`, etc.), rewrites `package.json` (project name, version, drops monorepo metadata, swaps `vexpo` workspace ref for the published version), installs dependencies via the detected package manager (`npm`, `bun`, `pnpm`, or `yarn`, sniffed from `npm_config_user_agent`; defaults to `npm`), and initializes a fresh git repo with `feat: initial commit`.
+The CLI copies `templates/default/` from the published tarball, restores npm-stripped dotfiles (`.gitignore`, `.env.example`, `.npmrc`, etc.), rewrites `package.json` (project name, version, drops monorepo metadata), installs dependencies via the detected package manager (`npm`, `bun`, `pnpm`, or `yarn`, sniffed from `npm_config_user_agent`; defaults to `npm`), and initializes a fresh git repo with `feat: initial commit`. No lockfile ships in the tarball: the first install resolves the template's ranges fresh (including the latest in-range `vexpo` CLI) and the generated lockfile lands in the initial commit.
 
 After that, the project is standalone. The operational CLI (`vexpo`) is installed as a devDependency, so `npx vexpo <subcommand>` resolves to the local pinned version. Setup commands aren't in `package.json`. They're one-shot CLI invocations, not runtime scripts.
 
