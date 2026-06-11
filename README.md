@@ -128,4 +128,4 @@ Then every subsequent `cd templates/default` exports `.env.local` automatically.
 
 Without either path, the first `eas build` of a fresh checkout prompts "Configure this project?", writes `projectId` into `app.json`, and you'll need to stash it before committing.
 
-`npx vexpo doctor`, `vexpo setup`, and `vexpo env push` all read `.env.local` directly, so they work without shell-loading.
+`npx vexpo doctor`, `vexpo lite`/`vexpo full`, and `vexpo env push` all read `.env.local` directly, so they work without shell-loading.
