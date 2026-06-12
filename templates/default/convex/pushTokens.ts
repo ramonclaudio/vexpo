@@ -2,7 +2,7 @@ import { v } from "convex/values";
 
 import { internal } from "./_generated/api";
 import { internalMutation, internalQuery } from "./_generated/server";
-import { authMutation, authQuery } from "./functions";
+import { authMutation } from "./functions";
 import { rateLimitWithThrow } from "./rateLimit";
 import { deviceTypeValidator } from "./validators";
 
@@ -73,31 +73,6 @@ export const remove = authMutation({
       await ctx.db.delete(existing._id);
     }
     return null;
-  },
-});
-
-export const list = authQuery({
-  args: {},
-  returns: v.array(
-    v.object({
-      _id: v.id("pushTokens"),
-      _creationTime: v.number(),
-      userId: v.string(),
-      token: v.string(),
-      deviceType: deviceTypeValidator,
-      createdAt: v.number(),
-      updatedAt: v.number(),
-      lastSeenAt: v.optional(v.number()),
-      revoked: v.optional(v.boolean()),
-      revokedAt: v.optional(v.number()),
-      lastErrorCode: v.optional(v.string()),
-    }),
-  ),
-  handler: async (ctx) => {
-    return ctx.db
-      .query("pushTokens")
-      .withIndex("by_user", (q) => q.eq("userId", ctx.user._id))
-      .collect();
   },
 });
 

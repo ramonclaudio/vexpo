@@ -1,11 +1,6 @@
 import { literals } from "convex-helpers/validators";
 import { v } from "convex/values";
 
-export const paginatedResponseFields = {
-  continueCursor: v.string(),
-  isDone: v.boolean(),
-};
-
 // Name changes go through Better Auth (authClient.updateUser) directly.
 export const userProfileUpdateFields = {
   bio: v.optional(v.string()),
@@ -18,11 +13,6 @@ export const publicUserProfileValidator = v.object({
   username: v.union(v.string(), v.null()),
   avatarUrl: v.union(v.string(), v.null()),
   bio: v.optional(v.string()),
-});
-
-export const paginatedUsersValidator = v.object({
-  page: v.array(publicUserProfileValidator),
-  ...paginatedResponseFields,
 });
 
 export const deviceTypeValidator = literals("ios");
