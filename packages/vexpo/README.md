@@ -31,6 +31,10 @@ vexpo convex                      Provision Convex deployment + write .env.local
 vexpo better-auth                 Set BETTER_AUTH_SECRET, SITE_URL, APP_NAME on Convex
 vexpo resend                      Provision Resend sending key + webhook, flip REQUIRE_EMAIL_VERIFICATION=true
 vexpo env push                    .env.local + .env.prod → Convex + EAS (one pass)
+vexpo env convex-key              Sync Convex deploy key + selector to EAS env (post-migration fix)
+vexpo adopt                       Finish a project created by `eas integrations:convex:connect`
+vexpo convex:migrate              Copy server-side Convex env from another deployment
+vexpo asc:connect                 Re-link the EAS project to its ASC app (standalone, wraps `eas integrations:asc:connect`)
 ```
 
 ## Apple
@@ -85,7 +89,7 @@ npx eas env [...]                # env:push, env:pull, env:get, env:delete, env:
 npx eas integrations:asc [...]   # status, connect, disconnect
 ```
 
-`vexpo full` orchestrates `eas init`, `eas env:push`, `eas credentials -p ios` (via `eas credentials:configure-build`), and `eas integrations:asc:connect` internally as setup steps, none are exposed as standalone `vexpo` commands. The ASC API key flows through to both wizards via `EXPO_ASC_API_KEY_PATH` / `EXPO_ASC_KEY_ID` / `EXPO_ASC_ISSUER_ID` env vars pre-set from the cached `asc-key` state. These env vars set `AppStoreApi.defaultAuthenticationMode = API_KEY` inside eas-cli, so when the wizard reaches the Apple auth step during ASC key generation, it uses our cached key instead of prompting for Apple ID + password. The manual paste step doesn't auto-fill — the wizard skips it by auto-generating the key instead.
+`vexpo full` orchestrates `eas init`, `eas env:push`, `eas credentials -p ios` (via `eas credentials:configure-build`), and `eas integrations:asc:connect` internally as setup steps. Only the ASC link step is also exposed standalone as `vexpo asc:connect` (re-link without re-running `full`); the rest are setup-only. The ASC API key flows through to both wizards via `EXPO_ASC_API_KEY_PATH` / `EXPO_ASC_KEY_ID` / `EXPO_ASC_ISSUER_ID` env vars pre-set from the cached `asc-key` state. These env vars set `AppStoreApi.defaultAuthenticationMode = API_KEY` inside eas-cli, so when the wizard reaches the Apple auth step during ASC key generation, it uses our cached key instead of prompting for Apple ID + password. The manual paste step doesn't auto-fill — the wizard skips it by auto-generating the key instead.
 
 Earlier vexpo versions passed `--api-key-id <apple-key-id>` to `integrations:asc:connect`. That flag matches against EAS's uploaded key resources, not Apple-side identifiers, so it failed with `No App Store Connect API key found with Apple key identifier ...` whenever the key hadn't been uploaded to EAS yet (the common case on fresh projects). The current orchestration drops the flag and relies on the env vars + the wizard's "Create new or use existing" prompt instead.
 

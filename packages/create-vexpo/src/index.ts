@@ -101,6 +101,9 @@ const NAME_HINT = "lowercase letters, numbers, dashes; must start alphanumeric";
 // reject names that would produce a corrupt `package.json.name` (spaces,
 // unicode, npm scopes, etc.).
 function validateNameSegment(target: string): { ok: true } | { ok: false; reason: string } {
+  if (target.startsWith("@")) {
+    return { ok: false, reason: "npm scopes are not directories; use a plain directory name" };
+  }
   const segment = basename(target);
   if (!NAME_RE.test(segment)) return { ok: false, reason: NAME_HINT };
   return { ok: true };

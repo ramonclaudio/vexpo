@@ -29,6 +29,15 @@ export type ConvexOptions = {
 const BUNDLE_ID_RE = /^[A-Za-z0-9.-]+$/;
 const TEAM_ID_RE = /^[A-Z0-9]{10}$/;
 
+export type TeamIdInput = { kind: "skip" } | { kind: "invalid" | "ok"; value: string };
+
+export function resolveTeamIdInput(raw: string, fromConfig: string | null): TeamIdInput {
+  const value = raw.trim().toUpperCase() || (fromConfig ?? "");
+  if (!value) return { kind: "skip" };
+  if (!TEAM_ID_RE.test(value)) return { kind: "invalid", value };
+  return { kind: "ok", value };
+}
+
 /**
  * `--local` on `convex dev` is a deprecated option that crashes (convex 1.39+),
  * so a local target is selected the supported way: `--dev-deployment local` when
@@ -205,13 +214,18 @@ async function ensureIdentity(localEnv: Map<string, string>): Promise<void> {
       )
         .trim()
         .toUpperCase();
-      const value = raw || (fromConfig ?? "");
-      if (!TEAM_ID_RE.test(value)) {
-        throw new Error(`invalid Apple Team id '${value}' (must be 10 uppercase alphanumeric)`);
+      const resolved = resolveTeamIdInput(raw, fromConfig);
+      if (resolved.kind === "skip") {
+        yep("EXPO_PUBLIC_APPLE_TEAM_ID not set (optional for lite; `vexpo full` asks again)");
+      } else if (resolved.kind === "invalid") {
+        throw new Error(
+          `invalid Apple Team id '${resolved.value}' (must be 10 uppercase alphanumeric)`,
+        );
+      } else {
+        teamId = resolved.value;
+        await ensureLine("EXPO_PUBLIC_APPLE_TEAM_ID", teamId);
+        ok(`wrote EXPO_PUBLIC_APPLE_TEAM_ID=${teamId}`);
       }
-      teamId = value;
-      await ensureLine("EXPO_PUBLIC_APPLE_TEAM_ID", teamId);
-      ok(`wrote EXPO_PUBLIC_APPLE_TEAM_ID=${teamId}`);
     }
   } else {
     nop(`EXPO_PUBLIC_APPLE_TEAM_ID already set (${teamId})`);
