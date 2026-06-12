@@ -18,7 +18,7 @@
  */
 
 import { router } from "expo-router";
-import { useActionState, useState } from "react";
+import { startTransition, useActionState, useState } from "react";
 import { Image as ExpoImage } from "expo-image";
 import { Button, Host, Spacer, Text, VStack } from "@expo/ui/swift-ui";
 import {
@@ -158,7 +158,7 @@ export default function RestoreAccountScreen() {
           <ProminentButton
             testID="restore-account-restore"
             label={restorePending ? "Restoring…" : "Restore Account"}
-            onPress={() => restore()}
+            onPress={() => startTransition(() => restore())}
             disabled={restorePending || signingOut}
           />
           <Button

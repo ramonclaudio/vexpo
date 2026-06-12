@@ -69,7 +69,7 @@ export default function SessionsScreen() {
   const { data: current } = authClient.useSession();
   const currentToken = current?.session?.token ?? null;
   const [sessions, setSessions] = useState<SessionRow[] | null>(null);
-  const [loadError, setLoadError] = useState(false);
+  const [loadError, setLoadError] = useState<"network" | "stale" | null>(null);
   const [revoking, setRevoking] = useState<string | null>(null);
   const [confirmToken, setConfirmToken] = useState<string | null>(null);
 
@@ -77,10 +77,13 @@ export default function SessionsScreen() {
     try {
       const res = await authClient.listSessions();
       if (res.error) {
-        setLoadError(true);
+        // Better Auth freshness-gates session management (freshAge in
+        // convex/auth.ts). A stale session gets 403 SESSION_NOT_FRESH, which
+        // no retry can fix, only a fresh sign-in can.
+        setLoadError(res.error.code === "SESSION_NOT_FRESH" ? "stale" : "network");
         return;
       }
-      setLoadError(false);
+      setLoadError(null);
       const rows = (res.data ?? []).map((s) => ({
         id: s.id,
         token: s.token,
@@ -91,7 +94,7 @@ export default function SessionsScreen() {
       }));
       setSessions(rows);
     } catch {
-      setLoadError(true);
+      setLoadError("network");
     }
   };
 
@@ -124,7 +127,14 @@ export default function SessionsScreen() {
   return (
     <Host testID="sessions-screen" style={{ flex: 1, backgroundColor: colors.background }}>
       {sessions === null ? (
-        loadError ? (
+        loadError === "stale" ? (
+          <ContentUnavailable
+            testID="sessions-stale"
+            title="Sign in again to manage sessions"
+            systemImage="lock.shield"
+            description="For your security, managing sessions needs a recent sign-in. Sign out, sign back in, and come back here."
+          />
+        ) : loadError ? (
           <ContentUnavailable
             testID="sessions-error"
             title="Couldn't load sessions"

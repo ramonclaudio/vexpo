@@ -696,7 +696,7 @@ async function verifyEas(ctx: VerifyContext): Promise<Check[]> {
             "eas",
             "asc-submit-id",
             `submit profile${missing.length === 1 ? "" : "s"} ${missing.join(", ")} missing ascAppId`,
-            "run `vexpo asc` to write it; non-interactive `eas submit` (CI) fails without it",
+            "run `vexpo asc:connect` to write it; non-interactive `eas submit` (CI) fails without it",
           ),
         );
       } else if (existsSync("eas.json")) {

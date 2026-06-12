@@ -12,11 +12,11 @@
 # not by `id`, or the tap lands on empty space. Native tab-bar taps can be flaky;
 # assert-then-tap or retry.
 #
-# Maestro auto-derives the appId from the build's bundle id, so the same flow
-# runs against the dev simulator binary (`com.example.<pkg>` fallback in
-# app.config.ts) and the production binary (`com.<your-team>.<app>`) without edits.
+# `appId` reads ${MAESTRO_APP_ID}. EAS injects it from EXPO_PUBLIC_APP_BUNDLE_ID
+# (see .eas/workflows/e2e-tests.yml), so the same flow runs against any fork's
+# bundle id without edits. Locally, pass it from .env.local (needs a JDK on PATH):
 #
-# Run locally: `maestro test .maestro/launch.yaml`
+# Run locally: MAESTRO_APP_ID=$(grep '^EXPO_PUBLIC_APP_BUNDLE_ID=' .env.local | cut -d= -f2) maestro test .maestro/launch.yaml
 # Run on EAS:  via `.eas/workflows/e2e-tests.yml` (workflow_dispatch only).
 appId: ${MAESTRO_APP_ID}
 ---
