@@ -1,9 +1,20 @@
 # vexpo
 
-[![npm](https://img.shields.io/npm/v/@ramonclaudio/create-vexpo)](https://www.npmjs.com/package/@ramonclaudio/create-vexpo)
+[![npm](https://img.shields.io/npm/v/@ramonclaudio/create-vexpo?label=create-vexpo)](https://www.npmjs.com/package/@ramonclaudio/create-vexpo)
+[![npm](https://img.shields.io/npm/v/@ramonclaudio/vexpo?label=vexpo)](https://www.npmjs.com/package/@ramonclaudio/vexpo)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-I ship a lot of Expo apps. Every time I start one I end up rebuilding the same scaffolding. Convex deployment, Better Auth secrets, Resend sending key and webhook, the Apple Developer, ASC API, and SIWA Services ID dance, EAS init, env mirroring to dev, preview, and prod environments, dist cert, provisioning profile, push key, the rotation cron for the 180-day JWT. By the time I'm writing app code I've burned a day in Apple Developer Portal and EAS dashboards. vexpo is that setup, automated, plus the app already wired correctly behind it.
+vexpo automates the setup between an empty directory and TestFlight. The scaffold ships Expo SDK 56, Convex, Better Auth, and Resend wired end to end. The CLI handles the provisioning around it: Apple Developer, App Store Connect, Sign in with Apple, EAS, and env sync across dev, preview, and prod.
+
+```bash
+npm create @ramonclaudio/vexpo@latest my-app
+cd my-app
+npx vexpo lite   # Convex + Better Auth, simulator-ready in about a minute
+```
+
+Two packages: [`@ramonclaudio/create-vexpo`](https://www.npmjs.com/package/@ramonclaudio/create-vexpo) scaffolds the app, [`@ramonclaudio/vexpo`](https://www.npmjs.com/package/@ramonclaudio/vexpo) is the operational CLI that provisions, verifies, and repairs the setup (`lite`, `full`, `doctor`, and friends).
+
+The problem it deletes: every new Expo app burns a day in the Apple Developer Portal and EAS dashboards before the first line of app code. Convex deployment, auth secrets, sending keys, the ASC API and Sign in with Apple dance, certs, profiles, env mirroring, the rotation cron for the 180-day JWT. vexpo is that setup, automated, plus the app already wired correctly behind it.
 
 ## Quick start
 
