@@ -254,16 +254,30 @@ async function liveCheckRotationSecrets(): Promise<boolean> {
   ].every((k) => eas.has(k));
 }
 
-async function liveCheckLocalEnv(): Promise<boolean> {
-  const env = await readAll();
-  return [
-    "CONVEX_DEPLOYMENT",
-    "EXPO_PUBLIC_CONVEX_URL",
-    "EXPO_PUBLIC_CONVEX_SITE_URL",
-    "EXPO_PUBLIC_SITE_URL",
-    "EXPO_PUBLIC_APP_BUNDLE_ID",
-    "EXPO_PUBLIC_APPLE_TEAM_ID",
-  ].every((k) => env.has(k));
+// The lite core is everything `vexpo lite` writes to .env.local. Team id is
+// legitimately absent after lite (convex.ts treats it as optional for lite), so
+// it lives outside the core and gets its own state.
+const LOCAL_ENV_LITE_CORE = [
+  "CONVEX_DEPLOYMENT",
+  "EXPO_PUBLIC_CONVEX_URL",
+  "EXPO_PUBLIC_CONVEX_SITE_URL",
+  "EXPO_PUBLIC_SITE_URL",
+  "EXPO_PUBLIC_APP_BUNDLE_ID",
+] as const;
+
+const LOCAL_ENV_TEAM_ID = "EXPO_PUBLIC_APPLE_TEAM_ID";
+
+export type LocalEnvState = "ok" | "partial" | "missing";
+
+// "ok" = full core + team id. "partial" = lite core present, team id missing
+// (a healthy lite deployment). "missing" = lite core incomplete.
+export function classifyLocalEnv(env: Map<string, string>): LocalEnvState {
+  if (!LOCAL_ENV_LITE_CORE.every((k) => env.has(k))) return "missing";
+  return env.has(LOCAL_ENV_TEAM_ID) ? "ok" : "partial";
+}
+
+async function liveCheckLocalEnv(): Promise<LocalEnvState> {
+  return classifyLocalEnv(await readAll());
 }
 
 async function stepPrerequisites(): Promise<void> {
@@ -289,18 +303,25 @@ async function stepProbe(): Promise<{
   rows: Map<string, ProbeRow>;
   needs: Map<string, boolean>;
   install: boolean;
-  localEnv: boolean;
+  localEnv: LocalEnvState;
 }> {
   section("Probe");
 
   const installOk = await nodeModulesPresent();
-  const localOk = await liveCheckLocalEnv();
-  const convex = localOk ? await convexEnvMap() : new Map<string, string>();
+  const localEnvState = await liveCheckLocalEnv();
+  // The convex step is live once the lite core is present; it doesn't depend on
+  // the team id (which lite skips). "partial" still means a connected deployment.
+  const convexLive = localEnvState !== "missing";
+  const convex = convexLive ? await convexEnvMap() : new Map<string, string>();
 
   const rows = new Map<string, ProbeRow>();
   rows.set("accounts", await shouldRun("accounts", async () => true));
   rows.set("rebrand", await shouldRun("rebrand", async () => false));
-  rows.set("convex", { step: "convex", label: "convex", status: localOk ? "live" : "missing" });
+  rows.set("convex", {
+    step: "convex",
+    label: "convex",
+    status: convexLive ? "live" : "missing",
+  });
   rows.set("better-auth", await shouldRun("better-auth", () => liveCheckBetterAuth(convex)));
   rows.set("resend", await shouldRun("resend", () => liveCheckResend(convex)));
   rows.set("asc-key", await shouldRun("asc-key", async () => false));
@@ -330,9 +351,13 @@ async function stepProbe(): Promise<{
   line(
     `  ${BOLD}${"node_modules".padEnd(w)}${RESET}  ${installOk ? `${GREEN}ok${RESET}` : `${RED}missing${RESET}`}`,
   );
-  line(
-    `  ${BOLD}${".env.local".padEnd(w)}${RESET}  ${localOk ? `${GREEN}ok${RESET}` : `${RED}missing${RESET}`}`,
-  );
+  const localEnvMark =
+    localEnvState === "ok"
+      ? `${GREEN}ok${RESET}`
+      : localEnvState === "partial"
+        ? `${YELLOW}partial (lite)${RESET}`
+        : `${RED}missing${RESET}`;
+  line(`  ${BOLD}${".env.local".padEnd(w)}${RESET}  ${localEnvMark}`);
   for (const [key, row] of rows) {
     const label =
       key === "convex"
@@ -369,7 +394,7 @@ async function stepProbe(): Promise<{
   const needs = new Map<string, boolean>();
   for (const [k, row] of rows) needs.set(k, row.status === "missing");
 
-  return { rows, needs, install: !installOk, localEnv: localOk };
+  return { rows, needs, install: !installOk, localEnv: localEnvState };
 }
 
 type PhaseDescription = {
@@ -897,13 +922,18 @@ async function runStep(name: string, state?: StepName): Promise<void> {
   if (state) completed.push(state);
 }
 
-async function maybeRunStep(name: string, prompt: string, state?: StepName): Promise<void> {
+async function maybeRunStep(
+  name: string,
+  prompt: string,
+  state?: StepName,
+  defaultYes = true,
+): Promise<void> {
   if (!process.stdin.isTTY) {
     nop(`non-TTY: skipping ${name} (run \`${name}\` later)`);
     if (state) skipped.push(state);
     return;
   }
-  if (!(await askYesNo(prompt, true))) {
+  if (!(await askYesNo(prompt, defaultYes))) {
     nop(`skipped ${name} (run \`${name}\` later)`);
     if (state) skipped.push(state);
     return;
@@ -1197,11 +1227,13 @@ export async function runSetup(opts: SetupOptions): Promise<number> {
         nop("vexpo apple services-id cached");
       }
       const status = probe.rows.get("apple-sign-in")?.status;
-      const prompt =
-        status === "live" || status === "cached"
-          ? "Apple Sign In is configured, rotate the JWT now?"
-          : "Sign the Apple Sign In JWT now?";
-      await maybeRunStep("vexpo apple jwt", prompt, "apple-sign-in");
+      // A healthy configured JWT shouldn't default to a rotation. Render [y/N]
+      // for the rotate prompt; keep [Y/n] for the fresh sign prompt.
+      const healthy = status === "live" || status === "cached";
+      const prompt = healthy
+        ? "Apple Sign In is configured, rotate the JWT now?"
+        : "Sign the Apple Sign In JWT now?";
+      await maybeRunStep("vexpo apple jwt", prompt, "apple-sign-in", !healthy);
 
       if (options.force || probe.needs.get("apple-eas-rotation-secrets")) {
         await maybeRunStep(
