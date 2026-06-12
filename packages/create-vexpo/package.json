@@ -48,7 +48,7 @@
     "dev": "tsup --watch",
     "prepublishOnly": "npm run build",
     "typecheck": "tsc --noEmit",
-    "test": "echo '(create-vexpo: no per-package tests yet. covered by template e2e)'"
+    "test": "echo '(create-vexpo: no per-package tests yet)'"
   },
   "dependencies": {
     "commander": "^15.0.0",
