@@ -15,7 +15,15 @@ HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PKG_ROOT="$(cd "$HERE/../.." && pwd)"
 CLI="$PKG_ROOT/dist/index.js"
 TMPROOT="$(mktemp -d -t cvx-e2e.XXXXXX)"
-trap 'rm -rf "$TMPROOT"' EXIT
+cleanup() { if command -v trash >/dev/null 2>&1; then trash "$TMPROOT"; else rm -rf "$TMPROOT"; fi; }
+trap cleanup EXIT
+
+# Hermetic git identity so the scaffolder's commit works on hosts without one
+# (CI runners) and host gpg-sign configs can't break the suite.
+export GIT_CONFIG_GLOBAL="$TMPROOT/gitconfig"
+git config --file "$GIT_CONFIG_GLOBAL" user.name "cvx-e2e"
+git config --file "$GIT_CONFIG_GLOBAL" user.email "cvx-e2e@localhost"
+git config --file "$GIT_CONFIG_GLOBAL" commit.gpgsign false
 
 GREP="${1:-}"
 PASSED=0
@@ -160,6 +168,21 @@ if match_grep "$n"; then
   out=$(strip_ansi < "$sb/.scaffold.log")
   if echo "$out" | grep -qE "Next steps:"; then pass "$n"
   else fail "$n" "no next-steps block"; fi
+else skip "$n" "filtered"; fi
+
+n="no git identity: repo initialized, commit skipped with guidance"
+if match_grep "$n"; then
+  sb="$TMPROOT/noident-$$-$RANDOM"; mkdir -p "$sb"
+  (cd "$sb" && env -u GIT_AUTHOR_NAME -u GIT_AUTHOR_EMAIL -u GIT_COMMITTER_NAME -u GIT_COMMITTER_EMAIL -u EMAIL \
+    GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_NOSYSTEM=1 \
+    node "$CLI" noident-app -y --no-install --no-setup < /dev/null > .scaffold.log 2>&1)
+  proj="$sb/noident-app"
+  out=$(strip_ansi < "$sb/.scaffold.log")
+  miss=""
+  [ -d "$proj/.git" ] || miss="$miss no-.git"
+  (cd "$proj" && git log -1 >/dev/null 2>&1) && miss="$miss unexpected-commit"
+  echo "$out" | grep -qi "no git identity" || miss="$miss no-guidance"
+  [ -z "$miss" ] && pass "$n" || fail "$n" "$miss"
 else skip "$n" "filtered"; fi
 
 section "Name validation"

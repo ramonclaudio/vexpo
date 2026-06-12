@@ -93,11 +93,24 @@ async function main() {
       // themselves once deps land, but skip add/commit when install failed.
       if (depsReady) {
         await execa("git", ["add", "-A"], { cwd: target, stdio: "ignore" });
-        await execa("git", ["commit", "-m", "feat: initial commit", "--no-gpg-sign"], {
+        // git commit hard-fails without an identity (fresh machines, CI). Stage
+        // everything and let the user commit once they set one.
+        const identity = await execa("git", ["config", "user.email"], {
           cwd: target,
-          stdio: "ignore",
+          reject: false,
         });
-        gitSpin.succeed("Git repo initialized");
+        if (identity.exitCode !== 0 || !identity.stdout.trim()) {
+          gitSpin.warn("Git repo initialized, commit skipped (no git identity)");
+          console.error(
+            kleur.gray("  Set git config user.name and user.email, then commit yourself."),
+          );
+        } else {
+          await execa("git", ["commit", "-m", "feat: initial commit", "--no-gpg-sign"], {
+            cwd: target,
+            stdio: "ignore",
+          });
+          gitSpin.succeed("Git repo initialized");
+        }
       } else {
         gitSpin.warn("Git repo initialized, commit skipped (install failed)");
         console.error(kleur.gray(`  Commit yourself after ${pm} install lands.`));
