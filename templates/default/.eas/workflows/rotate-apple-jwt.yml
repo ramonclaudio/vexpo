@@ -1,8 +1,8 @@
 name: Rotate Apple Sign In JWT
 
-# Apple caps client_secret JWTs at 180 days. We re-sign every 90 days so
-# we always have plenty of headroom and never get caught with an expired
-# token. Replaces the GitHub Actions equivalent. runs on EAS infrastructure
+# Apple caps client_secret JWTs at 180 days. We re-sign quarterly (the 1st of
+# Jan, Apr, Jul, Oct) so we always have plenty of headroom and never get caught
+# with an expired token. Replaces the GitHub Actions equivalent. runs on EAS infrastructure
 # and reads secrets from EAS env vars (production, secret visibility) rather
 # than GitHub repo secrets.
 #

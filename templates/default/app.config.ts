@@ -16,17 +16,17 @@ const pkg = JSON.parse(readFileSync(resolve(process.cwd(), "package.json"), "utf
 
 const IS_DEV = process.env.APP_VARIANT === "development";
 
-// Identity comes from .env.local (written by `npm run setup:convex`). Fallbacks
+// Identity comes from .env.local (written by `npx vexpo convex`). Fallbacks
 // keep `expo prebuild` from crashing on a fresh checkout, but a real build
 // requires real values.
 const BUNDLE_ID = process.env.EXPO_PUBLIC_APP_BUNDLE_ID ?? `com.example.${pkg.name}`;
 const APPLE_TEAM_ID = process.env.EXPO_PUBLIC_APPLE_TEAM_ID ?? "ABCDE12345";
 const EXPO_OWNER = process.env.EXPO_PUBLIC_EXPO_OWNER ?? undefined;
 
-// Support contact surface. Populated by `vexpo rebrand` from `store.config.json`
-// once the user creates one (needed only for App Store submission). On a fresh
-// checkout these are empty and `app/(app)/help.tsx` hides the corresponding
-// buttons gracefully.
+// Support contact surface. `store.config.json` ships committed with
+// placeholders; `vexpo rebrand` fills it in (needed only for App Store
+// submission). On a fresh checkout these stay empty and `app/(app)/help.tsx`
+// hides the corresponding buttons gracefully.
 type StoreConfig = {
   apple: {
     copyright?: string;
