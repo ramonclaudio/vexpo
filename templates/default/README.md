@@ -1,10 +1,12 @@
 # vexpo
 
-Expo SDK 56 + Convex + Better Auth + Resend, wired end-to-end for iOS. Native SwiftUI via `@expo/ui/swift-ui`, email + password + email OTP + Apple Sign In, APNs push, Universal Links, profile + active sessions with avatar uploads and device-by-device revocation. EAS for the whole build surface: 10 workflows, fingerprint-gated OTA-or-build, TestFlight, rollback, rollout, ASC events, and the Apple Sign In JWT rotation cron.
-
-A lot of the SwiftUI modifiers the template reaches for, `clipShape("capsule")`, `defaultScrollAnchorForRole`, `scrollTargetBehavior`, `scrollPosition`, `textInputAutocapitalization`, `textContentType`, the `Alert` component, the Dynamic Type pair (`textStyle` scaling on `font`, `dynamicTypeSize` bounds), `accessibilityHidden`, are upstream PRs we wrote and got merged into `expo/expo`. Full ledger in [`../../docs/UPSTREAM.md`](../../docs/UPSTREAM.md).
+An iOS app on Expo SDK 56, wired end-to-end with Convex, Better Auth, and Resend. Native SwiftUI throughout, email + password + OTP + Apple Sign In, push, and the full EAS build surface.
 
 ## Quick start
+
+Requires macOS and Xcode. This is an iOS-only template, and `npm run ios` builds against the simulator. See [Pre-reqs](#pre-reqs).
+
+The `vexpo` CLI ships as a dependency, so `npm install` puts it on your path:
 
 ```bash
 npm install
@@ -20,44 +22,22 @@ npm run convex:dev      # terminal 1
 npm run ios             # terminal 2
 ```
 
-Lite mode skips Apple / EAS / Resend entirely. `REQUIRE_EMAIL_VERIFICATION` is off on Convex so sign-up auto-verifies, the user lands in the app with one tap, and the UI hides the OTP / password-reset / change-email flows that need Resend to work.
+Lite mode skips Apple, EAS, and Resend. Sign-up auto-verifies and drops you in the app with one tap. The OTP, password-reset, and change-email flows that need Resend stay hidden.
+
+## Ship path
 
 When you're ready to ship, swap `lite` for `full`:
 
 ```bash
 npx vexpo full         # provisions Resend, Apple Sign In, EAS, rebrand wizard
-npx vexpo full --new   # same, plus walks Apple / Convex / Expo / Resend signups
+npx vexpo full --new   # same, plus walks Apple, Convex, Expo, and Resend signups
 ```
 
-`full` writes `.env.local`, sets Convex env vars (`REQUIRE_EMAIL_VERIFICATION=true` once Resend is wired), validates the ASC API key, signs the SIWA JWT, runs `eas init` and `eas env:push`, prompts the rebrand wizard. Prints the `eas build` command at the end. vexpo doesn't run it for you, you run `npx eas build -p ios --profile production --auto-submit-with-profile testflight` when you're ready.
+`full` writes `.env.local`, sets Convex env vars, validates the ASC API key, signs the SIWA JWT, runs `eas init` and `eas env:push`, and prints the `eas build` command at the end. It never runs the build for you.
 
-Run `npx vexpo doctor` any time to auth-check every credential against the real service and cross-reference IDs across `.env.local`, Convex env, EAS env, and `app.config.ts`. Catches "wrong .p8 from another project" or ".env.prod copied from a different fork" in seconds.
+Run `npx vexpo doctor` any time to auth-check every credential against the real service and cross-reference IDs across `.env.local`, Convex env, EAS env, and `app.config.ts`.
 
-Long-form walkthrough with every prompt, every env-var alternative, and recovery paths: [`SETUP.md`](./SETUP.md).
-
-## What's wired up
-
-- Convex backend with reactive queries, storage, real-time sync, and `@convex-dev/rate-limiter` on every application mutation. Auth-route rate limits ship via Better Auth at the HTTP layer.
-- Better Auth via `@convex-dev/better-auth` (sessions, accounts; per-device revocation via `session.userAgent`)
-- App Attest device attestation via `@expo/app-integrity` with server-side verification in Convex
-- Resend via `@convex-dev/resend` for OTP, password reset, change-email, with webhook delivery events
-- Apple Sign In via Apple's official `AppleAuthenticationButton`, HIG-compliant (BLACK in dark mode, WHITE in light; `WHITE_OUTLINE` isn't used), SIWA Services ID + ES256 JWT signing (180-day expiry, auto-rotated every 90 days)
-- APNs push via `expo-notifications` with token registration on sign-in
-- Apple Universal Links from Convex's HTTP router (AASA at `/.well-known/apple-app-site-association`)
-- Profile editing with avatar uploads to Convex storage
-- Active sessions screen with device-by-device revocation
-- Account soft-delete with a 30-day grace window and a restore-or-confirm screen on next sign-in
-- Pull-to-refresh on home and sessions, plus an interactive update banner on iOS 26
-- Theme switching, haptics toggle, reduced motion, VoiceOver labels everywhere (decorative views hidden from the rotor)
-- Native Dynamic Type end to end: every label scales with the Larger Text setting via `textStyle`, bounded with `dynamicTypeSize` ceilings on the seven fixed-geometry controls that would clip instead of wrap
-- Spotlight-style search tab (debounced, scored, keyword-aware)
-- Skeleton placeholders during initial query loads
-- Debug screen at `/debug` gated by toggle, off in production by default
-- Liquid Glass on iOS 26+ via `expo-glass-effect`, UIVisualEffectView blur fallback on iOS 16.4-25 via `expo-blur`, both behind a `<Material>` primitive
-- OTA updates code-signed end-to-end (`expo-updates` code signing; generate the cert with `npm run updates:gen-cert`), so only signed bundles install
-- EAS Build / Update / Submit / Metadata. `runtimeVersion: { policy: "fingerprint" }` (auto-bumps on native code changes), branch/channel model, `appVersionSource: "remote"`. ASC API key managed by EAS (`eas credentials -p ios`), no `eas.json` patches. `@expo/fingerprint >= 0.19.3` makes the policy deterministic across machines and CI out of the box, so the earlier `fingerprint.config.js` + `.fingerprintignore` jsi knobs were dropped.
-- 10 EAS Workflows under `.eas/workflows/`: dev builds, PR previews with `github-comment` + QR + fingerprint-gated OTA-or-build, production deploy, TestFlight on `beta/*`, manual rollback / rollout, ASC event triggers to Slack, the SIWA JWT rotation cron, Maestro E2E. PR previews, Maestro E2E, and the production deploy are manual-only (`workflow_dispatch`) by default: the first two to conserve EAS build credits (restore their `pull_request` triggers to run on every PR), the deploy so a merge to `main` can't build, submit, and ship an OTA by surprise (add a `push: main` trigger if you want that)
-- GitHub Actions for general-purpose checks: typecheck, lint, format, tests, fingerprint diff on PR + push to `main`
+Full walkthrough with every prompt, env-var alternative, and recovery path: [`SETUP.md`](./SETUP.md).
 
 ## Pre-reqs
 
@@ -98,7 +78,7 @@ npm run env:pull               eas env:pull --environment development
 npm run env:pull:prod          eas env:pull --environment production
 
 npm run clean                  Trash node_modules, ios, caches, then reinstall
-npm run clean:metro            Trash Metro/Babel/Haste caches only
+npm run clean:metro            Trash Metro/Haste/node-compile caches only
 npm run clean:state            Wipe .setup-state.json + standard clean
 npm run typecheck              tsc --noEmit
 npm run lint                   oxlint
@@ -112,7 +92,24 @@ npm run upgrade                expo install expo@next && expo install --fix
 npm run upgrade:stable         expo install expo@latest && expo install --fix
 ```
 
-Setup is one-shot, not a `package.json` script. Run `npx vexpo lite` / `npx vexpo full` / `npx vexpo doctor` directly. All deletions go through `trash` (macOS Trash, recoverable).
+Setup is one-shot, not a `package.json` script. Run `npx vexpo lite`, `npx vexpo full`, or `npx vexpo doctor` directly. All deletions go through `trash` (macOS Trash, recoverable).
+
+## What's wired up
+
+- Convex backend, reactive queries, storage, real-time sync, per-mutation rate limiting
+- Better Auth via `@convex-dev/better-auth`, email + password + OTP + Apple Sign In, per-device session revocation
+- App Attest device attestation, verified in Convex
+- Resend for OTP, password reset, and change-email, with delivery webhooks
+- APNs push, Apple Universal Links, profile editing with avatar uploads
+- Account soft-delete with a 30-day grace window
+- Theme switching, haptics, reduced motion, VoiceOver, and Dynamic Type end to end
+- Liquid Glass on iOS 26+, with a `UIVisualEffectView` blur fallback on iOS 16.4-25
+- OTA updates code-signed end to end, so only signed bundles install
+- EAS Build, Update, Submit, and Metadata, with ten workflows under `.eas/workflows/`
+
+`runtimeVersion` uses the fingerprint policy with `appVersionSource: "remote"`, ASC key managed by EAS. PR previews, Maestro E2E, and the production deploy are `workflow_dispatch`-only by default. Restore the `pull_request` triggers to build on every PR, or add a `push: main` trigger to deploy on merge.
+
+For the full feature list, design system, and the upstream PRs behind it, see [`DESIGN.md`](./DESIGN.md) and [`UPSTREAM.md`](https://github.com/ramonclaudio/vexpo/blob/main/docs/UPSTREAM.md).
 
 ## Project structure
 
@@ -144,15 +141,15 @@ __tests__/                        Convex + lib unit tests (validators, HMAC, dee
 
 ## Long-form docs
 
-- [`SETUP.md`](./SETUP.md). Every setup phase with full prompts, env-var alternatives for non-interactive runs, recovery paths.
-- [`DESIGN.md`](./DESIGN.md). Color palette, typography, spacing, radius ladder, materials, the SwiftUI primitives + custom composition surface.
-- [`../../docs/UPSTREAM.md`](../../docs/UPSTREAM.md). Every upstream PR powering the template: `@expo/ui/swift-ui` modifiers, `expo-modules-core` fixes, `expo-tools` resolution, CI workflow guards.
+- [`SETUP.md`](./SETUP.md). Every setup phase with full prompts, env-var alternatives, recovery paths.
+- [`DESIGN.md`](./DESIGN.md). Palette, typography, spacing, materials, and the SwiftUI composition surface.
 - [`AGENTS.md`](./AGENTS.md). Guidance for AI coding agents working in this codebase.
+- [`UPSTREAM.md`](https://github.com/ramonclaudio/vexpo/blob/main/docs/UPSTREAM.md). Every upstream PR powering the template.
 
 ## Version pinning
 
-Every `expo-*` package tracks the same SDK 56 release. Mismatched versions cause subtle runtime crashes. `npm run upgrade:stable` runs `expo install expo@latest && expo install --fix` to roll all of them forward together; `npm run upgrade` (`expo@next`) tracks the next SDK preview.
+Every `expo-*` package tracks the same SDK 56 release. Mismatched versions cause subtle runtime crashes. `npm run upgrade:stable` rolls them all forward together. `npm run upgrade` tracks the next SDK preview.
 
-`@convex-dev/better-auth@0.12.0` is the minimum compatible with `better-auth@1.6.x` (peer-dep range is `>=1.6.9 <1.7.0`). Earlier versions peer-dep `better-auth <1.6.0` and reject the `mode` field newer better-auth adds to adapter queries, breaking signup. The template pins `better-auth@1.6.16` + `@convex-dev/better-auth@0.12.3`.
+`@convex-dev/better-auth@0.12.0` is the minimum compatible with `better-auth@1.6.x` (`0.12.3` peer-deps `better-auth >=1.6.11 <1.7.0`). Earlier versions peer-dep `better-auth <1.6.0` and reject the `mode` field newer better-auth adds to adapter queries, which breaks signup. The template pins `better-auth@1.6.16` and `@convex-dev/better-auth@0.12.3`.
 
-`convex` is pinned `~1.40.0` for now: 1.41.0 adds a `transactionLimits` options param to `runMutation` that `@convex-dev/resend@0.2.4`'s ctx types reject, which breaks the `convex/http.ts` typecheck. Widen the range back to `^1.40.0` once resend's types accept 1.41.
+`convex` is pinned `~1.40.0` for now. 1.41.0 adds a `transactionLimits` param to `runMutation` that `@convex-dev/resend@0.2.4`'s ctx types reject, which breaks the `convex/http.ts` typecheck. Widen back to `^1.40.0` once resend's types accept 1.41.
