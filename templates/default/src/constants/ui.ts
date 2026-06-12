@@ -5,17 +5,6 @@ export const Opacity = {
   muted: 0.6,
 } as const;
 
-export const Material = {
-  ultraThin: 20,
-  thin: 40,
-  regular: 60,
-  thick: 80,
-  ultraThick: 95,
-  bar: 50,
-} as const;
-
-export type MaterialLevel = keyof typeof Material;
-
 export const Shadow = {
   sm: "0 1px 2px",
   md: "0 2px 4px",
