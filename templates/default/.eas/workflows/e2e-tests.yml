@@ -11,6 +11,9 @@ name: E2E tests
 # `MAESTRO_APP_ID` resolves to the project's bundle id from the EAS development
 # environment (populated by `vexpo full` or `eas env:create`). The flow
 # yaml at .maestro/launch.yaml reads it as `appId: ${MAESTRO_APP_ID}`.
+#
+# The auth flow (.maestro/auth.yaml) signs a fresh account up against the
+# dev Convex deployment, so `test_creds` mints a unique email per run.
 
 # Auto-run on PRs is OFF by default to conserve EAS build credits (each run
 # builds an iOS Simulator binary). Trigger manually, or restore the
@@ -30,13 +33,23 @@ jobs:
       platform: ios
       profile: development:simulator
 
+  test_creds:
+    name: Mint unique test credentials
+    outputs:
+      email: ${{ steps.creds.outputs.email }}
+    steps:
+      - id: creds
+        run: set-output email "maestro-e2e-$(date +%s)@example.com"
+
   maestro:
     name: Run Maestro flows
-    needs: [build_ios_simulator]
+    needs: [build_ios_simulator, test_creds]
     type: maestro
     environment: development
     env:
       MAESTRO_APP_ID: ${{ env.EXPO_PUBLIC_APP_BUNDLE_ID }}
+      MAESTRO_TEST_EMAIL: ${{ needs.test_creds.outputs.email }}
+      MAESTRO_TEST_PASSWORD: maestro-e2e-password
     params:
       build_id: ${{ needs.build_ios_simulator.outputs.build_id }}
       flow_path: [".maestro"]
