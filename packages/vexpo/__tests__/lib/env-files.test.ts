@@ -200,6 +200,32 @@ describe("buildPlan routing", () => {
     }
   });
 
+  it("routes REQUIRE_EMAIL_VERIFICATION from .env.local to convex dev", async () => {
+    await writeFile(".env.local", "REQUIRE_EMAIL_VERIFICATION=true\n");
+    const sources = await readSources();
+    const plan = buildPlan(sources);
+    const dest = plan[0].destinations[0];
+    if (dest.type === "convex") {
+      expect(dest.channel).toBe("dev");
+      expect(dest.key).toBe("REQUIRE_EMAIL_VERIFICATION");
+    } else {
+      expect.fail("expected Convex destination");
+    }
+  });
+
+  it("routes REQUIRE_EMAIL_VERIFICATION from .env.prod to convex prod", async () => {
+    await writeFile(".env.prod", "REQUIRE_EMAIL_VERIFICATION=true\n");
+    const sources = await readSources();
+    const plan = buildPlan(sources);
+    const dest = plan[0].destinations[0];
+    if (dest.type === "convex") {
+      expect(dest.channel).toBe("prod");
+      expect(dest.key).toBe("REQUIRE_EMAIL_VERIFICATION");
+    } else {
+      expect.fail("expected Convex destination");
+    }
+  });
+
   it("routes APPLE_TEAM_ID from .env.prod to Convex prod (no gh-secret. dropped)", async () => {
     await writeFile(".env.prod", "APPLE_TEAM_ID=ABCDE12345\n");
     const sources = await readSources();
@@ -283,6 +309,7 @@ it("ROUTING covers all expected keys", () => {
   const keys = Object.keys(ROUTING);
   expect(keys).toContain("BETTER_AUTH_SECRET");
   expect(keys).toContain("RESEND_API_KEY");
+  expect(keys).toContain("REQUIRE_EMAIL_VERIFICATION");
   expect(keys).toContain("APPLE_CLIENT_SECRET");
   expect(keys).toContain("APPLE_SERVICES_ID");
   // APPLE_P8_PRIVATE_KEY and CONVEX_DEPLOY_KEY are NOT in ROUTING. they need
