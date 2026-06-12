@@ -24,6 +24,10 @@
 #   MAESTRO_TEST_EMAIL    unique email per run (a fresh account is created)
 #   MAESTRO_TEST_PASSWORD password, at least 10 chars (signUpSchema)
 #
+# Local re-runs: Better Auth keeps the session in the keychain, which
+# clearState does NOT wipe. Reset it first or the relaunch comes up signed in:
+#   xcrun simctl keychain booted reset
+#
 # Run locally (needs a JDK on PATH):
 #   MAESTRO_APP_ID=$(grep '^EXPO_PUBLIC_APP_BUNDLE_ID=' .env.local | cut -d= -f2) \
 #     MAESTRO_TEST_EMAIL="e2e+$(date +%s)@example.com" \
@@ -51,6 +55,20 @@ appId: ${MAESTRO_APP_ID}
 
 # Dev-client builds also show a one-time "developer menu" intro sheet after
 # clearState. Drag it down to dismiss. Release builds skip this block too.
+- runFlow:
+    when:
+      visible: "This is the developer menu.*"
+    commands:
+      - swipe:
+          start: 50%, 55%
+          end: 50%, 95%
+      - waitForAnimationToEnd:
+          timeout: 5000
+
+# The intro sheet can appear late while Metro is still bundling, so check a
+# second time after the bundle settles.
+- waitForAnimationToEnd:
+    timeout: 10000
 - runFlow:
     when:
       visible: "This is the developer menu.*"

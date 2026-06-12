@@ -1,0 +1,174 @@
+# Account soft-delete -> restore journey: delete the account from Settings, get
+# kicked to sign-in, sign back in within the 30-day grace window, land on the
+# restore screen, restore, and end up authed on home again.
+#
+# This deployment soft-deletes: `users.deleteAccount` stamps `deletedAt` instead
+# of hard-deleting, then signs out (see src/hooks/use-delete-account.ts). On the
+# next sign-in `getMe` returns the tombstoned user, so the `isAccountDeleted`
+# gate in (app)/_layout.tsx swaps the whole authed tree for `restore-account`.
+# Tapping Restore clears the tombstone and `router.replace("/")` drops us back on
+# the tabs root. Because this flow ends with the account restored and signed in,
+# it leaves the shared test account exactly as auth.yaml left it. The `zz-`
+# prefix makes it sort LAST in alphabetical folder runs so nothing downstream
+# inherits a half-deleted account.
+#
+# Face ID note: `deleteAccount` gates on LocalAuthentication.authenticateAsync
+# before the mutation. The simulator must have a matched/enrolled biometric
+# (Features > Face ID > Enrolled, then Matching Face after the prompt) or the
+# delete silently no-ops (`if (!result.success) return`). On EAS the device
+# profile handles this; locally, trigger "Matching Face" if the run stalls at
+# the delete step.
+#
+# Same @expo/ui SwiftUI conventions as auth.yaml: `testID` maps to the native
+# accessibilityIdentifier and surfaces to Maestro as `resource-id`, so id-based
+# asserts/taps resolve. Driving notes carry over:
+#   - Inner SwiftUI Text testIDs do NOT surface (Host roots and real controls
+#     do), so assert screens by Host id and static copy by its text.
+#   - Capsule rows hold their label left with a Spacer, so tap them by label
+#     text. ProminentButton centers its content, so tap it by id.
+#   - The delete confirm is a native Alert action; tap it by its exact label
+#     "Delete Account" (capital A), distinct from the row's "Delete account".
+#   - Dismiss the keyboard with a downward swipe, never hideKeyboard.
+#   - SecureField + strong-password autofill swallows typed input, so reveal via
+#     the `-visibility` eye toggle (which auto-focuses) before typing.
+#   - waitForAnimationToEnd between navigations; extendedWaitUntil after any
+#     live Convex network call (sign-in, delete, restore).
+#
+# Env vars (MUST match the account auth.yaml created and signed into):
+#   MAESTRO_APP_ID        bundle id (EAS injects from EXPO_PUBLIC_APP_BUNDLE_ID)
+#   MAESTRO_TEST_EMAIL    the same email auth.yaml signed in with
+#   MAESTRO_TEST_PASSWORD the same password (at least 10 chars)
+#
+# Requires a signed-in session: this runs AFTER auth.yaml/tour.yaml leave the
+# app authed, so it launches WITHOUT clearState. Runs LAST in folder order.
+#
+# Run locally (needs a JDK on PATH; run auth.yaml first to seed the session):
+#   MAESTRO_APP_ID=$(grep '^EXPO_PUBLIC_APP_BUNDLE_ID=' .env.local | cut -d= -f2) \
+#     MAESTRO_TEST_EMAIL="e2e+...@example.com" \
+#     MAESTRO_TEST_PASSWORD="maestro-test-pw" \
+#     maestro test .maestro/zz-delete-restore.yaml
+# Run on EAS: via `.eas/workflows/e2e-tests.yml` (folder run, sorts last).
+appId: ${MAESTRO_APP_ID}
+---
+# Resume the signed-in session left by auth.yaml. No clearState: this flow
+# depends on the live session and the seeded account.
+- launchApp
+- waitForAnimationToEnd:
+    timeout: 15000
+
+# Dev-client builds may show the one-time developer-menu intro sheet after a
+# relaunch. Drag it down to dismiss. Release builds skip this block.
+- runFlow:
+    when:
+      visible: "This is the developer menu.*"
+    commands:
+      - swipe:
+          start: 50%, 55%
+          end: 50%, 95%
+      - waitForAnimationToEnd:
+          timeout: 5000
+
+# The intro sheet can appear late while Metro is still bundling, so check a
+# second time after the bundle settles.
+- waitForAnimationToEnd:
+    timeout: 10000
+- runFlow:
+    when:
+      visible: "This is the developer menu.*"
+    commands:
+      - swipe:
+          start: 50%, 55%
+          end: 50%, 95%
+      - waitForAnimationToEnd:
+          timeout: 5000
+
+# Authenticated entry: the tabs root mounts on home.
+- extendedWaitUntil:
+    visible:
+      id: "home-screen"
+    timeout: 20000
+
+# Into Settings. Native tab taps can be flaky, so assert-then-tap.
+- assertVisible: "Settings"
+- tapOn: "Settings"
+- waitForAnimationToEnd:
+    timeout: 5000
+- extendedWaitUntil:
+    visible:
+      id: "settings-screen"
+    timeout: 15000
+
+# Delete the account. The row is a destructive capsule (label left, Spacer
+# center), so tap by text.
+- scrollUntilVisible:
+    element:
+      id: "settings-delete-account"
+    direction: DOWN
+- tapOn: "Delete account"
+- waitForAnimationToEnd:
+    timeout: 3000
+
+# Confirm in the native Alert. The action label is "Delete Account" (capital A),
+# distinct from the row's "Delete account". This triggers the Face ID gate (see
+# header) then the soft-delete mutation and sign-out.
+- assertVisible: "Delete Account"
+- tapOn: "Delete Account"
+
+# Soft-delete signs the user out, so the unauthenticated guard mounts the auth
+# group and lands on sign-in. Generous timeout: live network call + Face ID.
+- extendedWaitUntil:
+    visible:
+      id: "sign-in-screen"
+    timeout: 30000
+
+# Sign back in WITHIN the grace window with the same credentials. Method toggle
+# defaults to Email.
+- tapOn:
+    id: "sign-in-email"
+- inputText: ${MAESTRO_TEST_EMAIL}
+- swipe:
+    start: 50%, 35%
+    end: 50%, 85%
+# Strong-password autofill dodge: reveal via the eye toggle, which auto-focuses.
+- tapOn:
+    id: "sign-in-email-password-visibility"
+- waitForAnimationToEnd:
+    timeout: 3000
+- tapOn:
+    id: "sign-in-email-password"
+- inputText: ${MAESTRO_TEST_PASSWORD}
+- swipe:
+    start: 50%, 35%
+    end: 50%, 85%
+- scrollUntilVisible:
+    element:
+      id: "sign-in-submit"
+    direction: DOWN
+- tapOn:
+    id: "sign-in-submit"
+
+# Soft-deleted within the grace window: `getMe` returns the tombstoned user, so
+# the isAccountDeleted gate routes to restore-account instead of the tabs.
+# Generous timeout: live network call.
+- extendedWaitUntil:
+    visible:
+      id: "restore-account-screen"
+    timeout: 30000
+
+# Assert the grace-window copy by a stable text fragment. The full line reads
+# "Your account is set to be permanently deleted on <date>. Restore now to keep
+# your account and all of its data." Match the date-independent phrase.
+- assertVisible: ".*permanently deleted on.*"
+
+# Restore. The button is a ProminentButton (content centered), so tap by id.
+- tapOn:
+    id: "restore-account-restore"
+
+# Restore clears the tombstone and router.replace("/") drops us back on the tabs
+# root. Generous timeout: live network call.
+- extendedWaitUntil:
+    visible:
+      id: "home-screen"
+    timeout: 30000
+
+- takeScreenshot: delete-restore-final
