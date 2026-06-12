@@ -4,6 +4,28 @@ All notable changes to vexpo are tracked here. Format follows [Keep a Changelog]
 
 ## [Unreleased]
 
+- Run `vexpo rebrand` non-interactively with the identity flags plus `--yes`: the TTY guard fired before the flags were considered, contradicting its own non-TTY error message.
+- Sync a rebrand's bundle id into `.env.local` and Convex env. The new id only landed as the `app.config.ts` fallback, so a value written by a prior `lite` shadowed it forever and the convex step re-pushed the stale id.
+- Defer `asc:connect` with guidance when no ASC app record exists for the bundle id yet (it appears after the first `eas submit`), instead of dying on eas-cli's raw "Found 0 app(s)".
+- Stop `vexpo env push` stamping the accounts setup cache: a later `vexpo full` within 24 hours skipped the account walkthrough believing it had run.
+- Route `REQUIRE_EMAIL_VERIFICATION` through `env push` so the flag the resend phase sets survives a restore on a new machine.
+- Default the rotate-JWT prompt to No when Apple Sign In is already healthy, and report a lite-tier `.env.local` as `partial (lite)` in the setup probe instead of a red `missing`.
+- Point `.env.example` at the real `npx vexpo` commands: every `npm run setup*` script it referenced no longer exists, so a new user's first documented command failed.
+- Point the doctor `asc-submit-id` hint at `vexpo asc:connect`: the command it named does not exist.
+- Wire the welcome screen's first-launch gate: the onboarding flow existed, was deep-linkable, and nothing ever navigated to it.
+- Fix the dev menu's "Clear Secure Storage": it deleted keys Better Auth never writes, so the action logged success while the session survived.
+- Persist the privacy screen's Share Analytics toggle, and announce lite-mode redirects on the email auth screens instead of bouncing silently.
+- Match the sign-up subtitle to lite mode: it promised a verification code that never sends when sign-up auto-verifies.
+- Name the real reason the sessions screen needs a fresh sign-in. Better Auth freshness-gates `listSessions` (`freshAge` is ten minutes), and the old copy blamed the connection with a retry that could never succeed.
+- Wrap the restore-account action in a transition so `restorePending` updates and the Restore button disables during the network call.
+- Surface create-vexpo install failures (stderr tail plus the manual install hint) and skip the initial commit when install failed or git has no identity, instead of committing a half-built project or hard-failing.
+- Add a 20-case scaffold e2e for create-vexpo driving the built binary against temp dirs: name rewrite, dotfile restore, git init, flag variants, scoped-name rejection, payload shape. The scaffolder had no automated coverage at all.
+- Add three Maestro flows that run against the live dev deployment: the full auth journey (sign up on the auto-verify lite path, welcome gate, sign out, sign back in), the signed-in app tour (search with a result assert, appearance and haptics, the persisted analytics toggle, a profile save round-tripped to Convex, sessions), and account delete-restore through the Face ID gate and the 30-day grace screen. `e2e-tests.yml` mints a unique test email per run.
+- Fix the Maestro local-run docs: `appId` reads `MAESTRO_APP_ID`, which only EAS injects, so the documented bare `maestro test` command could not work.
+- Drop dead code across the CLI and template: unused ASC API sub-clients, `verifyOrInvalidate`, unreachable command options, dead e2e fixtures, uncalled convex endpoints (`listUsers`, `pushTokens.list`), unused rate buckets, `ConvexErrorView`, and the stale `Material` constant.
+- Reposition the READMEs around the built-on-EAS story (the template comes with Convex and Better Auth wired, the CLI creates or links your Convex deployment and handles the Apple P8 dance) and fix every doc claim the full-repo audit found drifted across `SETUP.md`, `DESIGN.md`, and `docs/`.
+- 506 tests (359 vexpo unit + 113 template + 14 cli e2e + 20 scaffold e2e), plus opt-in live suites (Convex Platform API, Maestro).
+
 ## [0.1.3] - 2026-06-11
 
 - Make the Apple Team id optional in `lite`: pressing Enter at the prompt now skips it instead of killing the run, matching lite's own no-Apple-account contract. A fresh user without a Developer account couldn't finish `lite` before. Empty-vs-invalid input split into `resolveTeamIdInput` with tests; `vexpo full` still asks when Apple provisioning actually needs it.
