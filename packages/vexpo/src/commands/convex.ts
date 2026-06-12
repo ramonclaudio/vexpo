@@ -169,7 +169,7 @@ export async function runConvex(options: ConvexOptions): Promise<number> {
   }
 }
 
-async function ensureIdentity(localEnv: Map<string, string>): Promise<void> {
+export async function ensureIdentity(localEnv: Map<string, string>): Promise<void> {
   const haveBundle = localEnv.has("EXPO_PUBLIC_APP_BUNDLE_ID");
   const haveTeam = localEnv.has("EXPO_PUBLIC_APPLE_TEAM_ID");
 
@@ -198,7 +198,9 @@ async function ensureIdentity(localEnv: Map<string, string>): Promise<void> {
       ok(`wrote EXPO_PUBLIC_APP_BUNDLE_ID=${bundleId}`);
     }
   } else {
-    nop(`EXPO_PUBLIC_APP_BUNDLE_ID already set (${bundleId})`);
+    // The value in .env.local is the one we push below. Say so instead of a
+    // bare "already set" that hides which id actually lands on Convex.
+    ok(`EXPO_PUBLIC_APP_BUNDLE_ID=${bundleId} (from .env.local); syncing to Convex`);
   }
 
   if (!haveTeam) {

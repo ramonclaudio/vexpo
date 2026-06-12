@@ -15,7 +15,8 @@ import {
   section,
   yep,
 } from "../lib/output.ts";
-import { ensureLine } from "../lib/env-local.ts";
+import { envSet as convexEnvSet } from "../lib/convex-env.ts";
+import { ensureLine, readAll, removeLines } from "../lib/env-local.ts";
 import { load, recordStep } from "../lib/state.ts";
 
 export type RebrandOptions = {
@@ -72,30 +73,40 @@ function bundleSlug(value: string): string {
 }
 
 async function promptInputs(overrides: Partial<RebrandInputs>): Promise<RebrandInputs> {
-  if (!process.stdin.isTTY) fail("rebrand wizard needs a TTY");
-  line();
-  note(
-    `${DIM}4 prompts. Everything else is derived. Override any with flags or edit later.${RESET}`,
-  );
-  line();
+  // Every prompt resolves from an override first. A TTY is only needed when a
+  // value is actually missing, so a fully-flagged run works without one.
+  const interactive = process.stdin.isTTY === true;
+  if (interactive) {
+    line();
+    note(
+      `${DIM}4 prompts. Everything else is derived. Override any with flags or edit later.${RESET}`,
+    );
+    line();
+  }
 
   const appName =
     overrides.appName ??
-    (await ask(`  ${BOLD}App name${RESET} ${DIM}(e.g. Foobar)${RESET} > `)).trim();
+    (interactive
+      ? (await ask(`  ${BOLD}App name${RESET} ${DIM}(e.g. Foobar)${RESET} > `)).trim()
+      : "");
   if (!appName) fail("app name required");
 
   const defaultPkg = slug(appName);
   const bundleHint = `com.${slug(appName).replace(/-/g, "")}.${bundleSlug(defaultPkg)}`;
   const bundleId =
     overrides.bundleId ??
-    ((await ask(`  ${BOLD}Bundle ID${RESET} ${DIM}[${bundleHint}]${RESET} > `)).trim() ||
-      bundleHint);
+    (interactive
+      ? (await ask(`  ${BOLD}Bundle ID${RESET} ${DIM}[${bundleHint}]${RESET} > `)).trim() ||
+        bundleHint
+      : bundleHint);
 
   const ownerName =
-    overrides.ownerName ?? ((await ask(`  ${BOLD}Your name${RESET} > `)).trim() || "Owner");
+    overrides.ownerName ??
+    (interactive ? (await ask(`  ${BOLD}Your name${RESET} > `)).trim() || "Owner" : "Owner");
 
   const reviewEmail =
-    overrides.reviewEmail ?? (await ask(`  ${BOLD}Apple review contact email${RESET} > `)).trim();
+    overrides.reviewEmail ??
+    (interactive ? (await ask(`  ${BOLD}Apple review contact email${RESET} > `)).trim() : "");
   if (!reviewEmail) fail("review email required");
 
   const packageName = overrides.packageName ?? defaultPkg;
@@ -127,6 +138,31 @@ async function promptInputs(overrides: Partial<RebrandInputs>): Promise<RebrandI
     copyrightOwner,
     expoOwner,
   };
+}
+
+/**
+ * The bundle id only lands in app.config.ts as a `??` fallback. If a prior
+ * `vexpo lite` already wrote EXPO_PUBLIC_APP_BUNDLE_ID to .env.local, that value
+ * shadows the new default forever. So when the new id differs, overwrite the env
+ * line (ensureLine alone is a no-op on an existing key) and push it to Convex if
+ * a deployment is already wired up. Without one, the next `vexpo convex` carries it
+ * (env push routes EXPO_PUBLIC_APP_BUNDLE_ID to EAS only, not Convex).
+ */
+async function syncBundleId(bundleId: string): Promise<void> {
+  const env = await readAll();
+  const current = env.get("EXPO_PUBLIC_APP_BUNDLE_ID");
+  if (current === bundleId) return;
+
+  if (current !== undefined) await removeLines(["EXPO_PUBLIC_APP_BUNDLE_ID"]);
+  await ensureLine("EXPO_PUBLIC_APP_BUNDLE_ID", bundleId);
+  ok(`wrote EXPO_PUBLIC_APP_BUNDLE_ID=${bundleId} to .env.local`);
+
+  if (env.has("CONVEX_DEPLOYMENT")) {
+    await convexEnvSet("APP_BUNDLE_ID", bundleId);
+    ok(`Convex env: APP_BUNDLE_ID=${bundleId}`);
+  } else {
+    note("no Convex deployment yet; the next `vexpo convex` run carries APP_BUNDLE_ID");
+  }
 }
 
 async function backup(files: string[], stamp: string): Promise<void> {
@@ -373,6 +409,7 @@ export async function runRebrand(options: RebrandOptions): Promise<number> {
     await rewriteAppJson();
     await rewritePackageJson(inputs);
     await rewriteStoreConfig(inputs);
+    await syncBundleId(inputs.bundleId);
 
     // app.config.ts reads `owner` from EXPO_PUBLIC_EXPO_OWNER; persist the slug
     // so team/org accounts actually get it (env-files.ts routes it to EAS too).

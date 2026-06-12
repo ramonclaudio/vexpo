@@ -263,8 +263,10 @@ export function makeAscClient(creds: AscCredentials) {
     },
 
     apps: {
-      async list(): Promise<AscApp[]> {
-        return paginatedList<AscApp>("/v1/apps");
+      async list(filter?: { bundleId?: string }): Promise<AscApp[]> {
+        const query: Record<string, string> = {};
+        if (filter?.bundleId) query["filter[bundleId]"] = filter.bundleId;
+        return paginatedList<AscApp>("/v1/apps", query);
       },
       async get(id: string): Promise<AscApp> {
         const res = await request<{ data: AscApp }>("GET", `/v1/apps/${id}`);
