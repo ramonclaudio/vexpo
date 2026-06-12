@@ -47,7 +47,7 @@ If you check anything every morning:
 
 - **EAS Dashboard → Deployments.** Adoption % per update group should ramp predictably. A flat curve at the rollout % means users aren't reaching the update, almost always a runtime version mismatch or a bad rollout.
 - **EAS Dashboard → Workflows.** Failed workflows on the main branch are an emergency. Failed workflows on feature branches are usually a PR author's problem.
-- **Convex Dashboard → Functions.** P95 latency creep on `users:getMe`, `users:listUsers`, and the HTTP routes is the early warning for everything else.
+- **Convex Dashboard → Functions.** P95 latency creep on `users:getMe` and the HTTP routes is the early warning for everything else.
 - **App Store Connect → TestFlight → Crashes.** TestFlight crash uploads land here. `asc-events.yml` should already have Slack-notified you, but verify the Slack alert fired.
 
 ## Failure modes
@@ -115,7 +115,7 @@ Filter on `event:"webhook.bad_signature"`. Common causes:
 
 ### Convex function p95 spike
 
-The Convex dashboard shows per-function p50/p95/p99. If `users:getMe` or `users:listUsers` is creeping past 100ms, check:
+The Convex dashboard shows per-function p50/p95/p99. If `users:getMe` is creeping past 100ms, check:
 
 - **Table size.** Convex indexes are good but unindexed scans get linear in row count. The `.index("authId", ["authId"])` on the `users` table covers `safeGetAuthenticatedUser` and `getMe`. New queries need new indexes.
 - **Auth fan-out.** `authComponent.getAnyUserById` resolves the Better Auth user. Running it inside a `Promise.all` over hundreds of rows can balloon. Batch via `authComponent.getAnyUsersByIds` if available, otherwise paginate.
