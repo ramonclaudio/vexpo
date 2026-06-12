@@ -48,7 +48,8 @@
     "dev": "tsup --watch",
     "prepublishOnly": "npm run build",
     "typecheck": "tsc --noEmit",
-    "test": "echo '(create-vexpo: no per-package tests yet)'"
+    "test": "echo '(create-vexpo: no unit tests; see test:e2e)'",
+    "test:e2e": "npm run build && __tests__/e2e/run.sh"
   },
   "dependencies": {
     "commander": "^15.0.0",
