@@ -6,6 +6,10 @@
 
 Expo and EAS already take an iOS app from code to the App Store. vexpo is the layer on top: an Expo template with Convex and Better Auth wired in from the first commit, and a CLI that handles the setup people usually wrestle with. It walks you through creating a Convex account or links the project you already have, and it takes care of the Apple keys (the P8 signing dance) so signing isn't a wall you hit on day one. I built it because I wanted my opinionated stack to be something anyone could start with in minutes instead of a weekend.
 
+<p align="center">
+  <img src="docs/assets/demo-app.gif" width="300" alt="The template app on the iOS simulator: sign up, onboarding, search, and the dark-mode flip">
+</p>
+
 ```bash
 npm create @ramonclaudio/vexpo@latest my-app
 cd my-app
@@ -29,11 +33,19 @@ npx vexpo doctor        # auth-checks every credential against the real service
 
 `full` writes the env, sets Convex vars, signs the Apple Sign In JWT, runs `eas init` and `eas env:push`, then prints the `eas build` command. The build itself is yours to run. That's EAS territory. `doctor` hits Resend, the ASC API, and decodes the Apple JWT, then cross-references bundle ID, team ID, and Services ID across every config. What `lite` and `full` do at each step lives in [`templates/default/SETUP.md`](./templates/default/SETUP.md). Add `--new` to either for the first-time signup walkthroughs.
 
+<p align="center">
+  <img src="docs/assets/demo-doctor.gif" width="720" alt="vexpo doctor auth-checking every credential against the live services and flagging real drift">
+</p>
+
 Two packages back this: [`create-vexpo`](https://www.npmjs.com/package/@ramonclaudio/create-vexpo) scaffolds the app, [`vexpo`](https://www.npmjs.com/package/@ramonclaudio/vexpo) is the CLI that provisions, verifies, and repairs the setup.
 
 ## What's in the box
 
 Expo SDK 56, RN 0.85, React 19. Strict TypeScript, no NativeWind. Every screen renders SwiftUI through `@expo/ui/swift-ui`, with Liquid Glass on iOS 26+ and a blur fallback below. Email, password, and OTP auth plus Apple Sign In with session revocation, App Attest primitives ready to wire, and soft-delete. APNs push, Apple Universal Links, and Resend webhooks. EAS handles builds, updates, submission, and store metadata, with ten workflows under `.eas/workflows/`. None trigger on a push to `main`, so a merge can't ship to the App Store by surprise.
+
+<p align="center">
+  <img src="docs/assets/screens.png" width="760" alt="Template screens in light and dark: home, profile, settings">
+</p>
 
 Some of the SwiftUI modifiers the template reaches for ship via upstream PRs I wrote and got merged into `expo/expo`. The screen-by-screen breakdown lives in [`templates/default/README.md`](./templates/default/README.md), the design rationale in [`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md).
 
