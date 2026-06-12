@@ -315,7 +315,9 @@ export default function SignUpScreen() {
             <Text
               modifiers={[dfont({ size: 16 }), foregroundStyle(colors.mutedForeground as string)]}
             >
-              A verification code will be sent to confirm your email.
+              {emailFeatures
+                ? "A verification code will be sent to confirm your email."
+                : "Sign up and you're in. No email to confirm."}
             </Text>
           </VStack>
 
