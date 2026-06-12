@@ -152,7 +152,7 @@ const HELP = `${BOLD}vexpo clean${RESET}
 ${BOLD}Usage:${RESET}
   ${DIM}npm run clean${RESET}                wipe caches, keep lockfile, frozen install
   ${DIM}npm run clean --all${RESET}          also wipe lockfile + convex/_generated
-  ${DIM}npm run clean --metro${RESET}        just Metro/Haste/Babel caches
+  ${DIM}npm run clean --metro${RESET}        just Metro/Haste/node-compile caches
   ${DIM}npm run clean --state${RESET}        also wipe .setup-state.json
   ${DIM}npm run clean --no-install${RESET}   wipe everything but skip reinstall
   ${DIM}npm run clean --help${RESET}
