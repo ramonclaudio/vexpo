@@ -3,73 +3,73 @@
 [![npm](https://img.shields.io/npm/v/@ramonclaudio/vexpo)](https://www.npmjs.com/package/@ramonclaudio/vexpo)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-Operational CLI for [vexpo](https://github.com/ramonclaudio/vexpo) projects: Expo + Convex + Better Auth + Resend, end-to-end iOS. Provisions the stack, validates every credential, keeps env values in sync across `.env.local` / Convex env / EAS env, and covers the last App Store Connect mile to a first ship: TestFlight delivery plus the privacy and accessibility labels Apple requires before review.
+Operational CLI for [vexpo](https://github.com/ramonclaudio/vexpo) projects: Expo + Convex + Better Auth + Resend, end-to-end iOS. EAS does the heavy lifting (builds, updates, submission). vexpo covers the setup around it: provisioning the stack, checking every credential, keeping env values in sync, and the App Store Connect last mile to a first ship.
 
-Scaffolded by [`create-vexpo`](https://www.npmjs.com/package/@ramonclaudio/create-vexpo) into your project's devDependencies. Invoke via `npx vexpo`.
-
-## Design rule: don't reinvent EAS
-
-If `eas <subcommand>` is the canonical answer, the recipe is `npx eas <subcommand>`, not `vexpo`. This CLI only surfaces what `eas-cli` doesn't do: setup orchestration, cross-source drift detection, Apple SIWA work, and the last App Store Connect mile to a first ship. Scope test for any command: does it help an empty directory become a first shipped, authenticated, backed iOS app? Post-launch ops (customer reviews, IAP sandbox testing, release management) are out, that's `eas` and App Store Connect once you have users. Wrapping every `eas` command would add no value over `eas-cli` itself, expand the maintenance surface, and signal a lack of trust in the platform.
+Scaffolded by [`create-vexpo`](https://www.npmjs.com/package/@ramonclaudio/create-vexpo) into your devDependencies. Run it with `npx vexpo`.
 
 ## Setup
 
 ```
-vexpo lite                        Convex + Better Auth only, simulator-ready (60s)
-vexpo lite --new                  same + Convex signup walkthrough for first-time users
+vexpo lite                        Convex + Better Auth only, simulator-ready (~60s)
+vexpo lite --new                  same + Convex signup walkthrough for first-timers
 vexpo full                        full provisioning (Convex + Better Auth + Resend + Apple + EAS init + rebrand)
 vexpo full --new                  same + walks Apple/Convex/Expo/Resend signups
 vexpo full --skip-rebrand         full setup, skip the rebrand wizard
 
-vexpo doctor                      Cross-source drift detection
-vexpo doctor --json               Machine-readable output
-vexpo doctor --strict             Exit non-zero on any warn
+vexpo doctor                      cross-source drift detection
+vexpo doctor --json               machine-readable output
+vexpo doctor --strict             exit non-zero on any warn
 
-vexpo accounts                    Walk Apple/Expo/Convex/Resend signups (standalone)
-vexpo rebrand                     Replace template defaults with your identity
-vexpo review-account              Seed the App Review demo account on Convex
-vexpo convex                      Provision Convex deployment + write .env.local
-vexpo better-auth                 Set BETTER_AUTH_SECRET, SITE_URL, APP_NAME on Convex
-vexpo resend                      Provision Resend sending key + webhook, flip REQUIRE_EMAIL_VERIFICATION=true
-vexpo env push                    .env.local + .env.prod → Convex + EAS (one pass)
-vexpo env convex-key              Sync Convex deploy key + selector to EAS env (post-migration fix)
-vexpo adopt                       Finish a project created by `eas integrations:convex:connect`
-vexpo convex:migrate              Copy server-side Convex env from another deployment
-vexpo asc:connect                 Re-link the EAS project to its ASC app (standalone, wraps `eas integrations:asc:connect`)
+vexpo accounts                    walk Apple/Expo/Convex/Resend signups (standalone)
+vexpo rebrand                     replace template defaults with your identity
+vexpo review-account              seed the App Review demo account on Convex
+vexpo convex                      provision or connect a Convex deployment
+vexpo better-auth                 set SITE_URL, BETTER_AUTH_SECRET, APP_NAME on Convex
+vexpo resend                      provision Resend sending key + webhook, write to Convex env
+vexpo env push                    push .env.local + .env.prod to Convex + EAS env
+vexpo env convex-key              sync Convex deploy key + selector to EAS (post-migration fix)
+vexpo adopt                       finish a project created by `eas integrations:convex:connect`
+vexpo convex:migrate              copy server-side Convex env from another deployment
+vexpo asc:connect                 link the EAS project to its ASC app (wraps `eas integrations:asc:connect`)
 ```
 
 ## Apple
 
 ```
-vexpo apple asc-key               Validate ASC API key against /v1/apps
-vexpo apple credentials           Wraps `eas credentials:configure-build` with cached ASC env vars (skips Apple Developer login prompt)
-vexpo apple services-id           Detect SIWA Services ID + attach APPLE_ID_AUTH capability
-vexpo apple jwt                   Sign SIWA ES256 client_secret JWT (180-day expiry)
-vexpo apple jwt --rotate          Re-sign the JWT only
-vexpo apple eas-rotation-secrets  Push the 5 EAS production secrets the JWT cron needs
+vexpo apple asc-key               validate an ASC API key against /v1/apps
+vexpo apple credentials           wrap `eas credentials:configure-build` with the cached ASC key
+vexpo apple services-id           detect SIWA Services ID + attach APPLE_ID_AUTH capability
+vexpo apple jwt                   sign the SIWA ES256 client_secret JWT (180-day expiry)
+vexpo apple jwt --rotate          re-sign the JWT only
+vexpo apple eas-rotation-secrets  push the 5 EAS production secrets the JWT cron needs
 ```
 
-## App Store Connect (the last mile to a first ship)
+## App Store Connect
 
-TestFlight delivery, plus the privacy and accessibility labels Apple requires before a submission clears review. `eas-cli` hands a build to TestFlight and stops there.
+Picks up after `eas submit` hands a build to TestFlight: groups, testers, release notes, plus the privacy and accessibility labels Apple requires before review.
 
 ```
-vexpo testflight groups list                 List beta groups
-vexpo testflight groups create <name>        Create a beta group
-vexpo testflight groups view <id>            View a beta group + its testers
-vexpo testflight groups delete <id>          Delete a beta group
-vexpo testflight testers list                List beta testers
-vexpo testflight invite <email>              Add a tester + send invite
-vexpo testflight whats-new <buildId> <text>  Set "What's new" notes
+vexpo testflight groups list                 list beta groups
+vexpo testflight groups create <name>        create a beta group
+vexpo testflight groups view <id>            view a beta group + its testers
+vexpo testflight groups delete <id>          delete a beta group
+vexpo testflight testers list                list beta testers
+vexpo testflight invite <email>              add a tester + send a TestFlight invite
+vexpo testflight whats-new <buildId> <text>  set the "What's new" notes
 
-vexpo asc:privacy show [file]                Show the declared privacy nutrition label
-vexpo asc:privacy lint <file>                Validate privacy.config.json against Apple's enums
-vexpo asc:accessibility show                 Fetch the app's accessibility declarations
-vexpo asc:accessibility lint <file>          Validate accessibility.config.json against Apple's enums
+vexpo asc:privacy show [file]                show the declared privacy.config.json
+vexpo asc:privacy lint <file>                validate privacy.config.json against Apple's enums
+vexpo asc:accessibility show                 fetch the app's accessibility declarations
+vexpo asc:accessibility lint <file>          validate accessibility.config.json against Apple's enums
 ```
+
+## Design rule: don't reinvent EAS
+
+vexpo only covers what `eas-cli` doesn't: setup orchestration, cross-source drift detection, Apple SIWA work, and the last App Store Connect mile to a first ship. If `eas <subcommand>` is the canonical answer, run `npx eas <subcommand>`.
 
 ## What `vexpo` doesn't wrap
 
-For canonical EAS surface, use `eas` directly. Wrapping these would add no value over `eas-cli` itself.
+Reach for `eas` directly for the canonical platform surface.
 
 ```bash
 npx eas init                     # EAS project init
@@ -89,25 +89,20 @@ npx eas env [...]                # env:push, env:pull, env:get, env:delete, env:
 npx eas integrations:asc [...]   # status, connect, disconnect
 ```
 
-`vexpo full` orchestrates `eas init`, `eas env:push`, `eas credentials -p ios` (via `eas credentials:configure-build`), and `eas integrations:asc:connect` internally as setup steps. Only the ASC link step is also exposed standalone as `vexpo asc:connect` (re-link without re-running `full`); the rest are setup-only. The ASC API key flows through to both wizards via `EXPO_ASC_API_KEY_PATH` / `EXPO_ASC_KEY_ID` / `EXPO_ASC_ISSUER_ID` env vars pre-set from the cached `asc-key` state. These env vars set `AppStoreApi.defaultAuthenticationMode = API_KEY` inside eas-cli, so when the wizard reaches the Apple auth step during ASC key generation, it uses our cached key instead of prompting for Apple ID + password. The manual paste step doesn't auto-fill — the wizard skips it by auto-generating the key instead.
-
-Earlier vexpo versions passed `--api-key-id <apple-key-id>` to `integrations:asc:connect`. That flag matches against EAS's uploaded key resources, not Apple-side identifiers, so it failed with `No App Store Connect API key found with Apple key identifier ...` whenever the key hadn't been uploaded to EAS yet (the common case on fresh projects). The current orchestration drops the flag and relies on the env vars + the wizard's "Create new or use existing" prompt instead.
+`vexpo full` drives `eas init`, `eas env:push`, `eas credentials`, and the ASC link internally using the cached ASC key. Only the ASC link is also standalone, as `vexpo asc:connect`.
 
 ## Architecture
 
-- Commander-based command tree in `src/cli.ts`.
-- One file per top-level command in `src/commands/`. Each exports `run<Name>(options)` returning a numeric exit code.
-- `src/lib/eas-cli.ts` is the shared shell-out helper: `easJson<T>(argv)` parses `--json --non-interactive` output, `easSpawn(argv)` forwards stdio for interactive commands, `easText(argv)` returns raw streams.
-- Built with tsup → single ESM bundle in `dist/`. Node 20+.
+Commander tree in `src/cli.ts`, one file per top-level command in `src/commands/`. `src/lib/eas-cli.ts` shells out to `eas-cli`. Built with tsup to ESM, a `cli.js` entry plus shared chunks. Node 20+.
 
 ## Apple ASC API workarounds
 
-Apple changed several ASC API behaviors after the initial CLI release. The CLI handles each one:
+Apple changed several ASC API behaviors after the initial CLI release. The CLI handles each one.
 
-- `POST /v1/bundleIds` rejects `platform: "SERVICES"`. `services-id` walks the user through manual creation in the developer portal, then re-polls.
-- App bundle IDs report `platform: "UNIVERSAL"` for newer accounts. `findOrCreateBundleId` matches any non-SERVICES platform when looking up an App ID.
-- Relationship endpoints reject `limit`. `bundleIdCapabilities.list` fetches without pagination.
-- `filter[platform]=SERVICES` returns 400. `doctor`'s `services-id-exists` check filters by identifier alone.
+- `POST /v1/bundleIds` rejects `platform: "SERVICES"`. `services-id` walks you through manual creation in the developer portal, then re-polls.
+- App bundle IDs report `platform: "UNIVERSAL"` for newer accounts. The App ID lookup matches any non-SERVICES platform.
+- Relationship endpoints reject `limit`. The capability list fetches without pagination.
+- `filter[platform]=SERVICES` returns 400. `doctor` filters by identifier alone.
 
 ## Repo
 
