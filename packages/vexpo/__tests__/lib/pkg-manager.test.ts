@@ -9,9 +9,7 @@ import {
   currentRuntimeVersion,
   detectPackageManager,
   dlx,
-  dlxFor,
   installCmdFor,
-  runCmdFor,
 } from "../../src/lib/pkg-manager";
 
 let workdir: string;
@@ -78,24 +76,6 @@ describe("dlx", () => {
   });
 });
 
-describe("dlxFor", () => {
-  it("returns bunx for bun", () => {
-    expect(dlxFor("bun")).toBe("bunx");
-  });
-
-  it("returns pnpm dlx for pnpm", () => {
-    expect(dlxFor("pnpm")).toBe("pnpm dlx");
-  });
-
-  it("returns yarn dlx for yarn", () => {
-    expect(dlxFor("yarn")).toBe("yarn dlx");
-  });
-
-  it("returns npx for npm", () => {
-    expect(dlxFor("npm")).toBe("npx");
-  });
-});
-
 describe("installCmdFor", () => {
   it.each([
     ["bun", "bun install"],
@@ -104,17 +84,6 @@ describe("installCmdFor", () => {
     ["npm", "npm install"],
   ] as const)("returns %s install for %s", (pm, expected) => {
     expect(installCmdFor(pm)).toBe(expected);
-  });
-});
-
-describe("runCmdFor", () => {
-  it.each([
-    ["bun", "bun run"],
-    ["pnpm", "pnpm run"],
-    ["yarn", "yarn"], // yarn doesn't use `yarn run`
-    ["npm", "npm run"],
-  ] as const)("returns %s for %s", (pm, expected) => {
-    expect(runCmdFor(pm)).toBe(expected);
   });
 });
 

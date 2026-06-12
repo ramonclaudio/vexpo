@@ -172,7 +172,7 @@ after install to rebuild the Convex bindings. Use when the lockfile
 is suspect or you want a true clean-slate reinstall.
 
 ${BOLD}--state${RESET} additionally wipes .setup-state.json so the next
-${DIM}npm run setup${RESET} re-probes every phase against external services
+${DIM}npx vexpo full${RESET} re-probes every phase against external services
 (slower, but the cure when state has drifted from reality).
 
 Bundlers (Metro, expo CLI, react-native start, Watchman) are stopped
@@ -474,7 +474,7 @@ async function stepSetupState(): Promise<void> {
     return;
   }
   await trashPaths([path]);
-  ok("trashed .setup-state.json (next `npm run setup` re-probes every phase)");
+  ok("trashed .setup-state.json (next `npx vexpo full` re-probes every phase)");
 }
 
 async function stepInstall(pm: PM): Promise<void> {

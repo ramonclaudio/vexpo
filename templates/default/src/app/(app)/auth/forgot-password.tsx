@@ -53,6 +53,9 @@ export default function ForgotPasswordScreen() {
   // mode, but a deeplinked navigation could still land here.
   useEffect(() => {
     if (providers !== undefined && providers.emailFeatures === false) {
+      announce(
+        "Password reset is unavailable until email verification is set up. Run npx vexpo full.",
+      );
       router.replace("/auth/sign-in");
     }
   }, [providers]);

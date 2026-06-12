@@ -186,10 +186,10 @@ export async function updateConfigure(
 }
 
 /**
- * Runs `eas diagnostics`. At eas v20 this is just an environment-info dump (CLI
- * version, OS, node), so it only proves the CLI is installed and runnable, NOT
- * that eas.json validates or the project is linked. Real link/auth health comes
- * from project:info + whoami (see verify.ts).
+ * Runs `eas diagnostics`. As of eas-cli@19.0.0 this is just an environment-info
+ * dump (CLI version, OS, node), so it only proves the CLI is installed and
+ * runnable, NOT that eas.json validates or the project is linked. Real link/auth
+ * health comes from project:info + whoami (see verify.ts).
  */
 export async function diagnostics(): Promise<
   { ok: true; info: string } | { ok: false; error: string }

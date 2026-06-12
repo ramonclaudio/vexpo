@@ -4,21 +4,6 @@ import { components } from "./_generated/api";
 import type { MutationCtx } from "./_generated/server";
 
 export const rateLimiter = new RateLimiter(components.rateLimiter, {
-  apiRead: {
-    kind: "token bucket",
-    rate: 100,
-    period: MINUTE,
-    capacity: 20,
-    shards: 2,
-  },
-
-  apiWrite: {
-    kind: "token bucket",
-    rate: 30,
-    period: MINUTE,
-    capacity: 10,
-  },
-
   userAction: {
     kind: "token bucket",
     rate: 60,
@@ -44,12 +29,7 @@ export const rateLimiter = new RateLimiter(components.rateLimiter, {
   avatarUpload: { kind: "token bucket", rate: 30, period: HOUR, capacity: 10 },
 });
 
-export type RateLimitName =
-  | "apiRead"
-  | "apiWrite"
-  | "userAction"
-  | "criticalAction"
-  | "avatarUpload";
+export type RateLimitName = "userAction" | "criticalAction" | "avatarUpload";
 
 export async function rateLimitWithThrow(
   ctx: MutationCtx,

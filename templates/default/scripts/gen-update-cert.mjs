@@ -76,7 +76,9 @@ console.log(`1. Commit ${CERT.replace(`${PROJECT}/`, "")} (it's a public cert).`
 console.log(`2. Upload the private key to EAS as a file-type secret:`);
 console.log(`   eas env:create --environment production --visibility secret \\`);
 console.log(`     --type file --name EAS_UPDATE_PRIVATE_KEY --value ${KEY}`);
-console.log(`3. Keep ${KEY} off committed surface. The .gitignore already covers it.`);
+console.log(
+  `3. Keep ${KEY} off committed surface. It lands in ../keys/, outside the repo, so git never sees it.`,
+);
 console.log(
   `4. The next \`expo prebuild\` picks up the cert automatically. Run \`npm run prebuild\`.`,
 );

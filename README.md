@@ -4,7 +4,7 @@
 [![npm](https://img.shields.io/npm/v/@ramonclaudio/vexpo?label=vexpo)](https://www.npmjs.com/package/@ramonclaudio/vexpo)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-Expo and EAS already take an iOS app from code to the App Store. vexpo is everything around that: an Expo SDK 56 scaffold with Convex, Better Auth, and Resend wired in for backend, auth, and email, plus a CLI that automates the setup EAS needs (Apple Developer, App Store Connect, Sign in with Apple, env sync across dev, preview, and prod) to get you from an empty directory to TestFlight.
+Expo and EAS already take an iOS app from code to the App Store. vexpo is the layer on top: an Expo template with Convex and Better Auth wired in from the first commit, and a CLI that handles the setup people usually wrestle with. It walks you through creating a Convex account or links the project you already have, and it takes care of the Apple keys (the P8 signing dance) so signing isn't a wall you hit on day one. I built it because I wanted my opinionated stack to be something anyone could start with in minutes instead of a weekend.
 
 ```bash
 npm create @ramonclaudio/vexpo@latest my-app
@@ -33,9 +33,20 @@ Two packages back this: [`create-vexpo`](https://www.npmjs.com/package/@ramoncla
 
 ## What's in the box
 
-Expo SDK 56, RN 0.85, React 19. Strict TypeScript, no NativeWind. Every screen renders SwiftUI through `@expo/ui/swift-ui`, with Liquid Glass on iOS 26+ and a blur fallback below. Email, password, and OTP auth plus Apple Sign In with session revocation, App Attest, and soft-delete. APNs push, Apple Universal Links, and Resend webhooks. EAS handles builds, OTA updates, submission, and metadata, with ten workflows under `.eas/workflows/`. None trigger on a push to `main`, so a merge can't ship to the App Store by surprise.
+Expo SDK 56, RN 0.85, React 19. Strict TypeScript, no NativeWind. Every screen renders SwiftUI through `@expo/ui/swift-ui`, with Liquid Glass on iOS 26+ and a blur fallback below. Email, password, and OTP auth plus Apple Sign In with session revocation, App Attest primitives ready to wire, and soft-delete. APNs push, Apple Universal Links, and Resend webhooks. EAS handles builds, updates, submission, and store metadata, with ten workflows under `.eas/workflows/`. None trigger on a push to `main`, so a merge can't ship to the App Store by surprise.
 
 Some of the SwiftUI modifiers the template reaches for ship via upstream PRs I wrote and got merged into `expo/expo`. The screen-by-screen breakdown lives in [`templates/default/README.md`](./templates/default/README.md), the design rationale in [`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md).
+
+## What vexpo is not
+
+- iOS-only. There is no Android or web path.
+- Opinionated, not a menu. You get this stack, not a pick-list.
+- Not a replacement for EAS. The CLI stays out of anything `eas` already does.
+- Requires macOS and Xcode.
+
+## Why these choices
+
+Convex because the backend is managed and reactive, so there's no database to run. Better Auth because the auth tables live in your own backend instead of a rented service. SwiftUI through `@expo/ui` because the template only targets iOS, so native controls win. Full rationale in [`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md).
 
 ## Repo layout
 
@@ -48,7 +59,7 @@ vexpo/
 └── docs/                  # ARCHITECTURE, SECURITY, OPERATIONS, UPSTREAM
 ```
 
-`create-vexpo` copies `templates/default/` into a fresh directory, rewrites `package.json`, runs `npm install`, inits git. `vexpo` ships as a devDependency, so `npx vexpo` resolves to the local pinned version.
+`create-vexpo` copies `templates/default/` into a fresh directory, rewrites `package.json`, installs with the package manager it detects from `npm_config_user_agent` (npm by default), inits git. `vexpo` ships as a devDependency, so `npx vexpo` resolves to the local pinned version.
 
 ## Pre-reqs
 
@@ -56,6 +67,8 @@ vexpo/
 - Bun or Node 20+
 - Apple Developer Program membership ($99/yr) when you're ready to ship
 - A domain you control DNS for (Resend sending domain)
+
+Targets Expo SDK 56, RN 0.85, React 19. Changelog in [GitHub Releases](https://github.com/ramonclaudio/vexpo/releases).
 
 ## Docs
 
@@ -68,6 +81,8 @@ vexpo/
 - [`templates/default/DESIGN.md`](./templates/default/DESIGN.md): palette, typography, spacing, the SwiftUI primitives.
 
 Working on vexpo itself? See [`CONTRIBUTING.md`](./CONTRIBUTING.md).
+
+Bugs and questions go to [GitHub Issues](https://github.com/ramonclaudio/vexpo/issues).
 
 ## License
 

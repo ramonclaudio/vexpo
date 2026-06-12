@@ -37,20 +37,6 @@ export function dlx(): string {
   return process.versions.bun ? "bunx" : "npx";
 }
 
-export function dlxFor(pm: PackageManager): string {
-  switch (pm) {
-    case "bun":
-      return "bunx";
-    case "pnpm":
-      return "pnpm dlx";
-    case "yarn":
-      return "yarn dlx";
-    case "npm":
-    default:
-      return "npx";
-  }
-}
-
 export function installCmdFor(pm: PackageManager): string {
   switch (pm) {
     case "bun":
@@ -62,20 +48,6 @@ export function installCmdFor(pm: PackageManager): string {
     case "npm":
     default:
       return "npm install";
-  }
-}
-
-export function runCmdFor(pm: PackageManager): string {
-  switch (pm) {
-    case "bun":
-      return "bun run";
-    case "pnpm":
-      return "pnpm run";
-    case "yarn":
-      return "yarn";
-    case "npm":
-    default:
-      return "npm run";
   }
 }
 

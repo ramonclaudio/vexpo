@@ -1,6 +1,6 @@
 # vexpo
 
-An iOS app on Expo SDK 56, wired end-to-end with Convex, Better Auth, and Resend. Native SwiftUI throughout, email + password + OTP + Apple Sign In, push, and the full EAS build surface.
+An iOS app on Expo SDK 56, wired end-to-end with Convex, Better Auth, and Resend. Native SwiftUI throughout, email + password + OTP + Apple Sign In, push, and the full EAS build surface. Everything below is already wired, so you run two commands and you're in the app.
 
 ## Quick start
 
@@ -98,7 +98,7 @@ Setup is one-shot, not a `package.json` script. Run `npx vexpo lite`, `npx vexpo
 
 - Convex backend, reactive queries, storage, real-time sync, per-mutation rate limiting
 - Better Auth via `@convex-dev/better-auth`, email + password + OTP + Apple Sign In, per-device session revocation
-- App Attest device attestation, verified in Convex
+- App Attest device-attestation primitives ready to wire (client lib + Convex verifier)
 - Resend for OTP, password reset, and change-email, with delivery webhooks
 - APNs push, Apple Universal Links, profile editing with avatar uploads
 - Account soft-delete with a 30-day grace window
@@ -125,7 +125,7 @@ src/
     +not-found.tsx                404 fallback
   components/                     Reusable UI (auth/, ui/)
   constants/                      Theme, layout, UI tokens
-  hooks/                          useNetwork, useTheme, useUpdates, etc.
+  hooks/                          useNetwork, useColorScheme, useAppUpdates, etc.
   lib/                            Auth client, haptics, env, deep links, native state
 convex/                           Convex backend
 plugins/

@@ -18,5 +18,4 @@ docs/
 .agents/
 .claude/
 app-store/
-.husky/
 convex/*.test.ts

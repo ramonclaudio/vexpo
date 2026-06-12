@@ -56,6 +56,9 @@ export const ROUTING: Record<string, RoutingEntry> = {
   RESEND_TEST_MODE: {
     routes: (c) => [{ type: "convex", key: "RESEND_TEST_MODE", channel: c }],
   },
+  REQUIRE_EMAIL_VERIFICATION: {
+    routes: (c) => [{ type: "convex", key: "REQUIRE_EMAIL_VERIFICATION", channel: c }],
+  },
   APP_BUNDLE_ID: { routes: (c) => [{ type: "convex", key: "APP_BUNDLE_ID", channel: c }] },
   APPLE_CLIENT_ID: { routes: (c) => [{ type: "convex", key: "APPLE_CLIENT_ID", channel: c }] },
   APPLE_CLIENT_SECRET: {

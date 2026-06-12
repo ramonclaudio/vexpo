@@ -91,7 +91,7 @@ Calm, monochrome, native. The vexpo system pairs a shadcn neutral palette (prese
 
 The brand commits to Geist Variable as the single typeface for both UI and marketing assets. Color carries no brand meaning. `destructive` is the only chromatic token, reserved for irreversible actions and validation errors. Brand expression flows through type weight, spacing, rounding, and the iOS material system.
 
-Ground truth lives in `constants/theme.ts` (color palette as `DynamicColorIOS`), `constants/layout.ts` (spacing, font sizes, line heights, fonts), and `constants/ui.ts` (opacity, materials, shadows, durations, sizes). The tokens here are the public contract for agents and contributors. The constants files are the implementation.
+Ground truth lives in `constants/theme.ts` (color palette as `DynamicColorIOS`), `constants/layout.ts` (spacing, font sizes, line heights, fonts), `constants/ui.ts` (opacity, shadows, durations, sizes), and `components/ui/material.tsx` (the `BLUR_INTENSITY`, `BLUR_TINT`, and `GLASS_STYLE` maps that drive each material variant). The tokens here are the public contract for agents and contributors. The constants files are the implementation.
 
 ## Colors
 
@@ -214,7 +214,7 @@ Depth is signaled by surface tint and the iOS material system, not by drop shado
 
 Materials apply a vibrancy effect that lets background content show through with controlled blur and saturation. Apple's HIG calls this the "navigation layer" and explicitly reserves it for chrome. Don't put materials on form sections or content cards.
 
-The blur intensity values are calibrated. Don't lower them. The 35% tint overlay on the `BlurView` fallback path is also calibrated, the smallest tint that still reads as the requested color while preserving the blur.
+The blur intensity values (`ultraThin` 30, `thin` 50, `regular` 70, `thick` 90, `chrome` 100) live in the `BLUR_INTENSITY` map in `components/ui/material.tsx`. They are calibrated. Don't lower them. The 35% tint overlay on the `BlurView` fallback path is also calibrated, the smallest tint that still reads as the requested color while preserving the blur.
 
 ## Shapes / Radius
 
@@ -254,53 +254,53 @@ The system uses `@expo/ui/swift-ui` primitives exclusively for native rendering.
 
 ### Native primitives (use directly)
 
-| Primitive                   | What it is                                                                    | Where it lands                         |
-| :-------------------------- | :---------------------------------------------------------------------------- | :------------------------------------- |
-| `Host`                      | SwiftUI host view, top-level wrapper for any screen using `@expo/ui/swift-ui` | Every screen root                      |
-| `VStack` / `HStack`         | SwiftUI stacks with spacing + alignment                                       | Layout primitives                      |
-| `Form` / `Section`          | Native iOS Form with grouped sections                                         | Settings, profile editor, preferences  |
-| `Picker`                    | Segmented or wheel picker (use `pickerStyle("segmented")` for inline)         | Theme mode, motion preference          |
-| `Toggle`                    | Native iOS toggle                                                             | Boolean preferences                    |
-| `Button`                    | Native button with role variants (default, cancel, destructive)               | All actions                            |
-| `TextField` / `SecureField` | Native text input                                                             | Forms                                  |
-| `Text`                      | SwiftUI text with modifier composition                                        | All typography                         |
-| `Image`                     | SF Symbol renderer (`systemName="..."`)                                       | All inline icons                       |
-| `ConfirmationDialog`        | Native iOS action sheet                                                       | Sign-out, delete account, photo picker |
-| `BottomSheet`               | Native sheet with detents                                                     | Password change, secondary forms       |
-| `Spacer`                    | Flexible space                                                                | Layout                                 |
-| `ProgressView`              | Spinner or determinate progress                                               | Loading states                         |
-| `ContentUnavailableView`    | Empty state with SF Symbol + title + description                              | Empty home, no results                 |
+| Primitive                   | What it is                                                                    | Where it lands                                                                 |
+| :-------------------------- | :---------------------------------------------------------------------------- | :----------------------------------------------------------------------------- |
+| `Host`                      | SwiftUI host view, top-level wrapper for any screen using `@expo/ui/swift-ui` | Every screen root                                                              |
+| `VStack` / `HStack`         | SwiftUI stacks with spacing + alignment                                       | Layout primitives                                                              |
+| `Form` / `Section`          | Native iOS Form with grouped sections                                         | Available but unused. Screens hand-build capsule rows with `VStack` instead    |
+| `Picker`                    | Segmented or wheel picker (use `pickerStyle("segmented")` for inline)         | Theme mode, motion preference                                                  |
+| `Toggle`                    | Native iOS toggle                                                             | Boolean preferences                                                            |
+| `Button`                    | Native button with role variants (default, cancel, destructive)               | All actions                                                                    |
+| `TextField` / `SecureField` | Native text input                                                             | Forms                                                                          |
+| `Text`                      | SwiftUI text with modifier composition                                        | All typography                                                                 |
+| `Image`                     | SF Symbol renderer (`systemName="..."`)                                       | All inline icons                                                               |
+| `ConfirmationDialog`        | Native iOS action sheet                                                       | Sign-out, delete account, photo picker                                         |
+| `BottomSheet`               | Native sheet with detents                                                     | Available but unused. Modal screens use `presentation: "modal"` routes instead |
+| `Spacer`                    | Flexible space                                                                | Layout                                                                         |
+| `ProgressView`              | Spinner or determinate progress                                               | Loading states                                                                 |
+| `ContentUnavailableView`    | Empty state with SF Symbol + title + description                              | Empty home, no results                                                         |
 
 Text inputs bind `text` to a `useNativeState("")` and mask synchronously: a `"worklet"` `onTextChange` rewrites the field on the same frame the keystroke lands (digits-only OTP, lowercase usernames), so the raw character never paints. Reusable masks live in `lib/masks.ts`.
 
 ### Custom composition (in `components/ui/`)
 
-| Component                              | Purpose                                                                                                                                                                           | Notes                              |
-| :------------------------------------- | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :--------------------------------- |
-| `Material`                             | Translucent surface with iOS 26+ Liquid Glass / iOS 16.4-25 BlurView fallback                                                                                                     | Reserve for navigation chrome only |
-| `OfflineBanner`                        | Top-of-screen notification banner using `Material` chrome variant                                                                                                                 | Shows when network unavailable     |
-| `LoadingScreen`                        | Brand-icon + spinner, themed by appearance                                                                                                                                        | Suspense fallback                  |
-| `ErrorBoundary`                        | Top-level crash boundary with brand recovery UI                                                                                                                                   | Wraps each route segment           |
-| `ConvexError`                          | Maps Convex errors to user-readable copy                                                                                                                                          | Used in error displays             |
-| `SkeletonProfile` / `SkeletonSessions` | Static loading placeholders. No animation, so nothing to suppress under Reduce Motion. Filler bars carry an empty `accessibilityLabel` so VoiceOver skips the placeholder shapes. | Profile loading, sessions loading  |
-| `StatusText`                           | `ErrorText` + `SuccessText` with accessibility announcements                                                                                                                      | Form feedback                      |
+| Component                              | Purpose                                                                                                                                                                           | Notes                                                   |
+| :------------------------------------- | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :------------------------------------------------------ |
+| `Material`                             | Translucent surface with iOS 26+ Liquid Glass / iOS 16.4-25 BlurView fallback                                                                                                     | Reserve for navigation chrome only                      |
+| `OfflineBanner`                        | Top-of-screen notification banner using `Material` chrome variant                                                                                                                 | Shows when network unavailable                          |
+| `LoadingScreen`                        | Brand-icon + spinner, themed by appearance                                                                                                                                        | Suspense fallback                                       |
+| `ErrorBoundary`                        | Top-level crash boundary with brand recovery UI                                                                                                                                   | Wraps each route segment                                |
+| `formatError`                          | Maps a Convex error to user-readable copy (`components/ui/convex-error.tsx`)                                                                                                      | Used by `profile/index.tsx` and `use-delete-account.ts` |
+| `SkeletonProfile` / `SkeletonSessions` | Static loading placeholders. No animation, so nothing to suppress under Reduce Motion. Filler bars carry an empty `accessibilityLabel` so VoiceOver skips the placeholder shapes. | Profile loading, sessions loading                       |
+| `StatusText`                           | `ErrorText` + `SuccessText` with accessibility announcements                                                                                                                      | Form feedback                                           |
 
 ### Custom hooks (in `hooks/`)
 
-| Hook                              | Purpose                                                                                         |
-| :-------------------------------- | :---------------------------------------------------------------------------------------------- |
-| `useThemeMode` / `useColorScheme` | App-level light/dark/system override on top of OS appearance                                    |
-| `useColors`                       | Returns the `Colors` palette (currently constant, kept as a hook for future per-theme variants) |
-| `useThemedAsset`                  | Picks light or dark asset based on active appearance                                            |
-| `useDynamicFont`                  | Multiplies declared font sizes by accessibility fontScale before passing to `@expo/ui` `font()` |
-| `useReducedMotion`                | Combines OS Reduce Motion + in-app override. Drives animation duration / disable                |
-| `useNetwork`                      | Online / offline state for `OfflineBanner`                                                      |
-| `useNotifications`                | Push token registration + foreground handler                                                    |
-| `useDeepLinkHandler`              | Handles `applinks:` URLs from associated domains                                                |
-| `useUpdates`                      | EAS Update check + apply with branded UI                                                        |
-| `useOnboarding`                   | First-launch welcome flow gate                                                                  |
-| `useDebounce`                     | Standard debounce                                                                               |
-| `useNavigationTracking`           | Analytics / route logging                                                                       |
+| Hook                              | Purpose                                                                                                                    |
+| :-------------------------------- | :------------------------------------------------------------------------------------------------------------------------- |
+| `useThemeMode` / `useColorScheme` | App-level light/dark/system override on top of OS appearance                                                               |
+| `useColors`                       | Returns the `Colors` palette (currently constant, kept as a hook for future per-theme variants)                            |
+| `useThemedAsset`                  | Picks light or dark asset based on active appearance                                                                       |
+| `useDynamicFont`                  | Maps the declared font size to a SwiftUI `textStyle` passed to `@expo/ui` `font()`, so iOS Dynamic Type scales it natively |
+| `useReducedMotion`                | Combines OS Reduce Motion + in-app override. Drives animation duration / disable                                           |
+| `useNetwork`                      | Online / offline state for `OfflineBanner`                                                                                 |
+| `useNotifications`                | Push token registration + foreground handler                                                                               |
+| `useDeepLinkHandler`              | Resumes a deep link the auth guard deferred until sign-in. Live applinks route through `+native-intent.tsx`                |
+| `useAppUpdates`                   | EAS Update check + apply with branded UI                                                                                   |
+| `useOnboarding`                   | First-launch welcome flow gate                                                                                             |
+| `useDebounce`                     | Standard debounce                                                                                                          |
+| `useNavigationTracking`           | Analytics / route logging                                                                                                  |
 
 ## Do's and Don'ts
 

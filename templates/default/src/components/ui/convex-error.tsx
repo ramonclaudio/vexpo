@@ -1,7 +1,5 @@
 import { ConvexError } from "convex/values";
 
-import { ErrorText } from "./status-text";
-
 export function formatError(err: unknown): string {
   if (err instanceof ConvexError) {
     const data = err.data as unknown;
@@ -13,9 +11,4 @@ export function formatError(err: unknown): string {
   }
   if (err instanceof Error) return err.message;
   return "An unexpected error occurred";
-}
-
-export function ConvexErrorView({ error, testID }: { error: unknown; testID?: string }) {
-  if (error === undefined || error === null) return null;
-  return <ErrorText testID={testID}>{formatError(error)}</ErrorText>;
 }

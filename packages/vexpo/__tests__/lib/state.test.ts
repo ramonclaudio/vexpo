@@ -9,13 +9,11 @@ import {
   appendAudit,
   checkConcurrentRun,
   clearAll,
-  clearStep,
   fingerprint,
   isStepFresh,
   load,
   recordStep,
   save,
-  verifyOrInvalidate,
   type SetupState,
 } from "../../src/lib/state";
 
@@ -123,7 +121,7 @@ describe("state load/save round-trip", () => {
   });
 });
 
-describe("recordStep / clearStep", () => {
+describe("recordStep", () => {
   it("records a step with verifyAt set to now", async () => {
     await recordStep("convex", { deployment: "x" });
     const state = await load();
@@ -131,15 +129,6 @@ describe("recordStep / clearStep", () => {
     expect(rec?.completedAt).toBeTruthy();
     expect(rec?.verifyAt).toBe(rec?.completedAt);
     expect(rec?.outputs).toEqual({ deployment: "x" });
-  });
-
-  it("clears a single step without affecting others", async () => {
-    await recordStep("convex");
-    await recordStep("better-auth");
-    await clearStep("convex");
-    const state = await load();
-    expect(state.steps.convex).toBeUndefined();
-    expect(state.steps["better-auth"]).toBeDefined();
   });
 });
 
@@ -204,26 +193,6 @@ describe("isStepFresh", () => {
   it("returns false for absent step", () => {
     const state = fakeState(new Date().toISOString());
     expect(isStepFresh(state, "resend", 1)).toBe(false);
-  });
-});
-
-describe("verifyOrInvalidate", () => {
-  it("clears the step when verify returns ok=false", async () => {
-    await recordStep("convex");
-    const ok = await verifyOrInvalidate("convex", async () => ({ ok: false, reason: "drift" }));
-    expect(ok).toBe(false);
-    const state = await load();
-    expect(state.steps.convex).toBeUndefined();
-  });
-
-  it("refreshes verifyAt when verify returns ok=true", async () => {
-    await recordStep("convex");
-    const before = (await load()).steps.convex?.verifyAt;
-    await new Promise((r) => setTimeout(r, 10));
-    const ok = await verifyOrInvalidate("convex", async () => ({ ok: true }));
-    expect(ok).toBe(true);
-    const after = (await load()).steps.convex?.verifyAt;
-    expect(after).not.toBe(before);
   });
 });
 

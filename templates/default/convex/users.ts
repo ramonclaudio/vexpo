@@ -8,12 +8,7 @@ import { authComponent, authUserValidator } from "./auth";
 import { validationError } from "./errors";
 import { authMutation, optionalAuthQuery } from "./functions";
 import { rateLimitWithThrow } from "./rateLimit";
-import {
-  paginatedUsersValidator,
-  publicUserProfileValidator,
-  userProfileUpdateFields,
-  validateBio,
-} from "./validators";
+import { publicUserProfileValidator, userProfileUpdateFields, validateBio } from "./validators";
 
 export const getMe = optionalAuthQuery({
   args: {},
@@ -54,49 +49,6 @@ export const getUser = optionalAuthQuery({
         null,
       avatarUrl,
       bio: user.bio,
-    };
-  },
-});
-
-export const listUsers = optionalAuthQuery({
-  args: {
-    cursor: v.optional(v.string()),
-    limit: v.optional(v.number()),
-  },
-  returns: paginatedUsersValidator,
-  handler: async (ctx, args) => {
-    const limit = Math.min(Math.max(args.limit ?? 20, 1), 100);
-
-    const results = await ctx.db
-      .query("users")
-      .order("desc")
-      .paginate({ cursor: args.cursor ?? null, numItems: limit });
-
-    const page = await Promise.all(
-      results.page.map(async (user) => {
-        const authUser = await authComponent.getAnyUserById(ctx, user.authId);
-        if (!authUser) return null;
-        const avatarUrl = user.avatar
-          ? await ctx.storage.getUrl(user.avatar)
-          : (authUser.image ?? null);
-        return {
-          _id: user._id,
-          _creationTime: user._creationTime,
-          name: authUser.name,
-          username:
-            (authUser as { displayUsername?: string | null }).displayUsername ??
-            (authUser as { username?: string | null }).username ??
-            null,
-          avatarUrl,
-          bio: user.bio,
-        };
-      }),
-    );
-
-    return {
-      page: page.filter((entry): entry is NonNullable<typeof entry> => entry !== null),
-      continueCursor: results.continueCursor,
-      isDone: results.isDone,
     };
   },
 });

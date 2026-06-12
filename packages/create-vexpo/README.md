@@ -5,6 +5,8 @@
 
 Scaffold a new [vexpo](https://github.com/ramonclaudio/vexpo) project: an Expo SDK 56 iOS app with Convex, Better Auth, and Resend wired in for backend, auth, and email. Push, OTA updates, and App Store submission all run through EAS.
 
+This is the opinionated stack I reach for on every new app, Expo and Convex and Better Auth sitting on top of EAS, and I wanted anyone to be able to start from it without a day of wiring. The CLI walks you through creating a Convex account or linking one you already have, so you go from empty folder to a running app without leaving the terminal.
+
 ## Usage
 
 ```bash
@@ -28,16 +30,22 @@ npx vexpo full --new   # same + Apple, Convex, Expo, and Resend signup walkthrou
 
 `npx vexpo full` validates and provisions everything in order: Convex, Better Auth, Resend, Apple Sign In, EAS, and a rebrand. About 30 minutes hands-on plus Apple-side wait times. It prints the `eas build` command at the end for you to run when ready.
 
+## Pre-reqs
+
+- macOS with Xcode, to build and run the app in the iOS Simulator.
+- Bun, or Node 20+.
+- An Apple Developer membership, only when you ship to TestFlight or the App Store. Not needed for local dev with `npx vexpo lite`.
+
 ## Options
 
-| Flag            | Behavior                                                                          |
-| --------------- | --------------------------------------------------------------------------------- |
-| `[directory]`   | Project directory name (positional). Defaults to `my-vexpo-app` with `-y`.        |
-| `--no-install`  | Skip installing dependencies after copying the template.                          |
-| `--no-git`      | Skip `git init` after install.                                                    |
-| `--no-setup`    | Skip the post-install `npx vexpo lite` or `npx vexpo full` prompt.                |
-| `-y, --yes`     | Accept defaults, skip prompts.                                                     |
-| `-v, --version` | Print version, exit.                                                              |
+| Flag            | Behavior                                                                   |
+| --------------- | -------------------------------------------------------------------------- |
+| `[directory]`   | Project directory name (positional). Defaults to `my-vexpo-app` with `-y`. |
+| `--no-install`  | Skip installing dependencies after copying the template.                   |
+| `--no-git`      | Skip `git init` after install.                                             |
+| `--no-setup`    | Skip the printed next-steps block after install.                           |
+| `-y, --yes`     | Accept defaults, skip prompts.                                             |
+| `-v, --version` | Print version, exit.                                                       |
 
 ## What gets scaffolded
 
@@ -48,3 +56,5 @@ No lockfile ships in the tarball. The first install resolves the template's rang
 ## Repo
 
 [github.com/ramonclaudio/vexpo](https://github.com/ramonclaudio/vexpo)
+
+Development happens in the monorepo. See [CONTRIBUTING.md](https://github.com/ramonclaudio/vexpo/blob/main/CONTRIBUTING.md) on GitHub.

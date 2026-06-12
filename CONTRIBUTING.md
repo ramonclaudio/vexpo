@@ -20,6 +20,14 @@ npm run test:packages:e2e  # e2e against the built vexpo dist
 npm run test:all           # everything
 ```
 
+To drive the real Convex Platform API, run the opt-in e2e suite. It self-skips unless you're logged in and both env vars are set. Every mutation it makes is reversed.
+
+```bash
+VEXPO_E2E_CONVEX=1 VEXPO_E2E_DEPLOYMENT=<dev-slug> npm run test:e2e:api -w @ramonclaudio/vexpo
+```
+
+Point `VEXPO_E2E_DEPLOYMENT` at a dev deployment slug, never prod.
+
 ## Testing `eas build` against `templates/default`
 
 The committed `templates/default/app.json` is `{ "expo": {} }`, no `projectId`. Forks run `eas init` once and commit their own. To test inside this repo without committing your `projectId`, eas-cli needs it in the process env at invocation time. eas-cli sets `EXPO_NO_DOTENV=1` when evaluating `app.config.ts` for projectId resolution, which is intentional for build determinism, so `.env.local` alone won't be loaded for that step.

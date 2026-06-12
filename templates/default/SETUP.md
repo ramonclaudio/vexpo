@@ -54,6 +54,8 @@ Use it to:
 
 `--dry-run` does not hit the network for verification, doesn't prompt for credentials, doesn't write state. It only reads what already exists locally and prints the plan.
 
+`lite` and `full` also accept `--plan`. It prints the full setup journey upfront, every phase and human gate (async waits, web-UI clicks, automated steps), with costs and links, then exits. `--plan` is the map of the whole trip. `--dry-run` is what the next run does against current state. Neither writes anything.
+
 ## What `npx vexpo full` does
 
 The orchestrator runs the following phases in order, skipping any that are cached fresh in `.setup-state.json`. Each phase is also runnable standalone via `npx vexpo <phase-name>`.
@@ -69,6 +71,7 @@ The orchestrator runs the following phases in order, skipping any that are cache
 | 6     | `npx vexpo full` (EAS phase)           | eas   | Thin wrapper: `eas init` + `eas env:push` from `.env.local`                                                    |
 | 7     | `npx vexpo apple asc-key`              | ours  | Validate ASC API key against ASC `/v1/apps` (no upload)                                                        |
 | 7.5   | `npx vexpo apple credentials`          | ours  | Wraps `eas credentials -p ios`. Pre-passes cached ASC creds, EAS auto-generates dist cert + profile + push key |
+| 7.6   | `npx vexpo asc:connect`                | eas   | Wraps `eas integrations:asc:connect`, links the EAS project to its ASC app so `eas submit` resolves the bundle |
 | 8     | `npx vexpo apple services-id`          | ours  | Attach SIWA capability via ASC API (manual: create the Services ID itself)                                     |
 | 9     | `npx vexpo apple jwt`                  | ours  | Sign SIWA ES256 client_secret JWT, push to Convex env                                                          |
 | 10    | `npx vexpo apple eas-rotation-secrets` | ours  | Push the 5 EAS production secrets the JWT rotation cron needs                                                  |
@@ -136,7 +139,7 @@ Edits:
 - `app.config.ts`, `name`, `slug`, `scheme`, `BUNDLE_ID` env-var fallback
 - `app.json`, clears stale `extra.eas.projectId` (next `eas init` regenerates)
 - `package.json`, `name`, `version` reset to `0.1.0`
-- `store.config.json`, regenerated from example with prompted values
+- `store.config.json`, edited in place with prompted values (ships committed with placeholders)
 
 Backups land in `.rebrand-backup/<timestamp>/` before any write. Idempotent: re-runs detect "already rebranded" via state and skip unless `--force` is passed.
 
@@ -166,7 +169,9 @@ Prompts once for a Resend full-access key (or reads `RESEND_FULL_ACCESS_KEY`). P
 - A scoped sending key named `<pkg.name>` (deletes any existing key with the same name first)
 - A webhook pointing at `<convex-site-url>/resend-webhook`, signed with a fresh secret
 
-Sets on Convex: `RESEND_API_KEY`, `RESEND_WEBHOOK_SECRET`, `EMAIL_FROM=<pkg.name>@<domain>`, `RESEND_TEST_MODE=false`.
+Sets on Convex: `RESEND_API_KEY`, `RESEND_WEBHOOK_SECRET`, `EMAIL_FROM=<pkg.name>@<domain>`, `RESEND_TEST_MODE=false`, `REQUIRE_EMAIL_VERIFICATION=true`.
+
+`REQUIRE_EMAIL_VERIFICATION=true` flips sign-up to require an OTP before the account activates (now that real email sends).
 
 `RESEND_TEST_MODE=true` (default at provision time, flipped to `false` here) sends OTPs to Convex logs instead of real email, useful during local dev. Override `EMAIL_FROM` via `--from`.
 
@@ -201,7 +206,7 @@ Pass `--email` / `--password` to override the values from `store.config.json`. S
 
 ## Phase 6: EAS (auto, no standalone command, runs as part of `vexpo full`)
 
-Runs `eas init` (creates the project, or links to an existing one) and writes `extra.eas.projectId` to `app.json`. Mirrors every `EXPO_PUBLIC_*` from `.env.local` to the EAS `development` environment using `npx eas env:create --visibility plaintext`. Prod and preview values come from `.env.prod` via `vexpo env push`, which routes to `["production", "preview"]`.
+Runs `eas init` (creates the project, or links to an existing one) and writes `extra.eas.projectId` to `app.json`. Mirrors every `EXPO_PUBLIC_*` from `.env.local` to the EAS `development` environment using `eas env:push --path .env.local --environment development --force`. Prod and preview values come from `.env.prod` via `vexpo env push`, which routes to `["production", "preview"]`.
 
 After this, `expo prebuild` and `eas build` both find the right project + env. The `extra.eas.projectId` write also enables `app.config.ts → updates.url`.
 
@@ -223,7 +228,7 @@ Walks you to https://appstoreconnect.apple.com/access/integrations/api, prints s
 3. Click "Generate". The key cannot be retrieved later, save the .p8 file.
 4. From the table: copy the Issuer ID (above the table) and the Key ID.
 
-Then prompts for issuer ID, key ID, and `.p8` path. Validates by signing an ES256 JWT and calling `GET /v1/apps`. Re-prompts up to 3x with specific error messaging on failure (`401` = bad token, `403` = role insufficient, etc.).
+Then prompts for issuer ID, key ID, and `.p8` path. Validates by signing an ES256 JWT and calling `GET /v1/apps`. A bad key fails immediately with the reason (`401` = bad token, `403` = role insufficient, etc.), and you re-run the command. The only retry is 5 attempts on transient HTTP `429`/`5xx`, honoring `Retry-After`.
 
 Records `{issuerId, keyId, p8Path, validatedAt}` in `.setup-state.json`. The .p8 file itself stays where you put it, vexpo never copies it.
 
@@ -310,7 +315,7 @@ Rotate without re-prompting IDs: `npx vexpo apple jwt --rotate`.
 
 ### JWT rotation
 
-Apple caps `client_secret` JWTs at 180 days. The `.eas/workflows/rotate-apple-jwt.yml` cron fires every 90 days, signs a fresh JWT, and pushes it to your prod Convex deployment. Runs on EAS infrastructure with all secrets read from EAS env (production, secret visibility), no GitHub repo secrets needed. Set up once, never think about it again. Manual fallback: `npx vexpo apple jwt --rotate`.
+Apple caps `client_secret` JWTs at 180 days. The `.eas/workflows/rotate-apple-jwt.yml` cron (`0 12 1 */3 *`) fires quarterly, at 12:00 UTC on the 1st of Jan, Apr, Jul, and Oct, signs a fresh JWT, and pushes it to your prod Convex deployment. Runs on EAS infrastructure with all secrets read from EAS env (production, secret visibility), no GitHub repo secrets needed. Set up once, never think about it again. Manual fallback: `npx vexpo apple jwt --rotate`.
 
 ## Phase 10: EAS rotation secrets (`npx vexpo apple eas-rotation-secrets`)
 
@@ -386,6 +391,7 @@ Each known env-var has a fixed routing in `vexpo`'s env-files module ([source](h
 | `RESEND_API_KEY`                        | dev               | prod              | n/a                   |
 | `RESEND_WEBHOOK_SECRET`                 | dev               | prod              | n/a                   |
 | `RESEND_TEST_MODE`, `EMAIL_FROM`        | dev               | prod              | n/a                   |
+| `REQUIRE_EMAIL_VERIFICATION`            | dev               | prod              | n/a                   |
 | `APP_NAME`, `SITE_URL`, `APP_BUNDLE_ID` | dev               | prod              | n/a                   |
 | `APPLE_CLIENT_ID`                       | dev               | prod              | n/a                   |
 | `APPLE_CLIENT_SECRET`                   | dev               | prod              | n/a                   |
@@ -400,7 +406,6 @@ The five rotation-cron secrets (`APPLE_TEAM_ID`, `APPLE_KEY_ID`, `APPLE_SERVICES
 Notes:
 
 - `APPLE_SERVICES_ID` is renamed to `APPLE_CLIENT_ID` on Convex (Better Auth's expected key name).
-- GitHub secrets only get pushed from `.env.prod`, they're consumed by the prod-only JWT rotation cron.
 - `CONVEX_DEPLOYMENT` is ignored entirely (file-local pointer used by the Convex CLI, not synced).
 - Anything else is reported as "unrecognized" and skipped.
 
@@ -453,7 +458,7 @@ npx vexpo doctor --json             # machine-readable output
 npx vexpo doctor --strict           # exit non-zero on warnings
 ```
 
-Runs a battery of checks that auth-test each credential and cross-reference the values across `.env.local`, Convex env, EAS env, GitHub secrets, and `app.config.ts`. Lite mode runs the same battery automatically after sync (skip with `--no-verify`). Results are grouped by category:
+Runs a battery of checks that auth-test each credential and cross-reference the values across `.env.local`, Convex env, EAS env, and `app.config.ts`. Lite mode runs the same battery automatically after sync (skip with `--no-verify`). Results are grouped by category:
 
 | Category    | What's checked                                                                                                                                                                                                                                                                                                               |
 | ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -488,14 +493,14 @@ npx eas metadata:push                                          # push store.conf
 npx eas credentials -p ios                                     # manage iOS dist cert / profile / keys
 ```
 
-EAS Workflows (`.eas/workflows/`) automate these for you on push to `main`, push tag `v*`, push to `beta/*`, on PR, and on `eas workflow:run`.
+EAS Workflows (`.eas/workflows/`) automate these. `release.yml` runs on push of a `v*` tag, `testflight.yml` on push to `beta/*`, `rotate-apple-jwt.yml` on a quarterly cron. The rest (`deploy-production.yml`, `pr-preview.yml`, `e2e-tests.yml`, `rollback.yml`, `rollout.yml`, `development-builds.yml`) are `workflow_dispatch` only. Nothing runs on push to `main` or on PR. `asc-events.yml` fires on App Store Connect events.
 
 ## Recovery: rotating things
 
 | Thing                      | Command                                                          |
 | -------------------------- | ---------------------------------------------------------------- |
 | Convex deployment          | `npx vexpo full --fresh`                                         |
-| Better Auth secret         | `npx vexpo better-auth --force`                                  |
+| Better Auth secret         | `npx vexpo better-auth --rotate-secret`                          |
 | Resend key + webhook       | `npx vexpo resend`                                               |
 | Apple Sign In JWT (manual) | `npx vexpo apple jwt --rotate`                                   |
 | Apple Sign In JWT (auto)   | EAS Workflows → `rotate-apple-jwt` → Run                         |
@@ -503,6 +508,16 @@ EAS Workflows (`.eas/workflows/`) automate these for you on push to `main`, push
 | EAS env mirror             | `npx eas init && npx eas env:push --path .env.local --skip-init` |
 | EAS rotation secrets       | `npx vexpo apple eas-rotation-secrets --force`                   |
 | State cache                | `trash .setup-state.json`                                        |
+
+## Other commands
+
+For migrations and out-of-band fixes:
+
+- `npx vexpo adopt`, finish a project created by `eas integrations:convex:connect` (adopts the existing dev deployment, backfills site URLs + Better Auth, prints the commands left to run).
+- `npx vexpo convex:migrate --from <dep>`, copy server-side Convex env (`BETTER_AUTH_SECRET`, `RESEND_*`, `APPLE_*`, `APP_*`) from another deployment onto the current one. `CONVEX_*` left untouched.
+- `npx vexpo env convex-key [--mint]`, sync the Convex deploy key to EAS env after a deployment migration (`env push` skips these on purpose). `--mint` mints a prod key via the Platform API if EAS lacks one.
+- `npx vexpo apple jwt --copy-from <dep>`, copy `APPLE_*` env from another deployment instead of signing. No `.p8` needed.
+- `npx vexpo resend --repoint`, move the webhook to the current `convex.site` and realign the secret, without rotating the sending key or changing auth policy.
 
 ## Recovery: things break
 
@@ -568,7 +583,7 @@ Use `--no-state` to ignore the local state cache. Provide every interactive valu
 | EAS env (`npx eas env:list`)       | Build-time env per environment + rotation cron secrets | written by the EAS phase of `vexpo full` + `npx vexpo apple eas-rotation-secrets` |
 | `app.config.ts`                    | Expo app config (reads `.env.local`)                   | edited by rebrand                                                                 |
 | `app.json`                         | Static `eas.projectId`                                 | written by `eas init`                                                             |
-| `store.config.json`                | App Store metadata + review contact                    | edited by rebrand, gitignored                                                     |
+| `store.config.json`                | App Store metadata + review contact                    | committed with placeholders, edited in place by rebrand                           |
 | `package.json`                     | Project metadata                                       | edited by rebrand                                                                 |
 
 ## State schema
@@ -610,15 +625,15 @@ Atomic writes via `tmp + rename`. Schema mismatches fail-loud, `setup` will refu
 
 ## Security
 
-| Class                 | Lives in                                                       | Rotates                                                   |
-| --------------------- | -------------------------------------------------------------- | --------------------------------------------------------- |
-| `BETTER_AUTH_SECRET`  | Convex env                                                     | rotate via `npx vexpo better-auth --force`                |
-| Resend sending key    | Convex env (`RESEND_API_KEY`)                                  | `npx vexpo resend` deletes the named key + recreates      |
-| Resend webhook secret | Convex env (`RESEND_WEBHOOK_SECRET`)                           | rotated alongside the key                                 |
-| Apple Sign In JWT     | Convex env (`APPLE_CLIENT_SECRET`)                             | 180-day max, auto-rotated by EAS Workflows cron every 90d |
-| Apple Sign In `.p8`   | EAS env `APPLE_P8_PRIVATE_KEY` (secret visibility, production) | rotate the key in Apple Developer Console                 |
-| ASC API `.p8`         | filesystem (path you choose) + state cache                     | manual, rotate via App Store Connect → Integrations       |
-| `CONVEX_DEPLOY_KEY`   | EAS env (production, secret visibility)                        | rotate at Convex Dashboard → Settings → Deploy Keys       |
+| Class                 | Lives in                                                       | Rotates                                                       |
+| --------------------- | -------------------------------------------------------------- | ------------------------------------------------------------- |
+| `BETTER_AUTH_SECRET`  | Convex env                                                     | rotate via `npx vexpo better-auth --rotate-secret`            |
+| Resend sending key    | Convex env (`RESEND_API_KEY`)                                  | `npx vexpo resend` deletes the named key + recreates          |
+| Resend webhook secret | Convex env (`RESEND_WEBHOOK_SECRET`)                           | rotated alongside the key                                     |
+| Apple Sign In JWT     | Convex env (`APPLE_CLIENT_SECRET`)                             | 180-day max, auto-rotated quarterly by the EAS Workflows cron |
+| Apple Sign In `.p8`   | EAS env `APPLE_P8_PRIVATE_KEY` (secret visibility, production) | rotate the key in Apple Developer Console                     |
+| ASC API `.p8`         | filesystem (path you choose) + state cache                     | manual, rotate via App Store Connect → Integrations           |
+| `CONVEX_DEPLOY_KEY`   | EAS env (production, secret visibility)                        | rotate at Convex Dashboard → Settings → Deploy Keys           |
 
 `.setup-state.json` only stores resource IDs, file paths, and timestamps, not secrets. Safe to share for debugging.
 

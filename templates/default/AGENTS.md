@@ -76,8 +76,9 @@ rebrand` fills them in. App Review will reject builds with placeholder
 - **Pre-approved commands:** `.claude/settings.json` allows read-only
   `git`/`expo`/`eas`/`convex`/`vexpo` calls + the project's `npm run`
   scripts (`typecheck`, `lint`, `test`, `format`, `dev`, `fp`) without
-  per-step permission prompts. Destructive ops (`git push`, `git reset`,
-  `npm install`, `expo deploy`) still ask.
+  per-step permission prompts. The file carries only an allowlist, no
+  denylist, so anything not on it (`git push`, `git reset`, `npm install`,
+  `expo deploy`, and the rest) prompts by default.
 - **EAS Convex bootstrap:** `eas integrations:convex:connect` is the
   upstream SDK 56 path for provisioning a Convex backend, writing
   `CONVEX_DEPLOY_KEY` + `EXPO_PUBLIC_CONVEX_URL`, and registering the env

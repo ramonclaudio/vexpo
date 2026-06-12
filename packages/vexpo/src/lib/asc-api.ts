@@ -51,70 +51,6 @@ export type AscApp = {
   };
 };
 
-export type AscCertificateType =
-  | "IOS_DEVELOPMENT"
-  | "IOS_DISTRIBUTION"
-  | "MAC_APP_DISTRIBUTION"
-  | "MAC_INSTALLER_DISTRIBUTION"
-  | "MAC_APP_DEVELOPMENT"
-  | "DEVELOPER_ID_KEXT"
-  | "DEVELOPER_ID_APPLICATION"
-  | "DEVELOPMENT"
-  | "DISTRIBUTION";
-
-export type AscCertificate = {
-  type: "certificates";
-  id: string;
-  attributes: {
-    certificateContent: string;
-    certificateType: AscCertificateType;
-    displayName: string;
-    expirationDate: string;
-    name: string;
-    platform?: string;
-    serialNumber?: string;
-  };
-};
-
-export type AscProfileType =
-  | "IOS_APP_DEVELOPMENT"
-  | "IOS_APP_STORE"
-  | "IOS_APP_ADHOC"
-  | "IOS_APP_INHOUSE"
-  | "MAC_APP_DEVELOPMENT"
-  | "MAC_APP_STORE"
-  | "MAC_APP_DIRECT"
-  | "TVOS_APP_DEVELOPMENT"
-  | "TVOS_APP_STORE"
-  | "TVOS_APP_ADHOC"
-  | "TVOS_APP_INHOUSE";
-
-export type AscProfile = {
-  type: "profiles";
-  id: string;
-  attributes: {
-    name: string;
-    platform: string;
-    profileContent?: string;
-    profileType: AscProfileType;
-    expirationDate: string;
-    profileState: "ACTIVE" | "INVALID";
-    uuid?: string;
-  };
-};
-
-export type AscDevice = {
-  type: "devices";
-  id: string;
-  attributes: {
-    name?: string;
-    udid: string;
-    platform: string;
-    status: "ENABLED" | "DISABLED";
-    deviceClass?: string;
-  };
-};
-
 type AscErrorEntry = {
   id?: string;
   status?: string;
@@ -289,13 +225,6 @@ export function makeAscClient(creds: AscCredentials) {
         const res = await request<{ data: AscBundleId }>("POST", "/v1/bundleIds", body);
         return res.data;
       },
-      async get(id: string): Promise<AscBundleId> {
-        const res = await request<{ data: AscBundleId }>("GET", `/v1/bundleIds/${id}`);
-        return res.data;
-      },
-      async delete(id: string): Promise<void> {
-        await request<void>("DELETE", `/v1/bundleIds/${id}`);
-      },
     },
 
     bundleIdCapabilities: {
@@ -331,9 +260,6 @@ export function makeAscClient(creds: AscCredentials) {
         );
         return res.data;
       },
-      async delete(id: string): Promise<void> {
-        await request<void>("DELETE", `/v1/bundleIdCapabilities/${id}`);
-      },
     },
 
     apps: {
@@ -343,82 +269,6 @@ export function makeAscClient(creds: AscCredentials) {
       async get(id: string): Promise<AscApp> {
         const res = await request<{ data: AscApp }>("GET", `/v1/apps/${id}`);
         return res.data;
-      },
-    },
-
-    certificates: {
-      async list(filter?: { certificateType?: AscCertificateType }): Promise<AscCertificate[]> {
-        const query: Record<string, string> = {};
-        if (filter?.certificateType) query["filter[certificateType]"] = filter.certificateType;
-        return paginatedList<AscCertificate>("/v1/certificates", query);
-      },
-      async create(args: {
-        csrContent: string;
-        certificateType: AscCertificateType;
-      }): Promise<AscCertificate> {
-        const body = {
-          data: {
-            type: "certificates",
-            attributes: {
-              csrContent: args.csrContent,
-              certificateType: args.certificateType,
-            },
-          },
-        };
-        const res = await request<{ data: AscCertificate }>("POST", "/v1/certificates", body);
-        return res.data;
-      },
-      async delete(id: string): Promise<void> {
-        await request<void>("DELETE", `/v1/certificates/${id}`);
-      },
-    },
-
-    profiles: {
-      async list(filter?: { profileType?: AscProfileType; name?: string }): Promise<AscProfile[]> {
-        const query: Record<string, string> = {};
-        if (filter?.profileType) query["filter[profileType]"] = filter.profileType;
-        if (filter?.name) query["filter[name]"] = filter.name;
-        return paginatedList<AscProfile>("/v1/profiles", query);
-      },
-      async create(args: {
-        name: string;
-        profileType: AscProfileType;
-        bundleIdResourceId: string;
-        certificateIds: string[];
-        deviceIds?: string[];
-      }): Promise<AscProfile> {
-        const body = {
-          data: {
-            type: "profiles",
-            attributes: { name: args.name, profileType: args.profileType },
-            relationships: {
-              bundleId: { data: { type: "bundleIds", id: args.bundleIdResourceId } },
-              certificates: {
-                data: args.certificateIds.map((id) => ({ type: "certificates", id })),
-              },
-              ...(args.deviceIds && args.deviceIds.length > 0
-                ? {
-                    devices: {
-                      data: args.deviceIds.map((id) => ({ type: "devices", id })),
-                    },
-                  }
-                : {}),
-            },
-          },
-        };
-        const res = await request<{ data: AscProfile }>("POST", "/v1/profiles", body);
-        return res.data;
-      },
-      async delete(id: string): Promise<void> {
-        await request<void>("DELETE", `/v1/profiles/${id}`);
-      },
-    },
-
-    devices: {
-      async list(filter?: { status?: "ENABLED" | "DISABLED" }): Promise<AscDevice[]> {
-        const query: Record<string, string> = {};
-        if (filter?.status) query["filter[status]"] = filter.status;
-        return paginatedList<AscDevice>("/v1/devices", query);
       },
     },
   };

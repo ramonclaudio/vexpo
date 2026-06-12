@@ -1,4 +1,4 @@
-import { useState, type ComponentProps } from "react";
+import { type ComponentProps } from "react";
 import { openSettings } from "expo-linking";
 import {
   Host,
@@ -27,13 +27,14 @@ import { useSymbolSize } from "@/lib/dynamic-symbol-size";
 import { Button as ButtonTokens } from "@/constants/layout";
 
 import { haptics } from "@/lib/haptics";
+import { useShareAnalytics } from "@/lib/preferences";
 import { useColors } from "@/hooks/use-theme";
 
 export default function PrivacyScreen() {
   const dfont = useDynamicFont();
   const symbolSize = useSymbolSize();
   const colors = useColors();
-  const [analyticsEnabled, setAnalyticsEnabled] = useState(true);
+  const [analyticsEnabled, setAnalyticsEnabled] = useShareAnalytics();
 
   const handleOpenSettings = () => {
     haptics.light();

@@ -1,9 +1,11 @@
-import { Stack } from "expo-router";
+import { Stack, router } from "expo-router";
 import { useQuery } from "convex/react";
+import { useEffect } from "react";
 
 import { api } from "@/convex/_generated/api";
 import { authClient } from "@/lib/auth-client";
 import { useDeepLinkHandler } from "@/hooks/use-deep-link";
+import { useOnboarding } from "@/hooks/use-onboarding";
 import { useColors } from "@/hooks/use-theme";
 import { useMotionScreenOptions } from "@/hooks/use-motion-screen-options";
 import { useReducedMotion } from "@/hooks/use-reduced-motion";
@@ -27,6 +29,18 @@ export default function AppLayout() {
   // Skipped while unauthed because Convex queries need a live JWT.
   const me = useQuery(api.users.getMe, isAuthenticated ? {} : "skip");
   const isAccountDeleted = !!me?.deletedAt;
+
+  // First-launch gate. `seen` reads SecureStore-backed localStorage
+  // synchronously, so there is no async flash. Wait for `me` to resolve
+  // (undefined while loading) before routing so a fresh authed user lands
+  // on welcome only once the account state is known. Welcome is registered
+  // inside the authed guard below, so this only fires for signed-in users.
+  const { seen } = useOnboarding();
+  useEffect(() => {
+    if (isAuthenticated && me !== undefined && !isAccountDeleted && !seen) {
+      router.replace("/welcome");
+    }
+  }, [isAuthenticated, me, isAccountDeleted, seen]);
 
   useDeepLinkHandler();
 
