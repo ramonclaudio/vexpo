@@ -37,9 +37,12 @@ jobs:
     name: Mint unique test credentials
     outputs:
       email: ${{ steps.creds.outputs.email }}
+      password: ${{ steps.creds.outputs.password }}
     steps:
       - id: creds
-        run: set-output email "maestro-e2e-$(date +%s)@example.com"
+        run: |
+          set-output email "maestro-e2e-$(date +%s)@example.com"
+          set-output password "$(openssl rand -hex 16)"
 
   maestro:
     name: Run Maestro flows
@@ -49,7 +52,7 @@ jobs:
     env:
       MAESTRO_APP_ID: ${{ env.EXPO_PUBLIC_APP_BUNDLE_ID }}
       MAESTRO_TEST_EMAIL: ${{ needs.test_creds.outputs.email }}
-      MAESTRO_TEST_PASSWORD: maestro-e2e-password
+      MAESTRO_TEST_PASSWORD: ${{ needs.test_creds.outputs.password }}
     params:
       build_id: ${{ needs.build_ios_simulator.outputs.build_id }}
       flow_path: [".maestro"]
