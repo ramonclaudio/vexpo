@@ -3,7 +3,7 @@
 [![npm](https://img.shields.io/npm/v/@ramonclaudio/vexpo)](https://www.npmjs.com/package/@ramonclaudio/vexpo)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-Operational CLI for [vexpo](https://github.com/ramonclaudio/vexpo) projects: Expo + Convex + Better Auth + Resend, end-to-end iOS. EAS does the heavy lifting (builds, updates, submission). vexpo covers the setup around it: provisioning the stack, checking every credential, keeping env values in sync, and the App Store Connect last mile to a first ship.
+The setup CLI for [vexpo](https://github.com/ramonclaudio/vexpo) projects (Expo + Convex + Better Auth + Resend, end-to-end iOS). It creates or links your Convex deployment, signs and rotates the Apple keys (the P8 dance), and keeps your env in sync everywhere. It covers the App Store Connect last mile to a first ship. EAS does the heavy lifting (builds, updates, submission), vexpo covers the setup around it.
 
 Scaffolded by [`create-vexpo`](https://www.npmjs.com/package/@ramonclaudio/create-vexpo) into your devDependencies. Run it with `npx vexpo`.
 
@@ -37,6 +37,7 @@ vexpo asc:connect                 link the EAS project to its ASC app (wraps `ea
 
 ```
 vexpo apple asc-key               validate an ASC API key against /v1/apps
+vexpo apple asc-key --revalidate  re-check the cached key without re-prompting
 vexpo apple credentials           wrap `eas credentials:configure-build` with the cached ASC key
 vexpo apple services-id           detect SIWA Services ID + attach APPLE_ID_AUTH capability
 vexpo apple jwt                   sign the SIWA ES256 client_secret JWT (180-day expiry)
@@ -107,3 +108,5 @@ Apple changed several ASC API behaviors after the initial CLI release. The CLI h
 ## Repo
 
 [github.com/ramonclaudio/vexpo](https://github.com/ramonclaudio/vexpo)
+
+Working on the CLI itself? See [CONTRIBUTING.md](https://github.com/ramonclaudio/vexpo/blob/main/CONTRIBUTING.md).
