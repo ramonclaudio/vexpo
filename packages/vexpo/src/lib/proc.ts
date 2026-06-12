@@ -68,7 +68,11 @@ export async function run(
     stdin: opts.stdin ?? "ignore",
     stdout: "pipe",
     stderr: "pipe",
-    env: opts.env,
+    // run() exists to PARSE output. A FORCE_COLOR=1 in the caller's shell
+    // (CI, recordings) makes child CLIs wrap fields in ANSI codes and every
+    // regex parser downstream silently misses. Force color off; an explicit
+    // opts.env can still override.
+    env: { FORCE_COLOR: "0", NO_COLOR: "1", ...opts.env },
     cwd: opts.cwd,
   });
   const [code, stdout, stderr] = await Promise.all([
