@@ -32,7 +32,7 @@ async function main() {
     .argument("[directory]", "project directory name")
     .option("--no-install", "skip installing dependencies")
     .option("--no-git", "skip git init")
-    .option("--no-setup", "skip the `npx vexpo lite` / `npx vexpo full` prompt after install")
+    .option("--no-setup", "skip the printed next-steps block after install")
     .option("-y, --yes", "accept defaults, skip prompts")
     .version(pkg.version, "-v, --version")
     .parse();
@@ -65,13 +65,23 @@ async function main() {
     throw err;
   }
 
+  // True once deps are on disk: either install succeeded, or `--no-install`
+  // means we never tried so there's nothing half-built. Gates the git commit
+  // and the manual-install hint below.
+  let depsReady = !flags.install;
+
   if (flags.install) {
     const installSpin = ora(`Installing dependencies with ${kleur.cyan(pm)}`).start();
     try {
-      await execa(pm, ["install"], { cwd: target, stdio: "ignore" });
+      // Capture stderr instead of discarding it so a failed install can show
+      // why. stdout stays silent to keep the spinner output clean.
+      await execa(pm, ["install"], { cwd: target, stdout: "ignore" });
       installSpin.succeed(`Installed with ${pm}`);
-    } catch {
-      installSpin.warn(`Install skipped. Run ${kleur.cyan(`${pm} install`)} manually.`);
+      depsReady = true;
+    } catch (err) {
+      installSpin.fail(`Install failed. Run ${kleur.cyan(`${pm} install`)} manually.`);
+      const stderr = installFailureStderr(err);
+      if (stderr) console.error(kleur.gray(tail(stderr, 20)));
     }
   }
 
@@ -79,18 +89,25 @@ async function main() {
     const gitSpin = ora("Initializing git").start();
     try {
       await execa("git", ["init", "--initial-branch=main"], { cwd: target, stdio: "ignore" });
-      await execa("git", ["add", "-A"], { cwd: target, stdio: "ignore" });
-      await execa("git", ["commit", "-m", "feat: initial commit", "--no-gpg-sign"], {
-        cwd: target,
-        stdio: "ignore",
-      });
-      gitSpin.succeed("Git repo initialized");
+      // Don't commit a half-built project. Init the repo so the user can commit
+      // themselves once deps land, but skip add/commit when install failed.
+      if (depsReady) {
+        await execa("git", ["add", "-A"], { cwd: target, stdio: "ignore" });
+        await execa("git", ["commit", "-m", "feat: initial commit", "--no-gpg-sign"], {
+          cwd: target,
+          stdio: "ignore",
+        });
+        gitSpin.succeed("Git repo initialized");
+      } else {
+        gitSpin.warn("Git repo initialized, commit skipped (install failed)");
+        console.error(kleur.gray(`  Commit yourself after ${pm} install lands.`));
+      }
     } catch {
       gitSpin.warn("Git init skipped");
     }
   }
 
-  if (flags.setup) nextSteps(target, flags, pm);
+  if (flags.setup) nextSteps(target, pm, depsReady);
 }
 
 const NAME_RE = /^[a-z0-9][a-z0-9-]*$/;
@@ -199,12 +216,29 @@ function intro(): void {
   console.log(kleur.bold().cyan("create-vexpo") + kleur.gray(` v${pkg.version}`));
 }
 
-function nextSteps(target: string, flags: Flags, pm: PM): void {
+// Pull the stderr off a failed execa subprocess. execa 9 throws an ExecaError
+// carrying the captured stderr; guard the shape so a non-execa throw is safe.
+function installFailureStderr(err: unknown): string {
+  if (err && typeof err === "object" && "stderr" in err) {
+    const stderr = (err as { stderr?: unknown }).stderr;
+    if (typeof stderr === "string") return stderr.trim();
+  }
+  return "";
+}
+
+// Last `n` lines of a string. Install logs are long; the tail holds the error.
+function tail(text: string, n: number): string {
+  return text.split("\n").slice(-n).join("\n");
+}
+
+function nextSteps(target: string, pm: PM, depsReady: boolean): void {
   const cdPath = relative(process.cwd(), target) || ".";
   console.log();
   console.log(kleur.bold("Next steps:"));
   console.log(kleur.gray("  cd ") + kleur.cyan(cdPath));
-  if (!flags.install) console.log(kleur.gray(`  ${pm} install`));
+  // Print the manual install whenever deps aren't on disk: either install was
+  // skipped (`--no-install`) or it ran and failed.
+  if (!depsReady) console.log(kleur.gray(`  ${pm} install`));
   console.log(
     kleur.gray(
       `  npx vexpo lite     ${kleur.dim("# dev mode: Convex + Better Auth, 60s to simulator")}`,
