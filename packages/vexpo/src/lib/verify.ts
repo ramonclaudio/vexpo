@@ -1,6 +1,7 @@
 import { existsSync, readFileSync } from "node:fs";
 
 import { validate as ascValidate, makeAscClient, type AscCredentials } from "./asc-api.ts";
+import { loadAscCreds } from "./asc-state.ts";
 import { deploymentSlug, envMap as convexEnvMap, type ConvexTarget } from "./convex-env.ts";
 import {
   checkToken,
@@ -19,7 +20,6 @@ import {
 } from "./eas-env.ts";
 import { readEnvFile } from "./env-files.ts";
 import { listDomains, listWebhooks, probeAccess } from "./resend-api.ts";
-import { load as loadState } from "./state.ts";
 
 export type Severity = "ok" | "warn" | "fail" | "skip";
 
@@ -906,22 +906,6 @@ async function readAppConfigFacts(): Promise<AppConfigFacts> {
     };
   } catch {
     return {};
-  }
-}
-
-async function loadAscCreds(): Promise<AscCredentials | null> {
-  try {
-    const state = await loadState();
-    const rec = state.steps["asc-key"];
-    if (!rec?.outputs) return null;
-    const out = rec.outputs as Record<string, unknown>;
-    const issuerId = out.issuerId as string | undefined;
-    const keyId = out.keyId as string | undefined;
-    const p8Path = out.p8Path as string | undefined;
-    if (!issuerId || !keyId || !p8Path) return null;
-    return { issuerId, keyId, privateKey: { path: p8Path } };
-  } catch {
-    return null;
   }
 }
 
