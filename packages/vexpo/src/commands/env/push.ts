@@ -19,7 +19,7 @@ import {
   type Destination,
   type SyncEntry,
 } from "../../lib/env-files.ts";
-import { fingerprint, recordStep } from "../../lib/state.ts";
+import { fingerprint } from "../../lib/state.ts";
 import {
   BOLD,
   DIM,
@@ -384,7 +384,6 @@ export async function runEnvPush(options: EnvPushOptions): Promise<number> {
       return 2;
     }
     ok("nothing to do. all source values match destinations");
-    await recordStep("accounts", { mode: "lite", verifiedAt: new Date().toISOString() });
     return 0;
   }
 
@@ -438,13 +437,6 @@ export async function runEnvPush(options: EnvPushOptions): Promise<number> {
     return 1;
   }
   ok(`${appliedTotal} value${appliedTotal === 1 ? "" : "s"} synced`);
-
-  await recordStep("accounts", {
-    mode: "lite",
-    syncedAt: new Date().toISOString(),
-    sources: sources.map((s) => ({ path: s.path, channel: s.channel, keys: s.entries.size })),
-    applied: appliedTotal,
-  });
 
   if (!options.noVerify) {
     const haveProd = sources.some((s) => s.channel === "prod");
