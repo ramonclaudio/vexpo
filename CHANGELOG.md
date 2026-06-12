@@ -4,6 +4,8 @@ All notable changes to vexpo are tracked here. Format follows [Keep a Changelog]
 
 ## [Unreleased]
 
+## [0.1.4] - 2026-06-12
+
 - Run `vexpo rebrand` non-interactively with the identity flags plus `--yes`: the TTY guard fired before the flags were considered, contradicting its own non-TTY error message.
 - Sync a rebrand's bundle id into `.env.local` and Convex env. The new id only landed as the `app.config.ts` fallback, so a value written by a prior `lite` shadowed it forever and the convex step re-pushed the stale id.
 - Defer `asc:connect` with guidance when no ASC app record exists for the bundle id yet (it appears after the first `eas submit`), instead of dying on eas-cli's raw "Found 0 app(s)".
@@ -84,7 +86,8 @@ First public release.
 
 See [`README.md`](./README.md) for the feature list, [`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md) for the trade-off log, [`docs/SECURITY.md`](./docs/SECURITY.md) for the threat model, [`docs/OPERATIONS.md`](./docs/OPERATIONS.md) for the on-call runbook, and [`docs/UPSTREAM.md`](./docs/UPSTREAM.md) for the ledger of every upstream PR we shipped to `expo/expo` that the template depends on.
 
-[Unreleased]: https://github.com/ramonclaudio/vexpo/compare/v0.1.3...HEAD
+[Unreleased]: https://github.com/ramonclaudio/vexpo/compare/v0.1.4...HEAD
+[0.1.4]: https://github.com/ramonclaudio/vexpo/releases/tag/v0.1.4
 [0.1.3]: https://github.com/ramonclaudio/vexpo/releases/tag/v0.1.3
 [0.1.2]: https://github.com/ramonclaudio/vexpo/releases/tag/v0.1.2
 [0.1.1]: https://github.com/ramonclaudio/vexpo/releases/tag/v0.1.1
