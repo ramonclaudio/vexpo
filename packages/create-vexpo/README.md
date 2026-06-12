@@ -38,14 +38,14 @@ npx vexpo full --new   # same + Apple, Convex, Expo, and Resend signup walkthrou
 
 ## Options
 
-| Flag            | Behavior                                                                          |
-| --------------- | --------------------------------------------------------------------------------- |
-| `[directory]`   | Project directory name (positional). Defaults to `my-vexpo-app` with `-y`.        |
-| `--no-install`  | Skip installing dependencies after copying the template.                          |
-| `--no-git`      | Skip `git init` after install.                                                    |
-| `--no-setup`    | Skip the printed next-steps block after install.                                  |
-| `-y, --yes`     | Accept defaults, skip prompts.                                                     |
-| `-v, --version` | Print version, exit.                                                              |
+| Flag            | Behavior                                                                   |
+| --------------- | -------------------------------------------------------------------------- |
+| `[directory]`   | Project directory name (positional). Defaults to `my-vexpo-app` with `-y`. |
+| `--no-install`  | Skip installing dependencies after copying the template.                   |
+| `--no-git`      | Skip `git init` after install.                                             |
+| `--no-setup`    | Skip the printed next-steps block after install.                           |
+| `-y, --yes`     | Accept defaults, skip prompts.                                             |
+| `-v, --version` | Print version, exit.                                                       |
 
 ## What gets scaffolded
 
