@@ -5,9 +5,9 @@
  * profile's `ascAppId` (no CLI flag, no env var) or interactively. So a
  * non-interactive submit (CI, scripts, background) needs `ascAppId` in eas.json;
  * the ASC integration alone only covers interactive mode. The upstream template
- * ships generic (no ascAppId); `vexpo asc` writes the fork's id here after
- * connecting, the same per-fork-fill pattern as store.config.json + `vexpo
- * rebrand`.
+ * ships generic (no ascAppId); `vexpo asc:connect` writes the fork's id here
+ * after connecting, the same per-fork-fill pattern as store.config.json +
+ * `vexpo rebrand`.
  */
 
 type EasJson = { submit?: Record<string, { ios?: { ascAppId?: string } }> };
