@@ -6,8 +6,8 @@
  * leaves the previous state intact.
  *
  * The local cache is never the source of truth: external services win on
- * disagreement. Use `verifyOrInvalidate(name, fn)` to re-check freshness
- * before trusting a cached step.
+ * disagreement. Callers re-check freshness with `isStepFresh` before
+ * trusting a cached step.
  *
  * Uses node:fs so the module works under both bun and node (vitest runs node).
  */
@@ -137,12 +137,6 @@ export async function recordStep(name: StepName, outputs?: Record<string, unknow
   await save(state);
 }
 
-export async function clearStep(name: StepName): Promise<void> {
-  const state = await load();
-  delete state.steps[name];
-  await save(state);
-}
-
 export async function appendAudit(entry: AuditEntry): Promise<void> {
   const state = await load();
   state.audit.push(entry);
@@ -156,23 +150,6 @@ export function isStepFresh(state: SetupState, name: StepName, ttlHours: number)
   if (ttlHours === Infinity) return true;
   const ageMs = Date.now() - new Date(rec.verifyAt).getTime();
   return ageMs < ttlHours * 3_600_000;
-}
-
-export type VerifyFn = () => Promise<{ ok: boolean; reason?: string }>;
-
-export async function verifyOrInvalidate(name: StepName, verify: VerifyFn): Promise<boolean> {
-  const result = await verify();
-  if (!result.ok) {
-    await clearStep(name);
-    return false;
-  }
-  const state = await load();
-  const rec = state.steps[name];
-  if (rec) {
-    rec.verifyAt = new Date().toISOString();
-    await save(state);
-  }
-  return true;
 }
 
 export function checkConcurrentRun(state: SetupState): { active: boolean; otherPid?: number } {

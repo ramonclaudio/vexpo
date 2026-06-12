@@ -17,8 +17,6 @@ import { spawn } from "../lib/proc.ts";
 import { recordStep } from "../lib/state.ts";
 
 export type EasOptions = {
-  skipEnv?: boolean;
-  skipInit?: boolean;
   withProd?: boolean;
 };
 
@@ -99,75 +97,71 @@ export async function runEas(options: EasOptions): Promise<number> {
     }
 
     let projectId = await resolveProjectId();
-    if (!options.skipInit) {
-      if (projectId) {
-        ok(`EAS project linked: ${projectId}`);
-      } else {
-        const result = await init();
-        if (!result.ok) {
-          bad("eas init failed");
-          return 1;
-        }
-        projectId = result.projectId ?? null;
-        ok(`EAS project created: ${projectId}`);
+    if (projectId) {
+      ok(`EAS project linked: ${projectId}`);
+    } else {
+      const result = await init();
+      if (!result.ok) {
+        bad("eas init failed");
+        return 1;
       }
-
-      const channels = ["development", "preview", "production"];
-      const createdChannels = await ensureChannels(channels);
-      if (createdChannels.length > 0) ok(`channels created: ${createdChannels.join(", ")}`);
-      else nop(`channels already exist (${channels.join(", ")})`);
-
-      const branches = ["development", "preview", "production"];
-      const createdBranches = await ensureBranches(branches);
-      if (createdBranches.length > 0) ok(`branches created: ${createdBranches.join(", ")}`);
-      else nop(`branches already exist (${branches.join(", ")})`);
+      projectId = result.projectId ?? null;
+      ok(`EAS project created: ${projectId}`);
     }
 
-    if (!options.skipEnv) {
-      if (await fileExists(".env.local")) {
+    const channels = ["development", "preview", "production"];
+    const createdChannels = await ensureChannels(channels);
+    if (createdChannels.length > 0) ok(`channels created: ${createdChannels.join(", ")}`);
+    else nop(`channels already exist (${channels.join(", ")})`);
+
+    const branches = ["development", "preview", "production"];
+    const createdBranches = await ensureBranches(branches);
+    if (createdBranches.length > 0) ok(`branches created: ${createdBranches.join(", ")}`);
+    else nop(`branches already exist (${branches.join(", ")})`);
+
+    if (await fileExists(".env.local")) {
+      try {
+        const pushed = await pushEasRoutedKeys(".env.local", ["development"]);
+        if (pushed.length > 0) {
+          ok(
+            `pushed ${pushed.length} EXPO_PUBLIC_* var${pushed.length === 1 ? "" : "s"} → EAS env (development)`,
+          );
+        } else {
+          nop(".env.local has no EAS-routed keys yet (run `vexpo convex` first)");
+        }
+      } catch (err) {
+        bad(err instanceof Error ? err.message : String(err));
+      }
+    } else {
+      nop(".env.local missing. skipping development env push (run `vexpo convex` first)");
+    }
+
+    if (options.withProd) {
+      const prodFile = (await fileExists(".env.prod"))
+        ? ".env.prod"
+        : (await fileExists(".env.production"))
+          ? ".env.production"
+          : null;
+      if (prodFile) {
         try {
-          const pushed = await pushEasRoutedKeys(".env.local", ["development"]);
+          const pushed = await pushEasRoutedKeys(prodFile, ["production", "preview"]);
           if (pushed.length > 0) {
             ok(
-              `pushed ${pushed.length} EXPO_PUBLIC_* var${pushed.length === 1 ? "" : "s"} → EAS env (development)`,
+              `pushed ${pushed.length} EXPO_PUBLIC_* var${pushed.length === 1 ? "" : "s"} → EAS env (production, preview)`,
             );
           } else {
-            nop(".env.local has no EAS-routed keys yet (run `vexpo convex` first)");
+            nop(`${prodFile} has no EAS-routed keys`);
           }
         } catch (err) {
           bad(err instanceof Error ? err.message : String(err));
         }
       } else {
-        nop(".env.local missing. skipping development env push (run `vexpo convex` first)");
+        nop("--with-prod set but no .env.prod or .env.production found");
       }
-
-      if (options.withProd) {
-        const prodFile = (await fileExists(".env.prod"))
-          ? ".env.prod"
-          : (await fileExists(".env.production"))
-            ? ".env.production"
-            : null;
-        if (prodFile) {
-          try {
-            const pushed = await pushEasRoutedKeys(prodFile, ["production", "preview"]);
-            if (pushed.length > 0) {
-              ok(
-                `pushed ${pushed.length} EXPO_PUBLIC_* var${pushed.length === 1 ? "" : "s"} → EAS env (production, preview)`,
-              );
-            } else {
-              nop(`${prodFile} has no EAS-routed keys`);
-            }
-          } catch (err) {
-            bad(err instanceof Error ? err.message : String(err));
-          }
-        } else {
-          nop("--with-prod set but no .env.prod or .env.production found");
-        }
-      }
-      note(
-        `server-side secrets route to Convex, not EAS. run ${BOLD}vexpo env push${RESET} to sync those`,
-      );
     }
+    note(
+      `server-side secrets route to Convex, not EAS. run ${BOLD}vexpo env push${RESET} to sync those`,
+    );
 
     if (projectId) {
       await recordStep("eas", {

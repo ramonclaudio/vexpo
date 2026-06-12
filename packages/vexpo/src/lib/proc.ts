@@ -1,4 +1,4 @@
-import { spawn as nodeSpawn, spawnSync as nodeSpawnSync } from "node:child_process";
+import { spawn as nodeSpawn } from "node:child_process";
 import type { Readable, Writable } from "node:stream";
 
 export type StdioOption = "inherit" | "pipe" | "ignore";
@@ -43,28 +43,6 @@ export function spawn(argv: readonly string[], opts: ProcOpts = {}): SpawnedProc
     stdin: proc.stdin,
     pid: proc.pid ?? -1,
     kill: (signal) => proc.kill(signal),
-  };
-}
-
-export function spawnSync(
-  argv: readonly string[],
-  opts: ProcOpts = {},
-): { code: number; stdout: string; stderr: string } {
-  const stdio: [StdioOption, StdioOption, StdioOption] = opts.stdio ?? [
-    opts.stdin ?? "inherit",
-    opts.stdout ?? "pipe",
-    opts.stderr ?? "pipe",
-  ];
-  const result = nodeSpawnSync(argv[0]!, argv.slice(1), {
-    stdio,
-    env: opts.env ? { ...process.env, ...opts.env } : process.env,
-    cwd: opts.cwd,
-    encoding: "utf8",
-  });
-  return {
-    code: result.status ?? (result.signal ? 1 : 0),
-    stdout: typeof result.stdout === "string" ? result.stdout : "",
-    stderr: typeof result.stderr === "string" ? result.stderr : "",
   };
 }
 
