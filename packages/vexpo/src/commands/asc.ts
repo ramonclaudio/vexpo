@@ -34,11 +34,18 @@
  * Idempotency: skips entirely when `eas integrations:asc:status` already
  * reports `status === "connected"`. Status type mirrors `buildJsonOutput`
  * in `expo/eas-cli` (`packages/eas-cli/src/integrations/asc/utils.ts`).
+ *
+ * Defer: a brand-new bundle id has no ASC `apps` record until the first
+ * `eas submit`, and the wizard would die on eas-cli's raw "Found 0 app(s)".
+ * `ascAppExists` pre-checks with our cached creds and returns 0 with loud
+ * guidance to run `eas build --auto-submit-with-profile testflight` first.
  */
 
 import { existsSync } from "node:fs";
 import { readFile, writeFile } from "node:fs/promises";
 
+import { makeAscClient } from "../lib/asc-api.ts";
+import { loadAscCreds } from "../lib/asc-state.ts";
 import { ascStatus } from "../lib/eas-integrations.ts";
 import { withAscAppId } from "../lib/eas-submit.ts";
 import { readOne } from "../lib/env-local.ts";
@@ -47,6 +54,26 @@ import { expandTilde } from "../lib/path.ts";
 import { dlx } from "../lib/pkg-manager.ts";
 import { spawn } from "../lib/proc.ts";
 import { load as loadState, recordStep } from "../lib/state.ts";
+
+/**
+ * Pre-check whether an ASC app record exists for the bundle id before spawning
+ * the eas wizard. On a brand-new bundle id no `apps` resource exists until the
+ * first `eas submit`, so the wizard dies with eas-cli's raw "Found 0 app(s)"
+ * and exits 1 (its stderr is inherited, nothing to catch). Returns:
+ *   "defer"    cached creds + the lookup found zero apps -> guide, don't spawn
+ *   "proceed"  at least one app matches -> spawn the wizard
+ *   "unknown"  no cached creds, or the lookup itself errored -> spawn anyway
+ */
+async function ascAppExists(bundleId: string): Promise<"defer" | "proceed" | "unknown"> {
+  const creds = await loadAscCreds();
+  if (!creds) return "unknown";
+  try {
+    const apps = await makeAscClient(creds).apps.list({ bundleId });
+    return apps.length > 0 ? "proceed" : "defer";
+  } catch {
+    return "unknown";
+  }
+}
 
 async function loadAscFromState(): Promise<{
   issuerId: string;
@@ -103,6 +130,21 @@ export async function runAscConnect(opts: { force?: boolean } = {}): Promise<num
     return 1;
   }
   ok(`bundle id: ${BOLD}${bundleId}${RESET}`);
+
+  // No ASC `apps` resource exists for a brand-new bundle id until the first
+  // `eas submit`. Spawning the wizard now just dies on eas-cli's raw
+  // "Found 0 app(s)". Pre-check with our cached creds and defer loudly when
+  // there's nothing to link yet. unknown (no creds or lookup error) falls
+  // through to the wizard, matching the old behavior.
+  if ((await ascAppExists(bundleId)) === "defer") {
+    yep("no App Store Connect app record for this bundle id yet, NOT connected");
+    note("the ASC app record only appears after the first `eas submit`. run:");
+    note(
+      `  ${BOLD}npx eas build -p ios --profile production --auto-submit-with-profile testflight${RESET}`,
+    );
+    note("then re-run `npx vexpo asc:connect` to finish the EAS↔ASC link");
+    return 0;
+  }
 
   // `eas integrations:asc:connect --non-interactive` hard-requires both
   // --api-key-id and --asc-app-id (and can't generate a key headless), so a
