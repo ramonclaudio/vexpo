@@ -9,6 +9,11 @@ import { checkForUpdate } from "@/lib/updates";
 import { setTheme } from "@/hooks/use-theme";
 import { reloadApp } from "./app";
 
+// Mirror how `auth-client.ts` resolves the scheme so the secure-storage
+// keys we clear match the ones `@better-auth/expo` actually wrote.
+const rawScheme = Constants.expoConfig?.scheme;
+const scheme = Array.isArray(rawScheme) ? rawScheme[0] : rawScheme;
+
 type SessionResponse = { data?: { session?: { id?: string } } | null };
 
 async function copyAuthSessionId() {
@@ -50,8 +55,12 @@ export function registerDevMenuItems() {
     {
       name: "Clear Secure Storage",
       callback: () => {
-        SecureStore.deleteItemAsync("better-auth_session_token").catch(() => {});
-        SecureStore.deleteItemAsync("better-auth_refresh_token").catch(() => {});
+        // `@better-auth/expo` keys its SecureStore entries off `storagePrefix`,
+        // which `auth-client.ts` sets to the app scheme (falling back to
+        // "better-auth"). It writes `<prefix>_cookie` and `<prefix>_session_data`.
+        const prefix = scheme ?? "better-auth";
+        SecureStore.deleteItemAsync(`${prefix}_cookie`).catch(() => {});
+        SecureStore.deleteItemAsync(`${prefix}_session_data`).catch(() => {});
         console.log("[DevMenu] Secure storage cleared");
       },
     },
