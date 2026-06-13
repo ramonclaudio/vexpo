@@ -4,6 +4,16 @@ All notable changes to vexpo are tracked here. Format follows [Keep a Changelog]
 
 ## [Unreleased]
 
+## [0.1.5] - 2026-06-12
+
+- Stop `doctor` reporting false warnings when `FORCE_COLOR` is set in the parent shell (CI, screen recordings). eas-cli wrapped its output in ANSI dim codes and every regex parser silently missed, so a healthy project showed phantom `project-info failed` and `missing` env warns. `run()` now forces color off for any subprocess it parses.
+- Write `ascAppId` into `eas.json` on the already-connected `asc:connect` path too. The connected branch returned early without the write while `doctor`'s `asc-submit-id` warn told you to run `asc:connect`, an unbreakable loop.
+- Add `doctor --redact` to mask identifying values (deployment slugs, project ids, bundle ids, key and team ids, emails, owner handles) with `<placeholder>` labels for screenshots and pasted issue reports. Statuses and check names stay readable.
+- Point the doctor `asc-submit-id` hint at `vexpo asc:connect` (the command that writes the id), not the nonexistent `vexpo asc`.
+- Mint a random e2e password per run in the template's `e2e-tests.yml` instead of a hardcoded one.
+- Add demo media to the READMEs: an app tour GIF, a `vexpo doctor` GIF, and a light/dark screenshot strip, embedded with the GitHub-and-npm-safe centered-image pattern.
+- 513 tests (366 vexpo unit + 113 template + 14 cli e2e + 20 scaffold e2e), plus opt-in live suites (Convex Platform API, Maestro).
+
 ## [0.1.4] - 2026-06-12
 
 - Run `vexpo rebrand` non-interactively with the identity flags plus `--yes`: the TTY guard fired before the flags were considered, contradicting its own non-TTY error message.
@@ -86,7 +96,8 @@ First public release.
 
 See [`README.md`](./README.md) for the feature list, [`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md) for the trade-off log, [`docs/SECURITY.md`](./docs/SECURITY.md) for the threat model, [`docs/OPERATIONS.md`](./docs/OPERATIONS.md) for the on-call runbook, and [`docs/UPSTREAM.md`](./docs/UPSTREAM.md) for the ledger of every upstream PR we shipped to `expo/expo` that the template depends on.
 
-[Unreleased]: https://github.com/ramonclaudio/vexpo/compare/v0.1.4...HEAD
+[Unreleased]: https://github.com/ramonclaudio/vexpo/compare/v0.1.5...HEAD
+[0.1.5]: https://github.com/ramonclaudio/vexpo/releases/tag/v0.1.5
 [0.1.4]: https://github.com/ramonclaudio/vexpo/releases/tag/v0.1.4
 [0.1.3]: https://github.com/ramonclaudio/vexpo/releases/tag/v0.1.3
 [0.1.2]: https://github.com/ramonclaudio/vexpo/releases/tag/v0.1.2
