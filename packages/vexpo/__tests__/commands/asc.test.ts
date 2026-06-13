@@ -215,6 +215,36 @@ describe("runAscConnect", () => {
     expect(spawnSpy).not.toHaveBeenCalled();
   });
 
+  it("already-connected still writes ascAppId into eas.json (doctor loop fix)", async () => {
+    ascStatusSpy.mockResolvedValue({
+      action: "status",
+      project: "@testuser/testapp",
+      status: "connected",
+      appStoreConnectApp: {
+        id: "asc-app-link-id",
+        ascAppIdentifier: "1234567890",
+        name: null,
+        bundleIdentifier: "com.test.app",
+        appleUrl: "https://apps.apple.com/app/id1234567890",
+      },
+    });
+    const fs = await import("node:fs");
+    const existsSpy = fs.existsSync as unknown as ReturnType<typeof vi.fn>;
+    // the suite-level mock hides eas.json; this test needs it visible
+    existsSpy.mockImplementation(() => true);
+    fs.writeFileSync("eas.json", JSON.stringify({ submit: { production: { ios: {} } } }, null, 2));
+
+    try {
+      const exit = await runAscConnect({});
+      expect(exit).toBe(0);
+      expect(spawnSpy).not.toHaveBeenCalled();
+      const easJson = JSON.parse(fs.readFileSync("eas.json", "utf8"));
+      expect(easJson.submit.production.ios.ascAppId).toBe("1234567890");
+    } finally {
+      existsSpy.mockImplementation((p: unknown) => !String(p).endsWith("eas.json"));
+    }
+  });
+
   it("force=true bypasses the idempotency skip", async () => {
     // ascStatus would say connected, but force=true ignores it
     ascStatusSpy.mockResolvedValueOnce({

@@ -28,6 +28,7 @@ export type DoctorOptions = {
   channel?: string;
   json?: boolean;
   strict?: boolean;
+  redact?: boolean;
 };
 
 function icon(severity: Check["severity"]): string {
@@ -43,11 +44,31 @@ function icon(severity: Check["severity"]): string {
   }
 }
 
+// Mask identifying values for screenshots, demos, and pasted issue reports.
+// Statuses and check names stay readable, the values become placeholders.
+// Order matters: URLs before bare slugs, emails before domains.
+const REDACTIONS: [RegExp, string][] = [
+  [/https?:\/\/[a-z0-9-]+\.convex\.(cloud|site)[^\s]*/g, "https://<deployment>.convex.$1"],
+  [/\b[a-z]+-[a-z]+-\d{3}\b/g, "<deployment>"],
+  [/\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b/gi, "<project-id>"],
+  [/\b[\w.+-]+@[\w-]+\.[\w.]+\b/g, "<email>"],
+  [/\b(?:[a-z0-9-]+\.){1,}[a-z]{2,}\b(?= verified)/g, "<domain>"],
+  [/\b(?:com|io|dev|app|net|org)(?:\.[a-z0-9-]+){2,}\b/gi, "<bundle-id>"],
+  [/\b[A-Z0-9]{10}\b/g, "<id>"],
+  [/(@)[\w-]+(\/)/g, "$1<owner>$2"],
+];
+
+export function redactValue(text: string): string {
+  let out = text;
+  for (const [re, sub] of REDACTIONS) out = out.replace(re, sub);
+  return out;
+}
+
 function categoryHeader(c: Category): string {
   return c.charAt(0).toUpperCase() + c.slice(1);
 }
 
-function printResults(checks: Check[]): void {
+function printResults(checks: Check[], redact: boolean): void {
   const byCategory = new Map<Category, Check[]>();
   for (const c of checks) {
     if (!byCategory.has(c.category)) byCategory.set(c.category, []);
@@ -60,8 +81,9 @@ function printResults(checks: Check[]): void {
     section(categoryHeader(cat));
     const w = Math.max(...items.map((c) => c.name.length));
     for (const c of items) {
-      line(`  ${icon(c.severity)} ${BOLD}${c.name.padEnd(w)}${RESET}  ${c.message}`);
-      if (c.details) line(`       ${DIM}${c.details}${RESET}`);
+      const message = redact ? redactValue(c.message) : c.message;
+      line(`  ${icon(c.severity)} ${BOLD}${c.name.padEnd(w)}${RESET}  ${message}`);
+      if (c.details) line(`       ${DIM}${redact ? redactValue(c.details) : c.details}${RESET}`);
     }
   }
 }
@@ -99,7 +121,7 @@ export async function runDoctor(options: DoctorOptions): Promise<number> {
       process.stdout.write(JSON.stringify({ channel, summary, checks }, null, 2) + "\n");
     } else {
       section(`Verify (${channel})`);
-      printResults(checks);
+      printResults(checks, options.redact === true);
       line();
       const parts = [
         `${GREEN}${summary.ok} ok${RESET}`,

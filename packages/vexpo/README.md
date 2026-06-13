@@ -23,6 +23,7 @@ vexpo full --skip-rebrand         full setup, skip the rebrand wizard
 vexpo doctor                      cross-source drift detection
 vexpo doctor --json               machine-readable output
 vexpo doctor --strict             exit non-zero on any warn
+vexpo doctor --redact             mask identifying values (screenshots, issue reports)
 
 vexpo accounts                    walk Apple/Expo/Convex/Resend signups (standalone)
 vexpo rebrand                     replace template defaults with your identity
