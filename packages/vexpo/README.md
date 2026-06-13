@@ -7,6 +7,10 @@ The setup CLI for [vexpo](https://github.com/ramonclaudio/vexpo) projects (Expo 
 
 Scaffolded by [`create-vexpo`](https://www.npmjs.com/package/@ramonclaudio/create-vexpo) into your devDependencies. Run it with `npx vexpo`.
 
+<p align="center">
+  <img src="https://raw.githubusercontent.com/ramonclaudio/vexpo/main/docs/assets/demo-doctor.gif" width="720" alt="vexpo doctor auth-checking every credential against the live services">
+</p>
+
 ## Setup
 
 ```

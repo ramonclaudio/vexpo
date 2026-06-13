@@ -7,6 +7,10 @@ Scaffold a new [vexpo](https://github.com/ramonclaudio/vexpo) project: an Expo S
 
 This is the opinionated stack I reach for on every new app, Expo and Convex and Better Auth sitting on top of EAS, and I wanted anyone to be able to start from it without a day of wiring. The CLI walks you through creating a Convex account or linking one you already have, so you go from empty folder to a running app without leaving the terminal.
 
+<p align="center">
+  <img src="https://raw.githubusercontent.com/ramonclaudio/vexpo/main/docs/assets/demo-app.gif" width="300" alt="The scaffolded app: sign up, onboarding, search, and the dark-mode flip">
+</p>
+
 ## Usage
 
 ```bash
