@@ -11,15 +11,15 @@ describe("doctor --redact value masking", () => {
   });
 
   it("masks project uuids, key ids, and team ids", () => {
-    expect(redactValue("35f2792e-b37d-49e2-b816-c3ad672d0c37")).toBe("<project-id>");
-    expect(redactValue("6ZXL742R8C")).toBe("<id>");
-    expect(redactValue("SWH9LXWCC3")).toBe("<id>");
+    expect(redactValue("12345678-1234-4abc-8def-1234567890ab")).toBe("<project-id>");
+    expect(redactValue("ABCDE12345")).toBe("<id>");
+    expect(redactValue("FGHIJ67890")).toBe("<id>");
   });
 
   it("masks emails, verified domains, bundle ids, and owner handles", () => {
-    expect(redactValue("noreply@rmncldyo.com")).toBe("<email>");
-    expect(redactValue("rmncldyo.com verified")).toBe("<domain> verified");
-    expect(redactValue("com.rmncldyo.vexpo.signin")).toBe("<bundle-id>");
+    expect(redactValue("noreply@example.com")).toBe("<email>");
+    expect(redactValue("example.com verified")).toBe("<domain> verified");
+    expect(redactValue("com.example.app.signin")).toBe("<bundle-id>");
     expect(redactValue("@ramonclaudio/vexpo")).toBe("@<owner>/vexpo");
   });
 
