@@ -287,11 +287,17 @@ export async function validate(creds: AscCredentials): Promise<ValidateResult> {
     return { ok: true, appCount: apps.length };
   } catch (err) {
     if (err instanceof AscApiError) {
+      // A 403 is "authenticated but forbidden" and has several causes; surface
+      // Apple's actual code rather than guessing. A missing/expired agreement
+      // (common after Apple updates the Developer Program License Agreement)
+      // returns 403 for every endpoint regardless of key role.
       const reason =
         err.status === 401
           ? "invalid token (check keyId, issuerId, and .p8)"
           : err.status === 403
-            ? "key role insufficient (need App Manager or higher)"
+            ? err.code?.includes("REQUIRED_AGREEMENTS")
+              ? "App Store Connect agreement missing or expired; the Account Holder must accept it in App Store Connect > Business (Agreements, Tax, and Banking)"
+              : `forbidden${err.code ? ` (${err.code})` : ""}; if this is a permissions error the key needs App Manager role or higher`
             : (err.detail ?? `ASC ${err.status}`);
       return { ok: false, status: err.status, code: err.code, reason };
     }
