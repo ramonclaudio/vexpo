@@ -3,12 +3,12 @@
 An iOS app on Expo SDK 56, wired with Convex, Better Auth, and Resend. Native SwiftUI throughout.
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/ramonclaudio/vexpo/main/docs/assets/demo-app.gif" width="300" alt="Sign up, onboarding, search, and the dark-mode flip">
+  <img src="https://raw.githubusercontent.com/ramonclaudio/vexpo/main/.github/assets/demo-app.gif" width="300" alt="Sign up, onboarding, search, and the dark-mode flip">
   &nbsp;&nbsp;
 </p>
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/ramonclaudio/vexpo/main/docs/assets/screens.png" width="600" alt="Home, profile, and settings in light and dark">
+  <img src="https://raw.githubusercontent.com/ramonclaudio/vexpo/main/.github/assets/screens.png" width="600" alt="Home, profile, and settings in light and dark">
 </p>
 
 ## Quick start

@@ -8,7 +8,7 @@ Scaffold a new [vexpo](https://github.com/ramonclaudio/vexpo) project: an Expo S
 The CLI creates or links your Convex deployment and runs the setup from the terminal.
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/ramonclaudio/vexpo/main/docs/assets/demo-app.gif" width="300" alt="The scaffolded app: sign up, onboarding, search, and the dark-mode flip">
+  <img src="https://raw.githubusercontent.com/ramonclaudio/vexpo/main/.github/assets/demo-app.gif" width="300" alt="The scaffolded app: sign up, onboarding, search, and the dark-mode flip">
 </p>
 
 ## Usage
