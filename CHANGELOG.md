@@ -4,6 +4,13 @@ All notable changes to vexpo are tracked here. Format follows [Keep a Changelog]
 
 ## [Unreleased]
 
+## [0.1.8] - 2026-06-24
+
+- Skip the Convex team picker when provisioning a new project non-interactively. `vexpo lite`/`full` died on convex's raw `(Team:)` prompt in CI or a scripted run; `planConvexDev` now passes `--team` when `CONVEX_TEAM` is set (read from the env or `.env.local`), and the failure path points at `CONVEX_TEAM` instead of letting the prompt fail blind.
+- Never ship `.env.convex.local` in the `create-vexpo` template payload. It was gitignored but listed in the dotfile-ship set, so it was dead on CI and a leak on a local publish. It's now excluded from the payload like `.env.local` and `.env.prod`.
+- Add orchestration coverage for the `lite`/`full` setup engine (`runSetup`), which had no tests that imported it: the lite-vs-full scope matrix, step ordering, the `--plan`/`--dry-run` short-circuits, and the failure path, plus a reversible live `convex env` e2e and `lite`/`full` `--plan` cases in the CLI harness.
+- 540 tests (391 vexpo unit + 113 template + 16 cli e2e + 20 scaffold e2e), plus opt-in live suites (Convex Platform API, Maestro).
+
 ## [0.1.7] - 2026-06-24
 
 - Fail an EAS build that's missing `EXPO_PUBLIC_CONVEX_URL` or `EXPO_PUBLIC_CONVEX_SITE_URL` instead of shipping a binary that throws at startup in `src/lib/env.ts` before React mounts, an uncatchable launch crash. That shipped once and got the app rejected at App Review. Local dev (no `EAS_BUILD`) loads these from `.env.local` and is unaffected.
@@ -122,7 +129,8 @@ First public release.
 
 See [`README.md`](./README.md) for the feature list and [`SECURITY.md`](./SECURITY.md) for the threat model.
 
-[Unreleased]: https://github.com/ramonclaudio/vexpo/compare/v0.1.7...HEAD
+[Unreleased]: https://github.com/ramonclaudio/vexpo/compare/v0.1.8...HEAD
+[0.1.8]: https://github.com/ramonclaudio/vexpo/releases/tag/v0.1.8
 [0.1.7]: https://github.com/ramonclaudio/vexpo/releases/tag/v0.1.7
 [0.1.6]: https://github.com/ramonclaudio/vexpo/releases/tag/v0.1.6
 [0.1.5]: https://github.com/ramonclaudio/vexpo/releases/tag/v0.1.5
