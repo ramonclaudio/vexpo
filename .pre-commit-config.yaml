@@ -1,0 +1,7 @@
+# Local secret scanning. Install once: `pipx install pre-commit && pre-commit install`.
+# CI runs the same scan (see .github/workflows/check.yml) as the server-side backstop.
+repos:
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.30.1
+    hooks:
+      - id: gitleaks
