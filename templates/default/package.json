@@ -98,7 +98,7 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
-    "@ramonclaudio/vexpo": "^0.1.6",
+    "@ramonclaudio/vexpo": "^0.1.7",
     "@types/node": "^25.9.0",
     "@types/react": "~19.2.16",
     "convex-test": "^0.0.53",
