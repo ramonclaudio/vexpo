@@ -46,13 +46,12 @@ import { readFile, writeFile } from "node:fs/promises";
 
 import { makeAscClient } from "../lib/asc-api.ts";
 import { loadAscCreds } from "../lib/asc-state.ts";
+import { easSpawn } from "../lib/eas-cli.ts";
 import { ascStatus } from "../lib/eas-integrations.ts";
 import { withAscAppId } from "../lib/eas-submit.ts";
 import { readOne } from "../lib/env-local.ts";
 import { BOLD, RESET, bad, line, nop, note, ok, section, yep } from "../lib/output.ts";
 import { expandTilde } from "../lib/path.ts";
-import { dlx } from "../lib/pkg-manager.ts";
-import { spawn } from "../lib/proc.ts";
 import { load as loadState, recordStep } from "../lib/state.ts";
 
 /**
@@ -195,13 +194,7 @@ export async function runAscConnect(opts: { force?: boolean } = {}): Promise<num
   note("EXPO_ASC_API_KEY_* env vars are set so eas-cli uses our cached key");
   note("for the Apple auth step, no Apple ID + password prompt.");
 
-  const proc = spawn([dlx(), "eas", "integrations:asc:connect", "--bundle-id", bundleId], {
-    stdin: "inherit",
-    stdout: "inherit",
-    stderr: "inherit",
-    env,
-  });
-  const code = await proc.exited;
+  const code = await easSpawn(["integrations:asc:connect", "--bundle-id", bundleId], { env });
   if (code !== 0) {
     bad(`eas integrations:asc:connect exited with code ${code}`);
     return code;

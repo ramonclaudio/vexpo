@@ -83,7 +83,7 @@ const CHALLENGE_TTL_MS = 5 * 60 * 1000;
 
 /**
  * Single-use: each nonce is consumed on the first verification that
- * references it. Expired nonces are swept by `cleanupAppAttestChallenges`.
+ * references it. Expired nonces are swept by `cleanupChallenges`.
  */
 export const issueChallenge = internalAction({
   args: {},

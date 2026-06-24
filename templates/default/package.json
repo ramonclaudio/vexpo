@@ -98,10 +98,9 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
-    "@ramonclaudio/vexpo": "^0.1.0",
+    "@ramonclaudio/vexpo": "^0.1.5",
     "@types/node": "^25.9.0",
     "@types/react": "~19.2.16",
-    "@vitest/ui": "^4.1.8",
     "convex-test": "^0.0.53",
     "oxfmt": "^0.54.0",
     "oxlint": "^1.68.0",

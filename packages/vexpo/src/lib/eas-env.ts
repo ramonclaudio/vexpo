@@ -1,10 +1,11 @@
 import { access, readFile } from "node:fs/promises";
 
+import { easSpawn, easText } from "./eas-cli.ts";
 import { dlx } from "./pkg-manager.ts";
-import { run, spawn } from "./proc.ts";
+import { run } from "./proc.ts";
 
 export async function checkCli(): Promise<{ ok: true; version: string } | { ok: false }> {
-  const { code, stdout } = await run([dlx(), "eas", "--version"]);
+  const { code, stdout } = await easText(["--version"]);
   if (code !== 0) return { ok: false };
   const detected = stdout
     .trim()
@@ -14,7 +15,7 @@ export async function checkCli(): Promise<{ ok: true; version: string } | { ok: 
 }
 
 export async function whoami(): Promise<string | null> {
-  const { code, stdout } = await run([dlx(), "eas", "whoami"]);
+  const { code, stdout } = await easText(["whoami"]);
   if (code !== 0) return null;
   const text = stdout.trim();
   return text ? text.split("\n")[0].trim() : null;
@@ -53,9 +54,7 @@ export async function resolveProjectId(): Promise<string | null> {
 export async function envList(
   environment: "production" | "preview" | "development" = "production",
 ): Promise<Map<string, string>> {
-  const { code, stdout } = await run([
-    dlx(),
-    "eas",
+  const { code, stdout } = await easText([
     "env:list",
     "--environment",
     environment,
@@ -159,15 +158,10 @@ export async function envPush(opts: {
 
 export async function init(): Promise<{ ok: boolean; projectId?: string }> {
   const existing = await resolveProjectId();
-  const argv = existing
-    ? [dlx(), "eas", "init", "--non-interactive", "--force", "--id", existing]
-    : [dlx(), "eas", "init", "--non-interactive", "--force"];
-  const proc = spawn(argv, {
-    stdin: "inherit",
-    stdout: "inherit",
-    stderr: "inherit",
-  });
-  if ((await proc.exited) !== 0) return { ok: false };
+  const args = existing
+    ? ["init", "--non-interactive", "--force", "--id", existing]
+    : ["init", "--non-interactive", "--force"];
+  if ((await easSpawn(args)) !== 0) return { ok: false };
   const id = await resolveProjectId();
   return { ok: !!id, projectId: id ?? undefined };
 }
@@ -180,8 +174,7 @@ export async function init(): Promise<{ ok: boolean; projectId?: string }> {
 export async function updateConfigure(
   platform: "ios" | "android" | "all" = "ios",
 ): Promise<boolean> {
-  const argv = [dlx(), "eas", "update:configure", "--platform", platform, "--non-interactive"];
-  const { code } = await run(argv);
+  const { code } = await easText(["update:configure", "--platform", platform, "--non-interactive"]);
   return code === 0;
 }
 
@@ -194,7 +187,7 @@ export async function updateConfigure(
 export async function diagnostics(): Promise<
   { ok: true; info: string } | { ok: false; error: string }
 > {
-  const { code, stdout, stderr } = await run([dlx(), "eas", "diagnostics"]);
+  const { code, stdout, stderr } = await easText(["diagnostics"]);
   if (code === 0) return { ok: true, info: stdout.trim() };
   const tail = (stderr || stdout).trim().split("\n").slice(0, 4).join("; ");
   return { ok: false, error: tail || `exit ${code}` };
@@ -274,7 +267,7 @@ export async function ensureBranches(names: readonly string[]): Promise<string[]
 }
 
 export async function projectInfo(): Promise<{ fullName: string; id: string } | null> {
-  const { code, stdout } = await run([dlx(), "eas", "project:info"]);
+  const { code, stdout } = await easText(["project:info"]);
   if (code !== 0) return null;
   const lines = stdout.split("\n").map((l) => l.trim());
   let fullName: string | undefined;
@@ -290,7 +283,7 @@ export async function projectInfo(): Promise<{ fullName: string; id: string } | 
 }
 
 export async function version(): Promise<string | null> {
-  const { code, stdout } = await run([dlx(), "eas", "--version"]);
+  const { code, stdout } = await easText(["--version"]);
   if (code !== 0) return null;
   const text = stdout.trim();
   const m = /eas-cli\/([^\s]+)/.exec(text);

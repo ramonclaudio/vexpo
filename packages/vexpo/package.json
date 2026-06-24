@@ -32,7 +32,6 @@
   ],
   "type": "module",
   "exports": {
-    ".": "./dist/index.js",
     "./package.json": "./package.json"
   },
   "publishConfig": {
@@ -48,19 +47,13 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "npm run build && __tests__/e2e/run.sh",
-    "test:e2e:api": "vitest run --config vitest.e2e.config.ts",
-    "test:all": "npm run test && npm run test:e2e"
+    "test:e2e:api": "vitest run --config vitest.e2e.config.ts"
   },
   "dependencies": {
-    "commander": "^15.0.0",
-    "execa": "^9.6.1",
-    "kleur": "^4.1.5",
-    "ora": "^9.4.0",
-    "prompts": "^2.4.2"
+    "commander": "^15.0.0"
   },
   "devDependencies": {
     "@types/node": "^25.9.0",
-    "@types/prompts": "^2.4.9",
     "tsup": "^8.5.1",
     "typescript": "^6.0.3",
     "vitest": "^4.1.8"

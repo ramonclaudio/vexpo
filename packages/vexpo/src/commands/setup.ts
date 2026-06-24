@@ -27,7 +27,12 @@ import {
   section,
   yep,
 } from "../lib/output.ts";
-import { detectPackageManager, installCmdFor } from "../lib/pkg-manager.ts";
+import {
+  currentRuntime,
+  currentRuntimeVersion,
+  detectPackageManager,
+  installCmdFor,
+} from "../lib/pkg-manager.ts";
 import { run, spawn } from "../lib/proc.ts";
 import {
   appendAudit,
@@ -284,8 +289,7 @@ async function stepPrerequisites(): Promise<void> {
   section("Prerequisites");
   if (process.platform !== "darwin") yep(`expected darwin, got ${process.platform}`);
   else ok("macOS detected");
-  if (process.versions.bun) ok(`bun ${process.versions.bun}`);
-  else ok(`node ${process.versions.node}`);
+  ok(`${currentRuntime()} ${currentRuntimeVersion()}`);
   if (await isXcodeInstalled()) ok("xcode-select reports an Xcode toolchain");
   else yep("Xcode not detected (install from Mac App Store)");
 
@@ -1286,7 +1290,7 @@ export async function runSetup(opts: SetupOptions): Promise<number> {
           invokedAt: startedAtIso,
           args: process.argv.slice(2),
           pid: process.pid,
-          bunVersion: process.versions.bun ?? process.versions.node ?? "?",
+          bunVersion: currentRuntimeVersion(),
           cwd: process.cwd(),
           completed,
           skipped,

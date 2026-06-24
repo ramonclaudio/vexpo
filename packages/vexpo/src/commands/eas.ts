@@ -1,5 +1,6 @@
 import { access } from "node:fs/promises";
 
+import { easSpawn } from "../lib/eas-cli.ts";
 import {
   checkCli,
   ensureBranches,
@@ -12,8 +13,6 @@ import {
 } from "../lib/eas-env.ts";
 import { ROUTING, readEnvFile } from "../lib/env-files.ts";
 import { BOLD, RESET, askYesNo, bad, line, nop, note, ok, section, yep } from "../lib/output.ts";
-import { dlx } from "../lib/pkg-manager.ts";
-import { spawn } from "../lib/proc.ts";
 import { recordStep } from "../lib/state.ts";
 
 export type EasOptions = {
@@ -85,10 +84,7 @@ export async function runEas(options: EasOptions): Promise<number> {
         bad("aborted");
         return 1;
       }
-      const proc = spawn([dlx(), "eas", "login"], {
-        stdio: ["inherit", "inherit", "inherit"],
-      });
-      if ((await proc.exited) !== 0) {
+      if ((await easSpawn(["login"])) !== 0) {
         bad("eas login did not complete");
         return 1;
       }

@@ -284,6 +284,14 @@ export const getEnabledProviders = query({
   },
 });
 
+/**
+ * Manual ops tool, deliberately NOT on a cron. `rotateKeys` deletes the whole
+ * JWKS and regenerates it with no grace period, so every JWT signed by the old
+ * key stops verifying and Convex (which validates tokens against `/convex/jwks`)
+ * rejects them until clients re-fetch a token. A scheduled run would invalidate
+ * every active session on each fire. Run it by hand only when you must rotate
+ * (suspected key compromise): `npx convex run auth:rotateKeys`.
+ */
 export const rotateKeys = internalAction({
   args: {},
   // Better Auth's `rotateKeys()` returns implementation-specific JWKS metadata
