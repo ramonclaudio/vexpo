@@ -7,7 +7,7 @@
 vexpo is an Expo SDK 56 iOS template with Convex and Better Auth wired in, plus a CLI that links your Convex deployment and syncs with EAS to get a new app running in minutes.
 
 <p align="center">
-  <img src="docs/assets/demo-app.gif" width="300" alt="The template app on the iOS simulator: sign up, onboarding, search, and the dark-mode flip">
+  <img src=".github/assets/demo-app.gif" width="300" alt="The template app on the iOS simulator: sign up, onboarding, search, and the dark-mode flip">
 </p>
 
 ```bash
@@ -34,7 +34,7 @@ npx vexpo doctor        # auth-checks every credential against the real service
 `full` writes the env, sets Convex vars, signs the Apple JWT, runs `eas init` + `eas env:push`, then prints the `eas build` command for you to run. Add `--new` for signup walkthroughs, or `--plan` to preview the setup first.
 
 <p align="center">
-  <img src="docs/assets/demo-doctor.gif" width="720" alt="vexpo doctor auth-checking every credential against the live services and flagging real drift">
+  <img src=".github/assets/demo-doctor.gif" width="720" alt="vexpo doctor auth-checking every credential against the live services and flagging real drift">
 </p>
 
 Two packages: [`create-vexpo`](https://www.npmjs.com/package/@ramonclaudio/create-vexpo) scaffolds the app, [`vexpo`](https://www.npmjs.com/package/@ramonclaudio/vexpo) provisions, verifies, and repairs the setup.
@@ -49,7 +49,7 @@ Two packages: [`create-vexpo`](https://www.npmjs.com/package/@ramonclaudio/creat
 - EAS builds, updates, submission, and store metadata, with ten workflows under `.eas/workflows/`. None trigger on a push to `main`.
 
 <p align="center">
-  <img src="docs/assets/screens.png" width="760" alt="Template screens in light and dark: home, profile, settings">
+  <img src=".github/assets/screens.png" width="760" alt="Template screens in light and dark: home, profile, settings">
 </p>
 
 Screen by screen: [`templates/default/README.md`](./templates/default/README.md).
@@ -77,7 +77,7 @@ vexpo/
 ## Docs
 
 - [`templates/default/README.md`](./templates/default/README.md): the app, screen by screen.
-- [`docs/SECURITY.md`](./docs/SECURITY.md): threat model, webhook verification, OTA signing, secret rotation.
+- [`SECURITY.md`](./SECURITY.md): threat model, webhook verification, OTA signing, secret rotation.
 - [`CHANGELOG.md`](./CHANGELOG.md): release history.
 
 Working on vexpo itself? See [`CONTRIBUTING.md`](./CONTRIBUTING.md). Bugs go to [GitHub Issues](https://github.com/ramonclaudio/vexpo/issues).
