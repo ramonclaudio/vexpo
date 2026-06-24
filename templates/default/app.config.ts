@@ -23,6 +23,27 @@ const BUNDLE_ID = process.env.EXPO_PUBLIC_APP_BUNDLE_ID ?? `com.example.${pkg.na
 const APPLE_TEAM_ID = process.env.EXPO_PUBLIC_APPLE_TEAM_ID ?? "ABCDE12345";
 const EXPO_OWNER = process.env.EXPO_PUBLIC_EXPO_OWNER ?? undefined;
 
+// EAS injects EXPO_PUBLIC_* into the build env, and Metro inlines the same vars
+// into the JS bundle. An EAS build missing the Convex endpoints produces a
+// binary that throws at startup in `src/lib/env.ts` before React mounts, so the
+// error boundary can't catch it: an uncatchable launch crash. That shipped once
+// and got the app rejected at App Review. Fail the build here instead, loudly,
+// so a misconfigured binary never reaches review. Local dev (no `EAS_BUILD`)
+// loads these from `.env.local` and is unaffected.
+if (process.env.EAS_BUILD === "true") {
+  const missing = [
+    !process.env.EXPO_PUBLIC_CONVEX_URL && "EXPO_PUBLIC_CONVEX_URL",
+    !process.env.EXPO_PUBLIC_CONVEX_SITE_URL && "EXPO_PUBLIC_CONVEX_SITE_URL",
+  ].filter(Boolean);
+  if (missing.length > 0) {
+    throw new Error(
+      `EAS build is missing required env: ${missing.join(", ")}. ` +
+        "Run `npx vexpo env push` to sync them to EAS, then rebuild. " +
+        "Shipping without them crashes the app on launch.",
+    );
+  }
+}
+
 // Support contact surface. `store.config.json` ships committed with
 // placeholders; `vexpo rebrand` fills it in (needed only for App Store
 // submission). On a fresh checkout these stay empty and `app/(app)/help.tsx`
