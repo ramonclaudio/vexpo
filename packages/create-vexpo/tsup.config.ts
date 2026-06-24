@@ -46,7 +46,7 @@ export default defineConfig({
     // doesn't honor it, so we belt-and-suspenders against:
     //  - generated dirs (node_modules, ios, android, .expo, .tanstack, .output)
     //  - personal Claude Code / agent config (.claude, .agents, .cursor)
-    //  - working notes the template author keeps locally (plans, docs, .vexpo-manual-setup, .rebrand-backup)
+    //  - working notes the template author keeps locally (plans, docs, .dev, .vexpo-manual-setup, .rebrand-backup)
     //  - test/coverage outputs (coverage, .vitest-cache)
     //  - Apple secret keys (*.p8, *.p12, *.mobileprovision, *.cer, AuthKey_*, SubscriptionKey_*)
     //  - local env / state files (.env.local, .env.prod, .setup-state.json)
@@ -68,6 +68,7 @@ export default defineConfig({
       ".claude",
       ".agents",
       ".cursor",
+      ".dev",
       "plans",
       "docs",
       ".vexpo-manual-setup",
