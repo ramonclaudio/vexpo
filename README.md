@@ -61,8 +61,7 @@ vexpo/
 ├── packages/
 │   ├── create-vexpo/      # npm scaffolder
 │   └── vexpo/             # operational CLI
-├── templates/default/     # the Expo + Convex + Better Auth app
-└── docs/                  # SECURITY, demo assets
+└── templates/default/     # the Expo + Convex + Better Auth app
 ```
 
 `create-vexpo` copies `templates/default/`, rewrites `package.json`, installs, inits git. `vexpo` ships as a devDependency, so `npx vexpo` resolves to the pinned version.
