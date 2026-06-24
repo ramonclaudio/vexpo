@@ -221,9 +221,10 @@ export async function runResend(options: ResendOptions): Promise<number> {
 }
 
 /**
- * Resend's API can't read a signing secret back or edit an endpoint in place,
- * so moving the webhook mints a fresh secret; we write it onto the deployment
- * atomically so signature verification keeps working.
+ * Moving the webhook to a new endpoint recreates it with a fresh signing secret,
+ * which we write onto the deployment atomically so signature verification keeps
+ * working. Resend's management API can read a secret back now, but recreate gives
+ * us one known, current value without reconciling.
  */
 async function runResendRepoint(options: ResendOptions): Promise<number> {
   const channel = options.prod ? "prod" : "dev";
@@ -265,7 +266,7 @@ async function runResendRepoint(options: ResendOptions): Promise<number> {
   let webhookId: string | undefined;
   if (atNew && !options.force) {
     ok(`webhook already points at ${endpoint}`);
-    note("its secret can't be read back; pass --force to recreate + realign RESEND_WEBHOOK_SECRET");
+    note("pass --force to recreate the webhook and realign RESEND_WEBHOOK_SECRET");
     webhookId = atNew.id;
   } else {
     const { id, secret } = await provisionWebhook(fullKey, endpoint);
