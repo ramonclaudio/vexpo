@@ -84,7 +84,7 @@ type EffectiveScope = {
   reviewAccount: boolean;
 };
 
-function computeScope(o: SetupOptions): EffectiveScope {
+export function computeScope(o: SetupOptions): EffectiveScope {
   const lite = o.lite === true;
   const isNew = o.isNew === true;
   return {

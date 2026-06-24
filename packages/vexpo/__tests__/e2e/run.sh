@@ -163,6 +163,24 @@ if match_grep "$n"; then
   [ "$o1" = "$o2" ] && pass "$n" || fail "$n" "outputs diverged"
 else skip "$n" "filtered"; fi
 
+n="vexpo lite --plan prints the lite journey"
+if match_grep "$n"; then
+  sb="$TMPROOT/lite-plan-$$-$RANDOM"; mkdir -p "$sb"
+  out=$(run_cli "$sb" lite --plan | strip_ansi); code=$?
+  if [ $code -ne 0 ]; then fail "$n" "exit $code"
+  elif echo "$out" | grep -qE "Setup journey \(lite\)"; then pass "$n"
+  else fail "$n" "no lite journey"; fi
+else skip "$n" "filtered"; fi
+
+n="vexpo full --plan prints the full multi-session journey"
+if match_grep "$n"; then
+  sb="$TMPROOT/full-plan-$$-$RANDOM"; mkdir -p "$sb"
+  out=$(run_cli "$sb" full --plan | strip_ansi); code=$?
+  if [ $code -ne 0 ]; then fail "$n" "exit $code"
+  elif echo "$out" | grep -qE "Setup journey" && echo "$out" | grep -qE "Async waits|Sync clicks" && ! echo "$out" | grep -qE "\(lite\)"; then pass "$n"
+  else fail "$n" "full journey missing phases"; fi
+else skip "$n" "filtered"; fi
+
 section "ASC nutrition labels"
 
 n="vexpo asc:privacy lint passes on the template scaffold"
