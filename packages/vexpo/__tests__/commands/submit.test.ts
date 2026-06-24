@@ -39,7 +39,7 @@ beforeEach(() => {
     EXPO_ASC_ISSUER_ID: "11111111-2222-3333-4444-555555555555",
   });
   readOneSpy.mockResolvedValue("com.vexpo.vexpo");
-  ensureAscAppIdSpy.mockResolvedValue("6763961390");
+  ensureAscAppIdSpy.mockResolvedValue("1234567890");
   easSpawnSpy.mockResolvedValue(0);
 });
 

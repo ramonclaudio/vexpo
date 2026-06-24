@@ -275,7 +275,7 @@ describe("runAscConnect", () => {
     });
     readOneSpy.mockResolvedValueOnce("com.vexpo.vexpo");
     appsListSpy.mockResolvedValueOnce([
-      { type: "apps", id: "6763961390", attributes: { bundleId: "com.vexpo.vexpo" } },
+      { type: "apps", id: "1234567890", attributes: { bundleId: "com.vexpo.vexpo" } },
     ]);
     const fs = await import("node:fs");
     const existsSpy = fs.existsSync as unknown as ReturnType<typeof vi.fn>;
@@ -290,8 +290,8 @@ describe("runAscConnect", () => {
       expect(exit).toBe(0);
       expect(spawnSpy).not.toHaveBeenCalled();
       const easJson = JSON.parse(fs.readFileSync("eas.json", "utf8"));
-      expect(easJson.submit.testflight.ios.ascAppId).toBe("6763961390");
-      expect(easJson.submit.production.ios.ascAppId).toBe("6763961390");
+      expect(easJson.submit.testflight.ios.ascAppId).toBe("1234567890");
+      expect(easJson.submit.production.ios.ascAppId).toBe("1234567890");
     } finally {
       existsSpy.mockImplementation((p: unknown) => !String(p).endsWith("eas.json"));
     }
