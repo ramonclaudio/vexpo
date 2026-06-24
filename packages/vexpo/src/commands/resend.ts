@@ -225,7 +225,7 @@ export async function runResend(options: ResendOptions): Promise<number> {
  * so moving the webhook mints a fresh secret; we write it onto the deployment
  * atomically so signature verification keeps working.
  */
-export async function runResendRepoint(options: ResendOptions): Promise<number> {
+async function runResendRepoint(options: ResendOptions): Promise<number> {
   const channel = options.prod ? "prod" : "dev";
   section(`Resend repoint (${channel})`);
 
