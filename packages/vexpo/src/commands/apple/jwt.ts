@@ -30,7 +30,7 @@ import {
   section,
   yep,
 } from "../../lib/output.ts";
-import { expandTilde } from "../../lib/path.ts";
+import { expandTilde, stagedP8 } from "../../lib/path.ts";
 import { load as loadState, lookupCachedPath, recordStep } from "../../lib/state.ts";
 
 export type AppleJwtOptions = {
@@ -177,7 +177,8 @@ export async function runAppleJwt(options: AppleJwtOptions): Promise<number> {
       ok(`set APPLE_KEY_ID=${keyId}`);
     } else nop("APPLE_KEY_ID already set");
 
-    const cachedP8 = await lookupCachedPath(await loadState(), ["apple-sign-in"], "p8Path");
+    const cachedP8 =
+      (await lookupCachedPath(await loadState(), ["apple-sign-in"], "p8Path")) ?? stagedP8();
     const rawP8 =
       process.env.APPLE_P8_PATH ??
       (process.stdin.isTTY
