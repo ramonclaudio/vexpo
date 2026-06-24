@@ -4,6 +4,20 @@ All notable changes to vexpo are tracked here. Format follows [Keep a Changelog]
 
 ## [Unreleased]
 
+## [0.1.7] - 2026-06-24
+
+- Fail an EAS build that's missing `EXPO_PUBLIC_CONVEX_URL` or `EXPO_PUBLIC_CONVEX_SITE_URL` instead of shipping a binary that throws at startup in `src/lib/env.ts` before React mounts, an uncatchable launch crash. That shipped once and got the app rejected at App Review. Local dev (no `EAS_BUILD`) loads these from `.env.local` and is unaffected.
+- Invoke eas-cli as `npx eas-cli`, not bare `npx eas`, everywhere (CLI helpers, every user-facing hint, the template's `npm run eas:*` scripts). Bare `npx eas` can't resolve the binary unless eas-cli is a local dependency, which silently turned `doctor`'s EAS checks into false negatives and broke the template's eas scripts for anyone without a global eas-cli.
+- Surface App Store Connect's real 403 cause (a missing or expired agreement) instead of always reporting "key role insufficient". A valid Admin or App Manager key hitting a pending-agreement 403 was mislabeled as a permissions problem.
+- Add a `credentials/` staging dir (gitignored except its `README.md`) as the one home for one-time Apple `.p8` downloads. `vexpo apple asc-key`, `jwt`, and `eas-rotation-secrets` auto-detect and default to it; the real home stays EAS, uploaded and KMS-encrypted.
+- Land `ascAppId` in `eas.json` from a headless `asc:connect` (resolved from the ASC API), so CI and non-interactive `vexpo full` runs aren't blocked on the interactive EAS↔ASC wizard.
+- Add `vexpo submit`: non-interactive TestFlight or App Store submit that sets `EXPO_ASC_*` from the cached ASC key and writes `ascAppId` into `eas.json`, then runs `eas submit --latest`. No EAS credential store needed.
+- Route the versioned `BETTER_AUTH_SECRETS` through `env push` so rotating the auth secret doesn't sign every active session out.
+- Add a gitleaks pre-commit config and a CI secret-scan job; narrow the CI workflows to least-privilege `permissions` and pin third-party actions to commit SHAs.
+- Bump the SDK 56 dep matrix (`expo` 56.0.12, `@expo/ui` 56.0.18, `expo-router` 56.2.11, and more) via `expo install --fix`; fresh scaffolds pass `npx expo-doctor` 21/21.
+- Fix stale Resend webhook comments: the management API reads the signing secret back now, so recreate-on-move is a deliberate choice for one known value, not a workaround.
+- 524 tests (377 vexpo unit + 113 template + 14 cli e2e + 20 scaffold e2e), plus opt-in live suites (Convex Platform API, Maestro).
+
 ## [0.1.6] - 2026-06-24
 
 - Drop unused deps from the `vexpo` CLI (`execa`, `kleur`, `ora`, `prompts`, `@types/prompts`). The CLI hand-rolls its ANSI output and subprocess spawning in `output.ts` and `proc.ts`, so these rode along since 0.1.0 without ever being imported. `create-vexpo` keeps the ones it uses.
@@ -108,7 +122,8 @@ First public release.
 
 See [`README.md`](./README.md) for the feature list and [`SECURITY.md`](./SECURITY.md) for the threat model.
 
-[Unreleased]: https://github.com/ramonclaudio/vexpo/compare/v0.1.6...HEAD
+[Unreleased]: https://github.com/ramonclaudio/vexpo/compare/v0.1.7...HEAD
+[0.1.7]: https://github.com/ramonclaudio/vexpo/releases/tag/v0.1.7
 [0.1.6]: https://github.com/ramonclaudio/vexpo/releases/tag/v0.1.6
 [0.1.5]: https://github.com/ramonclaudio/vexpo/releases/tag/v0.1.5
 [0.1.4]: https://github.com/ramonclaudio/vexpo/releases/tag/v0.1.4
