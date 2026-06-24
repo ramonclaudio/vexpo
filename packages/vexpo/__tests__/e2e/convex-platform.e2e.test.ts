@@ -13,6 +13,7 @@ import { join } from "node:path";
 
 import { describe, expect, it } from "vitest";
 
+import { envMap, envRemove, envSet } from "../../src/lib/convex-env.ts";
 import {
   checkToken,
   deleteDeployKey,
@@ -62,5 +63,21 @@ describe.skipIf(!RUN)("convex platform API (real)", () => {
     } finally {
       if (key) await deleteDeployKey(DEPLOYMENT, name);
     }
+  });
+
+  // The `convex env` set/list/remove path is what `vexpo better-auth` and every
+  // env-push step drives. Set a probe var on the dev deployment, read it back,
+  // then remove it (reversible in a finally).
+  it("sets then removes a Convex env var (reversible)", async () => {
+    const target = { deployment: DEPLOYMENT };
+    const name = "VEXPO_E2E_PROBE";
+    const value = `probe-${Date.now()}`;
+    try {
+      await envSet(name, value, target);
+      expect((await envMap(target)).get(name)).toBe(value);
+    } finally {
+      await envRemove(name, target);
+    }
+    expect((await envMap(target)).has(name)).toBe(false);
   });
 });
