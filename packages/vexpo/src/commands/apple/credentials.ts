@@ -1,11 +1,10 @@
 import { existsSync } from "node:fs";
 
 import { bundleIdFallback } from "../../lib/app.ts";
+import { easSpawn } from "../../lib/eas-cli.ts";
 import { envList as easEnvList } from "../../lib/eas-env.ts";
 import { BOLD, RESET, askYesNo, bad, line, nop, note, ok, section, yep } from "../../lib/output.ts";
 import { expandTilde } from "../../lib/path.ts";
-import { dlx } from "../../lib/pkg-manager.ts";
-import { spawn } from "../../lib/proc.ts";
 import { load as loadState, recordStep } from "../../lib/state.ts";
 
 /**
@@ -127,13 +126,7 @@ export async function runAppleCredentials(options: CredentialsOptions): Promise<
     EXPO_ASC_ISSUER_ID: asc.issuerId,
   };
 
-  const proc = spawn([dlx(), "eas", "credentials:configure-build", "-p", "ios", "-e", profile], {
-    stdin: "inherit",
-    stdout: "inherit",
-    stderr: "inherit",
-    env,
-  });
-  const code = await proc.exited;
+  const code = await easSpawn(["credentials:configure-build", "-p", "ios", "-e", profile], { env });
   if (code !== 0) {
     bad(`eas credentials exited with code ${code}`);
     return code;

@@ -1,4 +1,5 @@
 import { isLoggedIn as convexLoggedIn } from "../lib/convex-env.ts";
+import { easSpawn } from "../lib/eas-cli.ts";
 import { whoami as easWhoami } from "../lib/eas-env.ts";
 import { dlx } from "../lib/pkg-manager.ts";
 import { spawn } from "../lib/proc.ts";
@@ -211,8 +212,7 @@ async function walkExpo(): Promise<void> {
     return;
   }
   if (await askYesNo(`Run \`${dlx()} eas login\` now?`, false)) {
-    const proc = spawn([dlx(), "eas", "login"], { stdio: ["inherit", "inherit", "inherit"] });
-    if ((await proc.exited) !== 0) {
+    if ((await easSpawn(["login"])) !== 0) {
       yep("eas login did not complete; run `npx eas login` later");
       return;
     }
