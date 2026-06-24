@@ -16,7 +16,6 @@ const STRIPPED_DOTFILES = [
   ".gitattributes",
   ".easignore",
   ".fingerprintignore",
-  ".env.convex.local",
   ".npmrc",
 ];
 
@@ -86,6 +85,7 @@ export default defineConfig({
       /^\.env\.local$/,
       /^\.env\.prod$/,
       /^\.env\.production$/,
+      /^\.env\.convex\.local$/,
       /^\.setup-state\.json$/,
       /^\.setup-state\.json\..*\.tmp$/,
       /^\.DS_Store$/,
