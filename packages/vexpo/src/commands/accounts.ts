@@ -200,7 +200,7 @@ async function walkExpo(): Promise<void> {
     lines: [
       `${BOLD}what:${RESET}   logged-in EAS CLI session`,
       `${BOLD}where:${RESET}  free tier at expo.dev/signup (instant signup)`,
-      `${BOLD}how:${RESET}    \`npx eas login\` (browser-based OAuth)`,
+      `${BOLD}how:${RESET}    \`npx eas-cli login\` (browser-based OAuth)`,
     ],
     urls: [
       { label: "signup", url: "https://expo.dev/signup" },
@@ -208,19 +208,21 @@ async function walkExpo(): Promise<void> {
     ],
   });
   if (!process.stdin.isTTY) {
-    bad("non-TTY: run `npx eas login` then re-run");
+    bad("non-TTY: run `npx eas-cli login` then re-run");
     return;
   }
   if (await askYesNo(`Run \`${dlx()} eas login\` now?`, false)) {
     if ((await easSpawn(["login"])) !== 0) {
-      yep("eas login did not complete; run `npx eas login` later");
+      yep("eas login did not complete; run `npx eas-cli login` later");
       return;
     }
     const after = await statusExpo();
     if (after.status === "ok") ok(`signed in as ${after.detail}`);
-    else yep("still not signed in; run `npx eas login` later");
+    else yep("still not signed in; run `npx eas-cli login` later");
   } else {
-    nop("`npx eas login` will prompt automatically when the EAS phase of `npx vexpo full` runs");
+    nop(
+      "`npx eas-cli login` will prompt automatically when the EAS phase of `npx vexpo full` runs",
+    );
   }
 }
 

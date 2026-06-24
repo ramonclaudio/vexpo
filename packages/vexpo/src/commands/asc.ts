@@ -54,23 +54,28 @@ import { BOLD, RESET, bad, line, nop, note, ok, section, yep } from "../lib/outp
 import { expandTilde } from "../lib/path.ts";
 import { load as loadState, recordStep } from "../lib/state.ts";
 
+type AscAppResolution =
+  | { kind: "found"; ascAppId: string }
+  | { kind: "defer" }
+  | { kind: "unknown" };
+
 /**
- * Pre-check whether an ASC app record exists for the bundle id before spawning
- * the eas wizard. On a brand-new bundle id no `apps` resource exists until the
- * first `eas submit`, so the wizard dies with eas-cli's raw "Found 0 app(s)"
- * and exits 1 (its stderr is inherited, nothing to catch). Returns:
- *   "defer"    cached creds + the lookup found zero apps -> guide, don't spawn
- *   "proceed"  at least one app matches -> spawn the wizard
- *   "unknown"  no cached creds, or the lookup itself errored -> spawn anyway
+ * Resolve the ASC app for a bundle id with the cached creds, carrying its
+ * ascAppId (the App Store Connect numeric app id) when one exists. On a
+ * brand-new bundle id no `apps` resource exists until the first `eas submit`,
+ * so the wizard would die with eas-cli's raw "Found 0 app(s)". Outcomes:
+ *   "found"    at least one app matches -> carries the ascAppId
+ *   "defer"    cached creds + zero apps -> guide, don't spawn
+ *   "unknown"  no cached creds, or the lookup itself errored -> spawn the wizard
  */
-async function ascAppExists(bundleId: string): Promise<"defer" | "proceed" | "unknown"> {
+async function resolveAscApp(bundleId: string): Promise<AscAppResolution> {
   const creds = await loadAscCreds();
-  if (!creds) return "unknown";
+  if (!creds) return { kind: "unknown" };
   try {
-    const apps = await makeAscClient(creds).apps.list({ bundleId });
-    return apps.length > 0 ? "proceed" : "defer";
+    const id = (await makeAscClient(creds).apps.list({ bundleId }))[0]?.id;
+    return id ? { kind: "found", ascAppId: id } : { kind: "defer" };
   } catch {
-    return "unknown";
+    return { kind: "unknown" };
   }
 }
 
@@ -112,6 +117,32 @@ async function syncAscAppIdToEasJson(ascAppId: string | undefined): Promise<void
     yep(`couldn't write ascAppId to eas.json: ${err instanceof Error ? err.message : err}`);
     note("non-interactive submit will need `ascAppId` set manually in eas.json");
   }
+}
+
+/**
+ * Resolve the ASC app id for a bundle id and write it into eas.json's submit
+ * profiles. Returns the id, or null when no app record exists yet (the first
+ * submit creates it). Shared by `asc:connect` and `submit`.
+ */
+export async function ensureAscAppId(bundleId: string): Promise<string | null> {
+  const resolved = await resolveAscApp(bundleId);
+  if (resolved.kind !== "found") return null;
+  await syncAscAppIdToEasJson(resolved.ascAppId);
+  return resolved.ascAppId;
+}
+
+/**
+ * The `EXPO_ASC_*` env eas-cli reads to authenticate submits with our cached
+ * ASC key (no EAS credential store needed), or null when no key is cached.
+ */
+export async function ascKeyEnv(): Promise<Record<string, string> | null> {
+  const asc = await loadAscFromState();
+  if (!asc) return null;
+  return {
+    EXPO_ASC_API_KEY_PATH: asc.p8Path,
+    EXPO_ASC_KEY_ID: asc.keyId,
+    EXPO_ASC_ISSUER_ID: asc.issuerId,
+  };
 }
 
 export async function runAscConnect(opts: { force?: boolean } = {}): Promise<number> {
@@ -158,25 +189,42 @@ export async function runAscConnect(opts: { force?: boolean } = {}): Promise<num
   // No ASC `apps` resource exists for a brand-new bundle id until the first
   // `eas submit`. Spawning the wizard now just dies on eas-cli's raw
   // "Found 0 app(s)". Pre-check with our cached creds and defer loudly when
-  // there's nothing to link yet. unknown (no creds or lookup error) falls
-  // through to the wizard, matching the old behavior.
-  if ((await ascAppExists(bundleId)) === "defer") {
+  // there's nothing to link yet.
+  const resolved = await resolveAscApp(bundleId);
+  if (resolved.kind === "defer") {
     yep("no App Store Connect app record for this bundle id yet, NOT connected");
     note("the ASC app record only appears after the first `eas submit`. run:");
     note(
-      `  ${BOLD}npx eas build -p ios --profile production --auto-submit-with-profile testflight${RESET}`,
+      `  ${BOLD}npx eas-cli build -p ios --profile production --auto-submit-with-profile testflight${RESET}`,
     );
     note("then re-run `npx vexpo asc:connect` to finish the EAS↔ASC link");
     return 0;
   }
 
-  // `eas integrations:asc:connect --non-interactive` hard-requires both
-  // --api-key-id and --asc-app-id (and can't generate a key headless), so a
-  // non-TTY attempt always fails before doing anything. Require a TTY rather
-  // than spawn a doomed command.
+  // The EAS↔ASC integration wizard needs a TTY (it can't generate a key headless
+  // and `--non-interactive` hard-requires --api-key-id + --asc-app-id). But a
+  // non-interactive submit only needs `ascAppId` in eas.json: eas-cli reads the
+  // app id from the submit profile, never a flag or env var. So when we can
+  // resolve it from the ASC API, land it headless instead of failing, so CI and
+  // non-interactive `vexpo full` runs aren't blocked on the wizard. The
+  // server-side link (cloud submits) still wants a later interactive run.
   if (!process.stdin.isTTY) {
-    bad("ASC connect needs a TTY: eas integrations:asc:connect can't run headless");
-    note("run `vexpo asc:connect` in an interactive terminal to finish the EAS↔ASC link");
+    if (resolved.kind === "found") {
+      ok(`resolved ascAppId ${BOLD}${resolved.ascAppId}${RESET} from App Store Connect`);
+      await syncAscAppIdToEasJson(resolved.ascAppId);
+      await recordStep("apple-asc-link", {
+        bundleId,
+        ascAppId: resolved.ascAppId,
+        integrationLinked: false,
+        wroteAscAppIdAt: new Date().toISOString(),
+      });
+      note("enough for a non-interactive submit. for the EAS↔ASC server-side link");
+      note("(cloud builds) run `vexpo asc:connect` in a TTY; for a local submit set");
+      note("EXPO_ASC_API_KEY_PATH / EXPO_ASC_KEY_ID / EXPO_ASC_ISSUER_ID.");
+      return 0;
+    }
+    bad("ASC connect needs a TTY and cached creds to resolve ascAppId headless");
+    note("run `vexpo apple asc-key` to cache a key, then `vexpo asc:connect` in a terminal");
     return 1;
   }
 

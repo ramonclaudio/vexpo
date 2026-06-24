@@ -8,7 +8,7 @@
 import { access } from "node:fs/promises";
 
 import { validate as validateAsc, type AscCredentials } from "../../lib/asc-api.ts";
-import { expandTilde } from "../../lib/path.ts";
+import { expandTilde, stagedP8 } from "../../lib/path.ts";
 import {
   BOLD,
   DIM,
@@ -69,7 +69,16 @@ async function promptCredsInteractive(): Promise<AscCredentials | null> {
     yep("no key id provided; aborting");
     return null;
   }
-  const rawP8 = (await ask(`  Path to .p8 ${DIM}(absolute or relative) >${RESET} `)).trim();
+  const staged = stagedP8();
+  const rawP8 =
+    (
+      await ask(
+        staged
+          ? `  Path to .p8 ${DIM}[detected: ${staged}]${RESET} > `
+          : `  Path to .p8 ${DIM}(save it in ./credentials/, or absolute/relative path) >${RESET} `,
+      )
+    ).trim() ||
+    (staged ?? "");
   if (!rawP8) {
     yep("no .p8 path provided; aborting");
     return null;
@@ -177,7 +186,7 @@ export async function runAscKey(options: AscKeyOptions): Promise<number> {
     note(
       `${BOLD}This step is purely validation${RESET} ${DIM}- EAS still needs the same key uploaded:${RESET}`,
     );
-    note(`  ${BOLD}npx eas credentials -p ios${RESET}`);
+    note(`  ${BOLD}npx eas-cli credentials -p ios${RESET}`);
     note(`  → Build Credentials → 'Use existing App Store Connect API Key'`);
     note(`  → 'Set up a new key' if no existing match, paste:`);
     note(`     issuer=${creds.issuerId}, keyId=${creds.keyId}`);

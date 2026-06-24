@@ -36,7 +36,7 @@ describe("easJson", () => {
     runSpy.mockResolvedValue({ code: 0, stdout: '{"ok":true}', stderr: "" });
     await easJson(["build:list"]);
     const argv = runSpy.mock.calls[0]?.[0] as string[];
-    expect(argv).toEqual(["bunx", "eas", "build:list", "--json", "--non-interactive"]);
+    expect(argv).toEqual(["bunx", "eas-cli", "build:list", "--json", "--non-interactive"]);
   });
 
   it("does not duplicate --json or --non-interactive", async () => {
@@ -71,7 +71,7 @@ describe("easJson", () => {
     const argv = runSpy.mock.calls[0]?.[0] as string[];
     expect(argv).toEqual([
       "bunx",
-      "eas",
+      "eas-cli",
       "build:list",
       "--limit",
       "10",
@@ -94,7 +94,7 @@ describe("easSpawn", () => {
     const code = await easSpawn(["build", "--platform", "ios"]);
     expect(code).toBe(0);
     const args = spawnSpy.mock.calls[0];
-    expect(args[0]).toEqual(["bunx", "eas", "build", "--platform", "ios"]);
+    expect(args[0]).toEqual(["bunx", "eas-cli", "build", "--platform", "ios"]);
     expect(args[1]).toMatchObject({ stdin: "inherit", stdout: "inherit", stderr: "inherit" });
   });
 });
@@ -105,6 +105,6 @@ describe("easText", () => {
     const result = await easText(["whoami"]);
     expect(result).toEqual({ code: 0, stdout: "hello", stderr: "" });
     const argv = runSpy.mock.calls[0]?.[0] as string[];
-    expect(argv).toEqual(["bunx", "eas", "whoami"]);
+    expect(argv).toEqual(["bunx", "eas-cli", "whoami"]);
   });
 });

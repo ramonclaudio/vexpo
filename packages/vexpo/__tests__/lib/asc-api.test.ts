@@ -203,13 +203,26 @@ describe("validate", () => {
     }
   });
 
-  it("maps 403 to insufficient role", async () => {
+  it("surfaces Apple's code on a generic 403 and notes the role as a possible cause", async () => {
     alwaysJson(403, { errors: [{ status: "403", code: "FORBIDDEN" }] });
     const result = await validate(creds);
     expect(result.ok).toBe(false);
     if (!result.ok) {
       expect(result.status).toBe(403);
-      expect(result.reason).toContain("role insufficient");
+      expect(result.reason).toContain("FORBIDDEN");
+      expect(result.reason).toContain("App Manager");
+    }
+  });
+
+  it("maps a 403 missing-agreement to actionable agreement guidance, not a role error", async () => {
+    alwaysJson(403, {
+      errors: [{ status: "403", code: "FORBIDDEN.REQUIRED_AGREEMENTS_MISSING_OR_EXPIRED" }],
+    });
+    const result = await validate(creds);
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.reason).toContain("agreement");
+      expect(result.reason).not.toContain("App Manager");
     }
   });
 

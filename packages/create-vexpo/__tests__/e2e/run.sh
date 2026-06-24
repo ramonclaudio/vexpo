@@ -230,7 +230,7 @@ if match_grep "$n"; then
   [ -z "$miss" ] && pass "$n" || fail "$n" "$miss"
 else skip "$n" "filtered"; fi
 
-n="dist payload excludes node_modules, ios, lockfiles, local env, .dev"
+n="dist payload excludes node_modules, ios, lockfiles, local env, .dev, secret keys"
 if match_grep "$n"; then
   dest="$PKG_ROOT/dist/templates/default"
   bad=""
@@ -240,6 +240,11 @@ if match_grep "$n"; then
   for f in package-lock.json bun.lock .env.local .env.prod .setup-state.json SETUP.md DESIGN.md; do
     [ -e "$dest/$f" ] && bad="$bad $f"
   done
+  # No private key may ever ship, including one staged in credentials/.
+  keyleak=$(find "$dest" \( -name '*.p8' -o -name '*.p12' -o -name 'AuthKey_*' \) 2>/dev/null)
+  [ -n "$keyleak" ] && bad="$bad keyleak:$keyleak"
+  # The credentials/ staging dir ships its README (dir + guidance travel, keys don't).
+  [ -f "$dest/credentials/README.md" ] || bad="$bad missing:credentials/README.md"
   [ -z "$bad" ] && pass "$n" || fail "$n" "leaked:$bad"
 else skip "$n" "filtered"; fi
 

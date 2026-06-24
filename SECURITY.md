@@ -100,21 +100,22 @@ https://developer.apple.com/documentation/devicecheck/validating-apps-that-conne
 
 - `.setup-state.json`: IDs and timestamps, no secrets. The Convex deployment name and Apple Team ID alone don't authenticate as the developer.
 - `.env.local`, `.env.prod`: these DO contain secrets. `.gitignored`. Manage like any local credentials.
-- `.p8` files: private keys. `.gitignored`. Live outside the repo (suggested: `~/Library/Application Support/vexpo/keys/`).
+- `.p8` files (ASC API, SIWA): private keys. `.gitignored`. Stage one-time downloads in the `credentials/` dir; their real home is EAS (uploaded, KMS-encrypted), so a stolen laptop yields at most a key to rotate, not the canonical copy. Delete the local `.p8` after upload if you like.
 
 ## Secret rotation
 
-| Secret                         | Rotation cadence          | How                                                                                               |
-| ------------------------------ | ------------------------- | ------------------------------------------------------------------------------------------------- |
-| Apple SIWA `client_secret` JWT | Every 90 days             | Automated via `rotate-apple-jwt.yml` EAS Workflow cron                                            |
-| Convex production deploy key   | When suspected compromise | `npx convex auth` → revoke + reissue                                                              |
-| Apple distribution cert        | Annual (Apple's choice)   | `eas credentials -p ios` interactive flow                                                         |
-| Apple APNs push key            | When suspected compromise | Apple Developer Portal → Keys → Revoke + Create                                                   |
-| ASC API key                    | When suspected compromise | App Store Connect → Users and Access → Keys → Revoke + Create                                     |
-| `EAS_WEBHOOK_SECRET`           | When suspected compromise | `npx eas webhook:update --id <id> --secret <new>` + `npx convex env set EAS_WEBHOOK_SECRET <new>` |
-| `RESEND_WEBHOOK_SECRET`        | When suspected compromise | Resend dashboard → reissue + `npx convex env set RESEND_WEBHOOK_SECRET <new>`                     |
+| Secret                         | Rotation cadence          | How                                                                                                                                      |
+| ------------------------------ | ------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| Apple SIWA `client_secret` JWT | Every 90 days             | Automated via `rotate-apple-jwt.yml` EAS Workflow cron                                                                                   |
+| Convex production deploy key   | When suspected compromise | `npx convex auth` → revoke + reissue                                                                                                     |
+| Apple distribution cert        | Annual (Apple's choice)   | `eas credentials -p ios` interactive flow                                                                                                |
+| Apple APNs push key            | When suspected compromise | Apple Developer Portal → Keys → Revoke + Create                                                                                          |
+| ASC API key                    | Every 6-12 months         | App Store Connect → Users and Access → Integrations → Revoke + Create (Team key, App Manager role; no in-place edit)                     |
+| `BETTER_AUTH_SECRET`           | When suspected compromise | Rotate with the versioned `BETTER_AUTH_SECRETS=2:new,1:old` form so live sessions survive; never swap the singular secret mid OAuth flow |
+| `EAS_WEBHOOK_SECRET`           | When suspected compromise | `npx eas-cli webhook:update --id <id> --secret <new>` + `npx convex env set EAS_WEBHOOK_SECRET <new>`                                    |
+| `RESEND_WEBHOOK_SECRET`        | When suspected compromise | Resend dashboard → reissue + `npx convex env set RESEND_WEBHOOK_SECRET <new>`                                                            |
 
-The SIWA JWT is the only one with automated rotation, because it's the only one Apple's API will sign on our behalf. The rest require human-in-the-loop rotation by Apple's design.
+The SIWA JWT is the only one with automated rotation, because it's the only one Apple's API will sign on our behalf. The rest require human-in-the-loop rotation by Apple's design. For `BETTER_AUTH_SECRET`, prefer the versioned `BETTER_AUTH_SECRETS` array from the start: highest version is the active signing key, older versions stay valid for decryption, so a rotation doesn't sign every user out.
 
 ## Reporting issues
 

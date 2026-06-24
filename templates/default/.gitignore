@@ -22,6 +22,10 @@ ios/
 # Apple keys with no extension (Apple's default download naming)
 AuthKey_*
 SubscriptionKey_*
+# Credential staging: one-time .p8 downloads you upload to EAS. Keys ignored,
+# only the README is tracked. The real home is EAS (KMS-encrypted), not here.
+credentials/*
+!credentials/README.md
 
 # EAS Update code-signing private key. The matching public cert at
 # `certs/certificate.pem` IS committed (it's bundled in the .ipa and used

@@ -951,7 +951,7 @@ function printShipNextSteps(): void {
   line(`  Run this when you're ready:`);
   line();
   line(
-    `  ${BOLD}npx eas build -p ios --profile production --auto-submit-with-profile testflight${RESET}`,
+    `  ${BOLD}npx eas-cli build -p ios --profile production --auto-submit-with-profile testflight${RESET}`,
   );
   line();
   line(

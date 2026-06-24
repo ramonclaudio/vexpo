@@ -169,9 +169,8 @@ export async function provisionSendingKey(
 
 /**
  * Deletes any existing webhook pointing at this endpoint, then creates a fresh
- * one. Returns the new webhook id + signing secret (Resend only returns the
- * secret at creation, so the id lets callers record which webhook the stored
- * RESEND_WEBHOOK_SECRET belongs to for later drift detection).
+ * one. Returns the new webhook id + signing secret; the id lets callers record
+ * which webhook the stored RESEND_WEBHOOK_SECRET belongs to for drift detection.
  */
 export async function provisionWebhook(
   fullKey: string,

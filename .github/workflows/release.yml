@@ -10,9 +10,9 @@ on:
         description: Tag to publish (e.g. v0.1.0). Must already exist on the repo.
         required: true
 
+# Least privilege at the top; the publish job widens to exactly what it needs.
 permissions:
-  contents: write
-  id-token: write
+  contents: read
 
 concurrency:
   group: release-${{ github.ref }}
@@ -21,6 +21,11 @@ concurrency:
 jobs:
   publish:
     runs-on: ubuntu-latest
+    # Least privilege: `contents: write` for the GitHub release, `id-token: write`
+    # so npm can attach build provenance to the published packages.
+    permissions:
+      contents: write
+      id-token: write
     steps:
       - uses: actions/checkout@v6
         with:
@@ -53,8 +58,9 @@ jobs:
       - run: npm run build
       - run: npm run test:packages
 
-      # `--access public` and `--provenance` are configured in each
-      # package's `publishConfig` block, so the CLI doesn't need the flags.
+      # `--access public` and `--provenance` come from each package's
+      # `publishConfig`, so the CLI needs no flags. Auth is the NPM_TOKEN secret;
+      # `id-token: write` above lets npm attach provenance.
       - name: Publish vexpo
         working-directory: packages/vexpo
         env:
@@ -88,7 +94,7 @@ jobs:
           } >> "$GITHUB_OUTPUT"
 
       - name: Create GitHub release
-        uses: softprops/action-gh-release@v3
+        uses: softprops/action-gh-release@718ea10b132b3b2eba29c1007bb80653f286566b # v3.0.1
         with:
           tag_name: ${{ inputs.tag || github.ref_name }}
           name: ${{ inputs.tag || github.ref_name }}

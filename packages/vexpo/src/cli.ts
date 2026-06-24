@@ -20,7 +20,7 @@
 //      requires before a submission clears review
 //   5. Multi-destination env sync (Convex + EAS together)
 //
-// Everything else: use `npx eas <subcommand>` directly. The README
+// Everything else: use `npx eas-cli <subcommand>` directly. The README
 // documents the canonical eas-cli flow for build / update / submit /
 // deploy / channel / branch / webhook / workflow / fingerprint / metadata
 // / credentials / integrations:asc.
@@ -57,6 +57,7 @@ import { runRebrand } from "./commands/rebrand.ts";
 import { runResend } from "./commands/resend.ts";
 import { runReviewAccount } from "./commands/review-account.ts";
 import { runSetup } from "./commands/setup.ts";
+import { runSubmit } from "./commands/submit.ts";
 
 const program = new Command()
   .name("vexpo")
@@ -377,10 +378,21 @@ env
 program
   .command("asc:connect")
   .description(
-    "Link the EAS project to its App Store Connect app (wraps `eas integrations:asc:connect` with the cached ASC key). Lets `eas submit` resolve the app from the bundle id, so eas.json needs no committed ascAppId. Needs an interactive terminal.",
+    "Write the project's ascAppId into eas.json and link the EAS project to its App Store Connect app. Lands the ascAppId even headless (CI); the interactive EAS↔ASC link (wraps `eas integrations:asc:connect`) needs a terminal.",
   )
   .option("--force", "re-run even if already connected", false)
   .action((options: { force?: boolean }) => exitWith(runAscConnect(options)));
+
+program
+  .command("submit")
+  .description(
+    "Submit a finished iOS build non-interactively (TestFlight by default): sets EXPO_ASC_* from the cached ASC key and writes ascAppId into eas.json, then `eas submit --latest`. No EAS credential store needed.",
+  )
+  .option("--profile <name>", "eas.json submit profile", "testflight")
+  .option("--id <buildId>", "submit a specific build id (default: the latest finished build)")
+  .action((options: { profile?: string; id?: string }) =>
+    exitWith(runSubmit({ profile: options.profile, id: options.id })),
+  );
 
 const ascPrivacy = program.command("asc:privacy").description("Privacy nutrition labels (local).");
 

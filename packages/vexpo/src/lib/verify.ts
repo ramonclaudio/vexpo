@@ -570,7 +570,7 @@ async function verifyEas(ctx: VerifyContext): Promise<Check[]> {
       checks.push(
         who
           ? ok("eas", "signed-in", who)
-          : warn("eas", "signed-in", "not signed in (run `npx eas login`)"),
+          : warn("eas", "signed-in", "not signed in (run `npx eas-cli login`)"),
       );
     } catch {
       checks.push(skip("eas", "signed-in", "eas CLI not available"));

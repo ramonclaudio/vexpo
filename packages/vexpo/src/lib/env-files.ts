@@ -47,6 +47,12 @@ export const ROUTING: Record<string, RoutingEntry> = {
   BETTER_AUTH_SECRET: {
     routes: (c) => [{ type: "convex", key: "BETTER_AUTH_SECRET", channel: c }],
   },
+  // Versioned form (e.g. `2:newbase64,1:oldbase64`, highest version active) for
+  // rotating the auth secret without invalidating live sessions. Better Auth
+  // reads either; prefer this once you need to rotate.
+  BETTER_AUTH_SECRETS: {
+    routes: (c) => [{ type: "convex", key: "BETTER_AUTH_SECRETS", channel: c }],
+  },
   APP_NAME: { routes: (c) => [{ type: "convex", key: "APP_NAME", channel: c }] },
   RESEND_API_KEY: { routes: (c) => [{ type: "convex", key: "RESEND_API_KEY", channel: c }] },
   EMAIL_FROM: { routes: (c) => [{ type: "convex", key: "EMAIL_FROM", channel: c }] },
