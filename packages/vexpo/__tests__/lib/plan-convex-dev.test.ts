@@ -36,4 +36,16 @@ describe("planConvexDev", () => {
     expect(p.selectLocalFirst).toBe(true);
     expect(p.devArgs).toEqual(["convex", "dev", "--once", "--tail-logs", "disable"]);
   });
+
+  it("provisioning with a team passes --team to skip the picker", () => {
+    const p = planConvexDev({ local: false }, true, "app", "acme-team");
+    expect(p.devArgs.join(" ")).toContain("--team acme-team");
+  });
+
+  it("no --team when none given, or when not provisioning", () => {
+    expect(planConvexDev({ local: false }, true, "app").devArgs).not.toContain("--team");
+    expect(planConvexDev({ local: false }, false, "app", "acme-team").devArgs).not.toContain(
+      "--team",
+    );
+  });
 });
