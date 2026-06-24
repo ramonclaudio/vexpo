@@ -92,7 +92,7 @@ export async function runAppleCredentials(options: CredentialsOptions): Promise<
     note("fix by running the rebrand wizard, which bakes your bundle id into app.config.ts:");
     note(`  ${BOLD}npx vexpo rebrand${RESET}`);
     note("alternatively, push your local env to EAS before running this step:");
-    note(`  ${BOLD}npx eas env:push --environment ${profile}${RESET}`);
+    note(`  ${BOLD}npx eas-cli env:push --environment ${profile}${RESET}`);
     return 1;
   }
   ok(`bundle id: ${BOLD}${bundle.value}${RESET} (from ${bundle.source})`);
@@ -111,7 +111,7 @@ export async function runAppleCredentials(options: CredentialsOptions): Promise<
   line();
   if (process.stdin.isTTY) {
     if (!(await askYesNo(`Run \`eas credentials -p ios -e ${profile}\` now?`, true))) {
-      nop("skipped (run `npx eas credentials -p ios` later)");
+      nop("skipped (run `npx eas-cli credentials -p ios` later)");
       return 0;
     }
   } else {

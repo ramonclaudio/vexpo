@@ -1,6 +1,6 @@
 import { access, readFile } from "node:fs/promises";
 
-import { easSpawn, easText } from "./eas-cli.ts";
+import { EAS_CLI, easSpawn, easText } from "./eas-cli.ts";
 import { dlx } from "./pkg-manager.ts";
 import { run } from "./proc.ts";
 
@@ -85,7 +85,7 @@ export async function envCreate(
 ): Promise<void> {
   const argv = [
     dlx(),
-    "eas",
+    EAS_CLI,
     "env:create",
     "--name",
     name,
@@ -113,7 +113,7 @@ export async function envUpdate(
 ): Promise<void> {
   const argv = [
     dlx(),
-    "eas",
+    EAS_CLI,
     "env:update",
     "--variable-name",
     name,
@@ -146,7 +146,7 @@ export async function envPush(opts: {
   // eas-cli rejects multiple --environment flags in one `env:push` (fails with
   // "GraphQL request failed"), so push to each environment in its own call.
   for (const env of opts.environments) {
-    const argv = [dlx(), "eas", "env:push", "--environment", env, "--path", opts.path];
+    const argv = [dlx(), EAS_CLI, "env:push", "--environment", env, "--path", opts.path];
     if (opts.force) argv.push("--force");
     const { code, stderr } = await run(argv);
     if (code !== 0) {
@@ -196,7 +196,7 @@ export async function diagnostics(): Promise<
 export async function listChannels(): Promise<string[]> {
   const { code, stdout } = await run([
     dlx(),
-    "eas",
+    EAS_CLI,
     "channel:list",
     "--json",
     "--non-interactive",
@@ -214,7 +214,14 @@ export async function listChannels(): Promise<string[]> {
 
 /** Idempotent: re-creates are no-ops on EAS. */
 export async function createChannel(name: string): Promise<boolean> {
-  const { code } = await run([dlx(), "eas", "channel:create", name, "--non-interactive", "--json"]);
+  const { code } = await run([
+    dlx(),
+    EAS_CLI,
+    "channel:create",
+    name,
+    "--non-interactive",
+    "--json",
+  ]);
   return code === 0;
 }
 
@@ -231,7 +238,7 @@ export async function ensureChannels(names: readonly string[]): Promise<string[]
 export async function listBranches(): Promise<string[]> {
   const { code, stdout } = await run([
     dlx(),
-    "eas",
+    EAS_CLI,
     "branch:list",
     "--json",
     "--non-interactive",
@@ -252,7 +259,14 @@ export async function listBranches(): Promise<string[]> {
 
 /** Idempotent. */
 export async function createBranch(name: string): Promise<boolean> {
-  const { code } = await run([dlx(), "eas", "branch:create", name, "--non-interactive", "--json"]);
+  const { code } = await run([
+    dlx(),
+    EAS_CLI,
+    "branch:create",
+    name,
+    "--non-interactive",
+    "--json",
+  ]);
   return code === 0;
 }
 

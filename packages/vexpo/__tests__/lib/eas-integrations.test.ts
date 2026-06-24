@@ -77,7 +77,13 @@ describe("ascStatus", () => {
     runSpy.mockResolvedValue({ code: 0, stdout: JSON.stringify(disconnectedFixture), stderr: "" });
     await ascStatus();
     const argv = runSpy.mock.calls[0]?.[0] as string[];
-    expect(argv).toEqual(["bunx", "eas", "integrations:asc:status", "--json", "--non-interactive"]);
+    expect(argv).toEqual([
+      "bunx",
+      "eas-cli",
+      "integrations:asc:status",
+      "--json",
+      "--non-interactive",
+    ]);
   });
 
   it("parses a 'connected' response with the appStoreConnectApp payload", async () => {
