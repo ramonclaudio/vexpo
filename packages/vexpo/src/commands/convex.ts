@@ -47,10 +47,15 @@ export function planConvexDev(
   options: { local?: boolean },
   needsProvisioning: boolean,
   projectName: string,
+  team?: string,
 ): { selectLocalFirst: boolean; devArgs: string[] } {
   const devArgs = ["convex", "dev", "--once", "--tail-logs", "disable"];
   if (needsProvisioning) {
     devArgs.push("--configure", "new", "--project", projectName);
+    // `--team` is the documented way to skip the interactive team picker that
+    // `convex dev --configure new` shows for multi-team accounts. Without it a
+    // non-TTY run (CI, `vexpo lite` from a script) dies on the `(Team:)` prompt.
+    if (team) devArgs.push("--team", team);
     devArgs.push("--dev-deployment", options.local ? "local" : "cloud");
   }
   return { selectLocalFirst: !!options.local && !needsProvisioning, devArgs };
@@ -89,8 +94,10 @@ export async function runConvex(options: ConvexOptions): Promise<number> {
 
     const needsProvisioning = options.fresh === true || !existing;
     const projectName = options.name ?? (await pkgName());
+    // Skip the interactive team picker when CONVEX_TEAM is set (CI / scripts).
+    const team = (process.env.CONVEX_TEAM ?? localEnv.get("CONVEX_TEAM"))?.trim() || undefined;
 
-    const plan = planConvexDev(options, needsProvisioning, projectName);
+    const plan = planConvexDev(options, needsProvisioning, projectName, team);
     if (plan.selectLocalFirst) {
       const sel = spawn([dlx(), "convex", "deployment", "select", "local"], {
         stdin: "inherit",
@@ -113,6 +120,11 @@ export async function runConvex(options: ConvexOptions): Promise<number> {
     const proc = spawn(cmd, { stdin: "inherit", stdout: "inherit", stderr: "inherit" });
     if ((await proc.exited) !== 0) {
       bad("convex dev exited with a non-zero code");
+      if (needsProvisioning && !team && !process.stdin.isTTY) {
+        note("provisioning a new Convex project picks a team interactively, which");
+        note("can't prompt here. Set CONVEX_TEAM=<slug> (Convex dashboard > team");
+        note("settings) or run `vexpo lite` in an interactive terminal.");
+      }
       return 1;
     }
 
