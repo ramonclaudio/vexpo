@@ -4,84 +4,63 @@ Guidance for AI coding agents working in this repository. Complements the README
 
 ## Project
 
-Monorepo for vexpo: a one-shot Expo + Convex + Better Auth + Resend starter targeting iOS. Three pieces:
+Monorepo for vexpo, a one-shot Expo + Convex + Better Auth + Resend starter targeting iOS. Three pieces:
 
-- `packages/create-vexpo`: npm scaffolder, ~200 lines. Runs as `npm create @ramonclaudio/vexpo@latest my-app`. Copies `templates/default/`, rewrites `package.json` (project name, version, sets `private`, strips publish metadata), installs dependencies via the detected package manager (sniffed from `npm_config_user_agent`; defaults to `npm`), inits git.
-- `packages/vexpo`: operational CLI. Runs as `vexpo <subcommand>` from inside a scaffolded project. Deliberately small: doesn't wrap what `eas` already does well. Scope test for every command: does it help an empty directory become a first shipped, authenticated, backed iOS app? Surfaces two-mode setup orchestration (`lite`, `full`) with standalone phases (`accounts`, `rebrand`, `review-account`, `convex`, `better-auth`, `resend`), cross-source drift detection (`doctor`), Apple-side work `eas-cli` doesn't expose (`apple {asc-key, credentials, services-id, jwt, eas-rotation-secrets}`), the last ASC mile to a first ship (`testflight` delivery, `asc:privacy` + `asc:accessibility` labels, `asc:connect`), and multi-destination env sync (`env push`). Post-launch ops (customer reviews, IAP sandbox testing, release management) are out of scope, not added just because `eas-cli` lacks them. Commander-based tree, around 480 lines of CLI wiring on top of around 9.2k lines of orchestration logic in `src/lib/` and `src/commands/`.
-- `templates/default/`: the Expo SDK 56 + Convex + Better Auth app that gets copied. Production-ready: real auth, real push, real OTA, real App Store submission. Standalone (its own `package-lock.json`, `node_modules`), not a workspace member.
+- `packages/create-vexpo`: npm scaffolder. Runs as `npm create @ramonclaudio/vexpo@latest my-app`. Copies `templates/default/`, rewrites `package.json` (name, version, `private`, strips publish metadata), installs via the detected package manager (`npm_config_user_agent`, defaults to npm), inits git.
+- `packages/vexpo`: operational CLI. Runs as `vexpo <subcommand>` inside a scaffolded project. Deliberately small: it doesn't wrap what `eas` already does. Scope test for every command: does it help an empty directory reach a first shipped iOS app? Two-mode setup (`lite`, `full`) with standalone phases, cross-source drift detection (`doctor`), Apple work `eas-cli` doesn't expose (`apple {asc-key, credentials, services-id, jwt, eas-rotation-secrets}`), App Store Connect steps (`testflight`, `asc:privacy`, `asc:accessibility`, `asc:connect`), and env sync (`env push`). Post-launch ops are out of scope.
+- `templates/default/`: the Expo SDK 56 + Convex + Better Auth app that gets copied. Includes auth, push, OTA, and App Store submission. Standalone (own `package-lock.json`, `node_modules`), not a workspace member.
 
-npm workspace at the root with `packages/*` as members. Templates intentionally stay outside the workspace because Expo's hoisting expectations don't survive npm's workspace install layout. The `vexpo` CLI links into the template via `npm link` for monorepo dev (`npm run link:dev`).
+npm workspace at the root with `packages/*` as members. Templates stay outside the workspace because Expo's hoisting doesn't survive npm's workspace install layout. The CLI links into the template via `npm run link:dev` for monorepo dev.
 
 ## Conventions
 
-- **Style**: Small functions (<50 lines). Early returns. No deep nesting. Strict TypeScript. No dead code.
-- **Commits**: Conventional commits. `type(scope): lowercase description`, <72 chars, no trailing period. Verbs: add, fix, extract, drop, rename, move, split, wire, swap. Never: implement, leverage, utilize, streamline, enhance.
-- **Voice**: Terse, direct, specific. No emdashes. No hedging. No rule-of-three patterns. No marketing copy in commits, PRs, or docs.
-- **Destructive ops**: Never `rm`, `rmdir`, `dd`, `find -delete`, `> file` truncation. Use `trash`.
-- **Attribution**: Never attribute Claude, Anthropic, Claude Code, or AI in authored content.
+- Style: small functions (<50 lines), early returns, no deep nesting, strict TypeScript, no dead code.
+- Commits: conventional. `type(scope): lowercase description`, <72 chars, no trailing period. Verbs: add, fix, extract, drop, rename, move, split, wire, swap. Never: implement, leverage, utilize, streamline, enhance.
+- Voice: terse, direct, specific. No emdashes, no hedging, no marketing copy.
+- Destructive ops: never `rm`, `rmdir`, `dd`, `find -delete`, `> file` truncation. Use `trash`.
+- Attribution: never attribute Claude, Anthropic, Claude Code, or AI in authored content.
 
 ## Stack rules
 
 ### Monorepo (root)
 
-- npm workspace, members are `packages/*` only. Single `package-lock.json` at the root for those. Template has its own lockfile.
-- TypeScript references via per-package `tsconfig.json` extending the root.
-- ESM only. `"type": "module"` everywhere.
-- Package builds via tsup. No webpack, no rollup directly.
-- For monorepo dev, run `npm run link:dev` once. After that, `cd templates/default && npx vexpo lite` (or `full`) resolves through the linked `vexpo` binary.
+- npm workspace, members `packages/*` only. Single root `package-lock.json`. Template has its own.
+- ESM only (`"type": "module"`). Package builds via tsup.
+- Run `npm run link:dev` once for monorepo dev. After that, `cd templates/default && npx vexpo lite` resolves through the linked binary.
 
 ### Template (`templates/default/`)
 
-- Expo SDK 56 preview. RN 0.85+. React 19.
-- Convex backend with reactive queries, storage, real-time sync.
-- Better Auth via `@convex-dev/better-auth`.
-- Resend via `@convex-dev/resend`. Webhook events including `email.suppressed` for actionable failure tracking.
-- Native SwiftUI primitives via `@expo/ui/swift-ui`. Material translucency via `expo-glass-effect` (iOS 26+) + `expo-blur` fallback.
-- EAS Workflows for all CI/CD: dev builds, PR previews with `github-comment`, Maestro E2E, deploy-on-push, TestFlight, App Store Connect events, JWT rotation cron. PR previews and Maestro E2E ship manual-only (`workflow_dispatch`); their `pull_request` triggers are off by default to conserve EAS build credits.
-- GitHub Actions only for general-purpose checks (typecheck, lint, format, tests, fingerprint diff).
-- Setup is a one-shot CLI concern (`npx vexpo lite` / `npx vexpo full`), not a `package.json` script. The template only ships runtime scripts (dev, ios, convex:_, eas:_, test, lint, etc.).
+- Expo SDK 56, RN 0.85+, React 19. Convex backend. Better Auth via `@convex-dev/better-auth`. Resend via `@convex-dev/resend`.
+- Native SwiftUI via `@expo/ui/swift-ui`. Material translucency via `expo-glass-effect` (iOS 26+) + `expo-blur` fallback.
+- EAS Workflows for all CI/CD. PR previews and Maestro E2E ship `workflow_dispatch`-only to conserve build credits. GitHub Actions only for general checks (typecheck, lint, format, tests, fingerprint).
+- Setup is a CLI concern (`npx vexpo lite` / `full`), not a `package.json` script.
 
 ### Operational CLI (`packages/vexpo/`)
 
-- Command tree via commander. One file per subcommand under `src/commands/` (apple subcommands grouped under `src/commands/apple/`).
-- Each command exports a `run<Name>(options)` function returning a numeric exit code. `cli.ts` handles `process.exit`.
-- Cross-cutting helpers (logging, prompts, state cache, proc helpers, lib clients, path expansion) under `src/lib/`.
-- Node-only. No `_run.mjs` runtime selector, the published CLI is a single ESM bundle that runs anywhere Node 20+ works.
-- Tests live in `packages/vexpo/__tests__/`: 348 vitest unit tests across `lib/` (24 files) and `commands/` (6 files), plus 14 bash e2e tests in `e2e/run.sh` against the built dist.
-
-### Apple ASC API workarounds
-
-The CLI handles four post-2025 Apple ASC API changes:
-
-- `POST /v1/bundleIds` rejects `platform: "SERVICES"`. The Services ID has to be created via the developer portal. `apple/services-id.ts` detects missing ones and walks the user through with `helpAndWait`, then re-polls.
-- App bundles report `platform: "UNIVERSAL"` for newer accounts. `findOrCreateBundleId` matches any non-SERVICES platform when looking up the App ID.
-- Relationship endpoints reject the `limit` query param. `bundleIdCapabilities.list` fetches without pagination.
-- `filter[platform]=SERVICES` returns 400. The doctor filters by identifier alone for `services-id-exists`.
-
-When Apple loosens any of these, the CLI continues to work.
+- Command tree via commander, one file per subcommand under `src/commands/` (apple grouped under `src/commands/apple/`). Each exports `run<Name>(options)` returning an exit code. `cli.ts` handles `process.exit`.
+- Cross-cutting helpers under `src/lib/`. Node-only, single ESM bundle.
+- Tests in `packages/vexpo/__tests__/`: vitest unit across `lib/` and `commands/`, plus bash e2e in `e2e/run.sh` against the built dist.
+- Handles four post-2025 Apple ASC API changes and still works when Apple loosens them: the Services ID can't be created via `POST /v1/bundleIds`, app bundles report `UNIVERSAL`, relationship endpoints reject `limit`, and `filter[platform]=SERVICES` returns 400.
 
 ## Before making changes
 
 1. Read this file, the template's `AGENTS.md`, and `README.md`.
-2. From the root: `npm run typecheck` to confirm packages compile.
-3. From the root: `npm run test:all` to run all unit + e2e tests (348 unit + 14 e2e + 113 template = 475).
-4. If touching the CLI: `npm run build -w @ramonclaudio/vexpo` then `npm run test:e2e -w @ramonclaudio/vexpo` to confirm the dist behaves.
+2. From the root: `npm run typecheck`.
+3. From the root: `npm run test:all` (all unit + e2e + template).
+4. If touching the CLI: `npm run build -w @ramonclaudio/vexpo` then `npm run test:e2e -w @ramonclaudio/vexpo`.
 
 ## Common tasks
 
-- **Build all packages**: `npm run build` from the root.
-- **Run the template locally**: `npm run template:dev`.
-- **Test the full pipeline**: `npm run test:all` from the root.
-- **Test the scaffolder end-to-end**: `npm run build -w @ramonclaudio/create-vexpo && cd /tmp && trash test-app 2>/dev/null && node /path/to/packages/create-vexpo/dist/index.js test-app --no-install --no-git -y && cd test-app && npm install && npx vexpo full --dry-run`.
-- **Add a new vexpo subcommand**: Create `packages/vexpo/src/commands/<name>.ts` exporting `run<Name>(options)`, register in `packages/vexpo/src/cli.ts`, add an e2e test in `__tests__/e2e/run.sh`.
+- Build all packages: `npm run build` from the root.
+- Run the template locally: `npm run template:dev`.
+- Add a vexpo subcommand: create `packages/vexpo/src/commands/<name>.ts` exporting `run<Name>(options)`, register in `src/cli.ts`, add an e2e case in `__tests__/e2e/run.sh`.
 
 ## Not appropriate
 
-- Adding a backend service / Cloudflare Worker / telemetry endpoint. Static config in the published package is the answer for compatibility matrices and version checks.
+- Adding a backend service / Worker / telemetry endpoint. Static config in the published package answers compatibility matrices and version checks.
 - Adding NativeWind, ESLint, Prettier, or Biome to the template. Oxlint + Oxfmt only.
 - Adding `@better-auth/stripe`. It pulls SolidJS deps that break Metro. Use `@convex-dev/stripe`.
-- Re-introducing `_run.mjs` to the published CLI. Node-only.
-- Re-introducing `setup-*.ts` scripts to the template. The CLI is the source of truth.
-- Adding `templates/*` to the workspace members array. Expo's hoisting needs the template installed standalone.
+- Re-introducing `_run.mjs` to the published CLI, or `setup-*.ts` scripts to the template. The CLI is the source of truth.
+- Adding `templates/*` to the workspace members array.
 - Committing `node_modules/`, `dist/`, `.expo/`, `ios/`, `android/`, `.tanstack/`, or other generated artifacts.
 - Creating README / CHANGELOG / docs files the user did not ask for.

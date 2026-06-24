@@ -94,7 +94,7 @@ First public release.
 - `templates/default/`: production-ready Expo SDK 56 + Convex + Better Auth + Resend iOS app. Native SwiftUI via `@expo/ui/swift-ui`, Apple Sign In, APNs push, Universal Links, profile + sessions, HMAC-verified webhook factory, 10 EAS Workflows covering dev builds, PR previews, deploy on main, TestFlight, rollback, rollout, ASC events, JWT rotation cron.
 - 277 tests (238 vexpo unit + 29 template + 10 e2e).
 
-See [`README.md`](./README.md) for the feature list, [`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md) for the trade-off log, [`docs/SECURITY.md`](./docs/SECURITY.md) for the threat model, [`docs/OPERATIONS.md`](./docs/OPERATIONS.md) for the on-call runbook, and [`docs/UPSTREAM.md`](./docs/UPSTREAM.md) for the ledger of every upstream PR we shipped to `expo/expo` that the template depends on.
+See [`README.md`](./README.md) for the feature list and [`docs/SECURITY.md`](./docs/SECURITY.md) for the threat model.
 
 [Unreleased]: https://github.com/ramonclaudio/vexpo/compare/v0.1.5...HEAD
 [0.1.5]: https://github.com/ramonclaudio/vexpo/releases/tag/v0.1.5

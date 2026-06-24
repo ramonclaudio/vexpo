@@ -21,7 +21,7 @@ npm run clean:metro        # just Metro/Haste/node-compile-cache
 npm run clean:state        # also wipe .setup-state.json
 ```
 
-These run through `_run.mjs`, which picks `bun` if it's on PATH and falls back to `tsx`. To call it without the npm script: `node scripts/_run.mjs scripts/clean.ts --metro`.
+Call it directly with `node scripts/_run.mjs scripts/clean.ts --metro`.
 
 ## Setup orchestration
 
@@ -49,4 +49,3 @@ The CLI itself ships from [`@ramonclaudio/vexpo` on npm](https://www.npmjs.com/p
 ## Conventions
 
 - All deletions go through `trash`. Recoverable from macOS Trash.
-- Scripts here are intentionally minimal. The heavy logic is in the CLI.

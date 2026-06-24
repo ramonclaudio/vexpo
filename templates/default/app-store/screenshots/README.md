@@ -10,4 +10,5 @@ File naming:
 - 6.7": `6.7-01.png`, `6.7-02.png`, ..., up to `6.7-10.png`
 - 6.9": `6.9-01.png`, `6.9-02.png`, ..., up to `6.9-10.png`
 
-Apple rejects submissions missing required sizes.
+> [!IMPORTANT]
+> Apple rejects submissions missing required sizes.

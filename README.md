@@ -4,7 +4,7 @@
 [![npm](https://img.shields.io/npm/v/@ramonclaudio/vexpo?label=vexpo)](https://www.npmjs.com/package/@ramonclaudio/vexpo)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-Expo and EAS already take an iOS app from code to the App Store. vexpo is the layer on top: an Expo template with Convex and Better Auth wired in from the first commit, and a CLI that handles the setup people usually wrestle with. It walks you through creating a Convex account or links the project you already have, and it takes care of the Apple keys (the P8 signing dance) so signing isn't a wall you hit on day one. I built it because I wanted my opinionated stack to be something anyone could start with in minutes instead of a weekend.
+vexpo is an Expo SDK 56 iOS template with Convex and Better Auth wired in, plus a CLI that links your Convex deployment and syncs with EAS to get a new app running in minutes.
 
 <p align="center">
   <img src="docs/assets/demo-app.gif" width="300" alt="The template app on the iOS simulator: sign up, onboarding, search, and the dark-mode flip">
@@ -17,84 +17,70 @@ cd my-app
 npx vexpo lite          # Convex + Better Auth, simulator-ready in about a minute
 ```
 
-Then run it in two terminals:
+Run it in two terminals:
 
 ```bash
 npm run convex:dev      # terminal 1
 npm run ios             # terminal 2
 ```
 
-`lite` skips Apple, EAS, and Resend, so sign-up auto-verifies and you land in the app with one tap. When you're ready to ship, swap `lite` for `full`:
+`lite` skips Apple, EAS, and Resend, so sign-up auto-verifies. When you're ready to ship:
 
 ```bash
 npx vexpo full          # provisions Resend, Apple Sign In, EAS, rebrand wizard
 npx vexpo doctor        # auth-checks every credential against the real service
 ```
 
-`full` writes the env, sets Convex vars, signs the Apple Sign In JWT, runs `eas init` and `eas env:push`, then prints the `eas build` command. The build itself is yours to run. That's EAS territory. `doctor` hits Resend, the ASC API, and decodes the Apple JWT, then cross-references bundle ID, team ID, and Services ID across every config. What `lite` and `full` do at each step lives in [`templates/default/SETUP.md`](./templates/default/SETUP.md). Add `--new` to either for the first-time signup walkthroughs.
+`full` writes the env, sets Convex vars, signs the Apple JWT, runs `eas init` + `eas env:push`, then prints the `eas build` command for you to run. Add `--new` for signup walkthroughs, or `--plan` to preview the setup first.
 
 <p align="center">
   <img src="docs/assets/demo-doctor.gif" width="720" alt="vexpo doctor auth-checking every credential against the live services and flagging real drift">
 </p>
 
-Two packages back this: [`create-vexpo`](https://www.npmjs.com/package/@ramonclaudio/create-vexpo) scaffolds the app, [`vexpo`](https://www.npmjs.com/package/@ramonclaudio/vexpo) is the CLI that provisions, verifies, and repairs the setup.
+Two packages: [`create-vexpo`](https://www.npmjs.com/package/@ramonclaudio/create-vexpo) scaffolds the app, [`vexpo`](https://www.npmjs.com/package/@ramonclaudio/vexpo) provisions, verifies, and repairs the setup.
 
-## What's in the box
+## What's included
 
-Expo SDK 56, RN 0.85, React 19. Strict TypeScript, no NativeWind. Every screen renders SwiftUI through `@expo/ui/swift-ui`, with Liquid Glass on iOS 26+ and a blur fallback below. Email, password, and OTP auth plus Apple Sign In with session revocation, App Attest primitives ready to wire, and soft-delete. APNs push, Apple Universal Links, and Resend webhooks. EAS handles builds, updates, submission, and store metadata, with ten workflows under `.eas/workflows/`. None trigger on a push to `main`, so a merge can't ship to the App Store by surprise.
+- Expo SDK 56, RN 0.85, React 19. Strict TypeScript, no NativeWind.
+- Every screen is SwiftUI via `@expo/ui/swift-ui`, Liquid Glass on iOS 26+, blur fallback below.
+- Email, password, OTP, and Apple Sign In, with per-device session revocation and account soft-delete.
+- Convex reactive queries and storage, Resend webhooks, App Attest primitives ready to wire.
+- APNs push and Apple Universal Links.
+- EAS builds, updates, submission, and store metadata, with ten workflows under `.eas/workflows/`. None trigger on a push to `main`.
 
 <p align="center">
   <img src="docs/assets/screens.png" width="760" alt="Template screens in light and dark: home, profile, settings">
 </p>
 
-Some of the SwiftUI modifiers the template reaches for ship via upstream PRs I wrote and got merged into `expo/expo`. The screen-by-screen breakdown lives in [`templates/default/README.md`](./templates/default/README.md), the design rationale in [`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md).
-
-## What vexpo is not
-
-- iOS-only. There is no Android or web path.
-- Opinionated, not a menu. You get this stack, not a pick-list.
-- Not a replacement for EAS. The CLI stays out of anything `eas` already does.
-- Requires macOS and Xcode.
-
-## Why these choices
-
-Convex because the backend is managed and reactive, so there's no database to run. Better Auth because the auth tables live in your own backend instead of a rented service. SwiftUI through `@expo/ui` because the template only targets iOS, so native controls win. Full rationale in [`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md).
+Screen by screen: [`templates/default/README.md`](./templates/default/README.md).
 
 ## Repo layout
 
-```
+```text
 vexpo/
 ├── packages/
-│   ├── create-vexpo/      # npm scaffolder (`npm create @ramonclaudio/vexpo@latest`)
-│   └── vexpo/             # operational CLI (`npx vexpo <subcommand>`)
+│   ├── create-vexpo/      # npm scaffolder
+│   └── vexpo/             # operational CLI
 ├── templates/default/     # the Expo + Convex + Better Auth app
-└── docs/                  # ARCHITECTURE, SECURITY, OPERATIONS, UPSTREAM
+└── docs/                  # SECURITY, demo assets
 ```
 
-`create-vexpo` copies `templates/default/` into a fresh directory, rewrites `package.json`, installs with the package manager it detects from `npm_config_user_agent` (npm by default), inits git. `vexpo` ships as a devDependency, so `npx vexpo` resolves to the local pinned version.
+`create-vexpo` copies `templates/default/`, rewrites `package.json`, installs, inits git. `vexpo` ships as a devDependency, so `npx vexpo` resolves to the pinned version.
 
 ## Pre-reqs
 
-- macOS and Xcode for the simulator and signing
+- macOS and Xcode
 - Bun or Node 20+
-- Apple Developer Program membership ($99/yr) when you're ready to ship
+- Apple Developer Program ($99/yr), when you're ready to ship
 - A domain you control DNS for (Resend sending domain)
-
-Targets Expo SDK 56, RN 0.85, React 19. Changelog in [GitHub Releases](https://github.com/ramonclaudio/vexpo/releases).
 
 ## Docs
 
-- [`templates/default/README.md`](./templates/default/README.md): the app itself, screen by screen.
-- [`templates/default/SETUP.md`](./templates/default/SETUP.md): every setup phase, prompts, env-var alternatives, recovery paths.
-- [`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md): why Convex, why Better Auth, the EAS wiring, the setup state machine.
-- [`docs/SECURITY.md`](./docs/SECURITY.md): threat model, webhook verification, OTA code-signing, the secret-rotation matrix.
-- [`docs/OPERATIONS.md`](./docs/OPERATIONS.md): service map, daily checks, failure modes with recovery steps.
-- [`docs/UPSTREAM.md`](./docs/UPSTREAM.md): ledger of every `expo/expo` PR I wrote that the template depends on.
-- [`templates/default/DESIGN.md`](./templates/default/DESIGN.md): palette, typography, spacing, the SwiftUI primitives.
+- [`templates/default/README.md`](./templates/default/README.md): the app, screen by screen.
+- [`docs/SECURITY.md`](./docs/SECURITY.md): threat model, webhook verification, OTA signing, secret rotation.
+- [`CHANGELOG.md`](./CHANGELOG.md): release history.
 
-Working on vexpo itself? See [`CONTRIBUTING.md`](./CONTRIBUTING.md).
-
-Bugs and questions go to [GitHub Issues](https://github.com/ramonclaudio/vexpo/issues).
+Working on vexpo itself? See [`CONTRIBUTING.md`](./CONTRIBUTING.md). Bugs go to [GitHub Issues](https://github.com/ramonclaudio/vexpo/issues).
 
 ## License
 

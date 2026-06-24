@@ -50,6 +50,7 @@ skills-lock.json
 
 # Working notes (not committed)
 plans/
+.dev/
 
 # App Store metadata. Ships with placeholder values so `eas submit` works
 # out-of-the-box. `vexpo rebrand` fills in your real review contact + demo creds.

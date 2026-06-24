@@ -230,14 +230,14 @@ if match_grep "$n"; then
   [ -z "$miss" ] && pass "$n" || fail "$n" "$miss"
 else skip "$n" "filtered"; fi
 
-n="dist payload excludes node_modules, ios, lockfiles, local env"
+n="dist payload excludes node_modules, ios, lockfiles, local env, .dev"
 if match_grep "$n"; then
   dest="$PKG_ROOT/dist/templates/default"
   bad=""
-  for d in node_modules ios android .expo; do
+  for d in node_modules ios android .expo .dev; do
     [ -e "$dest/$d" ] && bad="$bad $d"
   done
-  for f in package-lock.json bun.lock .env.local .env.prod .setup-state.json; do
+  for f in package-lock.json bun.lock .env.local .env.prod .setup-state.json SETUP.md DESIGN.md; do
     [ -e "$dest/$f" ] && bad="$bad $f"
   done
   [ -z "$bad" ] && pass "$n" || fail "$n" "leaked:$bad"
