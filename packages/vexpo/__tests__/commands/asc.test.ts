@@ -155,7 +155,7 @@ describe("runAscConnect", () => {
     const [argv, opts] = spawnSpy.mock.calls[0] as [string[], { env: Record<string, string> }];
     expect(argv).toEqual([
       "bunx",
-      "eas",
+      "eas-cli",
       "integrations:asc:connect",
       "--bundle-id",
       "com.vexpo.vexpo",
@@ -266,7 +266,7 @@ describe("runAscConnect", () => {
     expect(spawnSpy).toHaveBeenCalledTimes(1);
   });
 
-  it("requires a TTY: non-TTY returns 1 without spawning (no doomed --non-interactive)", async () => {
+  it("headless with an app record: lands ascAppId in eas.json, returns 0, no wizard", async () => {
     Object.defineProperty(process.stdin, "isTTY", { value: false, configurable: true });
     ascStatusSpy.mockResolvedValueOnce({
       action: "status",
@@ -274,6 +274,39 @@ describe("runAscConnect", () => {
       status: "not-connected",
     });
     readOneSpy.mockResolvedValueOnce("com.vexpo.vexpo");
+    appsListSpy.mockResolvedValueOnce([
+      { type: "apps", id: "6763961390", attributes: { bundleId: "com.vexpo.vexpo" } },
+    ]);
+    const fs = await import("node:fs");
+    const existsSpy = fs.existsSync as unknown as ReturnType<typeof vi.fn>;
+    existsSpy.mockImplementation(() => true);
+    fs.writeFileSync(
+      "eas.json",
+      JSON.stringify({ submit: { testflight: { ios: {} }, production: { ios: {} } } }, null, 2),
+    );
+
+    try {
+      const exit = await runAscConnect({});
+      expect(exit).toBe(0);
+      expect(spawnSpy).not.toHaveBeenCalled();
+      const easJson = JSON.parse(fs.readFileSync("eas.json", "utf8"));
+      expect(easJson.submit.testflight.ios.ascAppId).toBe("6763961390");
+      expect(easJson.submit.production.ios.ascAppId).toBe("6763961390");
+    } finally {
+      existsSpy.mockImplementation((p: unknown) => !String(p).endsWith("eas.json"));
+    }
+  });
+
+  it("headless without cached creds: returns 1, no wizard", async () => {
+    Object.defineProperty(process.stdin, "isTTY", { value: false, configurable: true });
+    ascStatusSpy.mockResolvedValueOnce({
+      action: "status",
+      project: "@testuser/testapp",
+      status: "not-connected",
+    });
+    readOneSpy.mockResolvedValueOnce("com.vexpo.vexpo");
+    // resolveAscApp can't reach the ASC API, so it can't resolve the id headless
+    loadAscCredsSpy.mockResolvedValueOnce(null);
 
     const exit = await runAscConnect({});
     expect(exit).toBe(1);
@@ -299,7 +332,7 @@ describe("runAscConnect", () => {
     expect(appsListSpy).toHaveBeenCalledWith({ bundleId: "com.vexpo.vexpo" });
     // loud enough that a setup run does not read as connected
     expect(out).toContain("NOT connected");
-    expect(out).toContain("eas build");
+    expect(out).toContain("eas-cli build");
   });
 
   it("proceeds to spawn when at least one ASC app matches the bundle id", async () => {

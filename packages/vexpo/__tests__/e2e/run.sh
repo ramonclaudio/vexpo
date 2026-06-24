@@ -81,7 +81,7 @@ n="vexpo --help lists all subcommands"
 if match_grep "$n"; then
   out=$(run_cli "" --help | strip_ansi)
   miss=""
-  for cmd in lite full accounts rebrand review-account doctor convex better-auth resend apple env; do
+  for cmd in lite full accounts rebrand review-account doctor convex better-auth resend submit apple env; do
     echo "$out" | grep -q "^  $cmd" || miss="$miss $cmd"
   done
   if [ -z "$miss" ]; then pass "$n"; else fail "$n" "missing:$miss"; fi
