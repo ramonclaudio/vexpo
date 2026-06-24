@@ -46,6 +46,37 @@ npx vexpo full --new   # same, plus walks Apple, Convex, Expo, and Resend signup
 - `npx vexpo full --plan` previews the setup before you start.
 - `npx vexpo full --dry-run` shows what the next run would change.
 
+## Credentials
+
+Three rules cover all of it:
+
+- The app bundle is public. Never put a real secret in an `EXPO_PUBLIC_*` var, it ships in plaintext inside the binary. Only public identifiers (Convex URL, bundle id, team id) belong there.
+- Real secrets live at their destination, EAS or Convex (both encrypted at rest), never in git. `vexpo full` and `vexpo env push` move them there.
+- EAS cloud builders can't read your local `.env` or `.p8` files, so anything a build or submit needs has to be uploaded to EAS first.
+
+| Credential                                         | Home                                   | Local          | Bridge                             |
+| -------------------------------------------------- | -------------------------------------- | -------------- | ---------------------------------- |
+| Convex URL, bundle id, team id                     | EAS env + Convex                       | `.env.local`   | `vexpo env push`                   |
+| `BETTER_AUTH_SECRET`, `RESEND_*`, `APPLE_CLIENT_*` | Convex env                             | `.env.local`   | `vexpo env push`                   |
+| ASC API key `.p8` (App Manager role)               | EAS credential store                   | `credentials/` | `eas credentials`                  |
+| SIWA `.p8`                                         | EAS env (secret)                       | `credentials/` | `vexpo apple eas-rotation-secrets` |
+| dist cert, provisioning, push key                  | EAS (managed)                          | none           | `eas credentials`                  |
+| EAS Update key                                     | EAS file secret; public cert committed | `keys/`        | `npm run updates:gen-cert`         |
+
+### App Store submission
+
+TestFlight and App Store submission need two things: your App Store Connect agreements accepted, and an ASC API key registered in EAS. A missing or expired agreement makes every ASC API call return 403, which reads as an auth failure but isn't. Accept it at App Store Connect -> Business (Agreements, Tax, and Banking); only the Account Holder can.
+
+1. App Store Connect -> Users and Access -> Integrations -> App Store Connect API. Generate a **Team** key with the **App Manager** role (least privilege that can submit; Admin also works). Download the `.p8` once into `credentials/`.
+2. `npx vexpo apple asc-key`, registers and validates it (auto-detects `credentials/`).
+3. `npx eas-cli credentials --platform ios` -> App Store Connect API Key -> set it up, so cloud submits can use it.
+4. `npx vexpo asc:connect`, writes `ascAppId` into your `eas.json` and links the project to its ASC app. eas-cli takes the app id only from the submit profile (no flag, no env var), so this write is what makes a non-interactive submit work, and it lands the id even headless (CI) once the app record exists.
+5. `npm run eas:tf`, builds and submits to TestFlight.
+
+The ASC app record appears only after your first submit, so a brand-new app's first `eas:tf` runs interactively. After that, `npx vexpo submit` re-submits the latest build fully non-interactively: it sets `EXPO_ASC_*` from your cached key and writes `ascAppId` into `eas.json`, no EAS credential store needed. Pass `--profile production` to submit to the App Store, or `--id <buildId>` for a specific build.
+
+`npx vexpo doctor` confirms the key, its role, the agreement, and the linkage. Full notes in [`credentials/README.md`](./credentials/README.md).
+
 ## Pre-reqs
 
 - macOS and Xcode

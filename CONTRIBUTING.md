@@ -38,7 +38,7 @@ Once-per-session shell export, no tools to install:
 ```bash
 cd templates/default
 export $(grep '^EAS_PROJECT_ID=' .env.local)
-npx eas build -p ios --profile production --auto-submit-with-profile testflight
+npx eas-cli build -p ios --profile production --auto-submit-with-profile testflight
 ```
 
 The export holds only for that shell. New terminal, re-run it.
