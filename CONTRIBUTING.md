@@ -20,13 +20,14 @@ npm run test:packages:e2e  # e2e against the built vexpo dist
 npm run test:all           # everything
 ```
 
-To drive the real Convex Platform API, run the opt-in e2e suite. It self-skips unless you're logged in and both env vars are set. Every mutation it makes is reversed.
+To drive the real Convex Platform API, run the opt-in e2e suite. It self-skips unless you're logged in and both env vars are set, and reverses every mutation it makes.
 
 ```bash
 VEXPO_E2E_CONVEX=1 VEXPO_E2E_DEPLOYMENT=<dev-slug> npm run test:e2e:api -w @ramonclaudio/vexpo
 ```
 
-Point `VEXPO_E2E_DEPLOYMENT` at a dev deployment slug, never prod.
+> [!CAUTION]
+> Point `VEXPO_E2E_DEPLOYMENT` at a dev deployment slug, never prod.
 
 ## Testing `eas build` against `templates/default`
 
@@ -40,7 +41,7 @@ export $(grep '^EAS_PROJECT_ID=' .env.local)
 npx eas build -p ios --profile production --auto-submit-with-profile testflight
 ```
 
-The export only holds for that shell. Open a new terminal and you re-run it. That's the trade-off for no external dependencies.
+The export holds only for that shell. New terminal, re-run it.
 
 To auto-load on `cd`, [direnv](https://direnv.net) handles it:
 

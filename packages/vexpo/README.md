@@ -3,7 +3,7 @@
 [![npm](https://img.shields.io/npm/v/@ramonclaudio/vexpo)](https://www.npmjs.com/package/@ramonclaudio/vexpo)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-The setup CLI for [vexpo](https://github.com/ramonclaudio/vexpo) projects (Expo + Convex + Better Auth + Resend, end-to-end iOS). It creates or links your Convex deployment, signs and rotates the Apple keys (the P8 dance), and keeps your env in sync everywhere. It covers the App Store Connect last mile to a first ship. EAS does the heavy lifting (builds, updates, submission), vexpo covers the setup around it.
+The setup CLI for [vexpo](https://github.com/ramonclaudio/vexpo) projects (Expo + Convex + Better Auth + Resend, iOS). It creates or links your Convex deployment, signs and rotates the Apple keys, syncs your env, and handles App Store Connect setup. EAS handles builds, updates, and submission. vexpo handles the setup around them.
 
 Scaffolded by [`create-vexpo`](https://www.npmjs.com/package/@ramonclaudio/create-vexpo) into your devDependencies. Run it with `npx vexpo`.
 
@@ -11,9 +11,19 @@ Scaffolded by [`create-vexpo`](https://www.npmjs.com/package/@ramonclaudio/creat
   <img src="https://raw.githubusercontent.com/ramonclaudio/vexpo/main/docs/assets/demo-doctor.gif" width="720" alt="vexpo doctor auth-checking every credential against the live services">
 </p>
 
+## Quick start
+
+Run these inside a scaffolded vexpo project (macOS and Xcode, iOS-only):
+
+```bash
+npx vexpo lite          # Convex + Better Auth, simulator-ready in about a minute
+npx vexpo full          # full provisioning to TestFlight-ready
+npx vexpo doctor        # auth-check every credential, surface drift
+```
+
 ## Setup
 
-```
+```text
 vexpo lite                        Convex + Better Auth only, simulator-ready (~60s)
 vexpo lite --new                  same + Convex signup walkthrough for first-timers
 vexpo full                        full provisioning (Convex + Better Auth + Resend + Apple + EAS init + rebrand)
@@ -40,7 +50,7 @@ vexpo asc:connect                 link the EAS project to its ASC app (wraps `ea
 
 ## Apple
 
-```
+```text
 vexpo apple asc-key               validate an ASC API key against /v1/apps
 vexpo apple asc-key --revalidate  re-check the cached key without re-prompting
 vexpo apple credentials           wrap `eas credentials:configure-build` with the cached ASC key
@@ -54,7 +64,7 @@ vexpo apple eas-rotation-secrets  push the 5 EAS production secrets the JWT cron
 
 Picks up after `eas submit` hands a build to TestFlight: groups, testers, release notes, plus the privacy and accessibility labels Apple requires before review.
 
-```
+```text
 vexpo testflight groups list                 list beta groups
 vexpo testflight groups create <name>        create a beta group
 vexpo testflight groups view <id>            view a beta group + its testers
@@ -69,13 +79,9 @@ vexpo asc:accessibility show                 fetch the app's accessibility decla
 vexpo asc:accessibility lint <file>          validate accessibility.config.json against Apple's enums
 ```
 
-## Design rule: don't reinvent EAS
+## Don't reinvent EAS
 
-vexpo only covers what `eas-cli` doesn't: setup orchestration, cross-source drift detection, Apple SIWA work, and the last App Store Connect mile to a first ship. If `eas <subcommand>` is the canonical answer, run `npx eas <subcommand>`.
-
-## What `vexpo` doesn't wrap
-
-Reach for `eas` directly for the canonical platform surface.
+vexpo only covers what `eas-cli` doesn't: setup orchestration, cross-source drift detection, Apple SIWA work, and App Store Connect setup. For the canonical platform surface, reach for `eas` directly:
 
 ```bash
 npx eas init                     # EAS project init
@@ -99,19 +105,14 @@ npx eas integrations:asc [...]   # status, connect, disconnect
 
 ## Architecture
 
-Commander tree in `src/cli.ts`, one file per top-level command in `src/commands/`. `src/lib/eas-cli.ts` shells out to `eas-cli`. Built with tsup to ESM, a `cli.js` entry plus shared chunks. Node 20+.
-
-## Apple ASC API workarounds
-
-Apple changed several ASC API behaviors after the initial CLI release. The CLI handles each one.
-
-- `POST /v1/bundleIds` rejects `platform: "SERVICES"`. `services-id` walks you through manual creation in the developer portal, then re-polls.
-- App bundle IDs report `platform: "UNIVERSAL"` for newer accounts. The App ID lookup matches any non-SERVICES platform.
-- Relationship endpoints reject `limit`. The capability list fetches without pagination.
-- `filter[platform]=SERVICES` returns 400. `doctor` filters by identifier alone.
+Commander tree in `src/cli.ts`, one file per top-level command in `src/commands/`. `src/lib/eas-cli.ts` shells out to `eas-cli`. Built with tsup to ESM, a `cli.js` entry plus shared chunks. Node 20+. The CLI absorbs four post-2025 Apple ASC API changes and keeps working when Apple loosens them.
 
 ## Repo
 
 [github.com/ramonclaudio/vexpo](https://github.com/ramonclaudio/vexpo)
 
 Working on the CLI itself? See [CONTRIBUTING.md](https://github.com/ramonclaudio/vexpo/blob/main/CONTRIBUTING.md).
+
+## License
+
+MIT

@@ -1,6 +1,6 @@
 # vexpo
 
-An iOS app on Expo SDK 56, wired end-to-end with Convex, Better Auth, and Resend. Native SwiftUI throughout, email + password + OTP + Apple Sign In, push, and the full EAS build surface. Everything below is already wired, so you run two commands and you're in the app.
+An iOS app on Expo SDK 56, wired with Convex, Better Auth, and Resend. Native SwiftUI throughout.
 
 <p align="center">
   <img src="https://raw.githubusercontent.com/ramonclaudio/vexpo/main/docs/assets/demo-app.gif" width="300" alt="Sign up, onboarding, search, and the dark-mode flip">
@@ -13,14 +13,12 @@ An iOS app on Expo SDK 56, wired end-to-end with Convex, Better Auth, and Resend
 
 ## Quick start
 
-Requires macOS and Xcode. This is an iOS-only template, and `npm run ios` builds against the simulator. See [Pre-reqs](#pre-reqs).
-
-The `vexpo` CLI ships as a dependency, so `npm install` puts it on your path:
+Requires macOS and Xcode (iOS-only). The `vexpo` CLI ships as a dependency, so `npm install` puts it on your path:
 
 ```bash
 npm install
 
-npx vexpo lite         # 60-second path: Convex + Better Auth, simulator-ready
+npx vexpo lite         # Convex + Better Auth, simulator-ready in about a minute
 npx vexpo lite --new   # same, plus a Convex signup walkthrough if you don't have one
 ```
 
@@ -31,7 +29,7 @@ npm run convex:dev      # terminal 1
 npm run ios             # terminal 2
 ```
 
-Lite mode skips Apple, EAS, and Resend. Sign-up auto-verifies and drops you in the app with one tap. The OTP, password-reset, and change-email flows that need Resend stay hidden.
+Lite skips Apple, EAS, and Resend. Sign-up auto-verifies and drops you in with one tap. The flows that need Resend (OTP, password reset, change email) stay hidden.
 
 ## Ship path
 
@@ -42,22 +40,22 @@ npx vexpo full         # provisions Resend, Apple Sign In, EAS, rebrand wizard
 npx vexpo full --new   # same, plus walks Apple, Convex, Expo, and Resend signups
 ```
 
-`full` writes `.env.local`, sets Convex env vars, validates the ASC API key, signs the SIWA JWT, runs `eas init` and `eas env:push`, and prints the `eas build` command at the end. It never runs the build for you.
+`full` writes `.env.local`, sets Convex env vars, validates the ASC API key, signs the SIWA JWT, runs `eas init` + `eas env:push`, and prints the `eas build` command. It never runs the build for you.
 
-Run `npx vexpo doctor` any time to auth-check every credential against the real service and cross-reference IDs across `.env.local`, Convex env, EAS env, and `app.config.ts`.
-
-Full walkthrough with every prompt, env-var alternative, and recovery path: [`SETUP.md`](./SETUP.md).
+- `npx vexpo doctor` auth-checks every credential and cross-references IDs across `.env.local`, Convex env, EAS env, and `app.config.ts`.
+- `npx vexpo full --plan` previews the setup before you start.
+- `npx vexpo full --dry-run` shows what the next run would change.
 
 ## Pre-reqs
 
-- macOS + Xcode for the simulator and signing
-- Apple Developer Program membership ($99/yr) when you're ready to ship
-- A domain you control DNS for, for Resend's sending domain
+- macOS and Xcode
 - Bun or Node 20+
+- Apple Developer Program ($99/yr), when you're ready to ship
+- A domain you control DNS for (Resend sending domain)
 
 ## Scripts
 
-```
+```text
 npm run dev                    Metro + dev client
 npm run start                  Metro with cleared cache
 npm run ios                    Clean prebuild + compile + run on simulator
@@ -101,12 +99,12 @@ npm run upgrade                expo install expo@next && expo install --fix
 npm run upgrade:stable         expo install expo@latest && expo install --fix
 ```
 
-Setup is one-shot, not a `package.json` script. Run `npx vexpo lite`, `npx vexpo full`, or `npx vexpo doctor` directly. All deletions go through `trash` (macOS Trash, recoverable).
+Setup is one-shot, not a `package.json` script. Run `npx vexpo lite`, `npx vexpo full`, or `npx vexpo doctor` directly. Deletions go through `trash` (recoverable from macOS Trash).
 
 ## What's wired up
 
-- Convex backend, reactive queries, storage, real-time sync, per-mutation rate limiting
-- Better Auth via `@convex-dev/better-auth`, email + password + OTP + Apple Sign In, per-device session revocation
+- Convex backend: reactive queries, storage, real-time sync, per-mutation rate limiting
+- Better Auth via `@convex-dev/better-auth`: email, password, OTP, Apple Sign In, per-device session revocation
 - App Attest device-attestation primitives ready to wire (client lib + Convex verifier)
 - Resend for OTP, password reset, and change-email, with delivery webhooks
 - APNs push, Apple Universal Links, profile editing with avatar uploads
@@ -118,11 +116,9 @@ Setup is one-shot, not a `package.json` script. Run `npx vexpo lite`, `npx vexpo
 
 `runtimeVersion` uses the fingerprint policy with `appVersionSource: "remote"`, ASC key managed by EAS. PR previews, Maestro E2E, and the production deploy are `workflow_dispatch`-only by default. Restore the `pull_request` triggers to build on every PR, or add a `push: main` trigger to deploy on merge.
 
-For the full feature list, design system, and the upstream PRs behind it, see [`DESIGN.md`](./DESIGN.md) and [`UPSTREAM.md`](https://github.com/ramonclaudio/vexpo/blob/main/docs/UPSTREAM.md).
-
 ## Project structure
 
-```
+```text
 src/
   app/                            Expo Router screens
     (app)/                        Authenticated stack (auth modal, tabs, profile, ...)
@@ -148,17 +144,20 @@ scripts/
 __tests__/                        Convex + lib unit tests (validators, HMAC, deep link, schemas)
 ```
 
-## Long-form docs
+## More
 
-- [`SETUP.md`](./SETUP.md). Every setup phase with full prompts, env-var alternatives, recovery paths.
-- [`DESIGN.md`](./DESIGN.md). Palette, typography, spacing, materials, and the SwiftUI composition surface.
-- [`AGENTS.md`](./AGENTS.md). Guidance for AI coding agents working in this codebase.
-- [`UPSTREAM.md`](https://github.com/ramonclaudio/vexpo/blob/main/docs/UPSTREAM.md). Every upstream PR powering the template.
+- [`AGENTS.md`](./AGENTS.md): conventions for AI coding agents (and humans) working in this codebase.
 
 ## Version pinning
 
-Every `expo-*` package tracks the same SDK 56 release. Mismatched versions cause subtle runtime crashes. `npm run upgrade:stable` rolls them all forward together. `npm run upgrade` tracks the next SDK preview.
+Every `expo-*` package tracks the same SDK 56 release. `npm run upgrade:stable` rolls them forward together. `npm run upgrade` tracks the next SDK preview.
 
-`@convex-dev/better-auth@0.12.0` is the minimum compatible with `better-auth@1.6.x` (`0.12.3` peer-deps `better-auth >=1.6.11 <1.7.0`). Earlier versions peer-dep `better-auth <1.6.0` and reject the `mode` field newer better-auth adds to adapter queries, which breaks signup. The template pins `better-auth@1.6.16` and `@convex-dev/better-auth@0.12.3`.
+> [!CAUTION]
+> Two deps are pinned on purpose, don't bump them blind:
+>
+> - `better-auth@1.6.16` + `@convex-dev/better-auth@0.12.3`. Older `@convex-dev/better-auth` breaks signup.
+> - `convex@~1.40.0`. 1.41.0 breaks the `convex/http.ts` typecheck against `@convex-dev/resend@0.2.4`.
 
-`convex` is pinned `~1.40.0` for now. 1.41.0 adds a `transactionLimits` param to `runMutation` that `@convex-dev/resend@0.2.4`'s ctx types reject, which breaks the `convex/http.ts` typecheck. Widen back to `^1.40.0` once resend's types accept 1.41.
+## License
+
+MIT
