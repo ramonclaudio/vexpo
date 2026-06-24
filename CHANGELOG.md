@@ -4,6 +4,18 @@ All notable changes to vexpo are tracked here. Format follows [Keep a Changelog]
 
 ## [Unreleased]
 
+## [0.1.6] - 2026-06-24
+
+- Drop unused deps from the `vexpo` CLI (`execa`, `kleur`, `ora`, `prompts`, `@types/prompts`). The CLI hand-rolls its ANSI output and subprocess spawning in `output.ts` and `proc.ts`, so these rode along since 0.1.0 without ever being imported. `create-vexpo` keeps the ones it uses.
+- Wire the `eas-cli` helpers (`easSpawn`, `easText`) and the runtime helpers (`currentRuntime`, `currentRuntimeVersion`) into their call sites, making `eas-cli.ts` the single source for every `eas` invocation. Five interactive spawns and seven text-parsing calls dropped their inline `[dlx(), "eas", ...]` duplication.
+- Drop dead weight across the CLI and template: the unused `src/index.ts` constants module and its package export, a stale `runResendRepoint` export, the template's `@vitest/ui` devDep, a `tsconfig` exclude pointing at a file that never existed, and the dead `test:all` and `test:template` npm scripts.
+- Drop the vestigial `EXPO_PUBLIC_HEAD_ORIGIN` read from `app.config.ts`: the inert remnant of an unstarted Apple Handoff feature, read but never provisioned, so always undefined.
+- Document `convex/auth.ts` `rotateKeys` as a manual ops tool, not a cron. It deletes the whole JWKS with no grace period, so a scheduled run would invalidate every active session.
+- Move `SECURITY.md` to the repo root and demo media to `.github/assets/`, and relink every reference.
+- Cut fluff from the public docs and split the deep reference (`ARCHITECTURE`, `OPERATIONS`, `UPSTREAM`, `SETUP`, `DESIGN`) into a gitignored `.dev/`, kept internal and out of scaffolded projects. Rewrite the READMEs in plain voice and run a GitHub-Flavored-Markdown formatting pass.
+- Bump the template's `@ramonclaudio/vexpo` floor to track the release.
+- 513 tests (366 vexpo unit + 113 template + 14 cli e2e + 20 scaffold e2e), plus opt-in live suites (Convex Platform API, Maestro).
+
 ## [0.1.5] - 2026-06-12
 
 - Stop `doctor` reporting false warnings when `FORCE_COLOR` is set in the parent shell (CI, screen recordings). eas-cli wrapped its output in ANSI dim codes and every regex parser silently missed, so a healthy project showed phantom `project-info failed` and `missing` env warns. `run()` now forces color off for any subprocess it parses.
@@ -96,7 +108,8 @@ First public release.
 
 See [`README.md`](./README.md) for the feature list and [`SECURITY.md`](./SECURITY.md) for the threat model.
 
-[Unreleased]: https://github.com/ramonclaudio/vexpo/compare/v0.1.5...HEAD
+[Unreleased]: https://github.com/ramonclaudio/vexpo/compare/v0.1.6...HEAD
+[0.1.6]: https://github.com/ramonclaudio/vexpo/releases/tag/v0.1.6
 [0.1.5]: https://github.com/ramonclaudio/vexpo/releases/tag/v0.1.5
 [0.1.4]: https://github.com/ramonclaudio/vexpo/releases/tag/v0.1.4
 [0.1.3]: https://github.com/ramonclaudio/vexpo/releases/tag/v0.1.3
