@@ -196,7 +196,6 @@ export default ({ config }: ConfigContext): ExpoConfig => {
         "expo-router",
         {
           sitemap: false,
-          headOrigin: process.env.EXPO_PUBLIC_HEAD_ORIGIN,
         },
       ],
       [
