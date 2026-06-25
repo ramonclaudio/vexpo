@@ -10,7 +10,7 @@ vi.mock("../../src/lib/eas-cli.ts", () => ({
 }));
 
 vi.mock("../../src/lib/env-local.ts", () => ({
-  readOne: vi.fn(),
+  readAll: vi.fn(),
 }));
 
 vi.mock("node:fs", async () => {
@@ -21,24 +21,31 @@ vi.mock("node:fs", async () => {
 import { ascKeyEnv, ensureAscAppId } from "../../src/commands/asc.ts";
 import { runSubmit } from "../../src/commands/submit.ts";
 import { easSpawn } from "../../src/lib/eas-cli.ts";
-import { readOne } from "../../src/lib/env-local.ts";
+import { readAll } from "../../src/lib/env-local.ts";
 
 const ascKeyEnvSpy = ascKeyEnv as unknown as ReturnType<typeof vi.fn>;
 const ensureAscAppIdSpy = ensureAscAppId as unknown as ReturnType<typeof vi.fn>;
 const easSpawnSpy = easSpawn as unknown as ReturnType<typeof vi.fn>;
-const readOneSpy = readOne as unknown as ReturnType<typeof vi.fn>;
+const readAllSpy = readAll as unknown as ReturnType<typeof vi.fn>;
 
 beforeEach(() => {
   ascKeyEnvSpy.mockReset();
   ensureAscAppIdSpy.mockReset();
   easSpawnSpy.mockReset();
-  readOneSpy.mockReset();
+  readAllSpy.mockReset();
   ascKeyEnvSpy.mockResolvedValue({
     EXPO_ASC_API_KEY_PATH: "/tmp/fake.p8",
     EXPO_ASC_KEY_ID: "ABCDE12345",
     EXPO_ASC_ISSUER_ID: "11111111-2222-3333-4444-555555555555",
   });
-  readOneSpy.mockResolvedValue("com.vexpo.vexpo");
+  readAllSpy.mockResolvedValue(
+    new Map([
+      ["EXPO_PUBLIC_APP_BUNDLE_ID", "com.vexpo.vexpo"],
+      ["EXPO_PUBLIC_CONVEX_URL", "https://x.convex.cloud"],
+      ["EAS_PROJECT_ID", "pid-123"],
+      ["BETTER_AUTH_SECRET", "secret-do-not-forward"],
+    ]),
+  );
   ensureAscAppIdSpy.mockResolvedValue("1234567890");
   easSpawnSpy.mockResolvedValue(0);
 });
@@ -61,6 +68,11 @@ describe("runSubmit", () => {
     ]);
     expect(opts.env.EXPO_ASC_KEY_ID).toBe("ABCDE12345");
     expect(opts.env.EXPO_ASC_API_KEY_PATH).toBe("/tmp/fake.p8");
+    // the .env.local identity is forwarded so eas-cli resolves the real app,
+    // not the com.example.* placeholder, but secrets are not
+    expect(opts.env.EXPO_PUBLIC_APP_BUNDLE_ID).toBe("com.vexpo.vexpo");
+    expect(opts.env.EAS_PROJECT_ID).toBe("pid-123");
+    expect(opts.env.BETTER_AUTH_SECRET).toBeUndefined();
     // process.env is forwarded too (PATH etc.), not replaced
     expect(opts.env.PATH ?? opts.env.Path).toBeDefined();
   });
