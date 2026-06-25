@@ -71,9 +71,19 @@ jobs:
   submit_ios:
     name: Submit to App Store
     needs: [build_ios]
-    type: submit
-    params:
-      build_id: ${{ needs.build_ios.outputs.build_id }}
+    type: custom
+    runs_on: linux-medium
+    # `production` pulls the ASC_APP_ID env var (set by `vexpo asc:connect`) so the
+    # committed eas.json stays free of the app's id. The inject step no-ops when
+    # ASC_APP_ID isn't set.
+    environment: production
+    steps:
+      - uses: eas/checkout
+      - uses: eas/install_node_modules
+      - name: Inject ascAppId into eas.json
+        run: node scripts/eas-inject-asc-app-id.mjs
+      - name: Submit to App Store
+        run: npx eas-cli submit -p ios --profile production --id ${{ needs.build_ios.outputs.build_id }} --non-interactive
 
   update_ios:
     name: OTA update

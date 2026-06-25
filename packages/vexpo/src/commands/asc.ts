@@ -47,6 +47,7 @@ import { readFile, writeFile } from "node:fs/promises";
 import { makeAscClient } from "../lib/asc-api.ts";
 import { loadAscCreds } from "../lib/asc-state.ts";
 import { easSpawn } from "../lib/eas-cli.ts";
+import { envCreate, envList, envUpdate } from "../lib/eas-env.ts";
 import { ascStatus } from "../lib/eas-integrations.ts";
 import { withAscAppId } from "../lib/eas-submit.ts";
 import { readOne } from "../lib/env-local.ts";
@@ -109,13 +110,33 @@ async function syncAscAppIdToEasJson(ascAppId: string | undefined): Promise<void
     if (after !== before) {
       await writeFile("eas.json", after);
       ok(`wrote ascAppId ${BOLD}${ascAppId}${RESET} to eas.json submit profiles`);
-      note("commit this in your fork: non-interactive `eas submit` (CI) needs it");
+      note("commit this so CI submits resolve the app, or keep eas.json clean and");
+      note("rely on the ASC_APP_ID EAS env var the workflow injects (pushed below).");
     } else {
       nop("eas.json submit profiles already carry ascAppId");
     }
   } catch (err) {
     yep(`couldn't write ascAppId to eas.json: ${err instanceof Error ? err.message : err}`);
     note("non-interactive submit will need `ascAppId` set manually in eas.json");
+  }
+  await pushAscAppIdToEas(ascAppId);
+}
+
+/**
+ * Push the app id to the EAS `production` env as ASC_APP_ID so the release/deploy
+ * workflows can inject it into eas.json at submit time, keeping the committed
+ * eas.json free of the id. Best-effort: not logged into EAS or no project yet
+ * just means the workflow falls back to whatever eas.json already carries.
+ */
+async function pushAscAppIdToEas(ascAppId: string): Promise<void> {
+  try {
+    const env = await envList("production");
+    if (env.get("ASC_APP_ID") === ascAppId) return;
+    if (env.has("ASC_APP_ID")) await envUpdate("ASC_APP_ID", ascAppId, "plaintext", ["production"]);
+    else await envCreate("ASC_APP_ID", ascAppId, "plaintext", ["production"]);
+    ok("pushed ASC_APP_ID to the EAS production env (CI auto-submit reads it)");
+  } catch {
+    // best-effort; the committed eas.json ascAppId path still works without it
   }
 }
 
