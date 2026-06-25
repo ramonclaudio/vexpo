@@ -10,7 +10,7 @@ import { existsSync } from "node:fs";
 
 import { ascKeyEnv, ensureAscAppId } from "./asc.ts";
 import { easSpawn } from "../lib/eas-cli.ts";
-import { readOne } from "../lib/env-local.ts";
+import { readAll } from "../lib/env-local.ts";
 import { BOLD, RESET, bad, note, ok, section } from "../lib/output.ts";
 
 export type SubmitOptions = {
@@ -28,10 +28,19 @@ export async function runSubmit(opts: SubmitOptions = {}): Promise<number> {
     return 1;
   }
 
-  const bundleId = await readOne("EXPO_PUBLIC_APP_BUNDLE_ID");
+  const local = await readAll();
+  const bundleId = local.get("EXPO_PUBLIC_APP_BUNDLE_ID");
   if (!bundleId) {
     bad("no EXPO_PUBLIC_APP_BUNDLE_ID in .env.local. Run `vexpo convex` first.");
     return 1;
+  }
+
+  // eas-cli evaluates app.config with EXPO_NO_DOTENV (it never reads .env.local),
+  // so without forwarding these the bundle id falls back to the `com.example.*`
+  // placeholder and the submit resolves the wrong app. Pass the public identity.
+  const identity: Record<string, string> = {};
+  for (const [k, v] of local) {
+    if (k.startsWith("EXPO_PUBLIC_") || k === "EAS_PROJECT_ID") identity[k] = v;
   }
 
   if (!existsSync("eas.json")) {
@@ -56,7 +65,7 @@ export async function runSubmit(opts: SubmitOptions = {}): Promise<number> {
 
   note(`eas ${args.join(" ")}`);
   const code = await easSpawn(args, {
-    env: { ...(process.env as Record<string, string>), ...keyEnv },
+    env: { ...(process.env as Record<string, string>), ...identity, ...keyEnv },
   });
   if (code !== 0) {
     bad(`eas submit exited with code ${code}`);
