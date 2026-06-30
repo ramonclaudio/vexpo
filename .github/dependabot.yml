@@ -12,6 +12,9 @@ updates:
         update-types:
           - minor
           - patch
+    ignore:
+      - dependency-name: "@types/node"
+        update-types: ["version-update:semver-major"]
 
   - package-ecosystem: npm
     directory: /packages/vexpo
@@ -24,6 +27,9 @@ updates:
         update-types:
           - minor
           - patch
+    ignore:
+      - dependency-name: "@types/node"
+        update-types: ["version-update:semver-major"]
 
   - package-ecosystem: npm
     directory: /packages/create-vexpo
@@ -36,8 +42,12 @@ updates:
         update-types:
           - minor
           - patch
+    ignore:
+      - dependency-name: "@types/node"
+        update-types: ["version-update:semver-major"]
 
-  # Scaffolds into thousands of apps, so keep its deps current.
+  # Scaffolds into thousands of apps. The Expo SDK pins the runtime deps (managed
+  # with `expo install`), so Dependabot updates only the tooling and non-Expo deps.
   - package-ecosystem: npm
     directory: /templates/default
     schedule:
@@ -49,6 +59,16 @@ updates:
         update-types:
           - minor
           - patch
+    ignore:
+      - dependency-name: "@types/node"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "expo"
+      - dependency-name: "expo-*"
+      - dependency-name: "@expo/*"
+      - dependency-name: "react"
+      - dependency-name: "react-dom"
+      - dependency-name: "react-native"
+      - dependency-name: "react-native-*"
 
   - package-ecosystem: github-actions
     directory: /
