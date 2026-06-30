@@ -41,7 +41,7 @@ import {
   clearAll,
   isStepFresh,
   load as loadState,
-  recordStep,
+  touchVerifyAt,
   type StepName,
 } from "../lib/state.ts";
 
@@ -195,7 +195,9 @@ async function shouldRun(step: StepName, liveCheck: () => Promise<boolean>): Pro
   if (live && !options.dryRun && !options.plan && !options.noState) {
     // Gated on !dryRun + !plan + !noState because those modes are explicitly
     // read-only previews; mutating state.json from a preview would be a surprise.
-    await recordStep(step, { source: "live-check" });
+    // Only bump verifyAt: replacing the record would wipe cached outputs that
+    // downstream commands (apple jwt --rotate, eas-rotation-secrets) read back.
+    await touchVerifyAt(step);
   }
   return { step, label: step, status: live ? "live" : "missing" };
 }

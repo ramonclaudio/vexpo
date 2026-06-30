@@ -130,6 +130,21 @@ export async function recordStep(name: StepName, outputs?: Record<string, unknow
   await save(state);
 }
 
+// A live-check passed after the TTL expired. Bump the step's freshness clock
+// without touching its cached outputs: a re-run of `vexpo full` past TTL must
+// not wipe the IDs (servicesId/teamId/keyId/p8Path, webhookId, ...) that
+// downstream commands read back via lookupOutput / lookupCachedPath. When no
+// record exists yet (env configured out of band), seed one marked live-check.
+export async function touchVerifyAt(name: StepName): Promise<void> {
+  const state = await load();
+  const now = new Date().toISOString();
+  const existing = state.steps[name];
+  state.steps[name] = existing
+    ? { ...existing, verifyAt: now }
+    : { name, completedAt: now, outputs: { source: "live-check" }, verifyAt: now };
+  await save(state);
+}
+
 export async function appendAudit(entry: AuditEntry): Promise<void> {
   const state = await load();
   state.audit.push(entry);
