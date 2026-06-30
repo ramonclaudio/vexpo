@@ -9,6 +9,8 @@ import kleur from "kleur";
 import ora from "ora";
 import prompts from "prompts";
 
+import { STRIPPED_DOTFILES, strippedToUnderscore } from "./dotfiles.ts";
+
 import pkg from "../package.json" with { type: "json" };
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -170,22 +172,10 @@ async function resolveName(argDir: string | undefined, yes: boolean): Promise<st
   return res.name as string;
 }
 
-// Restore dotfiles npm strips from published tarballs. Keep this list in sync
-// with tsup.config.ts STRIPPED_DOTFILES.
+// Restore dotfiles npm strips from published tarballs.
 async function restoreStrippedDotfiles(target: string): Promise<void> {
-  const renames: Array<[string, string]> = [
-    ["_gitignore", ".gitignore"],
-    ["_env.example", ".env.example"],
-    ["_oxfmtrc.json", ".oxfmtrc.json"],
-    ["_oxlintrc.json", ".oxlintrc.json"],
-    ["_editorconfig", ".editorconfig"],
-    ["_gitattributes", ".gitattributes"],
-    ["_easignore", ".easignore"],
-    ["_fingerprintignore", ".fingerprintignore"],
-    ["_npmrc", ".npmrc"],
-  ];
-  for (const [from, to] of renames) {
-    const src = join(target, from);
+  for (const to of STRIPPED_DOTFILES) {
+    const src = join(target, strippedToUnderscore(to));
     if (existsSync(src)) await rename(src, join(target, to));
   }
 }
