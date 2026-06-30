@@ -11,7 +11,8 @@
 import { existsSync, readFileSync } from "node:fs";
 
 import { lintPrivacyConfig } from "../lib/asc-privacy.ts";
-import { BOLD, DIM, RED, RESET, YELLOW, bad, line, note, ok, section } from "../lib/output.ts";
+import { runLint } from "../lib/lint.ts";
+import { BOLD, DIM, RESET, bad, line, note, section } from "../lib/output.ts";
 
 const ASC_PRIVACY_URL = "https://appstoreconnect.apple.com";
 
@@ -53,25 +54,5 @@ export async function runPrivacyShow(file: string, opts: { json?: boolean } = {}
 }
 
 export async function runPrivacyLint(filePath: string): Promise<number> {
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(readFileSync(filePath, "utf8"));
-  } catch (err) {
-    bad(`failed to read ${filePath}: ${err instanceof Error ? err.message : String(err)}`);
-    return 1;
-  }
-  const issues = lintPrivacyConfig(parsed);
-  const errors = issues.filter((i) => i.severity === "error");
-  const warnings = issues.filter((i) => i.severity === "warning");
-  section(`Privacy lint: ${filePath}`);
-  for (const i of issues) {
-    const tag = i.severity === "error" ? `${RED}error${RESET}` : `${YELLOW}warn${RESET}`;
-    line(`  ${tag}  ${i.message}`);
-  }
-  if (errors.length === 0 && warnings.length === 0) {
-    ok("clean");
-    return 0;
-  }
-  line(`${BOLD}${errors.length}${RESET} error(s), ${BOLD}${warnings.length}${RESET} warning(s)`);
-  return errors.length > 0 ? 1 : 0;
+  return runLint(filePath, lintPrivacyConfig, "Privacy lint");
 }
