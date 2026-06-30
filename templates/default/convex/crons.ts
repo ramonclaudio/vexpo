@@ -17,12 +17,6 @@ crons.daily(
   internal.users.hardDeleteExpired,
 );
 
-crons.hourly(
-  "cleanup expired app attest challenges",
-  { minuteUTC: 17 },
-  internal.appAttestStore.cleanupChallenges,
-);
-
 // The Resend component retains finalized (delivered, cancelled, bounced)
 // emails and it's our job to clear them. Run hourly to keep the emails table
 // bounded. See @convex-dev/resend README → "Data retention".

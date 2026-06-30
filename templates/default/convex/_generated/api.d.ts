@@ -9,8 +9,6 @@
  */
 
 import type * as admin from "../admin.js";
-import type * as appAttest from "../appAttest.js";
-import type * as appAttestStore from "../appAttestStore.js";
 import type * as apple from "../apple.js";
 import type * as auth from "../auth.js";
 import type * as constants from "../constants.js";
@@ -36,8 +34,6 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   admin: typeof admin;
-  appAttest: typeof appAttest;
-  appAttestStore: typeof appAttestStore;
   apple: typeof apple;
   auth: typeof auth;
   constants: typeof constants;

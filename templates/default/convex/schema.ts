@@ -39,33 +39,6 @@ export default defineSchema(
       .index("by_user", ["userId"])
       .index("by_token", ["token"])
       .index("by_revoked_updatedAt", ["revoked", "updatedAt"]),
-
-    // We expire unused challenges after the TTL so a stolen App Attest
-    // challenge can't be replayed later.
-    appAttestChallenges: defineTable({
-      nonce: v.string(),
-      expiresAt: v.number(),
-      used: v.optional(v.boolean()),
-    })
-      .index("by_nonce", ["nonce"])
-      .index("by_expiresAt", ["expiresAt"]),
-
-    appAttestKeys: defineTable({
-      // Apple's keyId (base64-encoded SHA256 of the public key per
-      // App Attest spec).
-      keyId: v.string(),
-      publicKey: v.string(),
-      // Monotonic counter from the most recent assertion. Reject any
-      // assertion with a counter not strictly greater than this.
-      counter: v.number(),
-      // Dev attestations (`appattestdevelop`) are allowed in non-production
-      // Convex env but should never appear in a production app's signed binary.
-      environment: v.union(v.literal("development"), v.literal("production")),
-      attestedAt: v.number(),
-      userId: v.optional(v.id("users")),
-    })
-      .index("by_keyId", ["keyId"])
-      .index("by_user", ["userId"]),
   },
   { strictTableNameTypes: true },
 );

@@ -187,17 +187,6 @@ export default ({ config }: ConfigContext): ExpoConfig => {
         ITSAppUsesNonExemptEncryption: false,
         LSApplicationQueriesSchemes: ["mailto", "tel", "sms", "itms-apps"],
       },
-      // App Attest entitlement. `@expo/app-integrity` calls the
-      // DCAppAttestService API; iOS rejects unentitled access. The value
-      // `production` keeps every signed/distributed build (TestFlight,
-      // App Store) in the production AAGUID. Local debug builds with the
-      // Xcode debugger attached attest against the development AAGUID
-      // automatically without changing this value, so the same entry
-      // works across simulator-impossible and real-device paths.
-      // https://developer.apple.com/documentation/bundleresources/entitlements/com.apple.developer.devicecheck.appattest-environment
-      entitlements: {
-        "com.apple.developer.devicecheck.appattest-environment": "production",
-      },
       associatedDomains: [
         `applinks:${process.env.EXPO_PUBLIC_CONVEX_SITE_URL?.replace(/^https?:\/\//, "") ?? "example.convex.site"}`,
       ],
