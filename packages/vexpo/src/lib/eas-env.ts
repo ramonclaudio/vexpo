@@ -166,8 +166,30 @@ export async function init(): Promise<{ ok: boolean; projectId?: string }> {
   return { ok: !!id, projectId: id ?? undefined };
 }
 
-/** Idempotent: re-creates are no-ops on EAS. */
-export async function createChannel(name: string): Promise<boolean> {
+export async function listChannels(): Promise<string[]> {
+  const { code, stdout, stderr } = await run([
+    dlx(),
+    EAS_CLI,
+    "channel:list",
+    "--json",
+    "--non-interactive",
+    "--limit",
+    "25",
+  ]);
+  if (code !== 0) {
+    throw new Error(
+      `eas channel:list failed: ${stderr.trim().split("\n").pop()?.trim() ?? `exit ${code}`}`,
+    );
+  }
+  try {
+    const parsed = JSON.parse(stdout) as { currentPage?: Array<{ name?: string }> };
+    return (parsed.currentPage ?? []).map((c) => c.name ?? "").filter(Boolean);
+  } catch {
+    return [];
+  }
+}
+
+async function createChannel(name: string): Promise<boolean> {
   const { code } = await run([
     dlx(),
     EAS_CLI,
@@ -179,18 +201,46 @@ export async function createChannel(name: string): Promise<boolean> {
   return code === 0;
 }
 
+// Idempotency is ours, not EAS's: list first, create only the missing names, and
+// throw on a real create failure so the caller can't read it as "already exists".
 export async function ensureChannels(names: readonly string[]): Promise<string[]> {
-  // Let EAS own idempotency: try a create per name. createChannel swallows an
-  // "already exists" failure into `false`, so existing channels drop out here.
+  const existing = new Set(await listChannels());
   const created: string[] = [];
   for (const name of names) {
-    if (await createChannel(name)) created.push(name);
+    if (existing.has(name)) continue;
+    if (!(await createChannel(name))) throw new Error(`eas channel:create ${name} failed`);
+    created.push(name);
   }
   return created;
 }
 
-/** Idempotent. */
-export async function createBranch(name: string): Promise<boolean> {
+export async function listBranches(): Promise<string[]> {
+  const { code, stdout, stderr } = await run([
+    dlx(),
+    EAS_CLI,
+    "branch:list",
+    "--json",
+    "--non-interactive",
+    "--limit",
+    "25",
+  ]);
+  if (code !== 0) {
+    throw new Error(
+      `eas branch:list failed: ${stderr.trim().split("\n").pop()?.trim() ?? `exit ${code}`}`,
+    );
+  }
+  try {
+    const parsed = JSON.parse(stdout) as
+      | Array<{ name?: string }>
+      | { currentPage?: Array<{ name?: string }> };
+    if (Array.isArray(parsed)) return parsed.map((b) => b.name ?? "").filter(Boolean);
+    return (parsed.currentPage ?? []).map((b) => b.name ?? "").filter(Boolean);
+  } catch {
+    return [];
+  }
+}
+
+async function createBranch(name: string): Promise<boolean> {
   const { code } = await run([
     dlx(),
     EAS_CLI,
@@ -203,9 +253,12 @@ export async function createBranch(name: string): Promise<boolean> {
 }
 
 export async function ensureBranches(names: readonly string[]): Promise<string[]> {
+  const existing = new Set(await listBranches());
   const created: string[] = [];
   for (const name of names) {
-    if (await createBranch(name)) created.push(name);
+    if (existing.has(name)) continue;
+    if (!(await createBranch(name))) throw new Error(`eas branch:create ${name} failed`);
+    created.push(name);
   }
   return created;
 }
