@@ -165,6 +165,20 @@ export function fingerprint(value: string): string {
   return h.toString(16).padStart(8, "0");
 }
 
+// Read a recorded string output (an ID, not a path) from the first step that
+// has it. Unlike lookupCachedPath this skips the filesystem check.
+export function lookupOutput(
+  state: SetupState,
+  steps: readonly StepName[],
+  key: string,
+): string | undefined {
+  for (const step of steps) {
+    const value = state.steps[step]?.outputs?.[key];
+    if (typeof value === "string" && value) return value;
+  }
+  return undefined;
+}
+
 export async function lookupCachedPath(
   state: SetupState,
   steps: readonly StepName[],

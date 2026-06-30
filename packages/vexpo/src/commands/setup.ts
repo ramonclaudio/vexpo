@@ -574,7 +574,7 @@ async function describePhase(
         details: [
           "push the 5 EAS production secrets the JWT rotation cron needs",
           "APPLE_P8_PRIVATE_KEY (.p8 path; EAS reads + base64-encodes it)",
-          "APPLE_TEAM_ID, APPLE_KEY_ID, APPLE_SERVICES_ID (from .env.local)",
+          "APPLE_TEAM_ID, APPLE_KEY_ID, APPLE_SERVICES_ID (from apple-sign-in state)",
           "CONVEX_DEPLOY_KEY (minted via the Convex Platform API; paste fallback if offline)",
         ],
       };
