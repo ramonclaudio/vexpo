@@ -1,0 +1,4 @@
+#!/bin/sh
+# Runs the local check suite before a push. See CONTRIBUTING.md.
+# To skip once: git push --no-verify
+npm run validate
