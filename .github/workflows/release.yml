@@ -57,6 +57,19 @@ jobs:
       - run: npm run typecheck
       - run: npm run build
       - run: npm run test:packages
+      # Smoke-test the built binaries before they reach the registry.
+      - run: npm run test:packages:e2e
+
+      # Rehearse the publish: pack each package and fail if it would ship
+      # anything outside its `files` allowlist, then dry-run the registry upload.
+      - name: Publish dry-run rehearsal
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          node .github/scripts/pack-guard.mjs packages/vexpo
+          node .github/scripts/pack-guard.mjs packages/create-vexpo
+          npm publish --dry-run -w @ramonclaudio/vexpo
+          npm publish --dry-run -w @ramonclaudio/create-vexpo
 
       # `--access public` and `--provenance` come from each package's
       # `publishConfig`, so the CLI needs no flags. Auth is the NPM_TOKEN secret;
