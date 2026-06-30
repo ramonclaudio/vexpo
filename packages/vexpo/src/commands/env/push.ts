@@ -36,7 +36,7 @@ import {
   section,
   yep,
 } from "../../lib/output.ts";
-import { readContext, summarize, verifyAll, type Check } from "../../lib/verify.ts";
+import { readContext, renderVerifyResults, summarize, verifyAll } from "../../lib/verify.ts";
 
 export type EnvPushOptions = {
   force?: boolean;
@@ -447,7 +447,7 @@ export async function runEnvPush(options: EnvPushOptions): Promise<number> {
       section(`Verify (${channel})`);
       const ctx = await readContext(channel);
       const checks = await verifyAll(ctx);
-      printVerifyResults(checks);
+      renderVerifyResults(checks, "compact");
       const summary = summarize(checks);
       totalFail += summary.fail;
       totalWarn += summary.warn;
@@ -471,31 +471,4 @@ export async function runEnvPush(options: EnvPushOptions): Promise<number> {
   line();
   note("for full provisioning (Resend key, Apple JWT, signups), run `vexpo full`");
   return 0;
-}
-
-function printVerifyResults(checks: Check[]): void {
-  const w = Math.max(...checks.map((c) => c.name.length));
-  const order = ["files", "convex", "resend", "apple", "eas", "coherence"] as const;
-  const grouped = new Map<string, Check[]>();
-  for (const c of checks) {
-    if (!grouped.has(c.category)) grouped.set(c.category, []);
-    grouped.get(c.category)!.push(c);
-  }
-  for (const cat of order) {
-    const items = grouped.get(cat);
-    if (!items || items.length === 0) continue;
-    line(`  ${BOLD}${cat}${RESET}`);
-    for (const c of items) {
-      const sym =
-        c.severity === "ok"
-          ? `${GREEN}✓${RESET}`
-          : c.severity === "warn"
-            ? `${YELLOW}⚠${RESET}`
-            : c.severity === "fail"
-              ? `${RED}✗${RESET}`
-              : `${DIM}-${RESET}`;
-      line(`    ${sym} ${c.name.padEnd(w)}  ${c.message}`);
-      if (c.details) line(`        ${DIM}${c.details}${RESET}`);
-    }
-  }
 }

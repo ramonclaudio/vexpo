@@ -1,12 +1,11 @@
 import { access } from "node:fs/promises";
 
-import { BOLD, DIM, GREEN, RED, RESET, YELLOW, bad, line, note, section } from "../lib/output.ts";
+import { DIM, GREEN, RED, RESET, YELLOW, bad, line, note, section } from "../lib/output.ts";
 import {
   readContext,
+  renderVerifyResults,
   summarize,
   verifyAll,
-  type Category,
-  type Check,
   type Channel,
 } from "../lib/verify.ts";
 
@@ -31,19 +30,6 @@ export type DoctorOptions = {
   redact?: boolean;
 };
 
-function icon(severity: Check["severity"]): string {
-  switch (severity) {
-    case "ok":
-      return `${GREEN}✓${RESET}`;
-    case "warn":
-      return `${YELLOW}⚠${RESET}`;
-    case "fail":
-      return `${RED}✗${RESET}`;
-    case "skip":
-      return `${DIM}-${RESET}`;
-  }
-}
-
 // Mask identifying values for screenshots, demos, and pasted issue reports.
 // Statuses and check names stay readable, the values become placeholders.
 // Order matters: URLs before bare slugs, emails before domains.
@@ -62,30 +48,6 @@ export function redactValue(text: string): string {
   let out = text;
   for (const [re, sub] of REDACTIONS) out = out.replace(re, sub);
   return out;
-}
-
-function categoryHeader(c: Category): string {
-  return c.charAt(0).toUpperCase() + c.slice(1);
-}
-
-function printResults(checks: Check[], redact: boolean): void {
-  const byCategory = new Map<Category, Check[]>();
-  for (const c of checks) {
-    if (!byCategory.has(c.category)) byCategory.set(c.category, []);
-    byCategory.get(c.category)!.push(c);
-  }
-  const order: Category[] = ["files", "convex", "resend", "apple", "eas", "coherence"];
-  for (const cat of order) {
-    const items = byCategory.get(cat);
-    if (!items || items.length === 0) continue;
-    section(categoryHeader(cat));
-    const w = Math.max(...items.map((c) => c.name.length));
-    for (const c of items) {
-      const message = redact ? redactValue(c.message) : c.message;
-      line(`  ${icon(c.severity)} ${BOLD}${c.name.padEnd(w)}${RESET}  ${message}`);
-      if (c.details) line(`       ${DIM}${redact ? redactValue(c.details) : c.details}${RESET}`);
-    }
-  }
 }
 
 export async function runDoctor(options: DoctorOptions): Promise<number> {
@@ -121,7 +83,7 @@ export async function runDoctor(options: DoctorOptions): Promise<number> {
       process.stdout.write(JSON.stringify({ channel, summary, checks }, null, 2) + "\n");
     } else {
       section(`Verify (${channel})`);
-      printResults(checks, options.redact === true);
+      renderVerifyResults(checks, "section", options.redact === true ? redactValue : undefined);
       line();
       const parts = [
         `${GREEN}${summary.ok} ok${RESET}`,
