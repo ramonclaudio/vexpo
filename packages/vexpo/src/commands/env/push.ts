@@ -52,6 +52,17 @@ function shortValue(v: string): string {
   return `${v.slice(0, 30)}…${v.slice(-12)} ${DIM}(${v.length}b)${RESET}`;
 }
 
+// Convex-routed keys carry secrets (BETTER_AUTH_SECRET, RESEND_API_KEY, etc.)
+// that fit under shortValue's 60-char threshold and would otherwise print
+// verbatim in the plan, including on --dry-run. Render a fingerprint + length
+// for them instead of the raw value. EAS routes here are all EXPO_PUBLIC_*.
+export function planRowValue(entry: SyncEntry): string {
+  if (entry.destinations.some((d) => d.type === "convex")) {
+    return `fp: ${fingerprint(entry.value)} ${DIM}(${entry.value.length}b)${RESET}`;
+  }
+  return shortValue(entry.value);
+}
+
 function describeDest(d: Destination): string {
   if (d.type === "convex") return `convex env (${d.channel}) → ${d.key}`;
   return `eas env (${d.environments.join(",")}) → ${d.key}`;
@@ -133,7 +144,7 @@ function resolveDestination(
   };
 }
 
-type FilePlan = {
+export type FilePlan = {
   sourceFile: string;
   channel: Channel;
   rows: Array<{ entry: SyncEntry; resolved: ResolvedDestination[] }>;
@@ -164,7 +175,7 @@ function printFilePlan(plan: FilePlan): {
   let conflicts = 0;
   let blocked = 0;
   for (const row of plan.rows) {
-    line(`  ${BOLD}${row.entry.sourceKey}${RESET}  ${DIM}= ${shortValue(row.entry.value)}${RESET}`);
+    line(`  ${BOLD}${row.entry.sourceKey}${RESET}  ${DIM}= ${planRowValue(row.entry)}${RESET}`);
     for (const r of row.resolved) {
       const tag =
         r.status === "create"
@@ -189,10 +200,7 @@ function printFilePlan(plan: FilePlan): {
   return { actionable, conflicts, blocked };
 }
 
-async function applyPlan(
-  plan: FilePlan,
-  opts: { force?: boolean } = {},
-): Promise<{ applied: number; failed: number }> {
+export async function applyPlan(plan: FilePlan): Promise<{ applied: number; failed: number }> {
   const convexBatches = new Map<"dev" | "prod", Array<[string, string]>>();
   const easBatches = new Map<
     string,
@@ -235,10 +243,14 @@ async function applyPlan(
       await writeFile(tmp, entries.map(([k, v]) => `${k}=${v}`).join("\n") + "\n", {
         mode: 0o600,
       });
+      // The plan and the interactive confirm already gate overwrites, so force
+      // the overwrite to match the EAS path. Without --force the Convex CLI
+      // rejects the whole batch when a secret already exists (a TTY user who
+      // confirms still carries no opts.force, and CI has none either).
       await convexEnvSetFromFile(
         tmp,
         channel === "prod" ? { prod: true, envFile: plan.sourceFile } : undefined,
-        { force: opts.force ?? false },
+        { force: true },
       );
       ok(`convex(${channel}) bulk-set ${entries.length} var${entries.length === 1 ? "" : "s"}`);
       for (const [k] of entries) note(`  ${k}`);
@@ -426,7 +438,7 @@ export async function runEnvPush(options: EnvPushOptions): Promise<number> {
         continue;
       }
     }
-    const { applied, failed } = await applyPlan(plan, { force: options.force });
+    const { applied, failed } = await applyPlan(plan);
     appliedTotal += applied;
     failedTotal += failed;
   }

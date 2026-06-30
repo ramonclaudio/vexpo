@@ -12,7 +12,7 @@ import { envCreate, envList, envUpdate, type EasEnvironment } from "../../lib/ea
 import { readOne } from "../../lib/env-local.ts";
 import { BOLD, DIM, RESET, ask, bad, line, nop, note, ok, section, yep } from "../../lib/output.ts";
 import { expandTilde, stagedP8 } from "../../lib/path.ts";
-import { load as loadState, lookupCachedPath } from "../../lib/state.ts";
+import { load as loadState, lookupCachedPath, lookupOutput } from "../../lib/state.ts";
 
 const ENVS: readonly EasEnvironment[] = ["production"];
 
@@ -32,9 +32,15 @@ export async function runEasRotationSecrets(options: RotationSecretsOptions): Pr
     return 1;
   }
 
-  const teamId = await readOne("APPLE_TEAM_ID");
-  const keyId = await readOne("APPLE_KEY_ID");
-  const servicesId = (await readOne("APPLE_SERVICES_ID")) ?? (await readOne("APPLE_CLIENT_ID"));
+  // jwt.ts records identity to the apple-sign-in step and writes APPLE_TEAM_ID/
+  // APPLE_KEY_ID to Convex, never bare to .env.local. Read from state, only
+  // teamId has a .env.local mirror (EXPO_PUBLIC_APPLE_TEAM_ID) to fall back to.
+  const state = await loadState();
+  const teamId =
+    lookupOutput(state, ["apple-sign-in"], "teamId") ??
+    (await readOne("EXPO_PUBLIC_APPLE_TEAM_ID"));
+  const keyId = lookupOutput(state, ["apple-sign-in"], "keyId");
+  const servicesId = lookupOutput(state, ["apple-sign-in"], "servicesId");
   if (!teamId || !keyId || !servicesId) {
     const missing = [
       !teamId && "APPLE_TEAM_ID",
@@ -43,13 +49,12 @@ export async function runEasRotationSecrets(options: RotationSecretsOptions): Pr
     ]
       .filter(Boolean)
       .join(", ");
-    bad(`missing from .env.local: ${missing}`);
-    note("run `vexpo apple jwt` first to populate these");
+    bad(`missing Apple identity: ${missing}`);
+    note("run `vexpo apple jwt` first to record these");
     return 1;
   }
 
-  const cachedP8 =
-    (await lookupCachedPath(await loadState(), ["apple-sign-in"], "p8Path")) ?? stagedP8();
+  const cachedP8 = (await lookupCachedPath(state, ["apple-sign-in"], "p8Path")) ?? stagedP8();
   const rawP8 =
     process.env.APPLE_P8_PATH ??
     (process.stdin.isTTY

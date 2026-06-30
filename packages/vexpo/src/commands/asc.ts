@@ -53,9 +53,10 @@ import { requireBundleId } from "../lib/env-local.ts";
 import { BOLD, RESET, bad, line, nop, note, ok, section, yep } from "../lib/output.ts";
 import { recordStep } from "../lib/state.ts";
 
-type AscAppResolution =
+export type AscAppResolution =
   | { kind: "found"; ascAppId: string }
   | { kind: "defer" }
+  | { kind: "error"; error: unknown }
   | { kind: "unknown" };
 
 /**
@@ -65,7 +66,8 @@ type AscAppResolution =
  * so the wizard would die with eas-cli's raw "Found 0 app(s)". Outcomes:
  *   "found"    at least one app matches -> carries the ascAppId
  *   "defer"    cached creds + zero apps -> guide, don't spawn
- *   "unknown"  no cached creds, or the lookup itself errored -> spawn the wizard
+ *   "error"    creds present but the lookup itself threw -> spawn the wizard
+ *   "unknown"  no cached creds -> spawn the wizard
  */
 async function resolveAscApp(bundleId: string): Promise<AscAppResolution> {
   const creds = await loadAscCreds();
@@ -73,8 +75,8 @@ async function resolveAscApp(bundleId: string): Promise<AscAppResolution> {
   try {
     const id = (await makeAscClient(creds).apps.list({ bundleId }))[0]?.id;
     return id ? { kind: "found", ascAppId: id } : { kind: "defer" };
-  } catch {
-    return { kind: "unknown" };
+  } catch (error) {
+    return { kind: "error", error };
   }
 }
 
@@ -101,15 +103,14 @@ async function syncAscAppIdToEasJson(ascAppId: string | undefined): Promise<void
 }
 
 /**
- * Resolve the ASC app id for a bundle id and write it into eas.json's submit
- * profiles. Returns the id, or null when no app record exists yet (the first
- * submit creates it). Shared by `asc:connect` and `submit`.
+ * Resolve the ASC app for a bundle id and, when found, write its id into
+ * eas.json's submit profiles. Returns the full resolution so `submit` can tell
+ * a genuine zero-apps defer (build first) apart from a transient lookup error.
  */
-export async function ensureAscAppId(bundleId: string): Promise<string | null> {
+export async function ensureAscAppId(bundleId: string): Promise<AscAppResolution> {
   const resolved = await resolveAscApp(bundleId);
-  if (resolved.kind !== "found") return null;
-  await syncAscAppIdToEasJson(resolved.ascAppId);
-  return resolved.ascAppId;
+  if (resolved.kind === "found") await syncAscAppIdToEasJson(resolved.ascAppId);
+  return resolved;
 }
 
 /**

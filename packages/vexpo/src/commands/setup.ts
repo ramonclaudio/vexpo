@@ -41,7 +41,7 @@ import {
   clearAll,
   isStepFresh,
   load as loadState,
-  recordStep,
+  touchVerifyAt,
   type StepName,
 } from "../lib/state.ts";
 
@@ -195,7 +195,9 @@ async function shouldRun(step: StepName, liveCheck: () => Promise<boolean>): Pro
   if (live && !options.dryRun && !options.plan && !options.noState) {
     // Gated on !dryRun + !plan + !noState because those modes are explicitly
     // read-only previews; mutating state.json from a preview would be a surprise.
-    await recordStep(step, { source: "live-check" });
+    // Only bump verifyAt: replacing the record would wipe cached outputs that
+    // downstream commands (apple jwt --rotate, eas-rotation-secrets) read back.
+    await touchVerifyAt(step);
   }
   return { step, label: step, status: live ? "live" : "missing" };
 }
@@ -574,7 +576,7 @@ async function describePhase(
         details: [
           "push the 5 EAS production secrets the JWT rotation cron needs",
           "APPLE_P8_PRIVATE_KEY (.p8 path; EAS reads + base64-encodes it)",
-          "APPLE_TEAM_ID, APPLE_KEY_ID, APPLE_SERVICES_ID (from .env.local)",
+          "APPLE_TEAM_ID, APPLE_KEY_ID, APPLE_SERVICES_ID (from apple-sign-in state)",
           "CONVEX_DEPLOY_KEY (minted via the Convex Platform API; paste fallback if offline)",
         ],
       };

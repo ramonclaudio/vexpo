@@ -7,7 +7,6 @@ import {
   ask,
   askYesNo,
   bad,
-  fail,
   line,
   nop,
   note,
@@ -89,7 +88,7 @@ async function promptInputs(overrides: Partial<RebrandInputs>): Promise<RebrandI
     (interactive
       ? (await ask(`  ${BOLD}App name${RESET} ${DIM}(e.g. Foobar)${RESET} > `)).trim()
       : "");
-  if (!appName) fail("app name required");
+  if (!appName) throw new Error("app name required");
 
   const defaultPkg = slug(appName);
   const bundleHint = `com.${slug(appName).replace(/-/g, "")}.${bundleSlug(defaultPkg)}`;
@@ -107,7 +106,7 @@ async function promptInputs(overrides: Partial<RebrandInputs>): Promise<RebrandI
   const reviewEmail =
     overrides.reviewEmail ??
     (interactive ? (await ask(`  ${BOLD}Apple review contact email${RESET} > `)).trim() : "");
-  if (!reviewEmail) fail("review email required");
+  if (!reviewEmail) throw new Error("review email required");
 
   const packageName = overrides.packageName ?? defaultPkg;
   const scheme = overrides.scheme ?? bundleSlug(packageName);
@@ -179,23 +178,32 @@ async function backup(files: string[], stamp: string): Promise<void> {
   ok(`backups → ${dir}`);
 }
 
+// User-supplied values land in String.replace replacements, where $&, $`, $'
+// and $$ have special meaning. Double every $ so the value is inserted verbatim.
+function lit(value: string): string {
+  return value.replace(/\$/g, "$$$$");
+}
+
 async function rewriteAppConfig(inputs: RebrandInputs): Promise<void> {
   const file = "app.config.ts";
   let text = await readFile(file, "utf8");
 
+  // The template ships the backtick `com.example.${pkg.name}` form; a prior
+  // rebrand rewrites it to a double-quoted string. Match either so a --force
+  // re-run still moves the id.
   text = text.replace(
-    /const BUNDLE_ID = process\.env\.EXPO_PUBLIC_APP_BUNDLE_ID \?\? `com\.example\.\$\{pkg\.name\}`;/,
-    `const BUNDLE_ID = process.env.EXPO_PUBLIC_APP_BUNDLE_ID ?? "${inputs.bundleId}";`,
+    /const BUNDLE_ID = process\.env\.EXPO_PUBLIC_APP_BUNDLE_ID \?\? (?:`[^`]*`|"[^"]*");/,
+    `const BUNDLE_ID = process.env.EXPO_PUBLIC_APP_BUNDLE_ID ?? "${lit(inputs.bundleId)}";`,
   );
 
   text = text.replace(
     /name: IS_DEV \? "[^"]+" : "[^"]+",/,
-    `name: IS_DEV ? "${inputs.appName} (Dev)" : "${inputs.appName}",`,
+    `name: IS_DEV ? "${lit(inputs.appName)} (Dev)" : "${lit(inputs.appName)}",`,
   );
 
-  text = text.replace(/slug: "[^"]+",/, `slug: "${inputs.packageName}",`);
+  text = text.replace(/slug: "[^"]+",/, `slug: "${lit(inputs.packageName)}",`);
 
-  text = text.replace(/scheme: "[^"]+",/, `scheme: "${inputs.scheme}",`);
+  text = text.replace(/scheme: "[^"]+",/, `scheme: "${lit(inputs.scheme)}",`);
 
   await writeFile(file, text);
   ok(`updated ${file}`);
@@ -256,6 +264,73 @@ type StoreConfigShape = {
     promotionalText: Record<string, string>;
   };
 };
+
+async function readJsonTarget(file: string): Promise<unknown> {
+  let text: string;
+  try {
+    text = await readFile(file, "utf8");
+  } catch {
+    throw new Error(`${file} missing; restore it from the vexpo template first`);
+  }
+  try {
+    return JSON.parse(text) as unknown;
+  } catch {
+    throw new Error(`${file} is not valid JSON; restore it from the vexpo template first`);
+  }
+}
+
+// The rewrites run sequentially with no rollback, so a throw after the first
+// write leaves a half-rebranded project that a later run reports as "nothing to
+// rebrand". Validate every target up front, before backup or any write, so a
+// missing/malformed file fails loudly while the tree is still pristine.
+async function validateTargets(): Promise<void> {
+  let cfg: string;
+  try {
+    cfg = await readFile("app.config.ts", "utf8");
+  } catch {
+    throw new Error("app.config.ts missing; restore it from the vexpo template first");
+  }
+  const markers: Array<[RegExp, string]> = [
+    [
+      /const BUNDLE_ID = process\.env\.EXPO_PUBLIC_APP_BUNDLE_ID \?\? (?:`[^`]*`|"[^"]*");/,
+      "BUNDLE_ID assignment",
+    ],
+    [/name: IS_DEV \? "[^"]+" : "[^"]+",/, "name"],
+    [/slug: "[^"]+",/, "slug"],
+    [/scheme: "[^"]+",/, "scheme"],
+  ];
+  for (const [re, label] of markers) {
+    if (!re.test(cfg)) {
+      throw new Error(
+        `app.config.ts: missing expected ${label}; restore it from the vexpo template first`,
+      );
+    }
+  }
+
+  await readJsonTarget("app.json");
+
+  const pkg = await readJsonTarget("package.json");
+  if (typeof pkg !== "object" || pkg === null) {
+    throw new Error(
+      "package.json: expected a JSON object; restore it from the vexpo template first",
+    );
+  }
+
+  const store = await readJsonTarget("store.config.json");
+  const apple = (store as { apple?: { info?: Record<string, unknown>; review?: unknown } }).apple;
+  if (
+    !apple ||
+    typeof apple !== "object" ||
+    typeof apple.info?.["en-US"] !== "object" ||
+    apple.info["en-US"] === null ||
+    typeof apple.review !== "object" ||
+    apple.review === null
+  ) {
+    throw new Error(
+      'store.config.json: missing apple.info["en-US"]/apple.review; restore it from the vexpo template first',
+    );
+  }
+}
 
 async function alreadyRebranded(): Promise<boolean> {
   const state = await load();
@@ -322,6 +397,8 @@ export async function runRebrand(options: RebrandOptions): Promise<number> {
         return 1;
       }
     }
+
+    await validateTargets();
 
     const inputs = await promptInputs(overrides);
     line();

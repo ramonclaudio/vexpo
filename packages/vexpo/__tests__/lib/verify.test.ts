@@ -1,11 +1,11 @@
 import { generateKeyPairSync } from "node:crypto";
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { summarize, verifyAll, type VerifyContext } from "../../src/lib/verify";
+import { readAppConfigFacts, summarize, verifyAll, type VerifyContext } from "../../src/lib/verify";
 
 let workdir: string;
 let originalCwd: string;
@@ -457,6 +457,24 @@ describe("Resend checks", () => {
     const checks = await verifyAll(ctx);
     const c = checks.find((x) => x.name === "webhook-endpoint");
     expect(c?.severity).toBe("warn");
+  });
+});
+
+describe("readAppConfigFacts", () => {
+  it("leaves name unset when app.config.ts declares no parseable name", async () => {
+    // A customized config that computes its name dynamically declares no literal
+    // name. Falling back to the title-cased pkg slug here would make the coherence
+    // check warn on a name verify never actually read from app.config.ts.
+    await writeFile("package.json", JSON.stringify({ name: "my-cool-app" }));
+    await writeFile("app.config.ts", `export default { name: pkg.displayName };`);
+    const facts = await readAppConfigFacts();
+    expect(facts.name).toBeUndefined();
+  });
+
+  it("reads the name declared via the template IS_DEV ternary", async () => {
+    await writeFile("app.config.ts", `export default { name: IS_DEV ? "Vexpo (Dev)" : "Vexpo" };`);
+    const facts = await readAppConfigFacts();
+    expect(facts.name).toBe("Vexpo");
   });
 });
 

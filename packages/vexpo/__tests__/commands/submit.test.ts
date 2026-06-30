@@ -50,7 +50,7 @@ beforeEach(() => {
       ["BETTER_AUTH_SECRET", "secret-do-not-forward"],
     ]),
   );
-  ensureAscAppIdSpy.mockResolvedValue("1234567890");
+  ensureAscAppIdSpy.mockResolvedValue({ kind: "found", ascAppId: "1234567890" });
   easSpawnSpy.mockResolvedValue(0);
 });
 
@@ -106,7 +106,7 @@ describe("runSubmit", () => {
   });
 
   it("returns 1 when no ASC app record exists yet, never spawns", async () => {
-    ensureAscAppIdSpy.mockResolvedValueOnce(null);
+    ensureAscAppIdSpy.mockResolvedValueOnce({ kind: "defer" });
     const exit = await runSubmit({});
     expect(exit).toBe(1);
     expect(easSpawnSpy).not.toHaveBeenCalled();
