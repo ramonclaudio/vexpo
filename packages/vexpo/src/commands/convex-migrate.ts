@@ -1,7 +1,6 @@
-import { access } from "node:fs/promises";
-
 import { deploymentSlug, envMap, envSet, type ConvexTarget } from "../lib/convex-env.ts";
 import { readEnvFile } from "../lib/env-files.ts";
+import { fileExists } from "../lib/fs.ts";
 import { BOLD, RESET, bad, line, note, ok, section } from "../lib/output.ts";
 
 export type ConvexMigrateOptions = {
@@ -21,15 +20,6 @@ export function selectMigratableEnv(
     out.push([key, value]);
   }
   return out;
-}
-
-async function fileExists(p: string): Promise<boolean> {
-  try {
-    await access(p);
-    return true;
-  } catch {
-    return false;
-  }
 }
 
 export async function runConvexMigrate(options: ConvexMigrateOptions): Promise<number> {

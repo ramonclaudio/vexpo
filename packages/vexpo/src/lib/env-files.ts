@@ -1,4 +1,6 @@
-import { access, readFile } from "node:fs/promises";
+import { readFile } from "node:fs/promises";
+
+import { fileExists } from "./fs.ts";
 
 export type Channel = "dev" | "prod";
 
@@ -106,15 +108,6 @@ export const MANUAL_EAS_SECRETS: Record<string, string> = {
   CONVEX_DEPLOY_KEY:
     "eas env:create --name CONVEX_DEPLOY_KEY --value <prod-deploy-key> --environment production --visibility secret",
 };
-
-async function fileExists(p: string): Promise<boolean> {
-  try {
-    await access(p);
-    return true;
-  } catch {
-    return false;
-  }
-}
 
 export async function readEnvFile(path: string): Promise<Map<string, string>> {
   const out = new Map<string, string>();

@@ -1,15 +1,8 @@
-import { access, readFile, writeFile } from "node:fs/promises";
+import { readFile, writeFile } from "node:fs/promises";
+
+import { fileExists } from "./fs.ts";
 
 export const ENV_FILE = ".env.local";
-
-async function fileExists(p: string): Promise<boolean> {
-  try {
-    await access(p);
-    return true;
-  } catch {
-    return false;
-  }
-}
 
 export async function readAll(): Promise<Map<string, string>> {
   const out = new Map<string, string>();

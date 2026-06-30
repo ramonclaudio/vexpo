@@ -5,9 +5,8 @@
  * doesn't mean EAS knows about it.
  */
 
-import { access } from "node:fs/promises";
-
 import { validate as validateAsc, type AscCredentials } from "../../lib/asc-api.ts";
+import { fileExists } from "../../lib/fs.ts";
 import { expandTilde, stagedP8 } from "../../lib/path.ts";
 import {
   BOLD,
@@ -28,15 +27,6 @@ import { load, recordStep } from "../../lib/state.ts";
 export type AscKeyOptions = {
   revalidate?: boolean;
 };
-
-async function fileExists(p: string): Promise<boolean> {
-  try {
-    await access(expandTilde(p));
-    return true;
-  } catch {
-    return false;
-  }
-}
 
 async function promptCredsInteractive(): Promise<AscCredentials | null> {
   if (!process.stdin.isTTY) return null;
@@ -96,7 +86,7 @@ async function readEnvCreds(): Promise<AscCredentials | null> {
   const keyId = process.env.APPLE_ASC_KEY_ID;
   const p8Path = process.env.APPLE_ASC_P8_PATH;
   if (!issuerId || !keyId || !p8Path) return null;
-  if (!(await fileExists(p8Path))) {
+  if (!(await fileExists(expandTilde(p8Path)))) {
     bad(`APPLE_ASC_P8_PATH=${p8Path} not found`);
     return null;
   }
@@ -112,7 +102,7 @@ async function readStateCreds(): Promise<AscCredentials | null> {
   const keyId = out.keyId as string | undefined;
   const p8Path = out.p8Path as string | undefined;
   if (!issuerId || !keyId || !p8Path) return null;
-  if (!(await fileExists(p8Path))) return null;
+  if (!(await fileExists(expandTilde(p8Path)))) return null;
   return { issuerId, keyId, privateKey: { path: p8Path } };
 }
 

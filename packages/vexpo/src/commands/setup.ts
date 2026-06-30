@@ -11,6 +11,7 @@ import {
   version as easCliVersion,
 } from "../lib/eas-env.ts";
 import { ENV_FILE, readAll } from "../lib/env-local.ts";
+import { fileExists } from "../lib/fs.ts";
 import {
   BOLD,
   DIM,
@@ -106,15 +107,6 @@ async function isXcodeInstalled(): Promise<boolean> {
     stderr: "ignore",
   });
   return (await proc.exited) === 0;
-}
-
-async function fileExists(p: string): Promise<boolean> {
-  try {
-    await access(p);
-    return true;
-  } catch {
-    return false;
-  }
 }
 
 async function trashPaths(paths: string[]): Promise<void> {
