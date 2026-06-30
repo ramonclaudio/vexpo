@@ -20,8 +20,6 @@ name: Rollback
 #                 OTA shouldn't ship to ANYONE on that build.
 #                 Maps to `eas update:roll-back-to-embedded`.
 #                 https://docs.expo.dev/eas-update/rollbacks/
-#
-# Pair with the asc-events workflow's Slack notify so the team knows.
 
 on:
   workflow_dispatch:
@@ -96,17 +94,3 @@ jobs:
             if [ -n "$ROLLBACK_MSG" ]; then args+=(--message "$ROLLBACK_MSG"); fi
             npx eas-cli update:republish "${args[@]}"
           fi
-
-  notify:
-    name: Notify Slack
-    needs: [rollback]
-    # Paste a real `webhook_url` below and drop `false &&` to enable. EAS does
-    # not yet support interpolating `${{ env.* }}` into `webhook_url`.
-    if: ${{ false }}
-    type: slack
-    params:
-      webhook_url: https://hooks.slack.com/services/REPLACE/ME/HERE
-      message: |
-        :rewind: Rolled back `${{ inputs.branch }}` to ${{ inputs.type }}.
-        Triggered by: ${{ github.triggering_actor }}
-        Workflow: ${{ workflow.url }}
