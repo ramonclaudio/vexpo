@@ -4,7 +4,7 @@
 [![Check](https://github.com/ramonclaudio/vexpo/actions/workflows/check.yml/badge.svg)](https://github.com/ramonclaudio/vexpo/actions/workflows/check.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-Scaffold a new [vexpo](https://github.com/ramonclaudio/vexpo) project: an Expo SDK 56 iOS app with Convex, Better Auth, and Resend wired in for backend, auth, and email. Push, OTA updates, and App Store submission all run through EAS.
+Scaffold a new [vexpo](https://github.com/ramonclaudio/vexpo) project: an Expo SDK 57 iOS app with Convex, Better Auth, and Resend wired in for backend, auth, and email. Push, OTA updates, and App Store submission all run through EAS.
 
 The CLI creates or links your Convex deployment and runs the setup from the terminal.
 

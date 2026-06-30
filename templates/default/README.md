@@ -1,6 +1,6 @@
 # vexpo
 
-An iOS app on Expo SDK 56, wired with Convex, Better Auth, and Resend. Native SwiftUI throughout.
+An iOS app on Expo SDK 57, wired with Convex, Better Auth, and Resend. Native SwiftUI throughout.
 
 <p align="center">
   <img src="https://raw.githubusercontent.com/ramonclaudio/vexpo/main/.github/assets/demo-app.gif" width="300" alt="Sign up, onboarding, search, and the dark-mode flip">
@@ -199,7 +199,7 @@ The template used to ship an Apple App Attest stack (a Convex verifier plus a cl
 
 ## Version pinning
 
-Every `expo-*` package tracks the same SDK 56 release. `npm run upgrade:stable` rolls them forward together. `npm run upgrade` tracks the next SDK preview.
+Every `expo-*` package tracks the same SDK 57 release. `npm run upgrade:stable` rolls them forward together. `npm run upgrade` tracks the next SDK preview.
 
 > [!CAUTION]
 > Two deps are pinned on purpose, don't bump them blind:

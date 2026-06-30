@@ -41,7 +41,7 @@ private-key.pem
 
 # Agents / local AI tooling.
 # The monorepo .gitignore drops .claude/ repo-wide; the template re-includes
-# its own .claude/settings.json so the scaffolded SDK 56 agent config ships
+# its own .claude/settings.json so the scaffolded SDK 57 agent config ships
 # with the template. Everything else inside .claude/ (transcripts, hooks,
 # local state) stays untracked.
 !.claude/

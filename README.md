@@ -6,7 +6,7 @@
 [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/ramonclaudio/vexpo/badge)](https://scorecard.dev/viewer/?uri=github.com/ramonclaudio/vexpo)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-vexpo is an Expo SDK 56 iOS template with Convex and Better Auth wired in, plus a CLI that links your Convex deployment and syncs with EAS to get a new app running in minutes.
+vexpo is an Expo SDK 57 iOS template with Convex and Better Auth wired in, plus a CLI that links your Convex deployment and syncs with EAS to get a new app running in minutes.
 
 <p align="center">
   <img src=".github/assets/demo-app.gif" width="300" alt="The template app on the iOS simulator: sign up, onboarding, search, and the dark-mode flip">
@@ -43,7 +43,7 @@ Two packages: [`create-vexpo`](https://www.npmjs.com/package/@ramonclaudio/creat
 
 ## What's included
 
-- Expo SDK 56, RN 0.85, React 19. Strict TypeScript, no NativeWind.
+- Expo SDK 57, RN 0.86, React 19. Strict TypeScript, no NativeWind.
 - Every screen is SwiftUI via `@expo/ui/swift-ui`, Liquid Glass on iOS 26+, blur fallback below.
 - Email, password, OTP, and Apple Sign In, with per-device session revocation and account soft-delete.
 - Convex reactive queries and storage, Resend webhooks, App Attest primitives ready to wire.
