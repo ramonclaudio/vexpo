@@ -52,6 +52,17 @@ function shortValue(v: string): string {
   return `${v.slice(0, 30)}…${v.slice(-12)} ${DIM}(${v.length}b)${RESET}`;
 }
 
+// Convex-routed keys carry secrets (BETTER_AUTH_SECRET, RESEND_API_KEY, etc.)
+// that fit under shortValue's 60-char threshold and would otherwise print
+// verbatim in the plan, including on --dry-run. Render a fingerprint + length
+// for them instead of the raw value. EAS routes here are all EXPO_PUBLIC_*.
+export function planRowValue(entry: SyncEntry): string {
+  if (entry.destinations.some((d) => d.type === "convex")) {
+    return `fp: ${fingerprint(entry.value)} ${DIM}(${entry.value.length}b)${RESET}`;
+  }
+  return shortValue(entry.value);
+}
+
 function describeDest(d: Destination): string {
   if (d.type === "convex") return `convex env (${d.channel}) → ${d.key}`;
   return `eas env (${d.environments.join(",")}) → ${d.key}`;
@@ -164,7 +175,7 @@ function printFilePlan(plan: FilePlan): {
   let conflicts = 0;
   let blocked = 0;
   for (const row of plan.rows) {
-    line(`  ${BOLD}${row.entry.sourceKey}${RESET}  ${DIM}= ${shortValue(row.entry.value)}${RESET}`);
+    line(`  ${BOLD}${row.entry.sourceKey}${RESET}  ${DIM}= ${planRowValue(row.entry)}${RESET}`);
     for (const r of row.resolved) {
       const tag =
         r.status === "create"
