@@ -1,42 +1,12 @@
 import { readFile, writeFile } from "node:fs/promises";
 
+import { readEnvFile } from "./env-files.ts";
 import { fileExists } from "./fs.ts";
 
 export const ENV_FILE = ".env.local";
 
-export async function readAll(): Promise<Map<string, string>> {
-  const out = new Map<string, string>();
-  if (!(await fileExists(ENV_FILE))) return out;
-  const text = (await readFile(ENV_FILE, "utf8")).replace(/^﻿/, "").replace(/\r\n/g, "\n");
-  const lines = text.split("\n");
-  for (let i = 0; i < lines.length; i++) {
-    const raw = lines[i];
-    const trimmed = raw.trim();
-    if (!trimmed || trimmed.startsWith("#")) continue;
-    const eq = trimmed.indexOf("=");
-    if (eq <= 0) continue;
-    const key = trimmed.slice(0, eq).trim();
-    let value = trimmed.slice(eq + 1);
-    const startQuote = value.match(/^\s*(['"])/);
-    if (startQuote) {
-      const quote = startQuote[1];
-      let rest = value.replace(/^\s*['"]/, "");
-      let endIdx = rest.indexOf(quote);
-      while (endIdx === -1 && i + 1 < lines.length) {
-        i += 1;
-        rest += `\n${lines[i]}`;
-        endIdx = rest.indexOf(quote);
-      }
-      value = endIdx === -1 ? rest : rest.slice(0, endIdx);
-      out.set(key, value);
-      continue;
-    }
-    value = value.trim();
-    const hashAt = value.search(/\s#/);
-    if (hashAt >= 0) value = value.slice(0, hashAt).trim();
-    out.set(key, value);
-  }
-  return out;
+export function readAll(): Promise<Map<string, string>> {
+  return readEnvFile(ENV_FILE);
 }
 
 export async function readOne(key: string): Promise<string | undefined> {
