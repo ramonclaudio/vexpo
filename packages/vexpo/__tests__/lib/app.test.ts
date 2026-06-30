@@ -126,6 +126,14 @@ describe("bundleIdFallback", () => {
     expect(await bundleIdFallback()).toBe("com.example.myapp");
   });
 
+  it("resolves the committed backtick/template form to a bundle id", async () => {
+    await writeFile(
+      "app.config.ts",
+      "const APP_BUNDLE_ID = process.env.EXPO_PUBLIC_APP_BUNDLE_ID ?? `com.example.${pkg.name}`;",
+    );
+    expect(await bundleIdFallback()).toBe("com.example.${pkg.name}");
+  });
+
   it("returns null when app.config.ts is missing", async () => {
     expect(await bundleIdFallback()).toBeNull();
   });

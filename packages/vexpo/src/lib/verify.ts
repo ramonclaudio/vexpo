@@ -1,5 +1,6 @@
 import { existsSync, readFileSync } from "node:fs";
 
+import { appName, appleTeamIdFallback, bundleIdFallback, scheme as appScheme } from "./app.ts";
 import { validate as ascValidate, makeAscClient, type AscCredentials } from "./asc-api.ts";
 import { loadAscCreds } from "./asc-state.ts";
 import { deploymentSlug, envMap as convexEnvMap, type ConvexTarget } from "./convex-env.ts";
@@ -877,24 +878,18 @@ export async function readContext(channel: Channel): Promise<VerifyContext> {
 }
 
 async function readAppConfigFacts(): Promise<AppConfigFacts> {
-  try {
-    const { readFile } = await import("node:fs/promises");
-    const text = await readFile("app.config.ts", "utf8");
-    const name = /name:\s*IS_DEV\s*\?\s*"[^"]+"\s*:\s*"([^"]+)",/.exec(text)?.[1];
-    const bundleIdFallback = /EXPO_PUBLIC_APP_BUNDLE_ID\s*\?\?\s*(?:`([^`]+)`|"([^"]+)")/.exec(
-      text,
-    );
-    const teamIdFallback = /EXPO_PUBLIC_APPLE_TEAM_ID\s*\?\?\s*"([^"]+)"/.exec(text)?.[1];
-    const scheme = /scheme:\s*"([^"]+)"/.exec(text)?.[1];
-    return {
-      name,
-      bundleIdFallback: bundleIdFallback?.[1] ?? bundleIdFallback?.[2],
-      teamIdFallback,
-      scheme,
-    };
-  } catch {
-    return {};
-  }
+  const [name, scheme, bundleId, teamId] = await Promise.all([
+    appName(),
+    appScheme(),
+    bundleIdFallback(),
+    appleTeamIdFallback(),
+  ]);
+  return {
+    name,
+    bundleIdFallback: bundleId ?? undefined,
+    teamIdFallback: teamId ?? undefined,
+    scheme,
+  };
 }
 
 export async function verifyAll(ctx: VerifyContext): Promise<Check[]> {

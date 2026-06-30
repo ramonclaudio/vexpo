@@ -50,13 +50,15 @@ export async function scheme(): Promise<string> {
 export async function bundleIdFallback(): Promise<string | null> {
   const text = await readTextOrNull("app.config.ts");
   if (!text) return null;
-  return /EXPO_PUBLIC_APP_BUNDLE_ID\s*\?\?\s*"([^"]+)"/.exec(text)?.[1] ?? null;
+  // The template commits the backtick form `com.example.${pkg.name}`; rebrand
+  // rewrites it to a plain double-quoted string. Match either.
+  return /EXPO_PUBLIC_APP_BUNDLE_ID\s*\?\?\s*["`]([^"`]+)["`]/.exec(text)?.[1] ?? null;
 }
 
 export async function appleTeamIdFallback(): Promise<string | null> {
   const text = await readTextOrNull("app.config.ts");
   if (!text) return null;
-  const value = /EXPO_PUBLIC_APPLE_TEAM_ID\s*\?\?\s*"([^"]+)"/.exec(text)?.[1] ?? null;
+  const value = /EXPO_PUBLIC_APPLE_TEAM_ID\s*\?\?\s*["`]([^"`]+)["`]/.exec(text)?.[1] ?? null;
   if (!value || value === "ABCDE12345") return null;
   return value;
 }
