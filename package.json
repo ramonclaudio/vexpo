@@ -25,6 +25,7 @@
     "knip": "knip",
     "test": "npm run test --workspaces --if-present && npm run template:test",
     "test:packages": "npm run test --workspaces --if-present",
+    "coverage": "npm run coverage -w @ramonclaudio/vexpo",
     "test:packages:e2e": "npm run test:e2e -w @ramonclaudio/vexpo && npm run test:create:e2e",
     "test:create:e2e": "npm run test:e2e -w @ramonclaudio/create-vexpo",
     "test:all": "npm run test && npm run test:packages:e2e",
