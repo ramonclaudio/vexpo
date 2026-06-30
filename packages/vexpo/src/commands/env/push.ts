@@ -36,7 +36,8 @@ import {
   section,
   yep,
 } from "../../lib/output.ts";
-import { readContext, renderVerifyResults, summarize, verifyAll } from "../../lib/verify.ts";
+import { renderVerifyResults } from "../../lib/verify-render.ts";
+import { readContext, summarize, verifyAll } from "../../lib/verify.ts";
 
 export type EnvPushOptions = {
   force?: boolean;
