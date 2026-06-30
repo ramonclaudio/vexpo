@@ -20,8 +20,13 @@
 # Run on EAS:  via `.eas/workflows/e2e-tests.yml` (workflow_dispatch only).
 appId: ${MAESTRO_APP_ID}
 ---
-- launchApp:
-    clearState: true
+# No clearState here. The e2e workflow runs every flow under .maestro/ in folder
+# order (auth -> launch -> tour -> zz-delete-restore), and auth.yaml owns the
+# clean-state reset at the start of the suite. Clearing again mid-suite would
+# wipe the onboarding_seen flag while the Better Auth session survives in the
+# keychain, so tour.yaml and zz-delete-restore.yaml would resume authenticated
+# but un-onboarded, stuck behind the welcome modal. Relaunch only.
+- launchApp
 - waitForAnimationToEnd:
     timeout: 15000
 - takeScreenshot: launch
