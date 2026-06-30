@@ -55,7 +55,7 @@
     "commander": "^15.0.0",
     "execa": "^9.6.1",
     "kleur": "^4.1.5",
-    "ora": "^9.4.0",
+    "ora": "^9.4.1",
     "prompts": "^2.4.2"
   },
   "devDependencies": {
