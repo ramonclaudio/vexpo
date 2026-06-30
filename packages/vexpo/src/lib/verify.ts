@@ -1,6 +1,11 @@
 import { existsSync, readFileSync } from "node:fs";
 
-import { appName, appleTeamIdFallback, bundleIdFallback, scheme as appScheme } from "./app.ts";
+import {
+  appleTeamIdFallback,
+  bundleIdFallback,
+  declaredAppName,
+  scheme as appScheme,
+} from "./app.ts";
 import { validate as ascValidate, makeAscClient, type AscCredentials } from "./asc-api.ts";
 import { loadAscCreds } from "./asc-state.ts";
 import { deploymentSlug, envMap as convexEnvMap, type ConvexTarget } from "./convex-env.ts";
@@ -878,9 +883,9 @@ export async function readContext(channel: Channel): Promise<VerifyContext> {
   };
 }
 
-async function readAppConfigFacts(): Promise<AppConfigFacts> {
+export async function readAppConfigFacts(): Promise<AppConfigFacts> {
   const [name, scheme, bundleId, teamId] = await Promise.all([
-    appName(),
+    declaredAppName(),
     appScheme(),
     bundleIdFallback(),
     appleTeamIdFallback(),

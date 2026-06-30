@@ -22,18 +22,23 @@ export async function pkgName(): Promise<string> {
   return typeof pkg?.name === "string" && pkg.name ? pkg.name : "app";
 }
 
-export async function appName(): Promise<string> {
+// The name a literal in app.config.ts, or undefined when none is declared (a
+// computed/missing name). Distinct from `appName`'s pkg-slug fallback so callers
+// like verify's coherence check don't treat a guessed name as authoritative.
+export async function declaredAppName(): Promise<string | undefined> {
   const text = await readTextOrNull("app.config.ts");
-  if (text) {
-    // The template (and `rebrand`) write the display name as a dev/prod
-    // ternary: `name: IS_DEV ? "Foo (Dev)" : "Foo"`. Match that first (same
-    // shape verify.ts parses), then a plain `name: "Foo"`, before falling back
-    // to title-casing the package slug.
-    const ternary = /name:\s*IS_DEV\s*\?\s*"[^"]+"\s*:\s*"([^"]+)"/.exec(text)?.[1];
-    if (ternary) return ternary;
-    const quoted = /\bname:\s*["']([^"']+)["']/.exec(text)?.[1];
-    if (quoted) return quoted;
-  }
+  if (!text) return undefined;
+  // The template (and `rebrand`) write the display name as a dev/prod ternary:
+  // `name: IS_DEV ? "Foo (Dev)" : "Foo"`. Match that first (same shape verify.ts
+  // parses), then a plain `name: "Foo"`.
+  const ternary = /name:\s*IS_DEV\s*\?\s*"[^"]+"\s*:\s*"([^"]+)"/.exec(text)?.[1];
+  if (ternary) return ternary;
+  return /\bname:\s*["']([^"']+)["']/.exec(text)?.[1];
+}
+
+export async function appName(): Promise<string> {
+  const declared = await declaredAppName();
+  if (declared) return declared;
   const name = await pkgName();
   const clean = name.replace(/^@[^/]+\//, "");
   const parts = clean.split(/[-_]/).filter(Boolean);
