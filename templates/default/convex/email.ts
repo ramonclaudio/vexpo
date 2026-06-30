@@ -17,6 +17,20 @@ import { env } from "./env";
 // loop on itself.
 const testMode = process.env.RESEND_TEST_MODE !== "false";
 
+// testMode defaults ON, so a deployment that forgets `RESEND_TEST_MODE=false`
+// logs OTPs instead of sending them. When email verification is required
+// (testflight/prod tier), that means sign-up verification and password reset
+// silently no-op with no error. Surface it loudly at deploy/load time; the
+// only legitimate testMode deployment is the lite tier, where verification is
+// off and this stays quiet.
+if (testMode && env.requireEmailVerification) {
+  console.error(
+    "[resend] RESEND_TEST_MODE is on while REQUIRE_EMAIL_VERIFICATION is set: " +
+      "auth emails are logged to this console, not sent. " +
+      "Set RESEND_TEST_MODE=false on this deployment so verification and password reset work.",
+  );
+}
+
 export const resend: Resend = new Resend(components.resend, {
   testMode,
   onEmailEvent: internal.email.handleEmailEvent,

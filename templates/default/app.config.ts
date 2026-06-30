@@ -34,6 +34,11 @@ if (process.env.EAS_BUILD === "true") {
   const missing = [
     !process.env.EXPO_PUBLIC_CONVEX_URL && "EXPO_PUBLIC_CONVEX_URL",
     !process.env.EXPO_PUBLIC_CONVEX_SITE_URL && "EXPO_PUBLIC_CONVEX_SITE_URL",
+    // Without these the build silently falls back to the template identity
+    // (com.example.* / ABCDE12345), producing a binary signed under the wrong
+    // bundle id and team. `vexpo env push` syncs them to every EAS environment.
+    !process.env.EXPO_PUBLIC_APP_BUNDLE_ID && "EXPO_PUBLIC_APP_BUNDLE_ID",
+    !process.env.EXPO_PUBLIC_APPLE_TEAM_ID && "EXPO_PUBLIC_APPLE_TEAM_ID",
   ].filter(Boolean);
   if (missing.length > 0) {
     throw new Error(

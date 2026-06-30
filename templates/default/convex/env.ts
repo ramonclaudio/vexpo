@@ -16,6 +16,10 @@ export const env = {
   get convexSiteUrl() {
     return required("CONVEX_SITE_URL");
   },
+  // The app's deep-link origin. `vexpo convex` sets SITE_URL from the
+  // app.config.ts scheme, so production and rebranded apps resolve the right
+  // value here and `auth.ts` derives `trustedOrigins` from it. The literal is
+  // only a fresh-checkout fallback before the CLI pushes SITE_URL.
   siteUrl: optional("SITE_URL", "vexpo://"),
   appName: optional("APP_NAME", "Vexpo"),
   email: {
