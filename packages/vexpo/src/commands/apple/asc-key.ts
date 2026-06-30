@@ -6,6 +6,7 @@
  */
 
 import { validate as validateAsc, type AscCredentials } from "../../lib/asc-api.ts";
+import { loadAscCreds } from "../../lib/asc-state.ts";
 import { fileExists } from "../../lib/fs.ts";
 import { expandTilde, stagedP8 } from "../../lib/path.ts";
 import {
@@ -22,7 +23,7 @@ import {
   section,
   yep,
 } from "../../lib/output.ts";
-import { load, recordStep } from "../../lib/state.ts";
+import { recordStep } from "../../lib/state.ts";
 
 export type AscKeyOptions = {
   revalidate?: boolean;
@@ -93,25 +94,12 @@ async function readEnvCreds(): Promise<AscCredentials | null> {
   return { issuerId, keyId, privateKey: { path: p8Path } };
 }
 
-async function readStateCreds(): Promise<AscCredentials | null> {
-  const state = await load();
-  const rec = state.steps["asc-key"];
-  if (!rec?.outputs) return null;
-  const out = rec.outputs as Record<string, unknown>;
-  const issuerId = out.issuerId as string | undefined;
-  const keyId = out.keyId as string | undefined;
-  const p8Path = out.p8Path as string | undefined;
-  if (!issuerId || !keyId || !p8Path) return null;
-  if (!(await fileExists(expandTilde(p8Path)))) return null;
-  return { issuerId, keyId, privateKey: { path: p8Path } };
-}
-
 export async function runAscKey(options: AscKeyOptions): Promise<number> {
   section("App Store Connect API key");
 
   try {
     if (options.revalidate) {
-      const cached = await readStateCreds();
+      const cached = await loadAscCreds();
       if (!cached) {
         bad("no cached ASC key in state.json; run without --revalidate first");
         return 1;
@@ -131,7 +119,7 @@ export async function runAscKey(options: AscKeyOptions): Promise<number> {
       return 0;
     }
 
-    const cached = await readStateCreds();
+    const cached = await loadAscCreds();
     if (cached) {
       nop(`cached ASC key found (issuer=${cached.issuerId.slice(0, 8)}…, key=${cached.keyId})`);
       const result = await validateAsc(cached);

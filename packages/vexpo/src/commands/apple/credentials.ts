@@ -1,11 +1,9 @@
-import { existsSync } from "node:fs";
-
 import { bundleIdFallback } from "../../lib/app.ts";
+import { loadAscCreds } from "../../lib/asc-state.ts";
 import { easSpawn } from "../../lib/eas-cli.ts";
 import { envList as easEnvList } from "../../lib/eas-env.ts";
 import { BOLD, RESET, askYesNo, bad, line, nop, note, ok, section, yep } from "../../lib/output.ts";
-import { expandTilde } from "../../lib/path.ts";
-import { load as loadState, recordStep } from "../../lib/state.ts";
+import { recordStep } from "../../lib/state.ts";
 
 /**
  * The template's `app.config.ts` ships with
@@ -44,39 +42,22 @@ export type CredentialsOptions = {
   profile?: string;
 };
 
-async function loadAscFromState(): Promise<{
-  issuerId: string;
-  keyId: string;
-  p8Path: string;
-} | null> {
-  const state = await loadState();
-  const rec = state.steps["asc-key"];
-  if (!rec?.outputs) return null;
-  const out = rec.outputs as Record<string, unknown>;
-  const issuerId = out.issuerId as string | undefined;
-  const keyId = out.keyId as string | undefined;
-  const rawPath = out.p8Path as string | undefined;
-  if (!issuerId || !keyId || !rawPath) return null;
-  const p8Path = expandTilde(rawPath);
-  if (!existsSync(p8Path)) return null;
-  return { issuerId, keyId, p8Path };
-}
-
 export async function runAppleCredentials(options: CredentialsOptions): Promise<number> {
   section("EAS iOS credentials");
 
   const profile = options.profile ?? "production";
-  const asc = await loadAscFromState();
+  const asc = await loadAscCreds();
 
-  if (!asc) {
+  if (!asc || !("path" in asc.privateKey)) {
     yep("no cached ASC creds. Run `vexpo apple asc-key` first to validate one.");
     return 1;
   }
+  const p8Path = asc.privateKey.path;
 
   ok(`cached ASC API key found in state.json`);
   note(`  issuerId: ${BOLD}${asc.issuerId}${RESET}`);
   note(`  keyId:    ${BOLD}${asc.keyId}${RESET}`);
-  note(`  .p8:      ${BOLD}${asc.p8Path}${RESET}`);
+  note(`  .p8:      ${BOLD}${p8Path}${RESET}`);
 
   const bundle = await resolveBundleId(profile);
   if (bundle.templatePlaceholder) {
@@ -121,7 +102,7 @@ export async function runAppleCredentials(options: CredentialsOptions): Promise<
 
   const env: Record<string, string> = {
     ...(process.env as Record<string, string>),
-    EXPO_ASC_API_KEY_PATH: asc.p8Path,
+    EXPO_ASC_API_KEY_PATH: p8Path,
     EXPO_ASC_KEY_ID: asc.keyId,
     EXPO_ASC_ISSUER_ID: asc.issuerId,
   };

@@ -31,7 +31,7 @@ vi.mock("../../src/lib/env-local.ts", () => ({
 // The pre-check loads cached ASC creds and lists apps by bundle id. Default to
 // creds present + one matching app so the existing spawn-path tests proceed.
 // Individual tests override loadAscCreds / appsListSpy to exercise the
-// defer (0 apps) and fallback (no creds) branches.
+// defer (0 apps) and no-creds (return 1) branches.
 vi.mock("../../src/lib/asc-state.ts", () => ({
   loadAscCreds: vi.fn(),
 }));
@@ -351,19 +351,18 @@ describe("runAscConnect", () => {
     expect(spawnSpy).toHaveBeenCalledTimes(1);
   });
 
-  it("falls through to spawn when no cached ASC creds for the pre-check", async () => {
+  it("returns 1 without spawning when no cached ASC creds", async () => {
     ascStatusSpy.mockResolvedValueOnce({
       action: "status",
       project: "@testuser/testapp",
       status: "not-connected",
     });
-    readOneSpy.mockResolvedValueOnce("com.vexpo.vexpo");
-    loadAscCredsSpy.mockResolvedValueOnce(null);
+    loadAscCredsSpy.mockResolvedValue(null);
 
     const exit = await runAscConnect({});
-    expect(exit).toBe(0);
+    expect(exit).toBe(1);
     expect(appsListSpy).not.toHaveBeenCalled();
-    expect(spawnSpy).toHaveBeenCalledTimes(1);
+    expect(spawnSpy).not.toHaveBeenCalled();
   });
 
   it("falls through to spawn when the pre-check apps lookup errors", async () => {
