@@ -19,7 +19,9 @@ export async function runBetterAuth(options: BetterAuthOptions): Promise<number>
   section("Better Auth env");
 
   try {
-    const env = await envMap();
+    // A failed read coalesces to empty; the envSet calls below hit the same
+    // auth/CLI error and fail loud through the catch.
+    const env = (await envMap()) ?? new Map<string, string>();
 
     const siteUrl = options.siteUrl ?? `${await scheme()}://`;
     if (env.has("SITE_URL") && env.get("SITE_URL") === siteUrl) {

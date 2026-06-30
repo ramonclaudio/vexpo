@@ -61,6 +61,16 @@ export function planConvexDev(
   return { selectLocalFirst: !!options.local && !needsProvisioning, devArgs };
 }
 
+/**
+ * A local deployment serves on 127.0.0.1 (api on 3210, http actions on 3211),
+ * not a `*.convex.cloud`/`*.convex.site` host. Writing the cloud URLs for a
+ * `--local` run points the app at a deployment that doesn't exist.
+ */
+export function convexUrls(slug: string, local: boolean): { url: string; siteUrl: string } {
+  if (local) return { url: "http://127.0.0.1:3210", siteUrl: "http://127.0.0.1:3211" };
+  return { url: `https://${slug}.convex.cloud`, siteUrl: `https://${slug}.convex.site` };
+}
+
 export async function runConvex(options: ConvexOptions): Promise<number> {
   section("Convex deployment");
 
@@ -143,16 +153,17 @@ export async function runConvex(options: ConvexOptions): Promise<number> {
 
     process.env.CONVEX_DEPLOYMENT = deployment;
 
+    const urls = convexUrls(slug, options.local === true);
     if (refreshed.has("EXPO_PUBLIC_CONVEX_URL")) {
       nop("EXPO_PUBLIC_CONVEX_URL already set");
     } else {
-      await ensureLine("EXPO_PUBLIC_CONVEX_URL", `https://${slug}.convex.cloud`);
+      await ensureLine("EXPO_PUBLIC_CONVEX_URL", urls.url);
       ok("wrote EXPO_PUBLIC_CONVEX_URL");
     }
     if (refreshed.has("EXPO_PUBLIC_CONVEX_SITE_URL")) {
       nop("EXPO_PUBLIC_CONVEX_SITE_URL already set");
     } else {
-      await ensureLine("EXPO_PUBLIC_CONVEX_SITE_URL", `https://${slug}.convex.site`);
+      await ensureLine("EXPO_PUBLIC_CONVEX_SITE_URL", urls.siteUrl);
       ok("wrote EXPO_PUBLIC_CONVEX_SITE_URL");
     }
     if (refreshed.has("EXPO_PUBLIC_SITE_URL")) {
@@ -173,7 +184,11 @@ export async function runConvex(options: ConvexOptions): Promise<number> {
 
     line();
     ok(`Convex deployment ready: ${BOLD}${slug}${RESET}`);
-    note(`dashboard: https://dashboard.convex.dev/d/${slug}`);
+    if (options.local) {
+      note(`local backend: ${urls.url}`);
+    } else {
+      note(`dashboard: https://dashboard.convex.dev/d/${slug}`);
+    }
     return 0;
   } catch (err) {
     bad(err instanceof Error ? err.message : String(err));

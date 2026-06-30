@@ -102,7 +102,7 @@ export async function runAdopt(options: AdoptOptions): Promise<number> {
     const code = await runConvex({});
     if (code !== 0) return code;
 
-    const devEnv = await envMap();
+    const devEnv = (await envMap()) ?? new Map<string, string>();
     if (!devEnv.has("BETTER_AUTH_SECRET")) {
       const baCode = await runBetterAuth({});
       if (baCode !== 0) return baCode;
@@ -111,7 +111,7 @@ export async function runAdopt(options: AdoptOptions): Promise<number> {
     }
   }
 
-  const devEnv = await envMap();
+  const devEnv = (await envMap()) ?? new Map<string, string>();
   const projectId = await resolveProjectId();
   const easProd = projectId ? await envList("production").catch(() => null) : null;
 

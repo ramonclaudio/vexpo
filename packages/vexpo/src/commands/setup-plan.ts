@@ -440,7 +440,8 @@ const LITE_AUTO_LABELS = new Set<string>([
 
 export async function printSummary(useLocal: boolean, elapsedMs: number): Promise<void> {
   section("Summary");
-  const [localEnv, convexEnv] = await Promise.all([readAll(), convexEnvMap()]);
+  const [localEnv, convexEnvOrNull] = await Promise.all([readAll(), convexEnvMap()]);
+  const convexEnv = convexEnvOrNull ?? new Map<string, string>();
   const easEnv = await easEnvList("production").catch(() => new Map<string, string>());
   const projectId = await resolveProjectId();
   const state = await loadState();

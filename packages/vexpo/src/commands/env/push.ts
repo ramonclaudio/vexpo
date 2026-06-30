@@ -70,8 +70,11 @@ function describeDest(d: Destination): string {
 }
 
 type RemoteState = {
-  convexDev: Map<string, string>;
-  convexProd: Map<string, string>;
+  // null = the convex env read failed (auth/CLI). Kept distinct from an empty
+  // map so resolveDestination blocks the write instead of treating every var as
+  // absent and blindly creating it.
+  convexDev: Map<string, string> | null;
+  convexProd: Map<string, string> | null;
   easByEnv: Record<EasEnvironment, Map<string, string>>;
   hasEasProject: boolean;
 };
@@ -81,8 +84,8 @@ async function readRemoteState(prodEnvFile?: string): Promise<RemoteState> {
   const hasEasProject = !!projectId;
 
   const [convexDev, convexProd, easDev, easPreview, easProd] = await Promise.all([
-    convexEnvMap().catch(() => new Map<string, string>()),
-    convexEnvMap({ prod: true, envFile: prodEnvFile }).catch(() => new Map<string, string>()),
+    convexEnvMap().catch(() => null),
+    convexEnvMap({ prod: true, envFile: prodEnvFile }).catch(() => null),
     hasEasProject
       ? easEnvList("development").catch(() => new Map<string, string>())
       : Promise.resolve(new Map<string, string>()),
@@ -111,13 +114,21 @@ type ResolvedDestination = {
   reason?: string;
 };
 
-function resolveDestination(
+export function resolveDestination(
   dest: Destination,
   newValue: string,
   remote: RemoteState,
 ): ResolvedDestination {
   if (dest.type === "convex") {
     const map = dest.channel === "prod" ? remote.convexProd : remote.convexDev;
+    if (map === null) {
+      return {
+        destination: dest,
+        current: undefined,
+        status: "blocked",
+        reason: "couldn't read convex env (auth/CLI failure). run `npx convex login` and re-run",
+      };
+    }
     const current = map.get(dest.key);
     if (current === newValue) return { destination: dest, current, status: "noop" };
     return { destination: dest, current, status: current === undefined ? "create" : "update" };

@@ -50,7 +50,9 @@ export type AuditEntry = {
   cwd: string;
   completed: StepName[];
   skipped: StepName[];
-  failed?: { step: StepName; message: string };
+  // "unknown" covers failures outside a tracked step (cleanup, install, probe,
+  // summary), so the audit doesn't misattribute them to a real step.
+  failed?: { step: StepName | "unknown"; message: string };
 };
 
 export type SetupState = {

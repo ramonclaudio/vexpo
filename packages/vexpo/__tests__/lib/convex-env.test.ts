@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { envSet, envSetFromFile } from "../../src/lib/convex-env.ts";
+import { envMap, envSet, envSetFromFile } from "../../src/lib/convex-env.ts";
 
 vi.mock("../../src/lib/proc.ts", () => ({
   run: vi.fn().mockResolvedValue({ code: 0, stdout: "", stderr: "" }),
@@ -70,6 +70,31 @@ describe("envSetFromFile", () => {
     await expect(envSetFromFile("/tmp/env.txt")).rejects.toThrow(
       /Use --force to overwrite existing values/,
     );
+  });
+});
+
+describe("envMap", () => {
+  it("returns null on a non-zero exit so failure is distinct from empty", async () => {
+    runSpy.mockResolvedValueOnce({ code: 1, stdout: "", stderr: "not logged in" });
+    expect(await envMap()).toBeNull();
+  });
+
+  it("returns an empty map (not null) when the deployment genuinely has no env", async () => {
+    runSpy.mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" });
+    const m = await envMap();
+    expect(m).not.toBeNull();
+    expect(m?.size).toBe(0);
+  });
+
+  it("parses key=value lines from convex env list", async () => {
+    runSpy.mockResolvedValueOnce({
+      code: 0,
+      stdout: "APP_NAME=Vexpo\nSITE_URL=app://\n",
+      stderr: "",
+    });
+    const m = await envMap();
+    expect(m?.get("APP_NAME")).toBe("Vexpo");
+    expect(m?.get("SITE_URL")).toBe("app://");
   });
 });
 
