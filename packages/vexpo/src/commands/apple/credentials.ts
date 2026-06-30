@@ -1,7 +1,7 @@
 import { bundleIdFallback } from "../../lib/app.ts";
 import { loadAscCreds } from "../../lib/asc-state.ts";
 import { easSpawn } from "../../lib/eas-cli.ts";
-import { envList as easEnvList } from "../../lib/eas-env.ts";
+import { envList as easEnvList } from "../../lib/eas-project.ts";
 import { BOLD, RESET, askYesNo, bad, line, nop, note, ok, section, yep } from "../../lib/output.ts";
 import { recordStep } from "../../lib/state.ts";
 

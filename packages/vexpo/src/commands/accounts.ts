@@ -1,6 +1,6 @@
 import { isLoggedIn as convexLoggedIn } from "../lib/convex-env.ts";
 import { easSpawn } from "../lib/eas-cli.ts";
-import { whoami as easWhoami } from "../lib/eas-env.ts";
+import { whoami as easWhoami } from "../lib/eas-project.ts";
 import { dlx } from "../lib/pkg-manager.ts";
 import { spawn } from "../lib/proc.ts";
 import { probeAccess } from "../lib/resend-api.ts";

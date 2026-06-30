@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("../../src/lib/eas-env.ts", () => ({
+vi.mock("../../src/lib/eas-project.ts", () => ({
   envList: vi.fn(),
   envCreate: vi.fn().mockResolvedValue(undefined),
   envUpdate: vi.fn().mockResolvedValue(undefined),
@@ -24,7 +24,7 @@ vi.mock("node:fs/promises", async () => ({
 
 import { runEasRotationSecrets } from "../../src/commands/apple/eas-rotation-secrets.ts";
 import { mintProdDeployKey } from "../../src/lib/convex-management.ts";
-import { envCreate, envList } from "../../src/lib/eas-env.ts";
+import { envCreate, envList } from "../../src/lib/eas-project.ts";
 import { readOne } from "../../src/lib/env-local.ts";
 import { load as loadState, lookupOutput } from "../../src/lib/state.ts";
 

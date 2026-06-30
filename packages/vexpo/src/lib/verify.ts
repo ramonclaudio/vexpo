@@ -22,7 +22,7 @@ import {
   resolveProjectId,
   projectInfo as easProjectInfo,
   whoami as easWhoami,
-} from "./eas-env.ts";
+} from "./eas-project.ts";
 import { readEnvFile } from "./env-files.ts";
 import { listDomains, listWebhooks, probeAccess } from "./resend-api.ts";
 

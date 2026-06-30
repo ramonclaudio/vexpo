@@ -8,7 +8,7 @@ import {
   envPush as easEnvPush,
   resolveProjectId,
   type EasEnvironment,
-} from "../../lib/eas-env.ts";
+} from "../../lib/eas-project.ts";
 import {
   buildPlan,
   MANUAL_EAS_SECRETS,

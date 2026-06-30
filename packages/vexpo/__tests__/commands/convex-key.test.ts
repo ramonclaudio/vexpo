@@ -4,7 +4,7 @@ vi.mock("../../src/lib/convex-env.ts", () => ({
   deploymentSlug: (v?: string) => (v ? v.replace(/^(dev|prod|preview):/, "") : undefined),
 }));
 vi.mock("../../src/lib/convex-management.ts", () => ({ mintProdDeployKey: vi.fn() }));
-vi.mock("../../src/lib/eas-env.ts", () => ({
+vi.mock("../../src/lib/eas-project.ts", () => ({
   resolveProjectId: vi.fn().mockResolvedValue("pid"),
   envList: vi.fn(),
   envCreate: vi.fn().mockResolvedValue(undefined),
@@ -18,7 +18,7 @@ vi.mock("node:fs/promises", async () => ({
 
 import { runConvexKey } from "../../src/commands/env/convex-key.ts";
 import { mintProdDeployKey } from "../../src/lib/convex-management.ts";
-import { envCreate, envList } from "../../src/lib/eas-env.ts";
+import { envCreate, envList } from "../../src/lib/eas-project.ts";
 import { readEnvFile } from "../../src/lib/env-files.ts";
 
 const mintProdSpy = mintProdDeployKey as unknown as ReturnType<typeof vi.fn>;

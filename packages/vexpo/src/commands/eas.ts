@@ -8,7 +8,7 @@ import {
   resolveProjectId,
   whoami,
   type EasEnvironment,
-} from "../lib/eas-env.ts";
+} from "../lib/eas-project.ts";
 import { ROUTING, readEnvFile } from "../lib/env-files.ts";
 import { fileExists } from "../lib/fs.ts";
 import { BOLD, RESET, askYesNo, bad, line, nop, note, ok, section, yep } from "../lib/output.ts";

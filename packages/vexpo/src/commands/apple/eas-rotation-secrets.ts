@@ -8,7 +8,7 @@ import { access } from "node:fs/promises";
 
 import { deploymentSlug } from "../../lib/convex-env.ts";
 import { mintProdDeployKey } from "../../lib/convex-management.ts";
-import { envCreate, envList, envUpdate, type EasEnvironment } from "../../lib/eas-env.ts";
+import { envCreate, envList, envUpdate, type EasEnvironment } from "../../lib/eas-project.ts";
 import { readOne } from "../../lib/env-local.ts";
 import { BOLD, DIM, RESET, ask, bad, line, nop, note, ok, section, yep } from "../../lib/output.ts";
 import { expandTilde, stagedP8 } from "../../lib/path.ts";

@@ -5,7 +5,7 @@ vi.mock("../../src/lib/convex-env.ts", () => ({
   envSetFromFile: vi.fn().mockResolvedValue(undefined),
 }));
 
-vi.mock("../../src/lib/eas-env.ts", () => ({
+vi.mock("../../src/lib/eas-project.ts", () => ({
   envList: vi.fn(),
   envPush: vi.fn().mockResolvedValue(undefined),
   resolveProjectId: vi.fn(),

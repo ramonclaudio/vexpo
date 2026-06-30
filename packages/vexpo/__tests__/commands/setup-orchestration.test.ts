@@ -68,7 +68,7 @@ vi.mock("../../src/lib/convex-env.ts", () => ({
   isLoggedIn: vi.fn(async () => false),
   version: vi.fn(async () => null),
 }));
-vi.mock("../../src/lib/eas-env.ts", () => ({
+vi.mock("../../src/lib/eas-project.ts", () => ({
   envList: vi.fn(async () => new Map()),
   resolveProjectId: vi.fn(async () => null),
   version: vi.fn(async () => null),

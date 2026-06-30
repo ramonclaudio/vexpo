@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("../../src/lib/eas-cli.ts", () => ({ easSpawn: vi.fn().mockResolvedValue(0) }));
-vi.mock("../../src/lib/eas-env.ts", () => ({
+vi.mock("../../src/lib/eas-project.ts", () => ({
   checkCli: vi.fn().mockResolvedValue({ ok: true, version: "1.0.0" }),
   whoami: vi.fn().mockResolvedValue("ray"),
   resolveProjectId: vi.fn().mockResolvedValue("proj-123"),
@@ -29,7 +29,7 @@ vi.mock("../../src/lib/output.ts", async () => ({
 }));
 
 import { runEas } from "../../src/commands/eas.ts";
-import { envPush } from "../../src/lib/eas-env.ts";
+import { envPush } from "../../src/lib/eas-project.ts";
 import { fileExists } from "../../src/lib/fs.ts";
 
 const envPushSpy = envPush as unknown as ReturnType<typeof vi.fn>;
