@@ -4,6 +4,19 @@ All notable changes to vexpo are tracked here. Format follows [Keep a Changelog]
 
 ## [Unreleased]
 
+## [0.1.9] - 2026-06-30
+
+- Fix the template's auth surface, which was dead out of the box. `expectAuth: true` on the Convex client paused the socket until sign-in, so every pre-auth query hung and Apple Sign In, OTP, email verification, and full-tier sign-up never worked. Dropping it lets the public pre-auth queries run.
+- Forward the `.env.local` public identity into the `eas submit` subprocess so it resolves the real app instead of the `com.example.*` placeholder.
+- Source `apple eas-rotation-secrets` identity from saved state instead of `.env.local`, where nothing writes it, so it no longer aborts `vexpo full`.
+- Stop `vexpo env push` from printing raw Convex secrets in the plan, force the Convex overwrite so a re-push doesn't fail, and exit nonzero when an env push fails.
+- Surface a transient App Store Connect lookup error in `vexpo submit` instead of misreporting "no app record". Preserve cached step outputs on a live-check refresh so a later `vexpo full` no longer wipes the saved Apple identity. Redact identifiers in `vexpo doctor --json --redact` too.
+- Poll Expo push receipts on a cron so `DeviceNotRegistered` tokens get tombstoned promptly, and bundle the brand icons in OTA updates so a rebranded icon doesn't resolve stale on device.
+- Cut the unwired App Attest stack to a documented optional add-on, and drop the `fingerprint:diff` CI job that failed on every scaffold.
+- Patch the `shell-quote` (critical), esbuild, and `@babel/core` advisories in the template build tooling. Update the template's Convex, Better Auth, and Resend deps to the latest SDK 56 compatible versions; `expo install --check` and `expo-doctor` pass clean.
+- Harden CI to the 2026 baseline: SHA-pin every action (Dependabot-maintained), `dependency-review` on PRs, OpenSSF Scorecard, a Dependabot cooldown, a Node 20/22/24 matrix, an `npm pack` guard, and a `knip` gate.
+- Slim the CLI by collapsing duplicated helpers and dropping re-wraps of the `eas` and `convex` CLIs. Rewrite `CONTRIBUTING` around an issue-first flow with a one-command `npm run validate` and a pre-push hook, and add structured issue forms, a PR template, and a troubleshooting guide.
+
 ## [0.1.8] - 2026-06-24
 
 - Skip the Convex team picker when provisioning a new project non-interactively. `vexpo lite`/`full` died on convex's raw `(Team:)` prompt in CI or a scripted run; `planConvexDev` now passes `--team` when `CONVEX_TEAM` is set (read from the env or `.env.local`), and the failure path points at `CONVEX_TEAM` instead of letting the prompt fail blind.
