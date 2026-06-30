@@ -4,6 +4,8 @@ All notable changes to vexpo are tracked here. Format follows [Keep a Changelog]
 
 ## [Unreleased]
 
+- Upgrade the template to Expo SDK 57: React Native 0.85 to 0.86, React unchanged at 19.2. Moves `react-native-reanimated` to 4.5, `react-native-worklets` to 0.10, and `react-native-gesture-handler` to 2.32 via `expo install --fix`, and registers the `expo-asset` and `expo-status-bar` config plugins SDK 57 expects. `expo install --check` and `expo-doctor` (20/20) pass clean. RN 0.86 ships no breaking changes, so a scaffold rolls forward with a single `npx expo install expo@latest --fix`.
+
 ## [0.1.9] - 2026-06-30
 
 - Fix the template's auth surface, which was dead out of the box. `expectAuth: true` on the Convex client paused the socket until sign-in, so every pre-auth query hung and Apple Sign In, OTP, email verification, and full-tier sign-up never worked. Dropping it lets the public pre-auth queries run.
