@@ -6,6 +6,13 @@ body:
     attributes:
       value: |
         Thanks for the report. Fill in `npx vexpo doctor --redact` below so we can see the real state without leaking your credentials.
+  - type: checkboxes
+    id: searched
+    attributes:
+      label: Before you start
+      options:
+        - label: I searched existing issues and the [troubleshooting guide](https://github.com/ramonclaudio/vexpo/blob/main/docs/troubleshooting.md) and didn't find this.
+          required: true
   - type: dropdown
     id: surface
     attributes:
