@@ -67,6 +67,33 @@ describe("readEnvFile", () => {
     const m = await readEnvFile(".env.local");
     expect(m.get("FOO")).toBe("bar");
   });
+
+  it("keeps trailing content after a closed quote without dropping later keys", async () => {
+    // A close quote followed by trailing text (e.g. a display name) must end the
+    // value, not start a multi-line scan that swallows every following key.
+    await writeFile(
+      ".env.local",
+      `EMAIL_FROM="My App" <hi@app.com>\nRESEND_API_KEY=re_abc\nNAME=app\n`,
+    );
+    const m = await readEnvFile(".env.local");
+    expect(m.get("EMAIL_FROM")).toBe("My App");
+    expect(m.get("RESEND_API_KEY")).toBe("re_abc");
+    expect(m.get("NAME")).toBe("app");
+  });
+
+  it("normalizes CRLF so multi-line quoted values carry no carriage returns", async () => {
+    const pem = "-----BEGIN-----\nMHc\nAbCd\n-----END-----";
+    await writeFile(".env.local", `KEY="${pem}"\nNEXT=1\n`.replace(/\n/g, "\r\n"));
+    const m = await readEnvFile(".env.local");
+    expect(m.get("KEY")).toBe(pem);
+    expect(m.get("NEXT")).toBe("1");
+  });
+
+  it("keeps the partial value of an unterminated quote at EOF", async () => {
+    await writeFile(".env.local", `KEY="oops`);
+    const m = await readEnvFile(".env.local");
+    expect(m.get("KEY")).toBe("oops");
+  });
 });
 
 describe("readSources", () => {

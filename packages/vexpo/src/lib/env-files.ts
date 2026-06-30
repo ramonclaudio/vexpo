@@ -112,7 +112,7 @@ export const MANUAL_EAS_SECRETS: Record<string, string> = {
 export async function readEnvFile(path: string): Promise<Map<string, string>> {
   const out = new Map<string, string>();
   if (!(await fileExists(path))) return out;
-  const text = await readFile(path, "utf8");
+  const text = (await readFile(path, "utf8")).replace(/^﻿/, "").replace(/\r\n/g, "\n");
   let buffer = "";
   let pendingKey: string | null = null;
   let pendingQuote: '"' | "'" | null = null;
@@ -143,16 +143,28 @@ export async function readEnvFile(path: string): Promise<Map<string, string>> {
       continue;
     }
     const opensQuote = /^(['"])(.*)$/.exec(value);
-    if (opensQuote && !value.endsWith(opensQuote[1])) {
+    if (opensQuote) {
+      const quote = opensQuote[1] as '"' | "'";
+      const rest = opensQuote[2];
+      // A close quote later on the same line ends the value (anything trailing,
+      // like a display name, is dropped). Only an unclosed quote spans lines.
+      const closeIdx = rest.indexOf(quote);
+      if (closeIdx >= 0) {
+        out.set(key, rest.slice(0, closeIdx));
+        continue;
+      }
       pendingKey = key;
-      pendingQuote = opensQuote[1] as '"' | "'";
-      buffer = opensQuote[2];
+      pendingQuote = quote;
+      buffer = rest;
       continue;
     }
     const hashAt = value.search(/\s#/);
     if (hashAt >= 0) value = value.slice(0, hashAt).trim();
     out.set(key, value);
   }
+  // A quote opened but never closed before EOF keeps the partial value (matching
+  // the pre-dedup parser) instead of dropping this key and every key after it.
+  if (pendingKey) out.set(pendingKey, buffer);
   return out;
 }
 
