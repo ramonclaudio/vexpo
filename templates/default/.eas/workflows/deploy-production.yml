@@ -96,18 +96,10 @@ jobs:
       # https://docs.expo.dev/eas-update/code-signing/
       private_key_path: "$EAS_UPDATE_PRIVATE_KEY"
 
-  # Post-deploy notification with EAS Insights link. `update_ios` exposes
-  # `first_update_group_id` (https://docs.expo.dev/eas/workflows/pre-packaged-jobs/#update-outputs);
-  # we feed it into a Slack message that links to:
-  #   - the update group page (rollout %, runtime version, builds touched)
-  #   - the deployments dashboard (adoption curves, crash-free %, unique users)
-  #   - the channel insights page (filtered to production)
-  #
-  # `webhook_url` only accepts hardcoded strings today (env-stored webhooks
-  # are upcoming per https://docs.expo.dev/eas/workflows/pre-packaged-jobs/#slack);
-  # paste yours in `SLACK_WEBHOOK_URL` below and uncomment, or strip this job
-  # if you don't use Slack. The `print_insights` job prints `update:insights`
-  # JSON to workflow logs so you can audit adoption metrics directly.
+  # `print_insights` prints `update:insights` JSON to the workflow logs so you
+  # can audit adoption metrics (rollout %, crash-free %, unique users) directly.
+  # `update_ios` exposes `first_update_group_id`
+  # (https://docs.expo.dev/eas/workflows/pre-packaged-jobs/#update-outputs).
   print_insights:
     name: Capture update:insights output
     needs: [update_ios]
@@ -121,22 +113,3 @@ jobs:
           GROUP="${{ needs.update_ios.outputs.first_update_group_id }}"
           echo "Update group: $GROUP"
           npx eas-cli update:insights "$GROUP" --json --non-interactive || true
-
-  notify_update_published:
-    name: Notify Slack with insights link
-    needs: [update_ios]
-    # Disabled until you paste a real `webhook_url` below. Drop the `false &&`
-    # once configured. EAS workflows do not yet support interpolating
-    # `${{ env.* }}` into `webhook_url`, so the URL has to be hardcoded.
-    if: ${{ false && needs.update_ios.outputs.first_update_group_id }}
-    type: slack
-    params:
-      # Paste your Slack incoming-webhook URL from
-      # https://api.slack.com/messaging/webhooks. Leaving the placeholder will
-      # 404 once you remove the `if: false` gate above.
-      webhook_url: https://hooks.slack.com/services/REPLACE/ME/HERE
-      message: |
-        :rocket: OTA update published to production.
-        Group: ${{ needs.update_ios.outputs.first_update_group_id }}
-        Workflow: ${{ workflow.url }}
-        Open the EAS dashboard for adoption %, crash-free %, and unique users.

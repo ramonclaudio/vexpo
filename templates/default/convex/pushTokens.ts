@@ -143,6 +143,71 @@ export const markRevoked = internalMutation({
 });
 
 /**
+ * Park ok ticket ids returned by a send so `reconcileReceipts` can poll
+ * Expo for their receipts later. One row per ticket, keyed to the token it
+ * was sent to.
+ */
+export const recordReceipts = internalMutation({
+  args: {
+    receipts: v.array(v.object({ ticketId: v.string(), tokenId: v.id("pushTokens") })),
+  },
+  returns: v.number(),
+  handler: async (ctx, { receipts }) => {
+    const now = Date.now();
+    for (const r of receipts) {
+      await ctx.db.insert("pushReceipts", {
+        ticketId: r.ticketId,
+        tokenId: r.tokenId,
+        createdAt: now,
+      });
+    }
+    return receipts.length;
+  },
+});
+
+/** Oldest-first page of pending receipt rows for the next getReceipts batch. */
+export const listPendingReceipts = internalQuery({
+  args: { limit: v.number() },
+  returns: v.array(
+    v.object({
+      _id: v.id("pushReceipts"),
+      ticketId: v.string(),
+      tokenId: v.id("pushTokens"),
+      createdAt: v.number(),
+    }),
+  ),
+  handler: async (ctx, { limit }) => {
+    const rows = await ctx.db
+      .query("pushReceipts")
+      .withIndex("by_createdAt")
+      .order("asc")
+      .take(limit);
+    return rows.map((r) => ({
+      _id: r._id,
+      ticketId: r.ticketId,
+      tokenId: r.tokenId,
+      createdAt: r.createdAt,
+    }));
+  },
+});
+
+/** Drop receipt rows once reconciled (or aged out). */
+export const deleteReceipts = internalMutation({
+  args: { ids: v.array(v.id("pushReceipts")) },
+  returns: v.number(),
+  handler: async (ctx, { ids }) => {
+    let deleted = 0;
+    for (const id of ids) {
+      const row = await ctx.db.get(id);
+      if (!row) continue;
+      await ctx.db.delete(id);
+      deleted++;
+    }
+    return deleted;
+  },
+});
+
+/**
  * Daily cleanup. Drops revoked rows older than 30 days and stale rows
  * never re-upserted in 90 days. Bounded batches; reschedules when more
  * rows remain so we never load an unbounded set into memory.

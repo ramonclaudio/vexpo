@@ -47,12 +47,17 @@ export async function runConvexMigrate(options: ConvexMigrateOptions): Promise<n
   }
 
   const src = await envMap({ deployment: fromSlug });
-  if (src.size === 0) {
+  if (!src || src.size === 0) {
     bad(`no env on source deployment ${fromSlug} (unreachable or empty)`);
     note("pass a deployment slug your account can reach, e.g. `--from old-deployment-123`");
     return 1;
   }
   const dst = await envMap(target);
+  if (!dst) {
+    bad("couldn't read the target deployment's env (auth/CLI failure)");
+    note("run `npx convex login` (or check the prod deploy key) and re-run");
+    return 1;
+  }
   const toMove = selectMigratableEnv(src, dst);
 
   if (toMove.length === 0) {

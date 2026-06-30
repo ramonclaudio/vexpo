@@ -44,9 +44,25 @@ jobs:
           set-output email "maestro-e2e-$(date +%s)@example.com"
           set-output password "$(openssl rand -hex 16)"
 
+  guard_app_id:
+    name: Check MAESTRO_APP_ID is set
+    # The maestro job below reads appId from MAESTRO_APP_ID. If
+    # EXPO_PUBLIC_APP_BUNDLE_ID is missing from the development environment it
+    # interpolates to empty and Maestro silently can't find the app. Fail here
+    # instead so the cause is obvious.
+    environment: development
+    env:
+      MAESTRO_APP_ID: ${{ env.EXPO_PUBLIC_APP_BUNDLE_ID }}
+    steps:
+      - run: |
+          if [ -z "$MAESTRO_APP_ID" ]; then
+            echo "MAESTRO_APP_ID is empty. Set EXPO_PUBLIC_APP_BUNDLE_ID in the development EAS environment (eas env:create)."
+            exit 1
+          fi
+
   maestro:
     name: Run Maestro flows
-    needs: [build_ios_simulator, test_creds]
+    needs: [build_ios_simulator, test_creds, guard_app_id]
     type: maestro
     environment: development
     env:

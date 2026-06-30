@@ -55,14 +55,14 @@ const APPLE_ENV_KEYS = [
 async function copyAppleEnv(from: string): Promise<number> {
   section("Apple Sign In");
   const slug = deploymentSlug(from) ?? from;
-  const src = await envMap({ deployment: slug });
+  const src = (await envMap({ deployment: slug })) ?? new Map<string, string>();
   const present = APPLE_ENV_KEYS.filter((k) => src.has(k) && src.get(k));
   if (present.length === 0) {
     bad(`no APPLE_* vars on deployment ${slug} (unreachable or not provisioned)`);
     note("pass a deployment slug your account can reach, e.g. `--copy-from old-deployment-123`");
     return 1;
   }
-  const dst = await envMap();
+  const dst = (await envMap()) ?? new Map<string, string>();
   let copied = 0;
   for (const key of present) {
     const value = src.get(key)!;
@@ -105,7 +105,7 @@ export async function runAppleJwt(options: AppleJwtOptions): Promise<number> {
   section("Apple Sign In");
 
   try {
-    const env = await envMap();
+    const env = (await envMap()) ?? new Map<string, string>();
     const rotateOnly = options.rotate === true;
 
     if (rotateOnly) {

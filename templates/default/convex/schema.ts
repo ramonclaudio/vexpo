@@ -39,6 +39,17 @@ export default defineSchema(
       .index("by_user", ["userId"])
       .index("by_token", ["token"])
       .index("by_revoked_updatedAt", ["revoked", "updatedAt"]),
+
+    // Expo accepts a push at send time (an "ok" ticket) but only reports a
+    // dead device later, in the RECEIPT. Each ok ticket id is parked here
+    // with the token it was sent to; `pushSender.reconcileReceipts` polls
+    // Expo's getReceipts, tombstones the token on a permanent-error receipt,
+    // then drops the row. Rows that never get a receipt expire on age.
+    pushReceipts: defineTable({
+      ticketId: v.string(),
+      tokenId: v.id("pushTokens"),
+      createdAt: v.number(),
+    }).index("by_createdAt", ["createdAt"]),
   },
   { strictTableNameTypes: true },
 );

@@ -860,11 +860,13 @@ export async function readContext(channel: Channel): Promise<VerifyContext> {
     [
       readEnvFile(".env.local"),
       readEnvFile(".env.prod").then(async (m) => (m.size > 0 ? m : readEnvFile(".env.production"))),
-      convexEnvMap().catch(() => new Map<string, string>()),
+      convexEnvMap()
+        .then((m) => m ?? new Map<string, string>())
+        .catch(() => new Map<string, string>()),
       prodEnvFile
-        ? convexEnvMap({ prod: true, envFile: prodEnvFile } satisfies ConvexTarget).catch(
-            () => new Map<string, string>(),
-          )
+        ? convexEnvMap({ prod: true, envFile: prodEnvFile } satisfies ConvexTarget)
+            .then((m) => m ?? new Map<string, string>())
+            .catch(() => new Map<string, string>())
         : Promise.resolve(new Map<string, string>()),
       readAppConfigFacts(),
       loadAscCreds(),

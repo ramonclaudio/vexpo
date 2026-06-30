@@ -39,11 +39,17 @@ function unquoteEnvValue(value: string): string {
   return value;
 }
 
-export async function envMap(target?: ConvexTarget): Promise<Map<string, string>> {
+/**
+ * Returns null on a non-zero `convex env list` (auth/CLI failure or an
+ * unreachable deployment) so callers can tell "failed to read" from "genuinely
+ * empty". Treating a failure as an empty map makes every remote var look absent,
+ * which turns an env push into a blind overwrite of the deployment.
+ */
+export async function envMap(target?: ConvexTarget): Promise<Map<string, string> | null> {
   const argv = [dlx(), "convex", "env", "list", ...targetArgs(target)];
   const { code, stdout } = await run(argv);
+  if (code !== 0) return null;
   const out = new Map<string, string>();
-  if (code !== 0) return out;
   for (const raw of stdout.split("\n")) {
     const trimmed = raw.trim();
     if (!trimmed) continue;

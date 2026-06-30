@@ -62,17 +62,3 @@ jobs:
               --rollout-percentage "$ROLLOUT_PCT" \
               --non-interactive
           fi
-
-  notify:
-    name: Notify Slack
-    needs: [rollout]
-    # Paste a real `webhook_url` below and drop `false &&` to enable. EAS does
-    # not yet support interpolating `${{ env.* }}` into `webhook_url`.
-    if: ${{ false }}
-    type: slack
-    params:
-      webhook_url: https://hooks.slack.com/services/REPLACE/ME/HERE
-      message: |
-        :chart_with_upwards_trend: Rollout ${{ inputs.action }} on `${{ inputs.branch }}` → ${{ inputs.percentage }}%
-        Triggered by: ${{ github.triggering_actor }}
-        Workflow: ${{ workflow.url }}

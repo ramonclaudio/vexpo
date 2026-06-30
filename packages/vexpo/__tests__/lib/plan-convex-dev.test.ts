@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { planConvexDev } from "../../src/commands/convex.ts";
+import { convexUrls, planConvexDev } from "../../src/commands/convex.ts";
 
 describe("planConvexDev", () => {
   it("never emits the deprecated --local flag", () => {
@@ -47,5 +47,22 @@ describe("planConvexDev", () => {
     expect(planConvexDev({ local: false }, false, "app", "acme-team").devArgs).not.toContain(
       "--team",
     );
+  });
+});
+
+describe("convexUrls", () => {
+  it("cloud: derives *.convex.cloud / *.convex.site from the slug", () => {
+    expect(convexUrls("happy-frog-12", false)).toEqual({
+      url: "https://happy-frog-12.convex.cloud",
+      siteUrl: "https://happy-frog-12.convex.site",
+    });
+  });
+
+  it("local: 127.0.0.1 ports, never a cloud host", () => {
+    const { url, siteUrl } = convexUrls("happy-frog-12", true);
+    expect(url).toBe("http://127.0.0.1:3210");
+    expect(siteUrl).toBe("http://127.0.0.1:3211");
+    expect(url).not.toContain("convex.cloud");
+    expect(siteUrl).not.toContain("convex.site");
   });
 });

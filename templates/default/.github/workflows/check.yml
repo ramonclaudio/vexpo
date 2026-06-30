@@ -20,6 +20,9 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npx expo-doctor
+      # Generate expo-router typed routes (.expo/types, gitignored) so typecheck
+      # catches typedRoutes route-string regressions. Runs without a dev server.
+      - run: npx expo customize tsconfig.json
       - run: npm run typecheck
       - run: npm run lint
       - run: npm run format:check

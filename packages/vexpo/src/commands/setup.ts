@@ -204,19 +204,19 @@ async function shouldRun(step: StepName, liveCheck: () => Promise<boolean>): Pro
 }
 
 async function liveCheckBetterAuth(env?: Map<string, string>): Promise<boolean> {
-  const e = env ?? (await convexEnvMap());
+  const e = env ?? (await convexEnvMap()) ?? new Map<string, string>();
   return ["SITE_URL", "BETTER_AUTH_SECRET", "APP_NAME"].every((k) => e.has(k));
 }
 
 async function liveCheckResend(env?: Map<string, string>): Promise<boolean> {
-  const e = env ?? (await convexEnvMap());
+  const e = env ?? (await convexEnvMap()) ?? new Map<string, string>();
   return ["RESEND_API_KEY", "EMAIL_FROM", "RESEND_WEBHOOK_SECRET", "RESEND_TEST_MODE"].every((k) =>
     e.has(k),
   );
 }
 
 async function liveCheckApple(env?: Map<string, string>): Promise<boolean> {
-  const e = env ?? (await convexEnvMap());
+  const e = env ?? (await convexEnvMap()) ?? new Map<string, string>();
   return ["APPLE_CLIENT_ID", "APPLE_CLIENT_SECRET", "APPLE_TEAM_ID", "APPLE_KEY_ID"].every((k) =>
     e.has(k),
   );
@@ -326,7 +326,7 @@ async function stepProbe(): Promise<{
   // The convex step is live once the lite core is present; it doesn't depend on
   // the team id (which lite skips). "partial" still means a connected deployment.
   const convexLive = localEnvState !== "missing";
-  const convex = convexLive ? await convexEnvMap() : new Map<string, string>();
+  const convex = (convexLive ? await convexEnvMap() : null) ?? new Map<string, string>();
 
   const rows = new Map<string, ProbeRow>();
   rows.set("accounts", await shouldRun("accounts", async () => true));
@@ -762,7 +762,7 @@ export async function runSetup(opts: SetupOptions): Promise<number> {
           completed,
           skipped,
           ...(failureMessage
-            ? { failed: { step: failedStep ?? "convex", message: failureMessage } }
+            ? { failed: { step: failedStep ?? "unknown", message: failureMessage } }
             : {}),
         });
       } catch {
