@@ -1,0 +1,26 @@
+name: Feature request
+description: Propose a command, flag, or template change.
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What are you stuck on today? What does the current setup make hard?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed command or flag
+      description: The CLI surface you have in mind. Name the command or flag and what it would do.
+      placeholder: "npx vexpo full --skip-resend"
+    validations:
+      required: true
+  - type: textarea
+    id: scope
+    attributes:
+      label: Scope check
+      description: vexpo's thesis is 0 to 1. Does this help an empty dir reach a first shipped iOS app? If it is for an app already in production, say so. That work is welcome but lower priority.
+    validations:
+      required: true

@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Questions and ideas
+    url: https://github.com/ramonclaudio/vexpo/discussions
+    about: Ask a question or float an idea in GitHub Discussions.
+  - name: Report a security vulnerability
+    url: https://github.com/ramonclaudio/vexpo/security/advisories/new
+    about: Disclose a vulnerability privately. Please don't file a public issue.
