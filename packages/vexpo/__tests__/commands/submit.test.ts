@@ -11,6 +11,7 @@ vi.mock("../../src/lib/eas-cli.ts", () => ({
 
 vi.mock("../../src/lib/env-local.ts", () => ({
   readAll: vi.fn(),
+  requireBundleId: vi.fn(),
 }));
 
 vi.mock("node:fs", async () => {
@@ -21,18 +22,21 @@ vi.mock("node:fs", async () => {
 import { ascKeyEnv, ensureAscAppId } from "../../src/commands/asc.ts";
 import { runSubmit } from "../../src/commands/submit.ts";
 import { easSpawn } from "../../src/lib/eas-cli.ts";
-import { readAll } from "../../src/lib/env-local.ts";
+import { readAll, requireBundleId } from "../../src/lib/env-local.ts";
 
 const ascKeyEnvSpy = ascKeyEnv as unknown as ReturnType<typeof vi.fn>;
 const ensureAscAppIdSpy = ensureAscAppId as unknown as ReturnType<typeof vi.fn>;
 const easSpawnSpy = easSpawn as unknown as ReturnType<typeof vi.fn>;
 const readAllSpy = readAll as unknown as ReturnType<typeof vi.fn>;
+const requireBundleIdSpy = requireBundleId as unknown as ReturnType<typeof vi.fn>;
 
 beforeEach(() => {
   ascKeyEnvSpy.mockReset();
   ensureAscAppIdSpy.mockReset();
   easSpawnSpy.mockReset();
   readAllSpy.mockReset();
+  requireBundleIdSpy.mockReset();
+  requireBundleIdSpy.mockResolvedValue("com.vexpo.vexpo");
   ascKeyEnvSpy.mockResolvedValue({
     EXPO_ASC_API_KEY_PATH: "/tmp/fake.p8",
     EXPO_ASC_KEY_ID: "ABCDE12345",

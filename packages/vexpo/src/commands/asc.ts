@@ -49,7 +49,7 @@ import { loadAscCreds } from "../lib/asc-state.ts";
 import { easSpawn } from "../lib/eas-cli.ts";
 import { ascStatus } from "../lib/eas-integrations.ts";
 import { withAscAppId } from "../lib/eas-submit.ts";
-import { readOne } from "../lib/env-local.ts";
+import { requireBundleId } from "../lib/env-local.ts";
 import { BOLD, RESET, bad, line, nop, note, ok, section, yep } from "../lib/output.ts";
 import { recordStep } from "../lib/state.ts";
 
@@ -161,11 +161,8 @@ export async function runAscConnect(opts: { force?: boolean } = {}): Promise<num
   note(`  keyId:    ${BOLD}${asc.keyId}${RESET}`);
   note(`  .p8:      ${BOLD}${p8Path}${RESET}`);
 
-  const bundleId = await readOne("EXPO_PUBLIC_APP_BUNDLE_ID");
-  if (!bundleId) {
-    bad("no EXPO_PUBLIC_APP_BUNDLE_ID in .env.local. Run `vexpo convex` first.");
-    return 1;
-  }
+  const bundleId = await requireBundleId();
+  if (!bundleId) return 1;
   ok(`bundle id: ${BOLD}${bundleId}${RESET}`);
 
   // No ASC `apps` resource exists for a brand-new bundle id until the first

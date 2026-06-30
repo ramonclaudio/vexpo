@@ -7,7 +7,7 @@ import {
   type AscCredentials,
 } from "../../lib/asc-api.ts";
 import { loadAscCreds } from "../../lib/asc-state.ts";
-import { ensureLine, readOne } from "../../lib/env-local.ts";
+import { ensureLine, requireBundleId } from "../../lib/env-local.ts";
 import {
   BOLD,
   RESET,
@@ -108,12 +108,8 @@ export async function runServicesId(options: ServicesIdOptions): Promise<number>
   section("Apple Sign In Services ID");
 
   try {
-    const bundleId = await readOne("EXPO_PUBLIC_APP_BUNDLE_ID");
-    if (!bundleId) {
-      bad("EXPO_PUBLIC_APP_BUNDLE_ID missing from .env.local");
-      note("run `vexpo convex` first");
-      return 1;
-    }
+    const bundleId = await requireBundleId();
+    if (!bundleId) return 1;
     ok(`bundle id: ${bundleId}`);
 
     const creds = ascCredsFromEnv() ?? (await loadAscCreds());

@@ -25,7 +25,7 @@ vi.mock("../../src/lib/eas-integrations.ts", () => ({
 }));
 
 vi.mock("../../src/lib/env-local.ts", () => ({
-  readOne: vi.fn(),
+  requireBundleId: vi.fn(),
 }));
 
 // The pre-check loads cached ASC creds and lists apps by bundle id. Default to
@@ -55,12 +55,12 @@ vi.mock("node:fs", async () => {
 import { runAscConnect } from "../../src/commands/asc.ts";
 import { loadAscCreds } from "../../src/lib/asc-state.ts";
 import { ascStatus } from "../../src/lib/eas-integrations.ts";
-import { readOne } from "../../src/lib/env-local.ts";
+import { requireBundleId } from "../../src/lib/env-local.ts";
 import { spawn } from "../../src/lib/proc.ts";
 import { recordStep, save } from "../../src/lib/state.ts";
 
 const ascStatusSpy = ascStatus as unknown as ReturnType<typeof vi.fn>;
-const readOneSpy = readOne as unknown as ReturnType<typeof vi.fn>;
+const requireBundleIdSpy = requireBundleId as unknown as ReturnType<typeof vi.fn>;
 const spawnSpy = spawn as unknown as ReturnType<typeof vi.fn>;
 const loadAscCredsSpy = loadAscCreds as unknown as ReturnType<typeof vi.fn>;
 
@@ -77,7 +77,7 @@ beforeEach(async () => {
   Object.defineProperty(process.stdin, "isTTY", { value: true, configurable: true });
 
   ascStatusSpy.mockReset();
-  readOneSpy.mockReset();
+  requireBundleIdSpy.mockReset();
   loadAscCredsSpy.mockReset();
   appsListSpy.mockReset();
   // default pre-check: creds present, one matching app -> proceed to spawn
@@ -147,7 +147,7 @@ describe("runAscConnect", () => {
       project: "@testuser/testapp",
       status: "not-connected",
     });
-    readOneSpy.mockResolvedValueOnce("com.vexpo.vexpo");
+    requireBundleIdSpy.mockResolvedValueOnce("com.vexpo.vexpo");
 
     const exit = await runAscConnect({});
     expect(exit).toBe(0);
@@ -167,7 +167,7 @@ describe("runAscConnect", () => {
 
   it("falls through to spawn when ascStatus throws (no EAS project yet)", async () => {
     ascStatusSpy.mockRejectedValueOnce(new Error("EAS project not configured."));
-    readOneSpy.mockResolvedValueOnce("com.vexpo.vexpo");
+    requireBundleIdSpy.mockResolvedValueOnce("com.vexpo.vexpo");
 
     const exit = await runAscConnect({});
     expect(exit).toBe(0);
@@ -180,7 +180,7 @@ describe("runAscConnect", () => {
       project: "@testuser/testapp",
       status: "not-connected",
     });
-    readOneSpy.mockResolvedValueOnce("com.vexpo.vexpo");
+    requireBundleIdSpy.mockResolvedValueOnce("com.vexpo.vexpo");
 
     await runAscConnect({});
     const argv = spawnSpy.mock.calls[0]?.[0] as string[];
@@ -208,7 +208,7 @@ describe("runAscConnect", () => {
       project: "@testuser/testapp",
       status: "not-connected",
     });
-    readOneSpy.mockResolvedValueOnce(undefined);
+    requireBundleIdSpy.mockResolvedValueOnce(undefined);
 
     const exit = await runAscConnect({});
     expect(exit).toBe(1);
@@ -259,7 +259,7 @@ describe("runAscConnect", () => {
         appleUrl: "https://apps.apple.com/app/id1234567890",
       },
     });
-    readOneSpy.mockResolvedValueOnce("com.vexpo.vexpo");
+    requireBundleIdSpy.mockResolvedValueOnce("com.vexpo.vexpo");
 
     await runAscConnect({ force: true });
     expect(ascStatusSpy).not.toHaveBeenCalled();
@@ -273,7 +273,7 @@ describe("runAscConnect", () => {
       project: "@testuser/testapp",
       status: "not-connected",
     });
-    readOneSpy.mockResolvedValueOnce("com.vexpo.vexpo");
+    requireBundleIdSpy.mockResolvedValueOnce("com.vexpo.vexpo");
     appsListSpy.mockResolvedValueOnce([
       { type: "apps", id: "1234567890", attributes: { bundleId: "com.vexpo.vexpo" } },
     ]);
@@ -304,7 +304,7 @@ describe("runAscConnect", () => {
       project: "@testuser/testapp",
       status: "not-connected",
     });
-    readOneSpy.mockResolvedValueOnce("com.vexpo.vexpo");
+    requireBundleIdSpy.mockResolvedValueOnce("com.vexpo.vexpo");
     // resolveAscApp can't reach the ASC API, so it can't resolve the id headless
     loadAscCredsSpy.mockResolvedValueOnce(null);
 
@@ -319,7 +319,7 @@ describe("runAscConnect", () => {
       project: "@testuser/testapp",
       status: "not-connected",
     });
-    readOneSpy.mockResolvedValueOnce("com.vexpo.vexpo");
+    requireBundleIdSpy.mockResolvedValueOnce("com.vexpo.vexpo");
     appsListSpy.mockResolvedValueOnce([]);
 
     const err = vi.spyOn(process.stderr, "write").mockReturnValue(true);
@@ -341,7 +341,7 @@ describe("runAscConnect", () => {
       project: "@testuser/testapp",
       status: "not-connected",
     });
-    readOneSpy.mockResolvedValueOnce("com.vexpo.vexpo");
+    requireBundleIdSpy.mockResolvedValueOnce("com.vexpo.vexpo");
     appsListSpy.mockResolvedValueOnce([
       { type: "apps", id: "app-1", attributes: { bundleId: "com.vexpo.vexpo" } },
     ]);
@@ -371,7 +371,7 @@ describe("runAscConnect", () => {
       project: "@testuser/testapp",
       status: "not-connected",
     });
-    readOneSpy.mockResolvedValueOnce("com.vexpo.vexpo");
+    requireBundleIdSpy.mockResolvedValueOnce("com.vexpo.vexpo");
     appsListSpy.mockRejectedValueOnce(new Error("network down"));
 
     const exit = await runAscConnect({});
@@ -385,7 +385,7 @@ describe("runAscConnect", () => {
       project: "@testuser/testapp",
       status: "not-connected",
     });
-    readOneSpy.mockResolvedValueOnce("com.vexpo.vexpo");
+    requireBundleIdSpy.mockResolvedValueOnce("com.vexpo.vexpo");
     spawnSpy.mockReturnValueOnce({
       exited: Promise.resolve(42),
       stdout: null,
