@@ -1,15 +1,17 @@
-import "expo-sqlite/localStorage/install";
-import { useState } from "react";
+import { useSyncExternalStore } from "react";
 
-const ONBOARDING_KEY = "onboarding_seen";
+import { createStorage } from "@/lib/storage";
+
+const onboardingStore = createStorage<boolean>("onboarding_seen", false);
 
 export function useOnboarding() {
-  const [seen, setSeen] = useState<boolean>(localStorage.getItem(ONBOARDING_KEY) === "true");
+  const seen = useSyncExternalStore(
+    onboardingStore.subscribe,
+    onboardingStore.get,
+    onboardingStore.get,
+  );
 
-  const markSeen = () => {
-    localStorage.setItem(ONBOARDING_KEY, "true");
-    setSeen(true);
-  };
+  const markSeen = () => onboardingStore.set(true);
 
   return { seen, markSeen };
 }

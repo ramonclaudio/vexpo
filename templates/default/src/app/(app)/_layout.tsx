@@ -30,8 +30,9 @@ export default function AppLayout() {
   const me = useQuery(api.users.getMe, isAuthenticated ? {} : "skip");
   const isAccountDeleted = !!me?.deletedAt;
 
-  // First-launch gate. `seen` reads SecureStore-backed localStorage
-  // synchronously, so there is no async flash. Wait for `me` to resolve
+  // First-launch gate. `seen` reads expo-sqlite/localStorage (app data, not
+  // secrets) synchronously and stays reactive, so it never flashes async and
+  // markSeen() in welcome flips this copy too. Wait for `me` to resolve
   // (undefined while loading) before routing so a fresh authed user lands
   // on welcome only once the account state is known. Welcome is registered
   // inside the authed guard below, so this only fires for signed-in users.
