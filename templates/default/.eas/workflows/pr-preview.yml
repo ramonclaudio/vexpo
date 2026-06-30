@@ -16,7 +16,12 @@ name: PR preview
 #     pull_request:
 #       branches: ["main"]
 on:
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        type: string
+        required: false
+        description: "PR number to publish a preview for (sets the pr-<n> branch)"
 
 concurrency:
   cancel_in_progress: true
@@ -65,25 +70,27 @@ jobs:
   publish_update_new:
     name: Publish preview update (new fingerprint path)
     needs: [build_ios]
+    if: ${{ github.event.pull_request.number || inputs.pr_number }}
     type: update
     environment: development
     params:
       platform: ios
-      branch: pr-${{ github.event.pull_request.number }}
+      branch: pr-${{ github.event.pull_request.number || inputs.pr_number }}
 
   publish_update_existing:
     name: Publish preview update (existing build path)
     needs: [get_existing_build]
-    if: ${{ needs.get_existing_build.outputs.build_id }}
+    if: ${{ needs.get_existing_build.outputs.build_id && (github.event.pull_request.number || inputs.pr_number) }}
     type: update
     environment: development
     params:
       platform: ios
-      branch: pr-${{ github.event.pull_request.number }}
+      branch: pr-${{ github.event.pull_request.number || inputs.pr_number }}
 
   comment:
     name: Post results to PR
     after: [build_ios, publish_update_new, publish_update_existing]
+    if: ${{ github.event.pull_request.number || inputs.pr_number }}
     type: github-comment
     params:
       message: "🚀 Preview ready. Scan the QR code or open the link to test."

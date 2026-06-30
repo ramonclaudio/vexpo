@@ -125,7 +125,6 @@ npm run format:check           oxfmt --check
 npm run test                   vitest run
 npm run test:watch             vitest
 npm run fp                     Print Expo fingerprint hash
-npm run fp:diff                Diff fingerprint vs base ref
 npm run upgrade                expo install expo@next && expo install --fix
 npm run upgrade:stable         expo install expo@latest && expo install --fix
 ```
@@ -136,7 +135,6 @@ Setup is one-shot, not a `package.json` script. Run `npx vexpo lite`, `npx vexpo
 
 - Convex backend: reactive queries, storage, real-time sync, per-mutation rate limiting
 - Better Auth via `@convex-dev/better-auth`: email, password, OTP, Apple Sign In, per-device session revocation
-- App Attest device-attestation primitives ready to wire (client lib + Convex verifier)
 - Resend for OTP, password reset, and change-email, with delivery webhooks
 - APNs push, Apple Universal Links, profile editing with avatar uploads
 - Account soft-delete with a 30-day grace window
@@ -168,7 +166,7 @@ plugins/
   with-auto-signing.js            CODE_SIGN_STYLE=Automatic + DEVELOPMENT_TEAM
   with-pod-deployment-target.js   Forces every pod to iOS 16.4
 .eas/workflows/                   10 EAS Workflow YAML files
-.github/workflows/check.yml       Typecheck, lint, format, tests, fingerprint diff
+.github/workflows/check.yml       Typecheck, lint, format, tests
 scripts/
   clean.ts                        Trash + reinstall
   rotate-apple-jwt.mjs            CI: re-sign JWT from env vars
@@ -178,6 +176,26 @@ __tests__/                        Convex + lib unit tests (validators, HMAC, dee
 ## More
 
 - [`AGENTS.md`](./AGENTS.md): conventions for AI coding agents (and humans) working in this codebase.
+
+## Re-adding App Attest
+
+The template used to ship an Apple App Attest stack (a Convex verifier plus a client lib). App Attest proves a request came from a real, unmodified build on a real device with a Secure Enclave. Add it back when you have a mutation worth protecting:
+
+1. Install the native module: `npm install @expo/app-integrity`.
+2. Add the entitlement under `ios` in `app.config.ts`:
+
+   ```ts
+   entitlements: {
+     "com.apple.developer.devicecheck.appattest-environment": "production",
+   },
+   ```
+
+3. Bring back the verifier and client from git history (`git log --diff-filter=D --name-only -- convex/appAttest.ts`):
+   - `convex/appAttest.ts`: the attestation + assertion verifier (needs `cbor-x`, `npm install cbor-x`).
+   - `convex/appAttestStore.ts`: challenge and key storage mutations.
+   - `src/lib/appAttest.ts`: the device-side `attestThisDevice` / `signRequest` client.
+   - the `appAttestChallenges` and `appAttestKeys` tables in `convex/schema.ts`, and the `cleanupChallenges` hourly cron in `convex/crons.ts`.
+4. The verifiers ship as `internalAction`s, so wrap them in a public `action` (or call them from a protected `mutation`) before the client can reach them. Pattern: client attests once, caches the `keyId`, then signs each protected mutation's args and the public action verifies the assertion before running the write.
 
 ## Version pinning
 

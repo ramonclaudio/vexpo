@@ -17,7 +17,7 @@ hand. These are conventions.
   no `react-native-paper`.
 - CI/CD. EAS Workflows (`.eas/workflows/*.yml`) for everything
   Expo-shaped. GitHub Actions (`.github/workflows/check.yml`) only for
-  general-purpose checks (typecheck, lint, format, tests, fingerprint).
+  general-purpose checks (typecheck, lint, format, tests).
 
 ## Conventions
 

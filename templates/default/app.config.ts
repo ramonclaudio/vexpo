@@ -34,6 +34,11 @@ if (process.env.EAS_BUILD === "true") {
   const missing = [
     !process.env.EXPO_PUBLIC_CONVEX_URL && "EXPO_PUBLIC_CONVEX_URL",
     !process.env.EXPO_PUBLIC_CONVEX_SITE_URL && "EXPO_PUBLIC_CONVEX_SITE_URL",
+    // Without these the build silently falls back to the template identity
+    // (com.example.* / ABCDE12345), producing a binary signed under the wrong
+    // bundle id and team. `vexpo env push` syncs them to every EAS environment.
+    !process.env.EXPO_PUBLIC_APP_BUNDLE_ID && "EXPO_PUBLIC_APP_BUNDLE_ID",
+    !process.env.EXPO_PUBLIC_APPLE_TEAM_ID && "EXPO_PUBLIC_APPLE_TEAM_ID",
   ].filter(Boolean);
   if (missing.length > 0) {
     throw new Error(
@@ -142,10 +147,17 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       // EAS profile. `development` is the safe default; a missed profile
       // override won't accidentally pull production OTA into a dev build.
       requestHeaders: { "expo-channel-name": "development" },
-      // Only ship icon + splash with each OTA. Fonts, sounds, and other
-      // build-baked assets stay in the .ipa and never download. Shrinks
-      // bundle by ~95% on diff-able updates.
-      assetPatternsToBeBundled: ["assets/icon.png", "assets/splash-image-*.png"],
+      // Bundle every asset in the runtime require graph (`src/lib/assets.ts`):
+      // icon, splash, and the brand icons. `.fingerprintignore` ignores
+      // `assets/**`, so a `vexpo rebrand` swap stays OTA-eligible; if the new
+      // brand icon isn't bundled it resolves to a missing asset on device.
+      // Fonts, sounds, and other build-baked assets stay in the .ipa and never
+      // download.
+      assetPatternsToBeBundled: [
+        "assets/icon.png",
+        "assets/splash-image-*.png",
+        "assets/brand-icon-*.png",
+      ],
       // End-to-end OTA code signing. The cert is committed at
       // `./certs/certificate.pem` and bundled with each .ipa; the device
       // verifies every update against it before applying. The matching
@@ -174,17 +186,6 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       infoPlist: {
         ITSAppUsesNonExemptEncryption: false,
         LSApplicationQueriesSchemes: ["mailto", "tel", "sms", "itms-apps"],
-      },
-      // App Attest entitlement. `@expo/app-integrity` calls the
-      // DCAppAttestService API; iOS rejects unentitled access. The value
-      // `production` keeps every signed/distributed build (TestFlight,
-      // App Store) in the production AAGUID. Local debug builds with the
-      // Xcode debugger attached attest against the development AAGUID
-      // automatically without changing this value, so the same entry
-      // works across simulator-impossible and real-device paths.
-      // https://developer.apple.com/documentation/bundleresources/entitlements/com.apple.developer.devicecheck.appattest-environment
-      entitlements: {
-        "com.apple.developer.devicecheck.appattest-environment": "production",
       },
       associatedDomains: [
         `applinks:${process.env.EXPO_PUBLIC_CONVEX_SITE_URL?.replace(/^https?:\/\//, "") ?? "example.convex.site"}`,

@@ -83,7 +83,9 @@ export const createAuth = (ctx: GenericCtx<DataModel>) =>
   betterAuth({
     baseURL: env.convexSiteUrl,
     trustedOrigins: [
-      "vexpo://",
+      // The app's deep-link origin (`<scheme>://`). `env.siteUrl` reads the
+      // SITE_URL Convex env var, which `vexpo convex` derives from the
+      // app.config.ts scheme, so a rebrand stays coherent with no literal here.
       env.siteUrl,
       // In dev, Expo Go uses `exp://<lan-ip>:<port>` and the dev client uses
       // `exp+<scheme>://`. Wildcards match the host/port suffix that Better
