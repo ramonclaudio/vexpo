@@ -24,8 +24,9 @@ import { Duration } from "@/constants/ui";
 import { NavigationDark, NavigationLight } from "@/constants/theme";
 import { setForegroundHandler, registerBackgroundTask } from "@/lib/notifications";
 
+// No `expectAuth: true`. The app has public pre-auth queries (sign-in shows
+// enabled providers), so the socket must run before auth resolves.
 const convex = new ConvexReactClient(env.convexUrl, {
-  expectAuth: true,
   unsavedChangesWarning: false,
 });
 
