@@ -144,7 +144,7 @@ function resolveDestination(
   };
 }
 
-type FilePlan = {
+export type FilePlan = {
   sourceFile: string;
   channel: Channel;
   rows: Array<{ entry: SyncEntry; resolved: ResolvedDestination[] }>;
@@ -200,10 +200,7 @@ function printFilePlan(plan: FilePlan): {
   return { actionable, conflicts, blocked };
 }
 
-async function applyPlan(
-  plan: FilePlan,
-  opts: { force?: boolean } = {},
-): Promise<{ applied: number; failed: number }> {
+export async function applyPlan(plan: FilePlan): Promise<{ applied: number; failed: number }> {
   const convexBatches = new Map<"dev" | "prod", Array<[string, string]>>();
   const easBatches = new Map<
     string,
@@ -246,10 +243,14 @@ async function applyPlan(
       await writeFile(tmp, entries.map(([k, v]) => `${k}=${v}`).join("\n") + "\n", {
         mode: 0o600,
       });
+      // The plan and the interactive confirm already gate overwrites, so force
+      // the overwrite to match the EAS path. Without --force the Convex CLI
+      // rejects the whole batch when a secret already exists (a TTY user who
+      // confirms still carries no opts.force, and CI has none either).
       await convexEnvSetFromFile(
         tmp,
         channel === "prod" ? { prod: true, envFile: plan.sourceFile } : undefined,
-        { force: opts.force ?? false },
+        { force: true },
       );
       ok(`convex(${channel}) bulk-set ${entries.length} var${entries.length === 1 ? "" : "s"}`);
       for (const [k] of entries) note(`  ${k}`);
@@ -437,7 +438,7 @@ export async function runEnvPush(options: EnvPushOptions): Promise<number> {
         continue;
       }
     }
-    const { applied, failed } = await applyPlan(plan, { force: options.force });
+    const { applied, failed } = await applyPlan(plan);
     appliedTotal += applied;
     failedTotal += failed;
   }
