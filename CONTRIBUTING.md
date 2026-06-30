@@ -113,6 +113,8 @@ direnv allow templates/default
 - Oxlint and Oxfmt only. No ESLint, Prettier, or Biome.
 - No emojis in source, and no AI attribution or `Co-authored-by` trailers in commits or PRs.
 
+Use whatever tools you like to get the code written, AI assistants included. The only thing we ask is that you understand what you're submitting and can walk through it in review. If a tool wrote your commit message or PR description, give it a pass to clean it up and strip any attribution trailers, same as the rule above.
+
 ## Tests
 
 Behavior changes and new features land with tests. Refactors keep the coverage they had. For a bug fix, add a test that fails on `main` and passes with your fix. Tests sit next to the code they cover in `__tests__/`.
