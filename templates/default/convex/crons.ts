@@ -11,6 +11,11 @@ crons.daily(
   internal.pushTokens.cleanupStale,
 );
 
+// Expo only surfaces dead devices (DeviceNotRegistered, etc.) in the push
+// RECEIPT, which lands minutes after the send ticket. Poll for them so tokens
+// get tombstoned promptly instead of waiting on the 90-day staleness sweep.
+crons.interval("reconcile push receipts", { minutes: 15 }, internal.pushSender.reconcileReceipts);
+
 crons.daily(
   "hard-delete expired account tombstones",
   { hourUTC: 4, minuteUTC: 0 },
