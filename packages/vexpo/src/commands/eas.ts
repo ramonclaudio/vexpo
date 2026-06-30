@@ -105,6 +105,8 @@ export async function runEas(options: EasOptions): Promise<number> {
     if (createdBranches.length > 0) ok(`branches created: ${createdBranches.join(", ")}`);
     else nop(`branches already exist (${branches.join(", ")})`);
 
+    let pushFailed = false;
+
     if (await fileExists(".env.local")) {
       try {
         const pushed = await pushEasRoutedKeys(".env.local", ["development"]);
@@ -117,6 +119,7 @@ export async function runEas(options: EasOptions): Promise<number> {
         }
       } catch (err) {
         bad(err instanceof Error ? err.message : String(err));
+        pushFailed = true;
       }
     } else {
       nop(".env.local missing. skipping development env push (run `vexpo convex` first)");
@@ -140,6 +143,7 @@ export async function runEas(options: EasOptions): Promise<number> {
           }
         } catch (err) {
           bad(err instanceof Error ? err.message : String(err));
+          pushFailed = true;
         }
       } else {
         nop("--with-prod set but no .env.prod or .env.production found");
@@ -175,7 +179,7 @@ export async function runEas(options: EasOptions): Promise<number> {
     note(`  ${BOLD}vexpo apple asc-key${RESET}        validate ASC API key against /v1/apps`);
     note(`  ${BOLD}vexpo apple services-id${RESET}    create SIWA Services ID via ASC API`);
     note(`  ${BOLD}vexpo apple jwt${RESET}            sign the SIWA client_secret JWT`);
-    return 0;
+    return pushFailed ? 1 : 0;
   } catch (err) {
     bad(err instanceof Error ? err.message : String(err));
     return 1;
