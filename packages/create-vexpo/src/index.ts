@@ -29,7 +29,7 @@ async function main() {
   const program = new Command()
     .name("create-vexpo")
     .description(
-      "Scaffold a new vexpo project. Expo SDK 56 + Convex + Better Auth + Resend, wired for iOS.",
+      "Scaffold a new vexpo project. Expo SDK 57 + Convex + Better Auth + Resend, wired for iOS.",
     )
     .argument("[directory]", "project directory name")
     .option("--no-install", "skip installing dependencies")

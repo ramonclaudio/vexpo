@@ -30,7 +30,7 @@ npm workspace at the root with `packages/*` as members. Templates stay outside t
 
 ### Template (`templates/default/`)
 
-- Expo SDK 56, RN 0.85+, React 19. Convex backend. Better Auth via `@convex-dev/better-auth`. Resend via `@convex-dev/resend`.
+- Expo SDK 57, RN 0.86+, React 19. Convex backend. Better Auth via `@convex-dev/better-auth`. Resend via `@convex-dev/resend`.
 - Native SwiftUI via `@expo/ui/swift-ui`. Material translucency via `expo-glass-effect` (iOS 26+) + `expo-blur` fallback.
 - EAS Workflows for all CI/CD. PR previews and Maestro E2E ship `workflow_dispatch`-only to conserve build credits. GitHub Actions only for general checks (typecheck, lint, format, tests, fingerprint).
 - Setup is a CLI concern (`npx vexpo lite` / `full`), not a `package.json` script.
