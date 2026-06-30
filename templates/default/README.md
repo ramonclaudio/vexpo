@@ -125,7 +125,6 @@ npm run format:check           oxfmt --check
 npm run test                   vitest run
 npm run test:watch             vitest
 npm run fp                     Print Expo fingerprint hash
-npm run fp:diff                Diff fingerprint vs base ref
 npm run upgrade                expo install expo@next && expo install --fix
 npm run upgrade:stable         expo install expo@latest && expo install --fix
 ```
@@ -168,7 +167,7 @@ plugins/
   with-auto-signing.js            CODE_SIGN_STYLE=Automatic + DEVELOPMENT_TEAM
   with-pod-deployment-target.js   Forces every pod to iOS 16.4
 .eas/workflows/                   10 EAS Workflow YAML files
-.github/workflows/check.yml       Typecheck, lint, format, tests, fingerprint diff
+.github/workflows/check.yml       Typecheck, lint, format, tests
 scripts/
   clean.ts                        Trash + reinstall
   rotate-apple-jwt.mjs            CI: re-sign JWT from env vars

@@ -34,7 +34,6 @@
     "clean:state": "node scripts/_run.mjs scripts/clean.ts --state",
     "typecheck": "tsc --noEmit",
     "fp": "npx @expo/fingerprint fingerprint:generate",
-    "fp:diff": "npx @expo/fingerprint fingerprint:diff",
     "lint": "oxlint",
     "format": "oxfmt",
     "format:check": "oxfmt --check",
