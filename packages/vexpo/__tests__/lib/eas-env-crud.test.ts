@@ -5,7 +5,7 @@ vi.mock("../../src/lib/proc.ts", () => ({
 }));
 vi.mock("../../src/lib/pkg-manager.ts", () => ({ dlx: () => "bunx" }));
 
-import { envCreate, envUpdate } from "../../src/lib/eas-env.ts";
+import { ensureChannels, envCreate, envUpdate } from "../../src/lib/eas-env.ts";
 import { run } from "../../src/lib/proc.ts";
 
 const runSpy = run as unknown as ReturnType<typeof vi.fn>;
@@ -52,5 +52,34 @@ describe("envCreate argv", () => {
     const e = argv.indexOf("--environment");
     expect(argv[e + 1]).toBe("development");
     expect(argv).toContain("--non-interactive");
+  });
+});
+
+describe("ensureChannels", () => {
+  const list = (names: string[]) => ({
+    code: 0,
+    stdout: JSON.stringify({ currentPage: names.map((name) => ({ name })) }),
+    stderr: "",
+  });
+
+  it("skips channels already present and returns only the created ones", async () => {
+    runSpy.mockResolvedValueOnce(list(["development", "preview"]));
+    runSpy.mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" });
+    const created = await ensureChannels(["development", "preview", "production"]);
+    expect(created).toEqual(["production"]);
+    expect(runSpy.mock.calls[1]![0]).toContain("channel:create");
+  });
+
+  it("throws on a real create failure instead of reporting success", async () => {
+    runSpy.mockResolvedValueOnce(list([]));
+    runSpy.mockResolvedValueOnce({ code: 1, stdout: "", stderr: "network down" });
+    await expect(ensureChannels(["development"])).rejects.toThrow(
+      /channel:create development failed/,
+    );
+  });
+
+  it("throws when the channel list itself fails", async () => {
+    runSpy.mockResolvedValueOnce({ code: 1, stdout: "", stderr: "not logged in" });
+    await expect(ensureChannels(["development"])).rejects.toThrow(/channel:list failed/);
   });
 });
