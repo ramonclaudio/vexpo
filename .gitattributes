@@ -2,3 +2,17 @@
 README.md merge=ours
 package.json merge=ours
 package-lock.json merge=ours
+
+# Normalize line endings: text files commit with LF, checkout per platform.
+* text=auto eol=lf
+
+# Binary assets: never diff or merge as text.
+*.gif binary
+*.png binary
+*.jpg binary
+*.ttf binary
+*.wav binary
+*.p8 binary
+
+# Convex codegen: exclude from language stats and collapse diffs.
+templates/default/convex/_generated/** linguist-generated=true
