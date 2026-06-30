@@ -1,5 +1,3 @@
-import { access } from "node:fs/promises";
-
 import { deploymentSlug } from "../../lib/convex-env.ts";
 import { mintProdDeployKey } from "../../lib/convex-management.ts";
 import {
@@ -10,6 +8,7 @@ import {
   type EasEnvironment,
 } from "../../lib/eas-env.ts";
 import { readEnvFile } from "../../lib/env-files.ts";
+import { fileExists } from "../../lib/fs.ts";
 import { BOLD, DIM, RESET, bad, line, note, ok, section, yep } from "../../lib/output.ts";
 
 export type ConvexKeyOptions = {
@@ -19,15 +18,6 @@ export type ConvexKeyOptions = {
   prodFile?: string;
   mint?: boolean;
 };
-
-async function fileExists(p: string): Promise<boolean> {
-  try {
-    await access(p);
-    return true;
-  } catch {
-    return false;
-  }
-}
 
 /** Create-or-update: env:update errors if the var doesn't exist yet, so branch on presence. */
 async function upsert(

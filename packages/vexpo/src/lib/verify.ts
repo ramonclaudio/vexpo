@@ -1,5 +1,6 @@
 import { existsSync, readFileSync } from "node:fs";
 
+import { appName, appleTeamIdFallback, bundleIdFallback, scheme as appScheme } from "./app.ts";
 import { validate as ascValidate, makeAscClient, type AscCredentials } from "./asc-api.ts";
 import { loadAscCreds } from "./asc-state.ts";
 import { deploymentSlug, envMap as convexEnvMap, type ConvexTarget } from "./convex-env.ts";
@@ -12,13 +13,13 @@ import {
 import { ascStatus } from "./eas-integrations.ts";
 import { submitProfilesMissingAscAppId } from "./eas-submit.ts";
 import {
-  diagnostics as easDiagnostics,
   envList as easEnvList,
   resolveProjectId,
   projectInfo as easProjectInfo,
   whoami as easWhoami,
 } from "./eas-env.ts";
 import { readEnvFile } from "./env-files.ts";
+import { BOLD, DIM, GREEN, RED, RESET, YELLOW, line, section } from "./output.ts";
 import { listDomains, listWebhooks, probeAccess } from "./resend-api.ts";
 
 export type Severity = "ok" | "warn" | "fail" | "skip";
@@ -562,7 +563,7 @@ async function verifyEas(ctx: VerifyContext): Promise<Check[]> {
     return checks;
   }
 
-  // whoami + project-info + diagnostics need a resolved projectId; best-effort,
+  // whoami + project-info need a resolved projectId; best-effort,
   // never short-circuit the env + integration checks below.
   if (projectId) {
     try {
@@ -594,17 +595,6 @@ async function verifyEas(ctx: VerifyContext): Promise<Check[]> {
         );
     } catch {
       checks.push(skip("eas", "project-info", "eas-cli not available"));
-    }
-
-    try {
-      const diag = await easDiagnostics();
-      checks.push(
-        diag.ok
-          ? ok("eas", "diagnostics", "eas-cli health ok")
-          : warn("eas", "diagnostics", diag.error),
-      );
-    } catch {
-      checks.push(skip("eas", "diagnostics", "eas-cli not available"));
     }
   }
 
@@ -889,24 +879,18 @@ export async function readContext(channel: Channel): Promise<VerifyContext> {
 }
 
 async function readAppConfigFacts(): Promise<AppConfigFacts> {
-  try {
-    const { readFile } = await import("node:fs/promises");
-    const text = await readFile("app.config.ts", "utf8");
-    const name = /name:\s*IS_DEV\s*\?\s*"[^"]+"\s*:\s*"([^"]+)",/.exec(text)?.[1];
-    const bundleIdFallback = /EXPO_PUBLIC_APP_BUNDLE_ID\s*\?\?\s*(?:`([^`]+)`|"([^"]+)")/.exec(
-      text,
-    );
-    const teamIdFallback = /EXPO_PUBLIC_APPLE_TEAM_ID\s*\?\?\s*"([^"]+)"/.exec(text)?.[1];
-    const scheme = /scheme:\s*"([^"]+)"/.exec(text)?.[1];
-    return {
-      name,
-      bundleIdFallback: bundleIdFallback?.[1] ?? bundleIdFallback?.[2],
-      teamIdFallback,
-      scheme,
-    };
-  } catch {
-    return {};
-  }
+  const [name, scheme, bundleId, teamId] = await Promise.all([
+    appName(),
+    appScheme(),
+    bundleIdFallback(),
+    appleTeamIdFallback(),
+  ]);
+  return {
+    name,
+    bundleIdFallback: bundleId ?? undefined,
+    teamIdFallback: teamId ?? undefined,
+    scheme,
+  };
 }
 
 export async function verifyAll(ctx: VerifyContext): Promise<Check[]> {
@@ -933,4 +917,58 @@ export function summarize(checks: Check[]): {
     fail: checks.filter((c) => c.severity === "fail").length,
     skip: checks.filter((c) => c.severity === "skip").length,
   };
+}
+
+const RENDER_ORDER: Category[] = ["files", "convex", "resend", "apple", "eas", "coherence"];
+
+function glyph(severity: Severity): string {
+  switch (severity) {
+    case "ok":
+      return `${GREEN}✓${RESET}`;
+    case "warn":
+      return `${YELLOW}⚠${RESET}`;
+    case "fail":
+      return `${RED}✗${RESET}`;
+    case "skip":
+      return `${DIM}-${RESET}`;
+  }
+}
+
+// doctor prints each category under its own section rule and pads names per
+// category; env push nests a lighter bold label under one Verify section and
+// pads across every check. Same glyphs, colors, and order either way.
+export function renderVerifyResults(
+  checks: Check[],
+  style: "section" | "compact",
+  redact: (text: string) => string = (t) => t,
+): void {
+  const byCategory = new Map<Category, Check[]>();
+  for (const c of checks) {
+    if (!byCategory.has(c.category)) byCategory.set(c.category, []);
+    byCategory.get(c.category)!.push(c);
+  }
+  const globalWidth = Math.max(...checks.map((c) => c.name.length));
+  for (const cat of RENDER_ORDER) {
+    const items = byCategory.get(cat);
+    if (!items || items.length === 0) continue;
+    if (style === "section") section(cat.charAt(0).toUpperCase() + cat.slice(1));
+    else line(`  ${BOLD}${cat}${RESET}`);
+    const w = style === "section" ? Math.max(...items.map((c) => c.name.length)) : globalWidth;
+    for (const c of items) {
+      const message = redact(c.message);
+      line(
+        style === "section"
+          ? `  ${glyph(c.severity)} ${BOLD}${c.name.padEnd(w)}${RESET}  ${message}`
+          : `    ${glyph(c.severity)} ${c.name.padEnd(w)}  ${message}`,
+      );
+      if (c.details) {
+        const details = redact(c.details);
+        line(
+          style === "section"
+            ? `       ${DIM}${details}${RESET}`
+            : `        ${DIM}${details}${RESET}`,
+        );
+      }
+    }
+  }
 }

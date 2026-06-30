@@ -227,7 +227,7 @@ async function rewriteStoreConfig(inputs: RebrandInputs): Promise<void> {
     await access(file);
     json = JSON.parse(await readFile(file, "utf8")) as StoreConfigShape;
   } catch {
-    json = structuredClone(STORE_CONFIG_TEMPLATE);
+    throw new Error(`${file} missing or unparseable; restore it from the vexpo template first`);
   }
   const en = json.apple.info["en-US"];
   en.title = `${inputs.appName} | Convex on Expo`;
@@ -255,67 +255,6 @@ type StoreConfigShape = {
     releaseNotes: Record<string, string>;
     promotionalText: Record<string, string>;
   };
-};
-
-const STORE_CONFIG_TEMPLATE: StoreConfigShape = {
-  configVersion: 0,
-  apple: {
-    copyright: "YEAR YOUR_NAME",
-    categories: ["DEVELOPER_TOOLS", "UTILITIES"],
-    info: {
-      "en-US": {
-        title: "Your App | Convex on Expo",
-        subtitle: "Replace before submission",
-        description:
-          "Replace this with your app's full description before submitting to App Store. Apple allows up to 4,000 characters.",
-        keywords: ["expo", "convex", "ios"],
-        marketingUrl: "https://github.com/YOUR_GITHUB/YOUR_REPO",
-        supportUrl: "https://github.com/YOUR_GITHUB/YOUR_REPO/issues",
-        privacyPolicyUrl: "https://example.com/privacy",
-        privacyChoicesUrl: "",
-      },
-    },
-    advisory: {
-      alcoholTobaccoOrDrugUseOrReferences: "NONE",
-      contests: "NONE",
-      gamblingSimulated: "NONE",
-      horrorOrFearThemes: "NONE",
-      matureOrSuggestiveThemes: "NONE",
-      medicalOrTreatmentInformation: "NONE",
-      profanityOrCrudeHumor: "NONE",
-      sexualContentGraphicAndNudity: "NONE",
-      sexualContentOrNudity: "NONE",
-      violenceCartoonOrFantasy: "NONE",
-      violenceRealistic: "NONE",
-      violenceRealisticProlongedGraphicOrSadistic: "NONE",
-      gambling: false,
-      unrestrictedWebAccess: false,
-      kidsAgeBand: null,
-      ageRatingOverride: "NONE",
-      koreaAgeRatingOverride: "NONE",
-      seventeenPlus: false,
-    },
-    review: {
-      firstName: "YOUR_FIRST_NAME",
-      lastName: "YOUR_LAST_NAME",
-      email: "reviewer@example.com",
-      phone: "+15555555555",
-      notes:
-        "Replace with App Review notes for your fork. Sign-in instructions, demo behavior, anything Apple's reviewer needs.",
-      demoUsername: "review@example.com",
-      demoPassword: "REPLACE_BEFORE_SUBMIT",
-    },
-    release: {
-      automaticRelease: true,
-      phasedRelease: true,
-    },
-    releaseNotes: {
-      "en-US": "Initial release.",
-    },
-    promotionalText: {
-      "en-US": "Replace with your app's promotional text before submission.",
-    },
-  },
 };
 
 async function alreadyRebranded(): Promise<boolean> {

@@ -1,5 +1,3 @@
-import { access } from "node:fs/promises";
-
 import { easSpawn } from "../lib/eas-cli.ts";
 import {
   checkCli,
@@ -12,21 +10,13 @@ import {
   type EasEnvironment,
 } from "../lib/eas-env.ts";
 import { ROUTING, readEnvFile } from "../lib/env-files.ts";
+import { fileExists } from "../lib/fs.ts";
 import { BOLD, RESET, askYesNo, bad, line, nop, note, ok, section, yep } from "../lib/output.ts";
 import { recordStep } from "../lib/state.ts";
 
 export type EasOptions = {
   withProd?: boolean;
 };
-
-async function fileExists(p: string): Promise<boolean> {
-  try {
-    await access(p);
-    return true;
-  } catch {
-    return false;
-  }
-}
 
 /**
  * Pushes ONLY the EAS-routed keys (the `EXPO_PUBLIC_*` vars) from an env file

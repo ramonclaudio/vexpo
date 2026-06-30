@@ -49,10 +49,9 @@ import { loadAscCreds } from "../lib/asc-state.ts";
 import { easSpawn } from "../lib/eas-cli.ts";
 import { ascStatus } from "../lib/eas-integrations.ts";
 import { withAscAppId } from "../lib/eas-submit.ts";
-import { readOne } from "../lib/env-local.ts";
+import { requireBundleId } from "../lib/env-local.ts";
 import { BOLD, RESET, bad, line, nop, note, ok, section, yep } from "../lib/output.ts";
-import { expandTilde } from "../lib/path.ts";
-import { load as loadState, recordStep } from "../lib/state.ts";
+import { recordStep } from "../lib/state.ts";
 
 type AscAppResolution =
   | { kind: "found"; ascAppId: string }
@@ -77,24 +76,6 @@ async function resolveAscApp(bundleId: string): Promise<AscAppResolution> {
   } catch {
     return { kind: "unknown" };
   }
-}
-
-async function loadAscFromState(): Promise<{
-  issuerId: string;
-  keyId: string;
-  p8Path: string;
-} | null> {
-  const state = await loadState();
-  const rec = state.steps["asc-key"];
-  if (!rec?.outputs) return null;
-  const out = rec.outputs as Record<string, unknown>;
-  const issuerId = out.issuerId as string | undefined;
-  const keyId = out.keyId as string | undefined;
-  const rawPath = out.p8Path as string | undefined;
-  if (!issuerId || !keyId || !rawPath) return null;
-  const p8Path = expandTilde(rawPath);
-  if (!existsSync(p8Path)) return null;
-  return { issuerId, keyId, p8Path };
 }
 
 // Write the resolved ascAppId into eas.json submit profiles. `eas submit`
@@ -136,10 +117,10 @@ export async function ensureAscAppId(bundleId: string): Promise<string | null> {
  * ASC key (no EAS credential store needed), or null when no key is cached.
  */
 export async function ascKeyEnv(): Promise<Record<string, string> | null> {
-  const asc = await loadAscFromState();
-  if (!asc) return null;
+  const asc = await loadAscCreds();
+  if (!asc || !("path" in asc.privateKey)) return null;
   return {
-    EXPO_ASC_API_KEY_PATH: asc.p8Path,
+    EXPO_ASC_API_KEY_PATH: asc.privateKey.path,
     EXPO_ASC_KEY_ID: asc.keyId,
     EXPO_ASC_ISSUER_ID: asc.issuerId,
   };
@@ -169,21 +150,19 @@ export async function runAscConnect(opts: { force?: boolean } = {}): Promise<num
     } catch {}
   }
 
-  const asc = await loadAscFromState();
-  if (!asc) {
+  const asc = await loadAscCreds();
+  if (!asc || !("path" in asc.privateKey)) {
     bad("no cached ASC creds. Run `vexpo apple asc-key` first to validate one.");
     return 1;
   }
+  const p8Path = asc.privateKey.path;
   ok("cached ASC API key found in state.json");
   note(`  issuerId: ${BOLD}${asc.issuerId}${RESET}`);
   note(`  keyId:    ${BOLD}${asc.keyId}${RESET}`);
-  note(`  .p8:      ${BOLD}${asc.p8Path}${RESET}`);
+  note(`  .p8:      ${BOLD}${p8Path}${RESET}`);
 
-  const bundleId = await readOne("EXPO_PUBLIC_APP_BUNDLE_ID");
-  if (!bundleId) {
-    bad("no EXPO_PUBLIC_APP_BUNDLE_ID in .env.local. Run `vexpo convex` first.");
-    return 1;
-  }
+  const bundleId = await requireBundleId();
+  if (!bundleId) return 1;
   ok(`bundle id: ${BOLD}${bundleId}${RESET}`);
 
   // No ASC `apps` resource exists for a brand-new bundle id until the first
@@ -230,7 +209,7 @@ export async function runAscConnect(opts: { force?: boolean } = {}): Promise<num
 
   const env: Record<string, string> = {
     ...(process.env as Record<string, string>),
-    EXPO_ASC_API_KEY_PATH: asc.p8Path,
+    EXPO_ASC_API_KEY_PATH: p8Path,
     EXPO_ASC_KEY_ID: asc.keyId,
     EXPO_ASC_ISSUER_ID: asc.issuerId,
   };

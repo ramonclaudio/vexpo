@@ -14,6 +14,8 @@
 
 import { access, readFile, rename, stat, unlink, writeFile } from "node:fs/promises";
 
+import { fileExists } from "./fs.ts";
+
 export const STATE_FILE = ".setup-state.json";
 const AUDIT_CAP = 50;
 const PID_WARN_WINDOW_MS = 30_000;
@@ -66,15 +68,6 @@ const empty = (): SetupState => ({
   steps: {},
   audit: [],
 });
-
-async function fileExists(p: string): Promise<boolean> {
-  try {
-    await access(p);
-    return true;
-  } catch {
-    return false;
-  }
-}
 
 export async function load(): Promise<SetupState> {
   if (!(await fileExists(STATE_FILE))) return empty();

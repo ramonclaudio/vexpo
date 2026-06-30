@@ -12,18 +12,9 @@
  *   `<pm> install`".
  */
 
-import { access } from "node:fs/promises";
+import { fileExists } from "./fs.ts";
 
 export type PackageManager = "bun" | "pnpm" | "yarn" | "npm";
-
-async function fileExists(p: string): Promise<boolean> {
-  try {
-    await access(p);
-    return true;
-  } catch {
-    return false;
-  }
-}
 
 export async function detectPackageManager(): Promise<PackageManager> {
   if (await fileExists("bun.lock")) return "bun";

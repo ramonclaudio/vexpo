@@ -1,9 +1,8 @@
-import { access } from "node:fs/promises";
-
 import { pkgName } from "../lib/app.ts";
 import { envSet, type ConvexTarget } from "../lib/convex-env.ts";
 import { readEnvFile } from "../lib/env-files.ts";
 import { readOne } from "../lib/env-local.ts";
+import { fileExists } from "../lib/fs.ts";
 import {
   BOLD,
   DIM,
@@ -39,15 +38,6 @@ export type ResendOptions = {
   prod?: boolean;
   force?: boolean;
 };
-
-async function fileExists(p: string): Promise<boolean> {
-  try {
-    await access(p);
-    return true;
-  } catch {
-    return false;
-  }
-}
 
 async function resolveFullKey(): Promise<string | null> {
   const fromEnv = process.env.RESEND_FULL_ACCESS_KEY;

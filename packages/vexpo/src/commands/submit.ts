@@ -10,7 +10,7 @@ import { existsSync } from "node:fs";
 
 import { ascKeyEnv, ensureAscAppId } from "./asc.ts";
 import { easSpawn } from "../lib/eas-cli.ts";
-import { readAll } from "../lib/env-local.ts";
+import { readAll, requireBundleId } from "../lib/env-local.ts";
 import { BOLD, RESET, bad, note, ok, section } from "../lib/output.ts";
 
 export type SubmitOptions = {
@@ -28,12 +28,10 @@ export async function runSubmit(opts: SubmitOptions = {}): Promise<number> {
     return 1;
   }
 
+  const bundleId = await requireBundleId();
+  if (!bundleId) return 1;
+
   const local = await readAll();
-  const bundleId = local.get("EXPO_PUBLIC_APP_BUNDLE_ID");
-  if (!bundleId) {
-    bad("no EXPO_PUBLIC_APP_BUNDLE_ID in .env.local. Run `vexpo convex` first.");
-    return 1;
-  }
 
   // eas-cli evaluates app.config with EXPO_NO_DOTENV (it never reads .env.local),
   // so without forwarding these the bundle id falls back to the `com.example.*`

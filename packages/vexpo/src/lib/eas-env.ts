@@ -166,52 +166,6 @@ export async function init(): Promise<{ ok: boolean; projectId?: string }> {
   return { ok: !!id, projectId: id ?? undefined };
 }
 
-/**
- * eas-cli currently injects channel names derived from profile names, which
- * produces invalid channels for profile names containing colons (e.g.
- * `development:simulator`). Don't auto-run on a config that has those.
- */
-export async function updateConfigure(
-  platform: "ios" | "android" | "all" = "ios",
-): Promise<boolean> {
-  const { code } = await easText(["update:configure", "--platform", platform, "--non-interactive"]);
-  return code === 0;
-}
-
-/**
- * Runs `eas diagnostics`. As of eas-cli@19.0.0 this is just an environment-info
- * dump (CLI version, OS, node), so it only proves the CLI is installed and
- * runnable, NOT that eas.json validates or the project is linked. Real link/auth
- * health comes from project:info + whoami (see verify.ts).
- */
-export async function diagnostics(): Promise<
-  { ok: true; info: string } | { ok: false; error: string }
-> {
-  const { code, stdout, stderr } = await easText(["diagnostics"]);
-  if (code === 0) return { ok: true, info: stdout.trim() };
-  const tail = (stderr || stdout).trim().split("\n").slice(0, 4).join("; ");
-  return { ok: false, error: tail || `exit ${code}` };
-}
-
-export async function listChannels(): Promise<string[]> {
-  const { code, stdout } = await run([
-    dlx(),
-    EAS_CLI,
-    "channel:list",
-    "--json",
-    "--non-interactive",
-    "--limit",
-    "25",
-  ]);
-  if (code !== 0) return [];
-  try {
-    const parsed = JSON.parse(stdout) as { currentPage?: Array<{ name?: string }> };
-    return (parsed.currentPage ?? []).map((c) => c.name ?? "").filter(Boolean);
-  } catch {
-    return [];
-  }
-}
-
 /** Idempotent: re-creates are no-ops on EAS. */
 export async function createChannel(name: string): Promise<boolean> {
   const { code } = await run([
@@ -226,35 +180,13 @@ export async function createChannel(name: string): Promise<boolean> {
 }
 
 export async function ensureChannels(names: readonly string[]): Promise<string[]> {
-  const existing = new Set(await listChannels());
+  // Let EAS own idempotency: try a create per name. createChannel swallows an
+  // "already exists" failure into `false`, so existing channels drop out here.
   const created: string[] = [];
   for (const name of names) {
-    if (existing.has(name)) continue;
     if (await createChannel(name)) created.push(name);
   }
   return created;
-}
-
-export async function listBranches(): Promise<string[]> {
-  const { code, stdout } = await run([
-    dlx(),
-    EAS_CLI,
-    "branch:list",
-    "--json",
-    "--non-interactive",
-    "--limit",
-    "25",
-  ]);
-  if (code !== 0) return [];
-  try {
-    const parsed = JSON.parse(stdout) as
-      | Array<{ name?: string }>
-      | { currentPage?: Array<{ name?: string }> };
-    if (Array.isArray(parsed)) return parsed.map((b) => b.name ?? "").filter(Boolean);
-    return (parsed.currentPage ?? []).map((b) => b.name ?? "").filter(Boolean);
-  } catch {
-    return [];
-  }
 }
 
 /** Idempotent. */
@@ -271,10 +203,8 @@ export async function createBranch(name: string): Promise<boolean> {
 }
 
 export async function ensureBranches(names: readonly string[]): Promise<string[]> {
-  const existing = new Set(await listBranches());
   const created: string[] = [];
   for (const name of names) {
-    if (existing.has(name)) continue;
     if (await createBranch(name)) created.push(name);
   }
   return created;

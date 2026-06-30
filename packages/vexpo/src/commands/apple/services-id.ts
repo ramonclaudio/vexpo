@@ -6,7 +6,8 @@ import {
   type AscBundleId,
   type AscCredentials,
 } from "../../lib/asc-api.ts";
-import { ensureLine, readOne } from "../../lib/env-local.ts";
+import { loadAscCreds } from "../../lib/asc-state.ts";
+import { ensureLine, requireBundleId } from "../../lib/env-local.ts";
 import {
   BOLD,
   RESET,
@@ -19,28 +20,19 @@ import {
   section,
   yep,
 } from "../../lib/output.ts";
-import { load, recordStep } from "../../lib/state.ts";
+import { recordStep } from "../../lib/state.ts";
 
 export type ServicesIdOptions = {
   servicesId?: string;
 };
 
-async function loadAscCreds(): Promise<AscCredentials | null> {
+// Env override lets a CI run point at a key without writing setup state.
+function ascCredsFromEnv(): AscCredentials | null {
   const issuerId = process.env.APPLE_ASC_ISSUER_ID;
   const keyId = process.env.APPLE_ASC_KEY_ID;
   const p8Path = process.env.APPLE_ASC_P8_PATH;
-  if (issuerId && keyId && p8Path) {
-    return { issuerId, keyId, privateKey: { path: p8Path } };
-  }
-  const state = await load();
-  const rec = state.steps["asc-key"];
-  if (!rec?.outputs) return null;
-  const out = rec.outputs as Record<string, unknown>;
-  const sIssuer = (out.issuerId as string) ?? issuerId;
-  const sKey = (out.keyId as string) ?? keyId;
-  const sPath = (out.p8Path as string) ?? p8Path;
-  if (!sIssuer || !sKey || !sPath) return null;
-  return { issuerId: sIssuer, keyId: sKey, privateKey: { path: sPath } };
+  if (!issuerId || !keyId || !p8Path) return null;
+  return { issuerId, keyId, privateKey: { path: p8Path } };
 }
 
 async function findOrCreateBundleId(
@@ -116,15 +108,11 @@ export async function runServicesId(options: ServicesIdOptions): Promise<number>
   section("Apple Sign In Services ID");
 
   try {
-    const bundleId = await readOne("EXPO_PUBLIC_APP_BUNDLE_ID");
-    if (!bundleId) {
-      bad("EXPO_PUBLIC_APP_BUNDLE_ID missing from .env.local");
-      note("run `vexpo convex` first");
-      return 1;
-    }
+    const bundleId = await requireBundleId();
+    if (!bundleId) return 1;
     ok(`bundle id: ${bundleId}`);
 
-    const creds = await loadAscCreds();
+    const creds = ascCredsFromEnv() ?? (await loadAscCreds());
     if (!creds) {
       bad("App Store Connect credentials not found");
       note(
