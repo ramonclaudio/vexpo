@@ -7,7 +7,6 @@ import {
   ask,
   askYesNo,
   bad,
-  fail,
   line,
   nop,
   note,
@@ -89,7 +88,7 @@ async function promptInputs(overrides: Partial<RebrandInputs>): Promise<RebrandI
     (interactive
       ? (await ask(`  ${BOLD}App name${RESET} ${DIM}(e.g. Foobar)${RESET} > `)).trim()
       : "");
-  if (!appName) fail("app name required");
+  if (!appName) throw new Error("app name required");
 
   const defaultPkg = slug(appName);
   const bundleHint = `com.${slug(appName).replace(/-/g, "")}.${bundleSlug(defaultPkg)}`;
@@ -107,7 +106,7 @@ async function promptInputs(overrides: Partial<RebrandInputs>): Promise<RebrandI
   const reviewEmail =
     overrides.reviewEmail ??
     (interactive ? (await ask(`  ${BOLD}Apple review contact email${RESET} > `)).trim() : "");
-  if (!reviewEmail) fail("review email required");
+  if (!reviewEmail) throw new Error("review email required");
 
   const packageName = overrides.packageName ?? defaultPkg;
   const scheme = overrides.scheme ?? bundleSlug(packageName);
@@ -179,23 +178,32 @@ async function backup(files: string[], stamp: string): Promise<void> {
   ok(`backups → ${dir}`);
 }
 
+// User-supplied values land in String.replace replacements, where $&, $`, $'
+// and $$ have special meaning. Double every $ so the value is inserted verbatim.
+function lit(value: string): string {
+  return value.replace(/\$/g, "$$$$");
+}
+
 async function rewriteAppConfig(inputs: RebrandInputs): Promise<void> {
   const file = "app.config.ts";
   let text = await readFile(file, "utf8");
 
+  // The template ships the backtick `com.example.${pkg.name}` form; a prior
+  // rebrand rewrites it to a double-quoted string. Match either so a --force
+  // re-run still moves the id.
   text = text.replace(
-    /const BUNDLE_ID = process\.env\.EXPO_PUBLIC_APP_BUNDLE_ID \?\? `com\.example\.\$\{pkg\.name\}`;/,
-    `const BUNDLE_ID = process.env.EXPO_PUBLIC_APP_BUNDLE_ID ?? "${inputs.bundleId}";`,
+    /const BUNDLE_ID = process\.env\.EXPO_PUBLIC_APP_BUNDLE_ID \?\? (?:`[^`]*`|"[^"]*");/,
+    `const BUNDLE_ID = process.env.EXPO_PUBLIC_APP_BUNDLE_ID ?? "${lit(inputs.bundleId)}";`,
   );
 
   text = text.replace(
     /name: IS_DEV \? "[^"]+" : "[^"]+",/,
-    `name: IS_DEV ? "${inputs.appName} (Dev)" : "${inputs.appName}",`,
+    `name: IS_DEV ? "${lit(inputs.appName)} (Dev)" : "${lit(inputs.appName)}",`,
   );
 
-  text = text.replace(/slug: "[^"]+",/, `slug: "${inputs.packageName}",`);
+  text = text.replace(/slug: "[^"]+",/, `slug: "${lit(inputs.packageName)}",`);
 
-  text = text.replace(/scheme: "[^"]+",/, `scheme: "${inputs.scheme}",`);
+  text = text.replace(/scheme: "[^"]+",/, `scheme: "${lit(inputs.scheme)}",`);
 
   await writeFile(file, text);
   ok(`updated ${file}`);

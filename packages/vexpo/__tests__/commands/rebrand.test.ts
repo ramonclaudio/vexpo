@@ -8,9 +8,14 @@ vi.mock("../../src/lib/pkg-manager.ts", () => ({ dlx: () => "bunx" }));
 vi.mock("../../src/lib/proc.ts", () => ({
   run: vi.fn().mockResolvedValue({ code: 0, stdout: "", stderr: "" }),
 }));
+vi.mock("../../src/lib/output.ts", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../../src/lib/output.ts")>();
+  return { ...actual, ask: vi.fn() };
+});
 
 import { runRebrand } from "../../src/commands/rebrand.ts";
 import { readAll } from "../../src/lib/env-local.ts";
+import { ask } from "../../src/lib/output.ts";
 import { run } from "../../src/lib/proc.ts";
 
 const runSpy = run as unknown as ReturnType<typeof vi.fn>;
@@ -143,5 +148,49 @@ describe("runRebrand bundle id sync", () => {
 
     const setCall = runSpy.mock.calls.find((c) => (c[0] as string[]).includes("APP_BUNDLE_ID"));
     expect(setCall).toBeUndefined();
+  });
+});
+
+describe("runRebrand rewrite correctness", () => {
+  it("--force re-run rewrites the bundle id after the first rebrand quoted it", async () => {
+    Object.defineProperty(process.stdin, "isTTY", { value: false, configurable: true });
+
+    expect(await runRebrand({ ...FLAGS, yes: true })).toBe(0);
+    // app.config.ts now carries the double-quote form `?? "com.acme.foobar"`.
+    expect(
+      await runRebrand({ ...FLAGS, bundleId: "com.acme.second", force: true, yes: true }),
+    ).toBe(0);
+
+    const cfg = await readFile("app.config.ts", "utf8");
+    expect(cfg).toContain(`?? "com.acme.second"`);
+    expect(cfg).not.toContain("com.acme.foobar");
+  });
+
+  it("inserts values containing $& verbatim instead of expanding replacement patterns", async () => {
+    Object.defineProperty(process.stdin, "isTTY", { value: false, configurable: true });
+
+    const exit = await runRebrand({ ...FLAGS, appName: "Foo$&Bar", yes: true });
+    expect(exit).toBe(0);
+
+    const cfg = await readFile("app.config.ts", "utf8");
+    expect(cfg).toContain(`name: IS_DEV ? "Foo$&Bar (Dev)" : "Foo$&Bar"`);
+  });
+});
+
+describe("runRebrand interactive failure", () => {
+  it("returns 1 instead of exiting the process when the app name is empty", async () => {
+    Object.defineProperty(process.stdin, "isTTY", { value: true, configurable: true });
+    vi.mocked(ask).mockResolvedValue("");
+    const exitSpy = vi.spyOn(process, "exit").mockImplementation(() => {
+      throw new Error("process.exit called");
+    });
+
+    try {
+      const exit = await runRebrand({ reviewEmail: "ada@example.com", yes: true });
+      expect(exitSpy).not.toHaveBeenCalled();
+      expect(exit).toBe(1);
+    } finally {
+      exitSpy.mockRestore();
+    }
   });
 });
