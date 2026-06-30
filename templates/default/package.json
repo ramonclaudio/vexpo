@@ -1,6 +1,6 @@
 {
   "name": "vexpo",
-  "version": "0.1.8",
+  "version": "0.1.9",
   "private": true,
   "main": "expo-router/entry",
   "scripts": {
@@ -44,14 +44,14 @@
     "updates:gen-cert": "node scripts/gen-update-cert.mjs"
   },
   "dependencies": {
-    "@better-auth/expo": "1.6.16",
-    "@convex-dev/better-auth": "0.12.3",
+    "@better-auth/expo": "1.6.20",
+    "@convex-dev/better-auth": "0.12.4",
     "@convex-dev/rate-limiter": "^0.3.2",
-    "@convex-dev/resend": "^0.2.4",
+    "@convex-dev/resend": "^0.2.5",
     "@expo/ui": "~56.0.18",
-    "better-auth": "1.6.16",
-    "convex": "~1.40.0",
-    "convex-helpers": "^0.1.118",
+    "better-auth": "1.6.20",
+    "convex": "~1.41.0",
+    "convex-helpers": "^0.1.120",
     "expo": "~56.0.12",
     "expo-apple-authentication": "~56.0.4",
     "expo-application": "~56.0.3",
@@ -96,7 +96,7 @@
   },
   "devDependencies": {
     "@ramonclaudio/vexpo": "^0.1.8",
-    "@types/node": "^25.9.0",
+    "@types/node": "^25.9.4",
     "@types/react": "~19.2.16",
     "convex-test": "^0.0.54",
     "oxfmt": "^0.57.0",
