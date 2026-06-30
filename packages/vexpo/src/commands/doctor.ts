@@ -1,14 +1,8 @@
 import { access } from "node:fs/promises";
 
 import { DIM, GREEN, RED, RESET, YELLOW, bad, line, note, section } from "../lib/output.ts";
-import {
-  readContext,
-  renderVerifyResults,
-  summarize,
-  verifyAll,
-  type Channel,
-  type Check,
-} from "../lib/verify.ts";
+import { renderVerifyResults } from "../lib/verify-render.ts";
+import { readContext, summarize, verifyAll, type Channel, type Check } from "../lib/verify.ts";
 
 const PROJECT_SENTINELS = ["app.config.ts", "convex", "eas.json"];
 

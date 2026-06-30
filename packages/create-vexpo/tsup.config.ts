@@ -3,21 +3,7 @@ import { join } from "node:path";
 
 import { defineConfig } from "tsup";
 
-// Dotfiles npm strips from published tarballs. Renamed to underscore-prefixed
-// during build so they ship in the template, then `restoreStrippedDotfiles` in
-// src/index.ts swaps them back at scaffold time. Keep in sync with that
-// function's `renames` array.
-const STRIPPED_DOTFILES = [
-  ".gitignore",
-  ".env.example",
-  ".oxfmtrc.json",
-  ".oxlintrc.json",
-  ".editorconfig",
-  ".gitattributes",
-  ".easignore",
-  ".fingerprintignore",
-  ".npmrc",
-];
+import { STRIPPED_DOTFILES, strippedToUnderscore } from "./src/dotfiles.ts";
 
 export default defineConfig({
   entry: ["src/index.ts"],
@@ -124,7 +110,7 @@ export default defineConfig({
     });
     for (const name of STRIPPED_DOTFILES) {
       try {
-        await rename(join(dest, name), join(dest, name.replace(/^\./, "_")));
+        await rename(join(dest, name), join(dest, strippedToUnderscore(name)));
       } catch {
         // Missing file is fine; means the template didn't ship it.
       }
