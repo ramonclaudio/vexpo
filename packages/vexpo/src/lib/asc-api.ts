@@ -17,7 +17,7 @@
 
 import { signAscToken, type AscJwtArgs } from "./asc-jwt.ts";
 
-export const ASC_BASE = "https://api.appstoreconnect.apple.com";
+const ASC_BASE = "https://api.appstoreconnect.apple.com";
 
 export type AscCredentials = AscJwtArgs;
 

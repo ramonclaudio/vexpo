@@ -58,7 +58,7 @@ export type AppConfigFacts = {
   scheme?: string;
 };
 
-export type StoreConfigFacts = {
+type StoreConfigFacts = {
   reviewEmail?: string;
 };
 

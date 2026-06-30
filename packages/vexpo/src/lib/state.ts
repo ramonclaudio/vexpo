@@ -35,7 +35,7 @@ export type StepName =
   | "rebrand"
   | "accounts";
 
-export type StepRecord = {
+type StepRecord = {
   name: StepName;
   completedAt: string;
   outputs?: Record<string, unknown>;

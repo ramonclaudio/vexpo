@@ -22,6 +22,7 @@
     "lint": "oxlint packages",
     "format:check": "oxfmt --check packages",
     "format": "oxfmt packages",
+    "knip": "knip",
     "test": "npm run test --workspaces --if-present && npm run template:test",
     "test:packages": "npm run test --workspaces --if-present",
     "test:packages:e2e": "npm run test:e2e -w @ramonclaudio/vexpo && npm run test:create:e2e",
@@ -36,6 +37,7 @@
     "template:test": "cd templates/default && npm run test"
   },
   "devDependencies": {
+    "knip": "^6.23.0",
     "oxfmt": "^0.54.0",
     "oxlint": "^1.68.0",
     "typescript": "^6.0.3"
