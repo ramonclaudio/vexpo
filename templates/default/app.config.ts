@@ -142,10 +142,17 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       // EAS profile. `development` is the safe default; a missed profile
       // override won't accidentally pull production OTA into a dev build.
       requestHeaders: { "expo-channel-name": "development" },
-      // Only ship icon + splash with each OTA. Fonts, sounds, and other
-      // build-baked assets stay in the .ipa and never download. Shrinks
-      // bundle by ~95% on diff-able updates.
-      assetPatternsToBeBundled: ["assets/icon.png", "assets/splash-image-*.png"],
+      // Bundle every asset in the runtime require graph (`src/lib/assets.ts`):
+      // icon, splash, and the brand icons. `.fingerprintignore` ignores
+      // `assets/**`, so a `vexpo rebrand` swap stays OTA-eligible; if the new
+      // brand icon isn't bundled it resolves to a missing asset on device.
+      // Fonts, sounds, and other build-baked assets stay in the .ipa and never
+      // download.
+      assetPatternsToBeBundled: [
+        "assets/icon.png",
+        "assets/splash-image-*.png",
+        "assets/brand-icon-*.png",
+      ],
       // End-to-end OTA code signing. The cert is committed at
       // `./certs/certificate.pem` and bundled with each .ipa; the device
       // verifies every update against it before applying. The matching
