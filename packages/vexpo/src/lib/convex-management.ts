@@ -139,11 +139,6 @@ export async function mintDeployKey(
   return res.deployKey;
 }
 
-export async function deleteDeployKey(deploymentName: string, id: string): Promise<void> {
-  const token = await requireToken();
-  await post(token, `/deployments/${deploymentName}/delete_deploy_key`, { id });
-}
-
 export async function resolveProdDeployment(anyDeploymentName: string): Promise<string | null> {
   const deployments = await listProjectDeployments(anyDeploymentName);
   if (!deployments) return null;

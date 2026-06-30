@@ -166,33 +166,6 @@ export async function init(): Promise<{ ok: boolean; projectId?: string }> {
   return { ok: !!id, projectId: id ?? undefined };
 }
 
-/**
- * eas-cli currently injects channel names derived from profile names, which
- * produces invalid channels for profile names containing colons (e.g.
- * `development:simulator`). Don't auto-run on a config that has those.
- */
-export async function updateConfigure(
-  platform: "ios" | "android" | "all" = "ios",
-): Promise<boolean> {
-  const { code } = await easText(["update:configure", "--platform", platform, "--non-interactive"]);
-  return code === 0;
-}
-
-/**
- * Runs `eas diagnostics`. As of eas-cli@19.0.0 this is just an environment-info
- * dump (CLI version, OS, node), so it only proves the CLI is installed and
- * runnable, NOT that eas.json validates or the project is linked. Real link/auth
- * health comes from project:info + whoami (see verify.ts).
- */
-export async function diagnostics(): Promise<
-  { ok: true; info: string } | { ok: false; error: string }
-> {
-  const { code, stdout, stderr } = await easText(["diagnostics"]);
-  if (code === 0) return { ok: true, info: stdout.trim() };
-  const tail = (stderr || stdout).trim().split("\n").slice(0, 4).join("; ");
-  return { ok: false, error: tail || `exit ${code}` };
-}
-
 /** Idempotent: re-creates are no-ops on EAS. */
 export async function createChannel(name: string): Promise<boolean> {
   const { code } = await run([

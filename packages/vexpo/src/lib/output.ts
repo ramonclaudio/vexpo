@@ -18,7 +18,7 @@ export const RED = ansiHex("#ef4444");
 export const YELLOW = ansiHex("#f59e0b");
 export const VIOLET = ansiHex("#a78bfa");
 
-export const write = (s: string): void => {
+const write = (s: string): void => {
   process.stderr.write(s);
 };
 export const line = (s = ""): void => {

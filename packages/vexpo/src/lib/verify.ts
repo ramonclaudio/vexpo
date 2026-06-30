@@ -12,7 +12,6 @@ import {
 import { ascStatus } from "./eas-integrations.ts";
 import { submitProfilesMissingAscAppId } from "./eas-submit.ts";
 import {
-  diagnostics as easDiagnostics,
   envList as easEnvList,
   resolveProjectId,
   projectInfo as easProjectInfo,
@@ -562,7 +561,7 @@ async function verifyEas(ctx: VerifyContext): Promise<Check[]> {
     return checks;
   }
 
-  // whoami + project-info + diagnostics need a resolved projectId; best-effort,
+  // whoami + project-info need a resolved projectId; best-effort,
   // never short-circuit the env + integration checks below.
   if (projectId) {
     try {
@@ -594,17 +593,6 @@ async function verifyEas(ctx: VerifyContext): Promise<Check[]> {
         );
     } catch {
       checks.push(skip("eas", "project-info", "eas-cli not available"));
-    }
-
-    try {
-      const diag = await easDiagnostics();
-      checks.push(
-        diag.ok
-          ? ok("eas", "diagnostics", "eas-cli health ok")
-          : warn("eas", "diagnostics", diag.error),
-      );
-    } catch {
-      checks.push(skip("eas", "diagnostics", "eas-cli not available"));
     }
   }
 

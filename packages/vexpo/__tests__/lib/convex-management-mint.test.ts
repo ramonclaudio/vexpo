@@ -7,7 +7,6 @@ vi.mock("node:os", () => ({ homedir: () => "/home/test" }));
 
 import {
   checkToken,
-  deleteDeployKey,
   listProjectDeployments,
   mintDeployKey,
   resolveProdDeployment,
@@ -144,18 +143,5 @@ describe("mintDeployKey", () => {
   it("throws when no deployKey is returned", async () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response("{}", { status: 200 })));
     await expect(mintDeployKey("abc")).rejects.toThrow(/no deployKey/);
-  });
-});
-
-describe("deleteDeployKey", () => {
-  it("POSTs delete_deploy_key with the id", async () => {
-    const fetchMock = vi.fn().mockResolvedValue(new Response("", { status: 200 }));
-    vi.stubGlobal("fetch", fetchMock);
-
-    await deleteDeployKey("abc", "eas-rotation");
-
-    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
-    expect(url).toBe("https://api.convex.dev/v1/deployments/abc/delete_deploy_key");
-    expect(JSON.parse(init.body as string)).toEqual({ id: "eas-rotation" });
   });
 });

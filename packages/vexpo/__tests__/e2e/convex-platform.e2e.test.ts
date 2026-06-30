@@ -1,8 +1,8 @@
 /**
  * Real e2e against the live Convex Platform API. Opt-in and reversible: skips
  * unless you're logged in (~/.convex/config.json) AND set VEXPO_E2E_CONVEX=1 AND
- * VEXPO_E2E_DEPLOYMENT=<a dev deployment slug>. The mint test deletes its key in
- * a finally; the enumerate test is read-only. Never point it at a prod slug.
+ * VEXPO_E2E_DEPLOYMENT=<a dev deployment slug>. The enumerate test is read-only
+ * and the env probe reverses itself in a finally. Never point it at a prod slug.
  *
  *   VEXPO_E2E_CONVEX=1 VEXPO_E2E_DEPLOYMENT=happy-otter-123 npx vitest run e2e
  */
@@ -16,9 +16,7 @@ import { describe, expect, it } from "vitest";
 import { envMap, envRemove, envSet } from "../../src/lib/convex-env.ts";
 import {
   checkToken,
-  deleteDeployKey,
   listProjectDeployments,
-  mintDeployKey,
   resolveProdDeployment,
 } from "../../src/lib/convex-management.ts";
 
@@ -52,17 +50,6 @@ describe.skipIf(!RUN)("convex platform API (real)", () => {
     }
     const prod = await resolveProdDeployment(DEPLOYMENT);
     expect(prod === null || typeof prod === "string").toBe(true);
-  });
-
-  it("mints then deletes a deploy key (reversible)", async () => {
-    const name = `vexpo-e2e-${Date.now()}`;
-    let key: string | undefined;
-    try {
-      key = await mintDeployKey(DEPLOYMENT, { name, expiresAtMs: Date.now() + 31 * 60_000 });
-      expect(key).toMatch(/^(dev|prod|preview):/);
-    } finally {
-      if (key) await deleteDeployKey(DEPLOYMENT, name);
-    }
   });
 
   // The `convex env` set/list/remove path is what `vexpo better-auth` and every
