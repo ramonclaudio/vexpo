@@ -7,6 +7,7 @@ import {
   summarize,
   verifyAll,
   type Channel,
+  type Check,
 } from "../lib/verify.ts";
 
 const PROJECT_SENTINELS = ["app.config.ts", "convex", "eas.json"];
@@ -50,6 +51,23 @@ export function redactValue(text: string): string {
   return out;
 }
 
+function redactCheck(c: Check): Check {
+  return c.details === undefined
+    ? { ...c, message: redactValue(c.message) }
+    : { ...c, message: redactValue(c.message), details: redactValue(c.details) };
+}
+
+// JSON consumers (issue reports, screenshots) need the same masking the human
+// renderer applies, so --redact has to scrub check values before serializing.
+export function buildDoctorReport(
+  channel: Channel,
+  summary: ReturnType<typeof summarize>,
+  checks: Check[],
+  redact: boolean,
+): { channel: Channel; summary: ReturnType<typeof summarize>; checks: Check[] } {
+  return { channel, summary, checks: redact ? checks.map(redactCheck) : checks };
+}
+
 export async function runDoctor(options: DoctorOptions): Promise<number> {
   try {
     if (!(await isInVexpoProject())) {
@@ -80,7 +98,8 @@ export async function runDoctor(options: DoctorOptions): Promise<number> {
     const summary = summarize(checks);
 
     if (options.json) {
-      process.stdout.write(JSON.stringify({ channel, summary, checks }, null, 2) + "\n");
+      const report = buildDoctorReport(channel, summary, checks, options.redact === true);
+      process.stdout.write(JSON.stringify(report, null, 2) + "\n");
     } else {
       section(`Verify (${channel})`);
       renderVerifyResults(checks, "section", options.redact === true ? redactValue : undefined);
