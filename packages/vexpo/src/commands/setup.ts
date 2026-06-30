@@ -297,6 +297,21 @@ async function stepPrerequisites(): Promise<void> {
   else yep("not signed in to Convex (`npx vexpo accounts` will prompt)");
 }
 
+const STEP_LABELS: Record<string, string> = {
+  convex: "Convex / .env.local",
+  "better-auth": "Better Auth",
+  resend: "Resend",
+  "asc-key": "ASC API key",
+  "apple-services-id": "Sign In Services ID",
+  "apple-sign-in": "Sign In JWT",
+  "apple-credentials": "EAS iOS credentials",
+  "apple-asc-link": "EAS ↔ ASC link",
+  "apple-eas-rotation-secrets": "EAS rotation secrets",
+  eas: "EAS project + env",
+  rebrand: "Rebrand",
+  accounts: "Accounts",
+};
+
 async function stepProbe(): Promise<{
   rows: Map<string, ProbeRow>;
   needs: Map<string, boolean>;
@@ -357,32 +372,7 @@ async function stepProbe(): Promise<{
         : `${RED}missing${RESET}`;
   line(`  ${BOLD}${".env.local".padEnd(w)}${RESET}  ${localEnvMark}`);
   for (const [key, row] of rows) {
-    const label =
-      key === "convex"
-        ? "Convex / .env.local"
-        : key === "better-auth"
-          ? "Better Auth"
-          : key === "resend"
-            ? "Resend"
-            : key === "asc-key"
-              ? "ASC API key"
-              : key === "apple-services-id"
-                ? "Sign In Services ID"
-                : key === "apple-sign-in"
-                  ? "Sign In JWT"
-                  : key === "apple-credentials"
-                    ? "EAS iOS credentials"
-                    : key === "apple-asc-link"
-                      ? "EAS ↔ ASC link"
-                      : key === "apple-eas-rotation-secrets"
-                        ? "EAS rotation secrets"
-                        : key === "eas"
-                          ? "EAS project + env"
-                          : key === "rebrand"
-                            ? "Rebrand"
-                            : key === "accounts"
-                              ? "Accounts"
-                              : key;
+    const label = STEP_LABELS[key] ?? key;
     line(`  ${BOLD}${label.padEnd(w)}${RESET}  ${mark(row.status)}`);
   }
   line(
