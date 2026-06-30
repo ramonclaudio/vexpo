@@ -166,7 +166,7 @@ export async function init(): Promise<{ ok: boolean; projectId?: string }> {
   return { ok: !!id, projectId: id ?? undefined };
 }
 
-export async function listChannels(): Promise<string[]> {
+async function listChannels(): Promise<string[]> {
   const { code, stdout, stderr } = await run([
     dlx(),
     EAS_CLI,
@@ -214,7 +214,7 @@ export async function ensureChannels(names: readonly string[]): Promise<string[]
   return created;
 }
 
-export async function listBranches(): Promise<string[]> {
+async function listBranches(): Promise<string[]> {
   const { code, stdout, stderr } = await run([
     dlx(),
     EAS_CLI,

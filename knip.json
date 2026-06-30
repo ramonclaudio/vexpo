@@ -1,0 +1,14 @@
+{
+  "$schema": "https://unpkg.com/knip@6/schema.json",
+  "ignore": ["templates/**"],
+  "ignoreBinaries": ["__tests__/e2e/run.sh"],
+  "workspaces": {
+    "packages/vexpo": {
+      "entry": ["__tests__/**/*.test.ts"],
+      "project": ["src/**/*.ts"]
+    },
+    "packages/create-vexpo": {
+      "project": ["src/**/*.ts"]
+    }
+  }
+}

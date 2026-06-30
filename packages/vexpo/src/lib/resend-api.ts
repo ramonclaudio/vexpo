@@ -1,7 +1,7 @@
 const BASE = "https://api.resend.com";
 
 export type ResendDomain = { id: string; name: string; status: string };
-export type ResendApiKey = { id: string; name: string; created_at?: string };
+type ResendApiKey = { id: string; name: string; created_at?: string };
 export type ResendWebhook = {
   id: string;
   endpoint: string;
@@ -9,7 +9,7 @@ export type ResendWebhook = {
   status: string;
 };
 
-export type ResendDomainRecord = {
+type ResendDomainRecord = {
   record: string;
   name: string;
   type: string;
@@ -105,11 +105,11 @@ export async function verifyDomain(key: string, id: string): Promise<void> {
   await call("POST", `/domains/${id}/verify`, key);
 }
 
-export async function listApiKeys(key: string): Promise<ResendApiKey[]> {
+async function listApiKeys(key: string): Promise<ResendApiKey[]> {
   return (await call<{ data: ResendApiKey[] }>("GET", "/api-keys", key)).data;
 }
 
-export async function createApiKey(
+async function createApiKey(
   key: string,
   args: {
     name: string;
@@ -120,7 +120,7 @@ export async function createApiKey(
   return call("POST", "/api-keys", key, args);
 }
 
-export async function deleteApiKey(key: string, id: string): Promise<void> {
+async function deleteApiKey(key: string, id: string): Promise<void> {
   await call("DELETE", `/api-keys/${id}`, key);
 }
 
@@ -128,7 +128,7 @@ export async function listWebhooks(key: string): Promise<ResendWebhook[]> {
   return (await call<{ data: ResendWebhook[] }>("GET", "/webhooks", key)).data;
 }
 
-export async function createWebhook(
+async function createWebhook(
   key: string,
   args: { endpoint: string; events: string[] },
 ): Promise<{ id: string; signing_secret: string }> {
@@ -139,7 +139,7 @@ export async function deleteWebhook(key: string, id: string): Promise<void> {
   await call("DELETE", `/webhooks/${id}`, key);
 }
 
-export const RESEND_TRANSACTIONAL_EVENTS = [
+const RESEND_TRANSACTIONAL_EVENTS = [
   "email.sent",
   "email.delivered",
   "email.delivery_delayed",

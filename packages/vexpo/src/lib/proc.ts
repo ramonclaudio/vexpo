@@ -1,7 +1,7 @@
 import { spawn as nodeSpawn } from "node:child_process";
 import type { Readable, Writable } from "node:stream";
 
-export type StdioOption = "inherit" | "pipe" | "ignore";
+type StdioOption = "inherit" | "pipe" | "ignore";
 
 export type ProcOpts = {
   stdin?: StdioOption;
@@ -46,7 +46,7 @@ export function spawn(argv: readonly string[], opts: ProcOpts = {}): SpawnedProc
   };
 }
 
-export async function streamText(stream: Readable | null): Promise<string> {
+async function streamText(stream: Readable | null): Promise<string> {
   if (!stream) return "";
   const chunks: Buffer[] = [];
   for await (const chunk of stream) {

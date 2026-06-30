@@ -1,0 +1,67 @@
+name: Bug report
+description: Something in create-vexpo, the vexpo CLI, or the template is broken.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the report. Fill in `npx vexpo doctor --redact` below so we can see the real state without leaking your credentials.
+  - type: dropdown
+    id: surface
+    attributes:
+      label: Affected surface
+      description: Where does it break?
+      options:
+        - create-vexpo (scaffolding)
+        - vexpo CLI (lite, full, doctor, env, apple)
+        - template (the generated app)
+    validations:
+      required: true
+  - type: input
+    id: expo-sdk
+    attributes:
+      label: Expo SDK version
+      placeholder: "56.0.0"
+    validations:
+      required: true
+  - type: input
+    id: node
+    attributes:
+      label: Node version
+      description: Output of `node --version`.
+      placeholder: "22.x"
+    validations:
+      required: true
+  - type: input
+    id: os
+    attributes:
+      label: OS
+      placeholder: macOS 26.0 (arm64)
+    validations:
+      required: true
+  - type: textarea
+    id: doctor
+    attributes:
+      label: vexpo doctor output
+      description: Paste the full output of `npx vexpo doctor --redact`. The `--redact` flag masks identifying values, so it is safe to paste here.
+      render: text
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to reproduce
+      description: The exact commands you ran, in order.
+      placeholder: |
+        1. npm create @ramonclaudio/vexpo@latest my-app
+        2. cd my-app
+        3. npx vexpo lite
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected vs actual
+      description: What you expected to happen, and what happened instead.
+    validations:
+      required: true

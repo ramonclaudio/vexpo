@@ -1,0 +1,12 @@
+# Extend gitleaks' built-in rules, then carve out test fixtures.
+[extend]
+useDefault = true
+
+# Redaction and parsing tests need secret-shaped fixtures. Scope the
+# allowlist to test paths so the scanner stays strict everywhere else.
+[[allowlists]]
+description = "fake secrets in test fixtures"
+paths = [
+  '''packages/.*/__tests__/.*''',
+  '''.*\.test\.ts''',
+]

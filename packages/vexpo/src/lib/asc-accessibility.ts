@@ -15,7 +15,7 @@
 
 import type { AscClient } from "./asc-api.ts";
 
-export const ACCESSIBILITY_FEATURES = [
+const ACCESSIBILITY_FEATURES = [
   "VOICE_OVER",
   "VOICE_CONTROL",
   "LARGER_TEXT",
@@ -26,19 +26,19 @@ export const ACCESSIBILITY_FEATURES = [
   "CAPTIONS",
   "AUDIO_DESCRIPTIONS",
 ] as const;
-export type AccessibilityFeature = (typeof ACCESSIBILITY_FEATURES)[number];
+type AccessibilityFeature = (typeof ACCESSIBILITY_FEATURES)[number];
 
 // "PARTIAL" is included for the schema even though the dashboard collapses
 // it into "Yes" with a caveat note.
-export const ACCESSIBILITY_LEVELS = [
+const ACCESSIBILITY_LEVELS = [
   "FULLY_SUPPORTS",
   "PARTIAL",
   "DOES_NOT_SUPPORT",
   "NOT_APPLICABLE",
 ] as const;
-export type AccessibilityLevel = (typeof ACCESSIBILITY_LEVELS)[number];
+type AccessibilityLevel = (typeof ACCESSIBILITY_LEVELS)[number];
 
-export const ACCESSIBILITY_DEVICE_FAMILIES = [
+const ACCESSIBILITY_DEVICE_FAMILIES = [
   "IPHONE",
   "IPAD",
   "MAC",
@@ -46,18 +46,7 @@ export const ACCESSIBILITY_DEVICE_FAMILIES = [
   "APPLE_WATCH",
   "VISION",
 ] as const;
-export type AccessibilityDeviceFamily = (typeof ACCESSIBILITY_DEVICE_FAMILIES)[number];
-
-export type AccessibilityEntry = {
-  deviceFamily: AccessibilityDeviceFamily;
-  features: Partial<Record<AccessibilityFeature, AccessibilityLevel>>;
-  notes?: string;
-};
-
-export type AccessibilityConfig = {
-  $schema?: string;
-  entries: AccessibilityEntry[];
-};
+type AccessibilityDeviceFamily = (typeof ACCESSIBILITY_DEVICE_FAMILIES)[number];
 
 export type AccessibilityLintIssue = { severity: "error" | "warning"; message: string };
 

@@ -13,7 +13,7 @@
 
 // Apple's published data categories. Source: App Privacy Details guide.
 // Strings match the keys ASC uses for `AppPrivacyDataCategory`.
-export const PRIVACY_DATA_TYPES = [
+const PRIVACY_DATA_TYPES = [
   "CONTACT_INFO",
   "HEALTH_FITNESS",
   "FINANCIAL_INFO",
@@ -29,9 +29,9 @@ export const PRIVACY_DATA_TYPES = [
   "DIAGNOSTICS",
   "OTHER_DATA",
 ] as const;
-export type PrivacyDataType = (typeof PRIVACY_DATA_TYPES)[number];
+type PrivacyDataType = (typeof PRIVACY_DATA_TYPES)[number];
 
-export const PRIVACY_PURPOSES = [
+const PRIVACY_PURPOSES = [
   "THIRD_PARTY_ADVERTISING",
   "DEVELOPER_ADVERTISING",
   "ANALYTICS",
@@ -39,21 +39,7 @@ export const PRIVACY_PURPOSES = [
   "APP_FUNCTIONALITY",
   "OTHER",
 ] as const;
-export type PrivacyPurpose = (typeof PRIVACY_PURPOSES)[number];
-
-export type PrivacyDataEntry = {
-  category: PrivacyDataType;
-  collected: boolean;
-  usedForTracking: boolean;
-  linkedToUser: boolean;
-  purposes: PrivacyPurpose[];
-};
-
-export type PrivacyConfig = {
-  $schema?: string;
-  collectsData: boolean;
-  entries: PrivacyDataEntry[];
-};
+type PrivacyPurpose = (typeof PRIVACY_PURPOSES)[number];
 
 export type LintIssue = { severity: "error" | "warning"; message: string };
 

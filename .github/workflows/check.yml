@@ -17,11 +17,16 @@ jobs:
   packages:
     name: packages (typecheck, lint, format, build, test, e2e)
     runs-on: ubuntu-latest
+    # `engines` claims >=20.10, so test the floor, the dev version, and current.
+    strategy:
+      fail-fast: false
+      matrix:
+        node-version: ["20", "22", "24"]
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-node@v6
         with:
-          node-version: "22"
+          node-version: ${{ matrix.node-version }}
           cache: npm
       - run: npm ci
       - run: npm run typecheck
@@ -30,6 +35,10 @@ jobs:
       - run: npm run build
       - run: npm run test:packages
       - run: npm run test:packages:e2e
+      # Guard the publish surface: fail if a tarball would ship anything outside
+      # each package's `files` allowlist (source, tests, env files, keys).
+      - run: node .github/scripts/pack-guard.mjs packages/vexpo
+      - run: node .github/scripts/pack-guard.mjs packages/create-vexpo
 
   template:
     name: template (typecheck, lint, format, test)
@@ -52,6 +61,18 @@ jobs:
       - run: npm run lint
       - run: npm run format:check
       - run: npm run test
+
+  knip:
+    name: knip (unused exports, deps, files)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "22"
+          cache: npm
+      - run: npm ci
+      - run: npm run knip
 
   secrets:
     name: secret scan (gitleaks)

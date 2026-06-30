@@ -94,7 +94,7 @@ export const ROUTING: Record<string, RoutingEntry> = {
  * handling (`eas env:create --visibility secret`) and we don't want to push
  * them with default visibility by accident.
  */
-export const IGNORED_KEYS = new Set(["CONVEX_DEPLOYMENT"]);
+const IGNORED_KEYS = new Set(["CONVEX_DEPLOYMENT"]);
 
 /**
  * Keys that should be set manually as secret-visibility EAS env vars. Lite

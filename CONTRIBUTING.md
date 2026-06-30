@@ -56,3 +56,17 @@ After that, every `cd templates/default` exports `.env.local` for you.
 Without either path, the first `eas build` of a fresh checkout prompts "Configure this project?", writes `projectId` into `app.json`, and you stash it before committing.
 
 `npx vexpo doctor`, `vexpo lite`, `vexpo full`, and `vexpo env push` all read `.env.local` directly, so they work without shell-loading.
+
+## Submitting a PR
+
+Before you push:
+
+```bash
+npm run test:all          # unit + e2e + template
+npm run lint              # oxlint
+npm run format:check      # oxfmt
+```
+
+Commits follow [conventional commits](https://www.conventionalcommits.org): `type(scope): lowercase description`, under 72 chars, no trailing period. Verbs like `add`, `fix`, `drop`, `rename`, `move`, `wire`.
+
+Add a line to the `Unreleased` section of [`CHANGELOG.md`](./CHANGELOG.md) describing what changed and why.

@@ -16,7 +16,7 @@ function ansiHex(hex: string): string {
 export const GREEN = ansiHex("#22c55e");
 export const RED = ansiHex("#ef4444");
 export const YELLOW = ansiHex("#f59e0b");
-export const VIOLET = ansiHex("#a78bfa");
+const VIOLET = ansiHex("#a78bfa");
 
 const write = (s: string): void => {
   process.stderr.write(s);
@@ -107,9 +107,4 @@ export async function helpAndWait(opts: {
     }
     yep("press Enter, type 'open' to launch the URL, or 'skip' to bypass");
   }
-}
-
-export function fail(err: unknown): never {
-  bad(err instanceof Error ? err.message : String(err));
-  process.exit(1);
 }
