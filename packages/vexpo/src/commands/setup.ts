@@ -9,7 +9,7 @@ import {
   envList as easEnvList,
   resolveProjectId,
   version as easCliVersion,
-} from "../lib/eas-env.ts";
+} from "../lib/eas-project.ts";
 import { ENV_FILE, readAll } from "../lib/env-local.ts";
 import { fileExists } from "../lib/fs.ts";
 import {

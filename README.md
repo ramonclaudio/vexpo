@@ -77,6 +77,7 @@ vexpo/
 ## Docs
 
 - [`templates/default/README.md`](./templates/default/README.md): the app, screen by screen.
+- [`docs/troubleshooting.md`](./docs/troubleshooting.md): the common Apple, EAS, Convex, and Expo failure modes and their fixes.
 - [`SECURITY.md`](./SECURITY.md): threat model, webhook verification, OTA signing, secret rotation.
 - [`CHANGELOG.md`](./CHANGELOG.md): release history.
 

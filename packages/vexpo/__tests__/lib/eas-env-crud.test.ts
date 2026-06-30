@@ -5,7 +5,7 @@ vi.mock("../../src/lib/proc.ts", () => ({
 }));
 vi.mock("../../src/lib/pkg-manager.ts", () => ({ dlx: () => "bunx" }));
 
-import { ensureChannels, envCreate, envUpdate } from "../../src/lib/eas-env.ts";
+import { ensureChannels, envCreate, envUpdate } from "../../src/lib/eas-project.ts";
 import { run } from "../../src/lib/proc.ts";
 
 const runSpy = run as unknown as ReturnType<typeof vi.fn>;

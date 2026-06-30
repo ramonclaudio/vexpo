@@ -4,7 +4,7 @@ import path from "node:path";
 
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
-import { resolveProjectId } from "../../src/lib/eas-env";
+import { resolveProjectId } from "../../src/lib/eas-project";
 
 let workdir: string;
 let originalCwd: string;

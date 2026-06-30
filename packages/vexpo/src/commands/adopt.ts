@@ -21,7 +21,7 @@ import {
   describeDeployment,
   listProjectDeployments,
 } from "../lib/convex-management.ts";
-import { envList, resolveProjectId } from "../lib/eas-env.ts";
+import { envList, resolveProjectId } from "../lib/eas-project.ts";
 import { readOne } from "../lib/env-local.ts";
 import { BOLD, DIM, RESET, bad, line, nop, note, ok, section, yep } from "../lib/output.ts";
 

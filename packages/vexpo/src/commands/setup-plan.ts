@@ -1,5 +1,5 @@
 import { envMap as convexEnvMap } from "../lib/convex-env.ts";
-import { envList as easEnvList, resolveProjectId } from "../lib/eas-env.ts";
+import { envList as easEnvList, resolveProjectId } from "../lib/eas-project.ts";
 import { readAll } from "../lib/env-local.ts";
 import { BOLD, DIM, GREEN, RESET, YELLOW, line, note, section } from "../lib/output.ts";
 import { load as loadState, type StepName } from "../lib/state.ts";

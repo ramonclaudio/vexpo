@@ -46,6 +46,7 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
+    "coverage": "vitest run --coverage",
     "test:e2e": "npm run build && __tests__/e2e/run.sh",
     "test:e2e:api": "vitest run --config vitest.e2e.config.ts"
   },
@@ -54,6 +55,7 @@
   },
   "devDependencies": {
     "@types/node": "^22",
+    "@vitest/coverage-v8": "^4.1.9",
     "tsup": "^8.5.1",
     "typescript": "^6.0.3",
     "vitest": "^4.1.8"

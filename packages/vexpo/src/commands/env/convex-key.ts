@@ -6,7 +6,7 @@ import {
   envUpdate,
   resolveProjectId,
   type EasEnvironment,
-} from "../../lib/eas-env.ts";
+} from "../../lib/eas-project.ts";
 import { readEnvFile } from "../../lib/env-files.ts";
 import { fileExists } from "../../lib/fs.ts";
 import { BOLD, DIM, RESET, bad, line, note, ok, section, yep } from "../../lib/output.ts";
