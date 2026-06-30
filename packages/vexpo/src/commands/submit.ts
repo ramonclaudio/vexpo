@@ -6,12 +6,13 @@
  * finished build by default, or a specific `--id`.
  */
 
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 
 import { ascKeyEnv, ensureAscAppId } from "./asc.ts";
 import { easSpawn } from "../lib/eas-cli.ts";
+import { submitProfileHasAscAppId } from "../lib/eas-submit.ts";
 import { readAll, requireBundleId } from "../lib/env-local.ts";
-import { BOLD, RESET, bad, note, ok, section } from "../lib/output.ts";
+import { BOLD, RESET, bad, note, ok, section, yep } from "../lib/output.ts";
 
 export type SubmitOptions = {
   profile?: string;
@@ -46,15 +47,30 @@ export async function runSubmit(opts: SubmitOptions = {}): Promise<number> {
     return 1;
   }
 
-  const ascAppId = await ensureAscAppId(bundleId);
-  if (!ascAppId) {
+  const resolved = await ensureAscAppId(bundleId);
+  if (resolved.kind === "defer") {
     bad("no App Store Connect app record for this bundle id yet");
     note("the app record appears after the first submit, which creates it. run once:");
     note(`  ${BOLD}npm run eas:tf${RESET}  (builds + submits, creates the app)`);
     note("then `vexpo submit` handles every submit after, fully non-interactive");
     return 1;
   }
-  ok(`ascAppId ${BOLD}${ascAppId}${RESET} in eas.json submit profiles`);
+  if (resolved.kind === "found") {
+    ok(`ascAppId ${BOLD}${resolved.ascAppId}${RESET} in eas.json submit profiles`);
+  } else if (submitProfileHasAscAppId(readFileSync("eas.json", "utf8"), profile)) {
+    // ascKeyEnv() already proved the creds present, so a non-"found", non-defer
+    // resolution is a lookup failure, never a missing app. eas submit reads
+    // ascAppId straight from the profile, so the failed lookup was only advisory.
+    yep(`couldn't confirm the app id with App Store Connect, using eas.json's ${profile} ascAppId`);
+  } else {
+    bad("couldn't look up the App Store Connect app id for this bundle id");
+    if (resolved.kind === "error") {
+      note(resolved.error instanceof Error ? resolved.error.message : String(resolved.error));
+    }
+    note("transient ASC API or network error, not a missing app. retry, or set");
+    note(`ascAppId on the ${profile} submit profile in eas.json and re-run`);
+    return 1;
+  }
   ok("ASC key wired for eas-cli (EXPO_ASC_*)");
 
   const args = ["submit", "-p", "ios", "--profile", profile, "--non-interactive"];

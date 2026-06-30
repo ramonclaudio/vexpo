@@ -16,6 +16,20 @@ function isObject(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
+// True when the named submit profile's `ios` block already carries a non-empty
+// ascAppId. `eas submit` reads the id only from here, so a non-interactive
+// submit can proceed off eas.json alone even when an ASC API lookup is down.
+export function submitProfileHasAscAppId(easJson: string, profile: string): boolean {
+  let cfg: EasJson;
+  try {
+    cfg = JSON.parse(easJson) as EasJson;
+  } catch {
+    return false;
+  }
+  const ios = cfg.submit?.[profile]?.ios;
+  return isObject(ios) && typeof ios.ascAppId === "string" && ios.ascAppId.length > 0;
+}
+
 export function submitProfilesMissingAscAppId(easJson: string): string[] {
   let cfg: EasJson;
   try {
