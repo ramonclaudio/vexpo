@@ -193,25 +193,6 @@ export async function diagnostics(): Promise<
   return { ok: false, error: tail || `exit ${code}` };
 }
 
-export async function listChannels(): Promise<string[]> {
-  const { code, stdout } = await run([
-    dlx(),
-    EAS_CLI,
-    "channel:list",
-    "--json",
-    "--non-interactive",
-    "--limit",
-    "25",
-  ]);
-  if (code !== 0) return [];
-  try {
-    const parsed = JSON.parse(stdout) as { currentPage?: Array<{ name?: string }> };
-    return (parsed.currentPage ?? []).map((c) => c.name ?? "").filter(Boolean);
-  } catch {
-    return [];
-  }
-}
-
 /** Idempotent: re-creates are no-ops on EAS. */
 export async function createChannel(name: string): Promise<boolean> {
   const { code } = await run([
@@ -226,35 +207,13 @@ export async function createChannel(name: string): Promise<boolean> {
 }
 
 export async function ensureChannels(names: readonly string[]): Promise<string[]> {
-  const existing = new Set(await listChannels());
+  // Let EAS own idempotency: try a create per name. createChannel swallows an
+  // "already exists" failure into `false`, so existing channels drop out here.
   const created: string[] = [];
   for (const name of names) {
-    if (existing.has(name)) continue;
     if (await createChannel(name)) created.push(name);
   }
   return created;
-}
-
-export async function listBranches(): Promise<string[]> {
-  const { code, stdout } = await run([
-    dlx(),
-    EAS_CLI,
-    "branch:list",
-    "--json",
-    "--non-interactive",
-    "--limit",
-    "25",
-  ]);
-  if (code !== 0) return [];
-  try {
-    const parsed = JSON.parse(stdout) as
-      | Array<{ name?: string }>
-      | { currentPage?: Array<{ name?: string }> };
-    if (Array.isArray(parsed)) return parsed.map((b) => b.name ?? "").filter(Boolean);
-    return (parsed.currentPage ?? []).map((b) => b.name ?? "").filter(Boolean);
-  } catch {
-    return [];
-  }
 }
 
 /** Idempotent. */
@@ -271,10 +230,8 @@ export async function createBranch(name: string): Promise<boolean> {
 }
 
 export async function ensureBranches(names: readonly string[]): Promise<string[]> {
-  const existing = new Set(await listBranches());
   const created: string[] = [];
   for (const name of names) {
-    if (existing.has(name)) continue;
     if (await createBranch(name)) created.push(name);
   }
   return created;
