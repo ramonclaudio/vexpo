@@ -265,6 +265,73 @@ type StoreConfigShape = {
   };
 };
 
+async function readJsonTarget(file: string): Promise<unknown> {
+  let text: string;
+  try {
+    text = await readFile(file, "utf8");
+  } catch {
+    throw new Error(`${file} missing; restore it from the vexpo template first`);
+  }
+  try {
+    return JSON.parse(text) as unknown;
+  } catch {
+    throw new Error(`${file} is not valid JSON; restore it from the vexpo template first`);
+  }
+}
+
+// The rewrites run sequentially with no rollback, so a throw after the first
+// write leaves a half-rebranded project that a later run reports as "nothing to
+// rebrand". Validate every target up front, before backup or any write, so a
+// missing/malformed file fails loudly while the tree is still pristine.
+async function validateTargets(): Promise<void> {
+  let cfg: string;
+  try {
+    cfg = await readFile("app.config.ts", "utf8");
+  } catch {
+    throw new Error("app.config.ts missing; restore it from the vexpo template first");
+  }
+  const markers: Array<[RegExp, string]> = [
+    [
+      /const BUNDLE_ID = process\.env\.EXPO_PUBLIC_APP_BUNDLE_ID \?\? (?:`[^`]*`|"[^"]*");/,
+      "BUNDLE_ID assignment",
+    ],
+    [/name: IS_DEV \? "[^"]+" : "[^"]+",/, "name"],
+    [/slug: "[^"]+",/, "slug"],
+    [/scheme: "[^"]+",/, "scheme"],
+  ];
+  for (const [re, label] of markers) {
+    if (!re.test(cfg)) {
+      throw new Error(
+        `app.config.ts: missing expected ${label}; restore it from the vexpo template first`,
+      );
+    }
+  }
+
+  await readJsonTarget("app.json");
+
+  const pkg = await readJsonTarget("package.json");
+  if (typeof pkg !== "object" || pkg === null) {
+    throw new Error(
+      "package.json: expected a JSON object; restore it from the vexpo template first",
+    );
+  }
+
+  const store = await readJsonTarget("store.config.json");
+  const apple = (store as { apple?: { info?: Record<string, unknown>; review?: unknown } }).apple;
+  if (
+    !apple ||
+    typeof apple !== "object" ||
+    typeof apple.info?.["en-US"] !== "object" ||
+    apple.info["en-US"] === null ||
+    typeof apple.review !== "object" ||
+    apple.review === null
+  ) {
+    throw new Error(
+      'store.config.json: missing apple.info["en-US"]/apple.review; restore it from the vexpo template first',
+    );
+  }
+}
+
 async function alreadyRebranded(): Promise<boolean> {
   const state = await load();
   return !!state.steps.rebrand;
@@ -330,6 +397,8 @@ export async function runRebrand(options: RebrandOptions): Promise<number> {
         return 1;
       }
     }
+
+    await validateTargets();
 
     const inputs = await promptInputs(overrides);
     line();

@@ -177,6 +177,33 @@ describe("runRebrand rewrite correctness", () => {
   });
 });
 
+describe("runRebrand preflight atomicity", () => {
+  it("leaves every target untouched when store.config.json has the wrong shape", async () => {
+    Object.defineProperty(process.stdin, "isTTY", { value: false, configurable: true });
+    // apple.info has no en-US, so the (sequential) store rewrite throws only
+    // after app.config.ts / app.json / package.json were already rewritten.
+    await writeFile(
+      "store.config.json",
+      JSON.stringify({ configVersion: 0, apple: { info: {}, review: {} } }),
+    );
+
+    const exit = await runRebrand({ ...FLAGS, yes: true });
+    expect(exit).toBe(1);
+
+    // Nothing should have been mutated: a half-rebrand leaves the project in a
+    // state where a re-run reports "nothing to rebrand".
+    const cfg = await readFile("app.config.ts", "utf8");
+    expect(cfg).toContain(`slug: "vexpo"`);
+    expect(cfg).not.toContain("com.acme.foobar");
+    const pkg = JSON.parse(await readFile("package.json", "utf8")) as { name: string };
+    expect(pkg.name).toBe("vexpo");
+    const appJson = JSON.parse(await readFile("app.json", "utf8")) as {
+      expo: { extra: { eas: { projectId?: string } } };
+    };
+    expect(appJson.expo.extra.eas.projectId).toBe("p");
+  });
+});
+
 describe("runRebrand interactive failure", () => {
   it("returns 1 instead of exiting the process when the app name is empty", async () => {
     Object.defineProperty(process.stdin, "isTTY", { value: true, configurable: true });
