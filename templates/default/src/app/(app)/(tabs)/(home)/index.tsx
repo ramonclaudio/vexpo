@@ -44,11 +44,15 @@ export default function HomeScreen() {
             >
               <Text date={now} dateStyle="date" />
             </Text>
+            {/* upstream expo/expo#46509: the nested bold run resolves its font on the Text concatenation path */}
             <Text
               testID="home-greeting"
-              modifiers={[dfont({ size: 32, weight: "bold", design: "rounded" }), kerning(-0.5)]}
+              modifiers={[dfont({ size: 32, design: "rounded" }), kerning(-0.5)]}
             >
-              Hey, {name}
+              Hey,{" "}
+              <Text modifiers={[dfont({ size: 32, weight: "bold", design: "rounded" })]}>
+                {name}
+              </Text>
             </Text>
           </VStack>
 
