@@ -17,6 +17,7 @@ import {
 } from "@expo/ui/swift-ui";
 import {
   accessibilityHidden,
+  accessibilityInputLabels,
   accessibilityLabel,
   background,
   buttonStyle,
@@ -301,6 +302,7 @@ export default function DebugScreen() {
                 <UpdateActionButton
                   testID="debug-update-download"
                   label="Download & install"
+                  inputLabels={["download and install", "install update"]}
                   onPress={updates.downloadAndApply}
                   colors={colors}
                   dfont={dfont}
@@ -441,12 +443,14 @@ export default function DebugScreen() {
 function UpdateActionButton({
   testID,
   label,
+  inputLabels,
   onPress,
   colors,
   dfont,
 }: {
   testID: string;
   label: string;
+  inputLabels?: string[];
   onPress: () => void;
   colors: ReturnType<typeof useColors>;
   dfont: ReturnType<typeof useDynamicFont>;
@@ -462,6 +466,7 @@ function UpdateActionButton({
         // as a rectangle before. The fix wires the ShapeType enum through both
         // ClipShapeModifier and MaskModifier.
         clipShape("capsule"),
+        ...(inputLabels ? [accessibilityInputLabels(inputLabels)] : []),
       ]}
       onPress={onPress}
     >

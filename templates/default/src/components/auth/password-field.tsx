@@ -12,6 +12,7 @@ import {
 import {
   accessibilityHidden,
   accessibilityHint,
+  accessibilityInputLabels,
   accessibilityLabel,
   autocorrectionDisabled,
   background,
@@ -19,6 +20,7 @@ import {
   clipShape,
   contentShape,
   disabled as disabledMod,
+  dynamicTypeSize,
   frame,
   onSubmit as onSubmitMod,
   padding,
@@ -30,9 +32,9 @@ import {
 } from "@expo/ui/swift-ui/modifiers";
 
 import { Button as ButtonTokens } from "@/constants/layout";
+import { DynamicType } from "@/constants/ui";
 import { useColors } from "@/hooks/use-theme";
 import { useDynamicFont } from "@/lib/dynamic-font";
-import { useSymbolSize } from "@/lib/dynamic-symbol-size";
 import { haptics } from "@/lib/haptics";
 
 type SubmitLabel = "next" | "done" | "send" | "go" | "search" | "join" | "route" | "continue";
@@ -76,7 +78,6 @@ export function PasswordField({
   testID,
 }: Props) {
   const dfont = useDynamicFont();
-  const symbolSize = useSymbolSize();
   const colors = useColors();
   const [visible, setVisible] = useState(false);
   const state = useNativeState("");
@@ -158,6 +159,7 @@ export function PasswordField({
           disabledMod(disabled),
           accessibilityLabel(visible ? "Hide password" : "Show password"),
           accessibilityHint(visible ? "Tap to mask the password" : "Tap to reveal the password"),
+          accessibilityInputLabels(["show password", "hide password"]),
         ]}
         onPress={() => {
           haptics.light();
@@ -167,9 +169,12 @@ export function PasswordField({
       >
         <Image
           systemName={visible ? "eye.slash" : "eye"}
-          size={symbolSize(18)}
           color={colors.mutedForeground as string}
-          modifiers={[accessibilityHidden(true)]}
+          modifiers={[
+            dfont({ size: 18 }),
+            dynamicTypeSize({ max: DynamicType.control }),
+            accessibilityHidden(true),
+          ]}
         />
       </Button>
     </HStack>

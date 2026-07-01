@@ -1,7 +1,9 @@
 import { Platform } from "react-native";
 import { ContentUnavailableView, Image, Text, VStack } from "@expo/ui/swift-ui";
 import {
+  accessibilityElement,
   accessibilityHidden,
+  dynamicTypeSize,
   foregroundStyle,
   frame,
   multilineTextAlignment,
@@ -9,9 +11,9 @@ import {
 } from "@expo/ui/swift-ui/modifiers";
 import type { SFSymbol } from "sf-symbols-typescript";
 
+import { DynamicType } from "@/constants/ui";
 import { useColors } from "@/hooks/use-theme";
 import { useDynamicFont } from "@/lib/dynamic-font";
-import { useSymbolSize } from "@/lib/dynamic-symbol-size";
 
 // `@expo/ui`'s ContentUnavailableView wraps SwiftUI's iOS 17+ view with no
 // `else`, so it renders blank on the iOS 16.4-16.7 deployment floor. Branch to
@@ -44,29 +46,33 @@ export function ContentUnavailable({ title, systemImage, description, testID }: 
 
 function Fallback({ title, systemImage, description, testID }: Props) {
   const dfont = useDynamicFont();
-  const symbolSize = useSymbolSize();
   const colors = useColors();
   return (
     <VStack
+      testID={testID}
       spacing={8}
       alignment="center"
-      modifiers={[frame({ maxWidth: Infinity }), padding({ vertical: 40, horizontal: 24 })]}
+      modifiers={[
+        frame({ maxWidth: Infinity }),
+        padding({ vertical: 40, horizontal: 24 }),
+        // upstream expo/expo#47156: read icon + title + description as one VoiceOver stop.
+        accessibilityElement("combine"),
+      ]}
     >
       <Image
         systemName={systemImage}
-        size={symbolSize(40)}
         color={colors.mutedForeground as string}
-        modifiers={[accessibilityHidden(true)]}
+        modifiers={[
+          dfont({ size: 40 }),
+          dynamicTypeSize({ max: DynamicType.control }),
+          accessibilityHidden(true),
+        ]}
       />
-      <Text
-        testID={description ? undefined : testID}
-        modifiers={[dfont({ size: 17, weight: "semibold" }), multilineTextAlignment("center")]}
-      >
+      <Text modifiers={[dfont({ size: 17, weight: "semibold" }), multilineTextAlignment("center")]}>
         {title}
       </Text>
       {description ? (
         <Text
-          testID={testID}
           modifiers={[
             dfont({ size: 14 }),
             foregroundStyle(colors.mutedForeground as string),

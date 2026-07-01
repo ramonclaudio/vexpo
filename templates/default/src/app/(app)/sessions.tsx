@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { Host, ScrollView, Button, Text, VStack, HStack, Spacer, Alert } from "@expo/ui/swift-ui";
 import {
+  accessibilityElement,
+  accessibilityInputLabels,
   background,
   buttonStyle,
   contentShape,
@@ -182,7 +184,14 @@ export default function SessionsScreen() {
                     cornerRadius(20),
                   ]}
                 >
-                  <VStack alignment="leading" spacing={2}>
+                  <VStack
+                    alignment="leading"
+                    spacing={2}
+                    modifiers={[
+                      // upstream expo/expo#47156: combine collapses the identity block into one VoiceOver stop
+                      accessibilityElement("combine"),
+                    ]}
+                  >
                     <HStack spacing={8} alignment="center">
                       <Text
                         testID={`session-device-${s.token}`}
@@ -233,6 +242,8 @@ export default function SessionsScreen() {
                             buttonStyle("plain"),
                             frame({ minHeight: TouchTarget.min }),
                             contentShape(shapes.rectangle()),
+                            // upstream expo/expo#46661: every row's button says "Revoke", so give Voice Control the device name as a spoken alias
+                            accessibilityInputLabels([`Revoke ${deviceLabel(s.userAgent)}`]),
                           ]}
                           onPress={() => {
                             haptics.warning();
