@@ -62,22 +62,9 @@ export const TAB_BAR_CLEARANCE = TAB_BAR_HEIGHT + Spacing.lg;
 
 export const Button = {
   height: 50,
-  cornerRadius: 25,
   fontSize: 17,
   fontWeight: "semibold",
   secondaryFontWeight: "medium",
-} as const;
-
-export const IconSize = {
-  sm: 14,
-  md: 16,
-  lg: 18,
-  xl: 20,
-  "2xl": 22,
-  "3xl": 24,
-  "4xl": 32,
-  "5xl": 48,
-  "6xl": 64,
 } as const;
 
 export const FontFamily = {
