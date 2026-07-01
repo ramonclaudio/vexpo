@@ -10,13 +10,14 @@ import {
   frame,
   padding,
   multilineTextAlignment,
+  dynamicTypeSize,
   tint,
 } from "@expo/ui/swift-ui/modifiers";
 import { useDynamicFont } from "@/lib/dynamic-font";
-import { useSymbolSize } from "@/lib/dynamic-symbol-size";
 import { ProminentButton } from "@/components/ui/prominent-button";
 import { useColors } from "@/hooks/use-theme";
 import { TouchTarget } from "@/constants/layout";
+import { DynamicType } from "@/constants/ui";
 
 export function AppErrorBoundary({
   error,
@@ -24,7 +25,6 @@ export function AppErrorBoundary({
   testID,
 }: ErrorBoundaryProps & { testID?: string }) {
   const dfont = useDynamicFont();
-  const symbolSize = useSymbolSize();
   const colors = useColors();
   const insets = useSafeAreaInsets();
 
@@ -51,9 +51,12 @@ export function AppErrorBoundary({
         <Spacer />
         <Image
           systemName="exclamationmark.triangle"
-          size={symbolSize(72)}
           color={colors.destructive as string}
-          modifiers={[accessibilityHidden(true)]}
+          modifiers={[
+            dfont({ size: 72 }),
+            dynamicTypeSize({ max: DynamicType.control }),
+            accessibilityHidden(true),
+          ]}
         />
         <Text modifiers={[dfont({ size: 28, weight: "bold" }), multilineTextAlignment("center")]}>
           Something went wrong

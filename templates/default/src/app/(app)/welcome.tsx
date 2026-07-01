@@ -25,10 +25,11 @@ import {
   accessibilityLabel,
   accessibilityValue,
   tabViewStyle,
+  dynamicTypeSize,
 } from "@expo/ui/swift-ui/modifiers";
 import { useDynamicFont } from "@/lib/dynamic-font";
-import { useSymbolSize } from "@/lib/dynamic-symbol-size";
 import { Button as ButtonTokens } from "@/constants/layout";
+import { DynamicType } from "@/constants/ui";
 import { ProminentButton } from "@/components/ui/prominent-button";
 
 import { assets } from "@/lib/assets";
@@ -63,7 +64,6 @@ const STEPS: readonly WelcomeStep[] = [
 
 export default function WelcomeScreen() {
   const dfont = useDynamicFont();
-  const symbolSize = useSymbolSize();
   const colors = useColors();
   const brandIcon = useThemedAsset(assets.brandIconLight, assets.brandIconDark);
   const [step, setStep] = useState(0);
@@ -140,11 +140,19 @@ export default function WelcomeScreen() {
                     />
                   </RNHostView>
                 ) : (
+                  // upstream expo/expo#46714: <Image systemName> honors
+                  // font/dynamicTypeSize natively, so the SF Symbol scales on the
+                  // Dynamic Type curve and clamps in the SwiftUI environment
+                  // instead of the old JS useSymbolSize multiply
                   <Image
                     systemName={s.icon}
-                    size={symbolSize(48)}
                     color={colors.primary as string}
-                    modifiers={[frame({ width: 80, height: 80 }), accessibilityHidden(true)]}
+                    modifiers={[
+                      frame({ width: 80, height: 80 }),
+                      dfont({ size: 48 }),
+                      dynamicTypeSize({ max: DynamicType.control }),
+                      accessibilityHidden(true),
+                    ]}
                   />
                 )}
                 <Text

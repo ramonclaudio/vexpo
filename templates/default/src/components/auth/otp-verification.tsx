@@ -36,7 +36,6 @@ import {
   textFieldStyle,
 } from "@expo/ui/swift-ui/modifiers";
 import { useDynamicFont } from "@/lib/dynamic-font";
-import { useSymbolSize } from "@/lib/dynamic-symbol-size";
 import { Button as ButtonTokens, TouchTarget } from "@/constants/layout";
 import { DynamicType } from "@/constants/ui";
 
@@ -68,7 +67,6 @@ const initialState: OtpState = {};
 
 export function OtpVerification({ email, onBack, flow = "verify-email" }: OtpVerificationProps) {
   const dfont = useDynamicFont();
-  const symbolSize = useSymbolSize();
   const colors = useColors();
   const otpState = useNativeState("");
   const [otp, setOtp] = useState("");
@@ -154,9 +152,12 @@ export function OtpVerification({ email, onBack, flow = "verify-email" }: OtpVer
 
         <Image
           systemName={isSignIn ? "lock.shield" : "envelope.badge"}
-          size={symbolSize(56)}
           color={colors.primary}
-          modifiers={[accessibilityHidden(true)]}
+          modifiers={[
+            dfont({ size: 56 }),
+            dynamicTypeSize({ max: DynamicType.control }),
+            accessibilityHidden(true),
+          ]}
         />
 
         <Text modifiers={[dfont({ size: 28, weight: "bold" }), multilineTextAlignment("center")]}>

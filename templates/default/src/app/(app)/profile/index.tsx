@@ -52,7 +52,6 @@ import {
   tint,
 } from "@expo/ui/swift-ui/modifiers";
 import { useDynamicFont } from "@/lib/dynamic-font";
-import { useSymbolSize } from "@/lib/dynamic-symbol-size";
 import { Button as ButtonTokens, TouchTarget } from "@/constants/layout";
 import { DynamicType } from "@/constants/ui";
 
@@ -83,7 +82,6 @@ type OtpState = { error?: string; success?: string };
 
 export default function ProfileScreen() {
   const dfont = useDynamicFont();
-  const symbolSize = useSymbolSize();
   const colors = useColors();
   const me = useQuery(api.users.getMe);
   const hasPasswordResult = useQuery(api.auth.hasPassword);
@@ -410,9 +408,12 @@ export default function ProfileScreen() {
                     <Spacer />
                     <Image
                       systemName="camera.circle.fill"
-                      size={symbolSize(28)}
                       color={colors.primary as string}
-                      modifiers={[accessibilityHidden(true)]}
+                      modifiers={[
+                        dfont({ size: 28 }),
+                        dynamicTypeSize({ max: DynamicType.control }),
+                        accessibilityHidden(true),
+                      ]}
                     />
                   </HStack>
                 </Button>

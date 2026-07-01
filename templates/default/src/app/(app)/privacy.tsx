@@ -19,11 +19,11 @@ import {
   clipShape,
   foregroundStyle,
   frame,
+  imageScale,
   padding,
   tint,
 } from "@expo/ui/swift-ui/modifiers";
 import { useDynamicFont } from "@/lib/dynamic-font";
-import { useSymbolSize } from "@/lib/dynamic-symbol-size";
 import { Button as ButtonTokens } from "@/constants/layout";
 
 import { haptics } from "@/lib/haptics";
@@ -32,7 +32,6 @@ import { useColors } from "@/hooks/use-theme";
 
 export default function PrivacyScreen() {
   const dfont = useDynamicFont();
-  const symbolSize = useSymbolSize();
   const colors = useColors();
   const [analyticsEnabled, setAnalyticsEnabled] = useShareAnalytics();
 
@@ -78,9 +77,8 @@ export default function PrivacyScreen() {
       >
         <Image
           systemName={systemImage}
-          size={symbolSize(18)}
           color={colors.foreground as string}
-          modifiers={[accessibilityHidden(true)]}
+          modifiers={[dfont({ size: 18 }), accessibilityHidden(true)]}
         />
         <Text
           modifiers={[
@@ -95,9 +93,8 @@ export default function PrivacyScreen() {
           (chevron ? (
             <Image
               systemName="chevron.right"
-              size={symbolSize(13)}
               color={colors.mutedForeground as string}
-              modifiers={[accessibilityHidden(true)]}
+              modifiers={[dfont({ size: 16 }), imageScale("small"), accessibilityHidden(true)]}
             />
           ) : null)}
       </HStack>
@@ -146,9 +143,8 @@ export default function PrivacyScreen() {
           >
             <Image
               systemName="chart.bar.fill"
-              size={symbolSize(18)}
               color={colors.foreground as string}
-              modifiers={[accessibilityHidden(true)]}
+              modifiers={[dfont({ size: 18 }), accessibilityHidden(true)]}
             />
             <Text
               modifiers={[

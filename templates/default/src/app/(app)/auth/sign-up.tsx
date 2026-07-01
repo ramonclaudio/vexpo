@@ -41,7 +41,6 @@ import {
   scrollTargetLayout,
 } from "@expo/ui/swift-ui/modifiers";
 import { useDynamicFont } from "@/lib/dynamic-font";
-import { useSymbolSize } from "@/lib/dynamic-symbol-size";
 import { Button as ButtonTokens } from "@/constants/layout";
 
 import { api } from "@/convex/_generated/api";
@@ -68,7 +67,6 @@ const initialState: SignUpState = {};
 
 export default function SignUpScreen() {
   const dfont = useDynamicFont();
-  const symbolSize = useSymbolSize();
   const colors = useColors();
   const brandIcon = useThemedAsset(assets.brandIconLight, assets.brandIconDark);
   const [name, setName] = useState("");
@@ -390,9 +388,8 @@ export default function SignUpScreen() {
               <HStack spacing={6} alignment="center">
                 <Image
                   systemName={usernameStatus.icon}
-                  size={symbolSize(13)}
                   color={usernameStatus.color}
-                  modifiers={[accessibilityHidden(true)]}
+                  modifiers={[dfont({ size: 13 }), accessibilityHidden(true)]}
                 />
                 <Text
                   testID="sign-up-username-status"

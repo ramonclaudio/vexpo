@@ -27,6 +27,7 @@ import {
   clipShape,
   foregroundStyle,
   frame,
+  imageScale,
   padding,
   accessibilityHidden,
   accessibilityLabel,
@@ -37,7 +38,6 @@ import {
   tint,
 } from "@expo/ui/swift-ui/modifiers";
 import { useDynamicFont } from "@/lib/dynamic-font";
-import { useSymbolSize } from "@/lib/dynamic-symbol-size";
 import { Button as ButtonTokens } from "@/constants/layout";
 
 import { api } from "@/convex/_generated/api";
@@ -52,7 +52,6 @@ const HEADER_AVATAR_SIZE = 56;
 
 export default function SettingsScreen() {
   const dfont = useDynamicFont();
-  const symbolSize = useSymbolSize();
   const colors = useColors();
   const me = useQuery(api.users.getMe);
   const removeAllTokens = useMutation(api.pushTokens.removeAll);
@@ -126,20 +125,19 @@ export default function SettingsScreen() {
         >
           <Image
             systemName={systemImage}
-            size={symbolSize(18)}
             color={labelColor}
-            modifiers={[accessibilityHidden(true)]}
+            modifiers={[dfont({ size: 18 }), accessibilityHidden(true)]}
           />
           <Text modifiers={[dfont({ size: 16, weight: "medium" }), foregroundStyle(labelColor)]}>
             {label}
           </Text>
           <Spacer />
           {role !== "destructive" ? (
+            // upstream expo/expo#46774: imageScale ties the chevron to the row label's Dynamic Type curve
             <Image
               systemName="chevron.right"
-              size={symbolSize(13)}
               color={colors.mutedForeground as string}
-              modifiers={[accessibilityHidden(true)]}
+              modifiers={[dfont({ size: 16 }), imageScale("small"), accessibilityHidden(true)]}
             />
           ) : null}
         </HStack>
@@ -210,9 +208,8 @@ export default function SettingsScreen() {
               <Spacer />
               <Image
                 systemName="chevron.right"
-                size={symbolSize(13)}
                 color={colors.mutedForeground as string}
-                modifiers={[accessibilityHidden(true)]}
+                modifiers={[dfont({ size: 17 }), imageScale("small"), accessibilityHidden(true)]}
               />
             </HStack>
           </Button>

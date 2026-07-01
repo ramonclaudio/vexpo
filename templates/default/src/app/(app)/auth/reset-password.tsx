@@ -38,7 +38,6 @@ import {
   tint,
 } from "@expo/ui/swift-ui/modifiers";
 import { useDynamicFont } from "@/lib/dynamic-font";
-import { useSymbolSize } from "@/lib/dynamic-symbol-size";
 import { Button as ButtonTokens } from "@/constants/layout";
 import { DynamicType } from "@/constants/ui";
 
@@ -63,7 +62,6 @@ const initialState: ResetState = {};
 
 export default function ResetPasswordScreen() {
   const dfont = useDynamicFont();
-  const symbolSize = useSymbolSize();
   const colors = useColors();
   const brandIcon = useThemedAsset(assets.brandIconLight, assets.brandIconDark);
   const { email = "" } = useLocalSearchParams<{ email: string }>();
@@ -165,9 +163,12 @@ export default function ResetPasswordScreen() {
           <Image
             testID="reset-password-success-icon"
             systemName="checkmark.circle.fill"
-            size={symbolSize(56)}
             color={colors.success}
-            modifiers={[accessibilityHidden(true)]}
+            modifiers={[
+              dfont({ size: 56 }),
+              dynamicTypeSize({ max: DynamicType.control }),
+              accessibilityHidden(true),
+            ]}
           />
           <Text
             testID="reset-password-success-title"
