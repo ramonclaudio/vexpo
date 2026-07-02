@@ -131,6 +131,20 @@ if match_grep "$n"; then
   [ -z "$miss" ] && pass "$n" || fail "$n" "missing:$miss"
 else skip "$n" "filtered"; fi
 
+# The vendored local expo module (upstream expo/expo#47387) lives under
+# modules/**/ios/, which an unanchored ios filter once gutted from the
+# tarball. A scaffold without the Swift + podspec autolinks a module that
+# cannot compile at pod install.
+n="vendored ui-traits module survives scaffold (swift, podspec, config)"
+if match_grep "$n"; then
+  miss=""
+  m="$proj/modules/vexpo-ui-traits"
+  [ -f "$m/expo-module.config.json" ] || miss="$miss expo-module.config.json"
+  [ -f "$m/ios/VexpoUITraitsModule.swift" ] || miss="$miss ios/VexpoUITraitsModule.swift"
+  [ -f "$m/ios/VexpoUITraits.podspec" ] || miss="$miss ios/VexpoUITraits.podspec"
+  [ -z "$miss" ] && pass "$n" || fail "$n" "missing:$miss"
+else skip "$n" "filtered"; fi
+
 n="git repo initialized with the initial commit"
 if match_grep "$n"; then
   if [ ! -d "$proj/.git" ]; then fail "$n" "no .git dir"
@@ -246,6 +260,20 @@ if match_grep "$n"; then
   # The credentials/ staging dir ships its README (dir + guidance travel, keys don't).
   [ -f "$dest/credentials/README.md" ] || bad="$bad missing:credentials/README.md"
   [ -z "$bad" ] && pass "$n" || fail "$n" "leaked:$bad"
+else skip "$n" "filtered"; fi
+
+# Positive twin of the excludes test: the root ios/ must NOT ship, but the
+# vendored module's nested ios/ MUST (upstream expo/expo#47387). pack-guard
+# can't catch a missing file, only a leaked one, so this is the sole tripwire.
+n="dist payload keeps the vendored ui-traits module intact"
+if match_grep "$n"; then
+  dest="$PKG_ROOT/dist/templates/default"
+  miss=""
+  m="$dest/modules/vexpo-ui-traits"
+  [ -f "$m/expo-module.config.json" ] || miss="$miss expo-module.config.json"
+  [ -f "$m/ios/VexpoUITraitsModule.swift" ] || miss="$miss ios/VexpoUITraitsModule.swift"
+  [ -f "$m/ios/VexpoUITraits.podspec" ] || miss="$miss ios/VexpoUITraits.podspec"
+  [ -z "$miss" ] && pass "$n" || fail "$n" "missing:$miss"
 else skip "$n" "filtered"; fi
 
 section "Full install (opt-in)"
