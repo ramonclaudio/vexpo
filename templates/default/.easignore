@@ -2,8 +2,6 @@
 .git
 dist
 node_modules
-ios/Pods
-ios/.xcode.env.local
 __tests__
 *.test.ts
 *.test.tsx
@@ -12,7 +10,9 @@ __tests__
 .env.example
 .env.convex.local
 README.md
-ios/
+# Anchored: the vendored local expo module ships modules/vexpo-ui-traits/ios/
+# (upstream expo/expo#47387); an unanchored ios/ would strip it from EAS uploads.
+/ios/
 plans/
 docs/
 .agents/
