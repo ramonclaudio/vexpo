@@ -11,11 +11,14 @@ import {
   imageScale,
   padding,
   scrollDismissesKeyboard,
+  scrollTargetBehavior,
+  scrollTargetLayout,
   tint,
 } from "@expo/ui/swift-ui/modifiers";
 import type { SFSymbol } from "sf-symbols-typescript";
 
 import { useDynamicFont } from "@/lib/dynamic-font";
+import { accessibilityAddTraits } from "@/lib/ui-traits";
 import { useColors } from "@/hooks/use-theme";
 import { useDebounce } from "@/hooks/use-debounce";
 import { useDebugEnabled } from "@/lib/preferences";
@@ -142,6 +145,7 @@ export default function SearchScreen() {
     dfont({ size: 13, weight: "semibold" }),
     foregroundStyle(colors.mutedForeground as string),
     padding({ horizontal: 8, top: 4 }),
+    accessibilityAddTraits(["isHeader"]),
   ];
 
   return (
@@ -153,12 +157,19 @@ export default function SearchScreen() {
       />
       <Host testID="search-screen" style={{ flex: 1, backgroundColor: colors.background }}>
         <ScrollView
-          modifiers={[scrollDismissesKeyboard("interactively"), tint(colors.primary as string)]}
+          modifiers={[
+            scrollDismissesKeyboard("interactively"),
+            tint(colors.primary as string),
+            // upstream expo/expo#43955: viewAligned settles a flick on row
+            // boundaries so no capsule rests half-clipped at the top; plain
+            // scrolling below iOS 17
+            scrollTargetBehavior("viewAligned"),
+          ]}
         >
           <VStack
             spacing={12}
             alignment="leading"
-            modifiers={[padding({ horizontal: 24, top: 16, bottom: 40 })]}
+            modifiers={[padding({ horizontal: 24, top: 16, bottom: 40 }), scrollTargetLayout()]}
           >
             {results.length === 0 ? (
               <ContentUnavailable
