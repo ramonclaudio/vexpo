@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Constants from "expo-constants";
 import * as Application from "expo-application";
 import { ApplicationReleaseType } from "expo-application";
@@ -17,6 +17,7 @@ import {
 } from "@expo/ui/swift-ui";
 import {
   accessibilityHidden,
+  accessibilityInputLabels,
   accessibilityLabel,
   background,
   buttonStyle,
@@ -25,17 +26,23 @@ import {
   defaultScrollAnchor,
   foregroundStyle,
   frame,
+  invalidatableContent,
   padding,
+  privacySensitive,
   progressViewStyle,
+  redacted,
   scrollDismissesKeyboard,
   textSelection,
   tint,
 } from "@expo/ui/swift-ui/modifiers";
 
+import { announce } from "@/lib/a11y";
 import { executionEnvironment, expoRuntimeVersion, sessionId, debugMode } from "@/lib/device";
 import { isEnabled as updatesEnabled, readLogEntries, type UpdatesLogEntry } from "@/lib/updates";
 import { useAppUpdates } from "@/hooks/use-updates";
 import { useColors } from "@/hooks/use-theme";
+import { useScenePrivacy } from "@/hooks/use-scene-privacy";
+import { accessibilityAddTraits } from "@/lib/ui-traits";
 import { useDynamicFont } from "@/lib/dynamic-font";
 import { Button as ButtonTokens } from "@/constants/layout";
 
@@ -147,9 +154,23 @@ function useApplicationInfo() {
 export default function DebugScreen() {
   const dfont = useDynamicFont();
   const colors = useColors();
+  const scenePrivacy = useScenePrivacy();
   const appInfo = useApplicationInfo();
   const updates = useAppUpdates();
   const updateLog = useUpdateLogEntries(updates.isUpdatePending, updates.restartCount);
+
+  // OTA status rows render silently; announce check outcomes to VoiceOver.
+  // Download errors/progress stay unannounced here, the global UpdateBanner owns them.
+  const wasCheckingRef = useRef(false);
+  useEffect(() => {
+    if (updates.checkError) announce(`Update check failed: ${updates.checkError.message}`);
+  }, [updates.checkError]);
+  useEffect(() => {
+    if (wasCheckingRef.current && !updates.isChecking && !updates.checkError) {
+      announce(updates.isUpdateAvailable ? "Update available" : "Up to date");
+    }
+    wasCheckingRef.current = updates.isChecking;
+  }, [updates.isChecking, updates.checkError, updates.isUpdateAvailable]);
 
   const appVersion =
     Application.nativeApplicationVersion ?? Constants.expoConfig?.version ?? "1.0.0";
@@ -163,10 +184,17 @@ export default function DebugScreen() {
     dfont({ size: 13, weight: "semibold" }),
     foregroundStyle(colors.mutedForeground as string),
     padding({ horizontal: 8, top: 4 }),
+    accessibilityAddTraits(["isHeader"]),
   ];
 
   return (
-    <Host testID="debug-screen" style={{ flex: 1, backgroundColor: colors.background }}>
+    <Host
+      testID="debug-screen"
+      style={{ flex: 1, backgroundColor: colors.background }}
+      // upstream expo/expo#47269: raises redacted("privacy") when the app
+      // resigns, hiding privacySensitive leaves in the app-switcher snapshot
+      modifiers={scenePrivacy}
+    >
       <ScrollView
         modifiers={[scrollDismissesKeyboard("interactively"), tint(colors.primary as string)]}
       >
@@ -214,13 +242,24 @@ export default function DebugScreen() {
           </VStack>
 
           {updatesEnabled && !__DEV__ ? (
-            <VStack spacing={8} alignment="leading" modifiers={[frame({ maxWidth: Infinity })]}>
+            <VStack
+              spacing={8}
+              alignment="leading"
+              modifiers={[
+                frame({ maxWidth: Infinity }),
+                // upstream expo/expo#47269: while a check is in flight the shown
+                // status is possibly stale, so raise the invalidated reason; it
+                // redacts only the invalidatableContent-marked Status value.
+                ...(updates.isChecking ? [redacted("invalidated")] : []),
+              ]}
+            >
               <Text modifiers={sectionLabelModifiers}>OTA UPDATES</Text>
               <InfoCard>
                 <InfoRow
                   testID="debug-ota-status-value"
                   label="Status"
                   value={updates.statusText}
+                  valueModifiers={[invalidatableContent()]}
                 />
                 <InfoRow
                   testID="debug-ota-channel-value"
@@ -301,6 +340,7 @@ export default function DebugScreen() {
                 <UpdateActionButton
                   testID="debug-update-download"
                   label="Download & install"
+                  inputLabels={["download and install", "install update"]}
                   onPress={updates.downloadAndApply}
                   colors={colors}
                   dfont={dfont}
@@ -370,7 +410,7 @@ export default function DebugScreen() {
                 testID="debug-session-id-value"
                 label="Session id"
                 value={sessionId.slice(0, 8)}
-                valueModifiers={[dfont({ size: 13, design: "monospaced" })]}
+                valueModifiers={[dfont({ size: 13, design: "monospaced" }), privacySensitive()]}
               />
               <InfoRow
                 testID="debug-build-mode-value"
@@ -420,8 +460,9 @@ export default function DebugScreen() {
             <Spacer />
             <Text
               testID="debug-footer-version-value"
-              // duplicates the BUILD > Version row above, so hide the footer
-              // stamp from VoiceOver instead of announcing the version twice.
+              // upstream expo/expo#46579: duplicates the BUILD > Version row
+              // above, so hide the footer stamp from VoiceOver instead of
+              // announcing the version twice.
               modifiers={[
                 dfont({ size: 12 }),
                 foregroundStyle(colors.mutedForeground as string),
@@ -441,12 +482,14 @@ export default function DebugScreen() {
 function UpdateActionButton({
   testID,
   label,
+  inputLabels,
   onPress,
   colors,
   dfont,
 }: {
   testID: string;
   label: string;
+  inputLabels?: string[];
   onPress: () => void;
   colors: ReturnType<typeof useColors>;
   dfont: ReturnType<typeof useDynamicFont>;
@@ -462,6 +505,7 @@ function UpdateActionButton({
         // as a rectangle before. The fix wires the ShapeType enum through both
         // ClipShapeModifier and MaskModifier.
         clipShape("capsule"),
+        ...(inputLabels ? [accessibilityInputLabels(inputLabels)] : []),
       ]}
       onPress={onPress}
     >

@@ -4,6 +4,17 @@ All notable changes to vexpo are tracked here. Format follows [Keep a Changelog]
 
 ## [Unreleased]
 
+- Move every SF Symbol off the JS `fontScale` multiply onto native `font` and `dynamicTypeSize` scaling and delete the `useSymbolSize` workaround, so icons ride the same Dynamic Type curve as their labels ([expo/expo#46714](https://github.com/expo/expo/pull/46714), [#46774](https://github.com/expo/expo/pull/46774)).
+- Rebuild the loading skeletons on `redacted("placeholder")` so placeholders track the live layout instead of hand-drawn bars ([expo/expo#47269](https://github.com/expo/expo/pull/47269)).
+- Add an app-switcher privacy shield: backgrounding redacts emails, session IPs, and device identifiers in the iOS switcher snapshot via `privacySensitive`, and the debug OTA status gets the `invalidatableContent` treatment while a check runs.
+- Vendor the `accessibilityAddTraits` and `accessibilityRemoveTraits` modifiers ([expo/expo#47387](https://github.com/expo/expo/pull/47387), merged upstream but in no published `@expo/ui`) as a local expo module through the public `ViewModifierRegistry` API, and mark every screen title and section label `isHeader` so the VoiceOver Headings rotor can navigate the whole app.
+- Announce async state changes to VoiceOver on iOS: the offline and update banners, username availability results, OTA check outcomes, and session revoke failures all spoke nothing before.
+- Collapse fragmented VoiceOver stops (session identity rows, empty states, label-value pairs) with `accessibilityElement`, alias unspeakable Voice Control labels (ampersands, duplicate "Revoke" buttons), and meet the 44pt touch-target minimum on every plain text button.
+- Scroll the OTP, restore-account, and crash screens at accessibility type sizes so no control can scale off-screen; the restore modal previously stranded the user with unreachable buttons.
+- Give the welcome hero a mirrored reflection via per-axis `scaleEffect`, settle search flicks on row boundaries with `scrollTargetBehavior("viewAligned")`, and bold the name in the home greeting through the fixed `Text` concatenation path.
+- Anchor the `ios/` excludes in the template `.gitignore`, `.easignore`, and the create-vexpo copy filter so the vendored module's native sources actually ship; the e2e suite now asserts them in both the dist payload and a scaffold.
+- Skip Scorecard analysis and npm publish on forks, the same fork-safety guards we shipped upstream in [expo/expo#45782](https://github.com/expo/expo/pull/45782) and [#45859](https://github.com/expo/expo/pull/45859).
+
 ## [0.1.10] - 2026-06-30
 
 - Upgrade the template to Expo SDK 57: React Native 0.85 to 0.86, React unchanged at 19.2. Moves `react-native-reanimated` to 4.5, `react-native-worklets` to 0.10, and `react-native-gesture-handler` to 2.32 via `expo install --fix`, and registers the `expo-asset` and `expo-status-bar` config plugins SDK 57 expects. `expo install --check` and `expo-doctor` (20/20) pass clean. RN 0.86 ships no breaking changes, so a scaffold rolls forward with a single `npx expo install expo@latest --fix`.

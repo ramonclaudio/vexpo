@@ -8,14 +8,17 @@ import {
   clipShape,
   foregroundStyle,
   frame,
+  imageScale,
   padding,
   scrollDismissesKeyboard,
+  scrollTargetBehavior,
+  scrollTargetLayout,
   tint,
 } from "@expo/ui/swift-ui/modifiers";
 import type { SFSymbol } from "sf-symbols-typescript";
 
 import { useDynamicFont } from "@/lib/dynamic-font";
-import { useSymbolSize } from "@/lib/dynamic-symbol-size";
+import { accessibilityAddTraits } from "@/lib/ui-traits";
 import { useColors } from "@/hooks/use-theme";
 import { useDebounce } from "@/hooks/use-debounce";
 import { useDebugEnabled } from "@/lib/preferences";
@@ -113,7 +116,6 @@ function score(d: Destination, query: string): number {
 
 export default function SearchScreen() {
   const dfont = useDynamicFont();
-  const symbolSize = useSymbolSize();
   const colors = useColors();
   const [raw, setRaw] = useState("");
   const query = useDebounce(raw, DEBOUNCE_MS);
@@ -143,6 +145,7 @@ export default function SearchScreen() {
     dfont({ size: 13, weight: "semibold" }),
     foregroundStyle(colors.mutedForeground as string),
     padding({ horizontal: 8, top: 4 }),
+    accessibilityAddTraits(["isHeader"]),
   ];
 
   return (
@@ -154,12 +157,19 @@ export default function SearchScreen() {
       />
       <Host testID="search-screen" style={{ flex: 1, backgroundColor: colors.background }}>
         <ScrollView
-          modifiers={[scrollDismissesKeyboard("interactively"), tint(colors.primary as string)]}
+          modifiers={[
+            scrollDismissesKeyboard("interactively"),
+            tint(colors.primary as string),
+            // upstream expo/expo#43955: viewAligned settles a flick on row
+            // boundaries so no capsule rests half-clipped at the top; plain
+            // scrolling below iOS 17
+            scrollTargetBehavior("viewAligned"),
+          ]}
         >
           <VStack
             spacing={12}
             alignment="leading"
-            modifiers={[padding({ horizontal: 24, top: 16, bottom: 40 })]}
+            modifiers={[padding({ horizontal: 24, top: 16, bottom: 40 }), scrollTargetLayout()]}
           >
             {results.length === 0 ? (
               <ContentUnavailable
@@ -195,9 +205,8 @@ export default function SearchScreen() {
                     >
                       <Image
                         systemName={d.icon}
-                        size={symbolSize(20)}
                         color={colors.foreground as string}
-                        modifiers={[accessibilityHidden(true)]}
+                        modifiers={[dfont({ size: 20 }), accessibilityHidden(true)]}
                       />
                       <VStack alignment="leading" spacing={2}>
                         <Text
@@ -220,9 +229,12 @@ export default function SearchScreen() {
                       <Spacer />
                       <Image
                         systemName="chevron.right"
-                        size={symbolSize(13)}
                         color={colors.mutedForeground as string}
-                        modifiers={[accessibilityHidden(true)]}
+                        modifiers={[
+                          dfont({ size: 16 }),
+                          imageScale("small"),
+                          accessibilityHidden(true),
+                        ]}
                       />
                     </HStack>
                   </Button>

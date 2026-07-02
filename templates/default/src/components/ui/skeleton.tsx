@@ -1,43 +1,48 @@
 import { VStack, HStack, Spacer, Text } from "@expo/ui/swift-ui";
 import {
-  accessibilityHidden,
+  accessibilityElement,
+  accessibilityLabel,
   background,
   clipShape,
   cornerRadius,
   frame,
   padding,
+  redacted,
+  unredacted,
 } from "@expo/ui/swift-ui/modifiers";
 
 import { Spacing } from "@/constants/layout";
 import { useColors } from "@/hooks/use-theme";
+import { useDynamicFont } from "@/lib/dynamic-font";
 
-// Skeleton placeholders for initial query loads. SwiftUI-native: filled
-// muted-color boxes laid out in the shape of the screen they're standing
-// in for. No animation. SwiftUI's `Host` doesn't ergonomically support
-// per-tick opacity tweens, and static skeletons satisfy the Reduce Motion
-// accessibility setting trivially (nothing to suppress). The whitespace
-// `Text` inside each bar forces SwiftUI to render the framed VStack with
-// its background fill, and the placeholders use `accessibilityHidden(true)`
-// (shipped upstream in expo/expo#46579) to drop them from the spoken hierarchy.
+// Skeleton placeholders for initial query loads. Each root wraps its subtree in
+// `redacted("placeholder")` (upstream expo/expo#47269), the canonical SwiftUI
+// skeleton: SwiftUI draws native gray capsules over the real Texts, each sized
+// to a representative string, so the skeleton tracks the live layout and Dynamic
+// Type for free instead of drifting behind hardcoded bar widths. No animation,
+// and static placeholders satisfy the Reduce Motion accessibility setting
+// trivially (nothing to suppress). The avatar Circle and the field-capsule boxes
+// stay literal muted fills (they stand in for geometry, not text) with a
+// whitespace `Text` forcing the framed VStack to draw its background; each opts
+// out with `unredacted()` so that spacer Text doesn't draw a nub over the fill.
+// Each root collapses to one element with `accessibilityElement("ignore")`
+// (upstream expo/expo#47156) plus an `accessibilityLabel` ("Loading profile" /
+// "Loading sessions"), so VoiceOver speaks a single "Loading" instead of swiping
+// a silent screen; "ignore" keeps the fake children (Jane Appleseed, iPhone 15
+// Pro) unspoken.
 
-type BarProps = {
-  width: number | "fill";
-  height: number;
-  radius?: number;
-};
-
-function Bar({ width, height, radius = 6 }: BarProps): React.ReactNode {
+function FieldBox(): React.ReactNode {
   const colors = useColors();
   return (
     <VStack
       modifiers={[
-        frame(width === "fill" ? { maxWidth: Infinity, height } : { width, height }),
+        frame({ maxWidth: Infinity, height: 44 }),
         background(colors.muted as string),
-        cornerRadius(radius),
-        accessibilityHidden(true),
+        cornerRadius(22),
+        unredacted(),
       ]}
     >
-      <Text modifiers={[accessibilityHidden(true)]}> </Text>
+      <Text> </Text>
     </VStack>
   );
 }
@@ -50,42 +55,49 @@ function Circle({ size }: { size: number }): React.ReactNode {
         frame({ width: size, height: size }),
         background(colors.muted as string),
         clipShape("circle"),
-        accessibilityHidden(true),
+        unredacted(),
       ]}
     >
-      <Text modifiers={[accessibilityHidden(true)]}> </Text>
+      <Text> </Text>
+    </VStack>
+  );
+}
+
+function Field({ label }: { label: string }): React.ReactNode {
+  const dfont = useDynamicFont();
+  return (
+    <VStack alignment="leading" spacing={Spacing.md}>
+      <Text modifiers={[dfont({ size: 14 })]}>{label}</Text>
+      <FieldBox />
     </VStack>
   );
 }
 
 export function SkeletonProfile({ testID }: { testID?: string } = {}): React.ReactNode {
+  const dfont = useDynamicFont();
   return (
     <VStack
       testID={testID}
       alignment="leading"
       spacing={Spacing.xl}
-      modifiers={[padding({ all: 24 })]}
+      modifiers={[
+        padding({ all: 24 }),
+        redacted("placeholder"),
+        accessibilityElement("ignore"),
+        accessibilityLabel("Loading profile"),
+      ]}
     >
       <HStack spacing={Spacing.lg}>
         <Circle size={72} />
         <VStack alignment="leading" spacing={Spacing.sm}>
-          <Bar width={160} height={20} />
-          <Bar width={120} height={14} />
+          <Text modifiers={[dfont({ size: 17, weight: "semibold" })]}>Jane Appleseed</Text>
+          <Text modifiers={[dfont({ size: 14 })]}>jane@example.com</Text>
         </VStack>
         <Spacer />
       </HStack>
-      <VStack alignment="leading" spacing={Spacing.md}>
-        <Bar width={80} height={14} />
-        <Bar width="fill" height={44} radius={22} />
-      </VStack>
-      <VStack alignment="leading" spacing={Spacing.md}>
-        <Bar width={80} height={14} />
-        <Bar width="fill" height={44} radius={22} />
-      </VStack>
-      <VStack alignment="leading" spacing={Spacing.md}>
-        <Bar width={120} height={14} />
-        <Bar width="fill" height={44} radius={22} />
-      </VStack>
+      <Field label="Name" />
+      <Field label="Username" />
+      <Field label="Email" />
     </VStack>
   );
 }
@@ -96,7 +108,12 @@ export function SkeletonSessions({ testID }: { testID?: string } = {}): React.Re
       testID={testID}
       alignment="leading"
       spacing={Spacing.md}
-      modifiers={[padding({ all: 24 })]}
+      modifiers={[
+        padding({ all: 24 }),
+        redacted("placeholder"),
+        accessibilityElement("ignore"),
+        accessibilityLabel("Loading sessions"),
+      ]}
     >
       <SkeletonSessionRow />
       <SkeletonSessionRow />
@@ -106,6 +123,7 @@ export function SkeletonSessions({ testID }: { testID?: string } = {}): React.Re
 }
 
 function SkeletonSessionRow(): React.ReactNode {
+  const dfont = useDynamicFont();
   const colors = useColors();
   return (
     <VStack
@@ -114,12 +132,11 @@ function SkeletonSessionRow(): React.ReactNode {
       modifiers={[padding({ all: 16 }), background(colors.card as string), cornerRadius(12)]}
     >
       <HStack spacing={Spacing.md}>
-        <Bar width={140} height={18} />
+        <Text modifiers={[dfont({ size: 16, weight: "semibold" })]}>iPhone 15 Pro</Text>
         <Spacer />
-        <Bar width={60} height={14} />
+        <Text modifiers={[dfont({ size: 14 })]}>Revoke</Text>
       </HStack>
-      <Bar width={200} height={14} />
-      <Bar width={180} height={14} />
+      <Text modifiers={[dfont({ size: 14 })]}>192.168.1.100 · 2 hours ago</Text>
     </VStack>
   );
 }

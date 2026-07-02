@@ -11,6 +11,7 @@ import {
 import { ContentUnavailable } from "@/components/ui/content-unavailable";
 import { authClient } from "@/lib/auth-client";
 import { useDynamicFont } from "@/lib/dynamic-font";
+import { accessibilityAddTraits } from "@/lib/ui-traits";
 import { useColors } from "@/hooks/use-theme";
 
 export default function HomeScreen() {
@@ -44,11 +45,19 @@ export default function HomeScreen() {
             >
               <Text date={now} dateStyle="date" />
             </Text>
+            {/* upstream expo/expo#46509: the nested bold run resolves its font on the Text concatenation path */}
             <Text
               testID="home-greeting"
-              modifiers={[dfont({ size: 32, weight: "bold", design: "rounded" }), kerning(-0.5)]}
+              modifiers={[
+                dfont({ size: 32, design: "rounded" }),
+                kerning(-0.5),
+                accessibilityAddTraits(["isHeader"]),
+              ]}
             >
-              Hey, {name}
+              Hey,{" "}
+              <Text modifiers={[dfont({ size: 32, weight: "bold", design: "rounded" })]}>
+                {name}
+              </Text>
             </Text>
           </VStack>
 

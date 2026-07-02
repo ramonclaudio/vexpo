@@ -26,6 +26,8 @@ import {
   textFieldStyle,
   padding,
   frame,
+  contentShape,
+  shapes,
   scrollDismissesKeyboard,
   multilineTextAlignment,
   monospacedDigit,
@@ -38,8 +40,7 @@ import {
   tint,
 } from "@expo/ui/swift-ui/modifiers";
 import { useDynamicFont } from "@/lib/dynamic-font";
-import { useSymbolSize } from "@/lib/dynamic-symbol-size";
-import { Button as ButtonTokens } from "@/constants/layout";
+import { Button as ButtonTokens, TouchTarget } from "@/constants/layout";
 import { DynamicType } from "@/constants/ui";
 
 import { runOnJS } from "react-native-worklets";
@@ -53,6 +54,7 @@ import { PasswordField } from "@/components/auth/password-field";
 import { ProminentButton } from "@/components/ui/prominent-button";
 import { ErrorText } from "@/components/ui/status-text";
 import { announce } from "@/lib/a11y";
+import { accessibilityAddTraits } from "@/lib/ui-traits";
 import { useColors, useThemedAsset } from "@/hooks/use-theme";
 import { useQuery } from "convex/react";
 
@@ -63,7 +65,6 @@ const initialState: ResetState = {};
 
 export default function ResetPasswordScreen() {
   const dfont = useDynamicFont();
-  const symbolSize = useSymbolSize();
   const colors = useColors();
   const brandIcon = useThemedAsset(assets.brandIconLight, assets.brandIconDark);
   const { email = "" } = useLocalSearchParams<{ email: string }>();
@@ -165,13 +166,16 @@ export default function ResetPasswordScreen() {
           <Image
             testID="reset-password-success-icon"
             systemName="checkmark.circle.fill"
-            size={symbolSize(56)}
             color={colors.success}
-            modifiers={[accessibilityHidden(true)]}
+            modifiers={[
+              dfont({ size: 56 }),
+              dynamicTypeSize({ max: DynamicType.control }),
+              accessibilityHidden(true),
+            ]}
           />
           <Text
             testID="reset-password-success-title"
-            modifiers={[dfont({ size: 28, weight: "bold" })]}
+            modifiers={[dfont({ size: 28, weight: "bold" }), accessibilityAddTraits(["isHeader"])]}
           >
             Password reset!
           </Text>
@@ -227,7 +231,13 @@ export default function ResetPasswordScreen() {
           </RNHostView>
 
           <VStack spacing={6} alignment="leading">
-            <Text testID="reset-password-title" modifiers={[dfont({ size: 28, weight: "bold" })]}>
+            <Text
+              testID="reset-password-title"
+              modifiers={[
+                dfont({ size: 28, weight: "bold" }),
+                accessibilityAddTraits(["isHeader"]),
+              ]}
+            >
               Reset password
             </Text>
             <Text
@@ -259,7 +269,12 @@ export default function ResetPasswordScreen() {
                 <Button
                   testID="reset-password-request-code"
                   label="Request a new code"
-                  modifiers={[buttonStyle("plain"), dfont({ size: 14 })]}
+                  modifiers={[
+                    buttonStyle("plain"),
+                    dfont({ size: 14 }),
+                    frame({ minHeight: TouchTarget.min }),
+                    contentShape(shapes.rectangle()),
+                  ]}
                   onPress={() => {
                     haptics.light();
                     router.push("/auth/forgot-password");
@@ -347,6 +362,8 @@ export default function ResetPasswordScreen() {
                 buttonStyle("plain"),
                 foregroundStyle(colors.mutedForeground as string),
                 dfont({ size: 14, weight: "semibold" }),
+                frame({ minHeight: TouchTarget.min }),
+                contentShape(shapes.rectangle()),
               ]}
               onPress={() => {
                 haptics.light();

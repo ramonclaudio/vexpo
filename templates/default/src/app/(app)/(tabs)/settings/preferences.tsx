@@ -36,7 +36,7 @@ import {
   type ReduceMotionPref,
 } from "@/lib/preferences";
 import { useDynamicFont } from "@/lib/dynamic-font";
-import { useSymbolSize } from "@/lib/dynamic-symbol-size";
+import { accessibilityAddTraits } from "@/lib/ui-traits";
 
 const MODE_BY_INDEX: ThemeMode[] = ["light", "dark", "system"];
 const INDEX_BY_MODE: Record<ThemeMode, number> = { light: 0, dark: 1, system: 2 };
@@ -50,7 +50,6 @@ const INDEX_BY_MOTION: Record<ReduceMotionPref, number> = {
 
 export default function PreferencesScreen() {
   const dfont = useDynamicFont();
-  const symbolSize = useSymbolSize();
   const colors = useColors();
   const { mode, setMode } = useThemeMode();
   const [hapticsOn, setHapticsOn] = useHapticsEnabled();
@@ -61,6 +60,7 @@ export default function PreferencesScreen() {
     dfont({ size: 13, weight: "semibold" }),
     foregroundStyle(colors.mutedForeground as string),
     padding({ horizontal: 8 }),
+    accessibilityAddTraits(["isHeader"]),
   ];
 
   const helperModifiers = [
@@ -94,14 +94,14 @@ export default function PreferencesScreen() {
     >
       <Image
         systemName={icon}
-        size={symbolSize(18)}
         color={colors.foreground as string}
-        modifiers={[accessibilityHidden(true)]}
+        modifiers={[dfont({ size: 18 }), accessibilityHidden(true)]}
       />
       <Text
         modifiers={[
           dfont({ size: 16, weight: "medium" }),
           foregroundStyle(colors.foreground as string),
+          accessibilityHidden(true),
         ]}
       >
         {label}

@@ -13,17 +13,18 @@ import {
 } from "@expo/ui/swift-ui";
 import {
   accessibilityHidden,
+  accessibilityInputLabels,
   accessibilityLabel,
   background,
   buttonStyle,
   clipShape,
   foregroundStyle,
   frame,
+  imageScale,
   padding,
   tint,
 } from "@expo/ui/swift-ui/modifiers";
 import { useDynamicFont } from "@/lib/dynamic-font";
-import { useSymbolSize } from "@/lib/dynamic-symbol-size";
 import { Button as ButtonTokens } from "@/constants/layout";
 
 import { haptics } from "@/lib/haptics";
@@ -32,7 +33,6 @@ import { useColors } from "@/hooks/use-theme";
 
 export default function PrivacyScreen() {
   const dfont = useDynamicFont();
-  const symbolSize = useSymbolSize();
   const colors = useColors();
   const [analyticsEnabled, setAnalyticsEnabled] = useShareAnalytics();
 
@@ -46,6 +46,7 @@ export default function PrivacyScreen() {
   const rowButton = ({
     testID,
     label,
+    inputLabels,
     systemImage,
     onPress,
     chevron = true,
@@ -53,6 +54,7 @@ export default function PrivacyScreen() {
   }: {
     testID: string;
     label: string;
+    inputLabels?: string[];
     systemImage: SFSymbol;
     onPress: () => void;
     chevron?: boolean;
@@ -65,6 +67,7 @@ export default function PrivacyScreen() {
         frame({ maxWidth: Infinity }),
         background(colors.muted as string),
         clipShape("capsule"),
+        ...(inputLabels ? [accessibilityInputLabels(inputLabels)] : []),
       ]}
       onPress={onPress}
     >
@@ -78,9 +81,8 @@ export default function PrivacyScreen() {
       >
         <Image
           systemName={systemImage}
-          size={symbolSize(18)}
           color={colors.foreground as string}
-          modifiers={[accessibilityHidden(true)]}
+          modifiers={[dfont({ size: 18 }), accessibilityHidden(true)]}
         />
         <Text
           modifiers={[
@@ -95,9 +97,8 @@ export default function PrivacyScreen() {
           (chevron ? (
             <Image
               systemName="chevron.right"
-              size={symbolSize(13)}
               color={colors.mutedForeground as string}
-              modifiers={[accessibilityHidden(true)]}
+              modifiers={[dfont({ size: 16 }), imageScale("small"), accessibilityHidden(true)]}
             />
           ) : null)}
       </HStack>
@@ -116,6 +117,7 @@ export default function PrivacyScreen() {
             {rowButton({
               testID: "privacy-camera-photos",
               label: "Camera & Photos",
+              inputLabels: ["camera and photos", "camera"],
               systemImage: "camera.fill",
               onPress: handleOpenSettings,
             })}
@@ -146,14 +148,16 @@ export default function PrivacyScreen() {
           >
             <Image
               systemName="chart.bar.fill"
-              size={symbolSize(18)}
               color={colors.foreground as string}
-              modifiers={[accessibilityHidden(true)]}
+              modifiers={[dfont({ size: 18 }), accessibilityHidden(true)]}
             />
             <Text
               modifiers={[
                 dfont({ size: 16, weight: "medium" }),
                 foregroundStyle(colors.foreground as string),
+                // The labeled Toggle already announces "Share analytics"; hiding
+                // the visual label drops the duplicate VoiceOver stop.
+                accessibilityHidden(true),
               ]}
             >
               Share Analytics

@@ -21,13 +21,14 @@ import {
   cornerRadius,
   foregroundStyle,
   frame,
+  imageScale,
   padding,
   tint,
 } from "@expo/ui/swift-ui/modifiers";
 import { useDynamicFont } from "@/lib/dynamic-font";
-import { useSymbolSize } from "@/lib/dynamic-symbol-size";
+import { accessibilityAddTraits } from "@/lib/ui-traits";
 import { ContentUnavailable } from "@/components/ui/content-unavailable";
-import { Button as ButtonTokens } from "@/constants/layout";
+import { Button as ButtonTokens, TouchTarget } from "@/constants/layout";
 
 import { ErrorText } from "@/components/ui/status-text";
 import { haptics } from "@/lib/haptics";
@@ -57,7 +58,6 @@ const FAQ_ITEMS = [
 
 export default function HelpScreen() {
   const dfont = useDynamicFont();
-  const symbolSize = useSymbolSize();
   const colors = useColors();
   const [searchText, setSearchText] = useState("");
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
@@ -137,9 +137,8 @@ export default function HelpScreen() {
       >
         <Image
           systemName={systemImage}
-          size={symbolSize(18)}
           color={colors.foreground as string}
-          modifiers={[accessibilityHidden(true)]}
+          modifiers={[dfont({ size: 18 }), accessibilityHidden(true)]}
         />
         <Text
           modifiers={[
@@ -152,9 +151,8 @@ export default function HelpScreen() {
         <Spacer />
         <Image
           systemName="chevron.right"
-          size={symbolSize(13)}
           color={colors.mutedForeground as string}
-          modifiers={[accessibilityHidden(true)]}
+          modifiers={[dfont({ size: 16 }), imageScale("small"), accessibilityHidden(true)]}
         />
       </HStack>
     </Button>
@@ -222,6 +220,7 @@ export default function HelpScreen() {
                     dfont({ size: 13, weight: "semibold" }),
                     foregroundStyle(colors.mutedForeground as string),
                     padding({ horizontal: 8, top: 4 }),
+                    accessibilityAddTraits(["isHeader"]),
                   ]}
                 >
                   FREQUENTLY ASKED
@@ -242,7 +241,10 @@ export default function HelpScreen() {
                       label={item.question}
                       isExpanded={!!expanded[item.question]}
                       onIsExpandedChange={(v) => toggleExpanded(item.question, v)}
-                      modifiers={[dfont({ size: 16, weight: "medium" })]}
+                      modifiers={[
+                        frame({ minHeight: TouchTarget.min }),
+                        dfont({ size: 16, weight: "medium" }),
+                      ]}
                     >
                       <Text
                         modifiers={[

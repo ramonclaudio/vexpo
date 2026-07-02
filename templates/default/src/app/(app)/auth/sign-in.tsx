@@ -30,17 +30,20 @@ import {
   textInputAutocapitalization,
   padding,
   frame,
+  contentShape,
+  shapes,
   scrollDismissesKeyboard,
   accessibilityLabel,
   accessibilityHint,
   tint,
 } from "@expo/ui/swift-ui/modifiers";
 import { useDynamicFont } from "@/lib/dynamic-font";
-import { Button as ButtonTokens } from "@/constants/layout";
+import { Button as ButtonTokens, TouchTarget } from "@/constants/layout";
 
 import { api } from "@/convex/_generated/api";
 import { authClient } from "@/lib/auth-client";
 import { assets } from "@/lib/assets";
+import { accessibilityAddTraits } from "@/lib/ui-traits";
 import { haptics } from "@/lib/haptics";
 import { maskUsername } from "@/lib/masks";
 import {
@@ -276,13 +279,19 @@ export default function SignInScreen() {
             <ExpoImage
               source={brandIcon}
               style={{ width: 56, height: 56 } as never}
-              accessibilityLabel="App icon"
+              accessibilityLabel=""
               contentFit="contain"
             />
           </RNHostView>
 
           <VStack spacing={6} alignment="leading">
-            <Text testID="sign-in-title" modifiers={[dfont({ size: 28, weight: "bold" })]}>
+            <Text
+              testID="sign-in-title"
+              modifiers={[
+                dfont({ size: 28, weight: "bold" }),
+                accessibilityAddTraits(["isHeader"]),
+              ]}
+            >
               Sign in
             </Text>
             <Text
@@ -369,6 +378,8 @@ export default function SignInScreen() {
                     buttonStyle("plain"),
                     foregroundStyle(colors.mutedForeground as string),
                     dfont({ size: 13 }),
+                    frame({ minHeight: TouchTarget.min }),
+                    contentShape(shapes.rectangle()),
                   ]}
                   onPress={() => {
                     haptics.light();
@@ -425,6 +436,8 @@ export default function SignInScreen() {
                     buttonStyle("plain"),
                     foregroundStyle(colors.mutedForeground as string),
                     dfont({ size: 13 }),
+                    frame({ minHeight: TouchTarget.min }),
+                    contentShape(shapes.rectangle()),
                   ]}
                   onPress={() => {
                     haptics.light();

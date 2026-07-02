@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Button, Host, Text } from "@expo/ui/swift-ui";
 import {
@@ -18,7 +19,9 @@ import { Spacing, FontSize, TouchTarget } from "@/constants/layout";
 import { Radius } from "@/constants/theme";
 import { ZIndex } from "@/constants/ui";
 import { useColors } from "@/hooks/use-theme";
+import { announce } from "@/lib/a11y";
 import { useDynamicFont } from "@/lib/dynamic-font";
+import { accessibilityAddTraits } from "@/lib/ui-traits";
 
 export function UpdateBanner({ testID }: { testID?: string } = {}) {
   const updates = useAppUpdates();
@@ -28,6 +31,12 @@ export function UpdateBanner({ testID }: { testID?: string } = {}) {
 
   const showProgress = updates.isDownloading;
   const showError = !!updates.downloadError;
+
+  // Above the early return: rules of hooks. iOS never auto-announces the banner.
+  useEffect(() => {
+    if (showError) announce("Update failed. Tap to retry.");
+  }, [showError]);
+
   if (!showProgress && !showError) return null;
 
   const tint = showError ? (colors.destructive as string) : (colors.primary as string);
@@ -69,6 +78,9 @@ export function UpdateBanner({ testID }: { testID?: string } = {}) {
             disabledModifier(!showError),
             accessibilityLabel(label),
             ...(showError ? [accessibilityHint("Re-attempts the update download")] : []),
+            // The percentage label changes continuously during download only;
+            // the error state is static, so the trait gates on progress.
+            ...(showError ? [] : [accessibilityAddTraits(["updatesFrequently"])]),
           ]}
           onPress={showError ? () => updates.downloadAndApply() : () => {}}
         >

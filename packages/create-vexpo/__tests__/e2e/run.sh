@@ -131,6 +131,23 @@ if match_grep "$n"; then
   [ -z "$miss" ] && pass "$n" || fail "$n" "missing:$miss"
 else skip "$n" "filtered"; fi
 
+# The vendored local expo modules (upstream expo/expo#47387 and #47426) live
+# under modules/**/ios/, which an unanchored ios filter once gutted from the
+# tarball. A scaffold without the Swift + podspec autolinks a module that
+# cannot compile at pod install.
+n="vendored modules survive scaffold (swift, podspec, config)"
+if match_grep "$n"; then
+  miss=""
+  for mod in vexpo-ui-traits:VexpoUITraits vexpo-ui-stroke-border:VexpoUIStrokeBorder; do
+    dir="${mod%%:*}" base="${mod##*:}"
+    m="$proj/modules/$dir"
+    [ -f "$m/expo-module.config.json" ] || miss="$miss $dir/expo-module.config.json"
+    [ -f "$m/ios/${base}Module.swift" ] || miss="$miss $dir/ios/${base}Module.swift"
+    [ -f "$m/ios/$base.podspec" ] || miss="$miss $dir/ios/$base.podspec"
+  done
+  [ -z "$miss" ] && pass "$n" || fail "$n" "missing:$miss"
+else skip "$n" "filtered"; fi
+
 n="git repo initialized with the initial commit"
 if match_grep "$n"; then
   if [ ! -d "$proj/.git" ]; then fail "$n" "no .git dir"
@@ -246,6 +263,24 @@ if match_grep "$n"; then
   # The credentials/ staging dir ships its README (dir + guidance travel, keys don't).
   [ -f "$dest/credentials/README.md" ] || bad="$bad missing:credentials/README.md"
   [ -z "$bad" ] && pass "$n" || fail "$n" "leaked:$bad"
+else skip "$n" "filtered"; fi
+
+# Positive twin of the excludes test: the root ios/ must NOT ship, but the
+# vendored modules' nested ios/ MUST (upstream expo/expo#47387, #47426).
+# pack-guard can't catch a missing file, only a leaked one, so this is the
+# sole tripwire.
+n="dist payload keeps the vendored modules intact"
+if match_grep "$n"; then
+  dest="$PKG_ROOT/dist/templates/default"
+  miss=""
+  for mod in vexpo-ui-traits:VexpoUITraits vexpo-ui-stroke-border:VexpoUIStrokeBorder; do
+    dir="${mod%%:*}" base="${mod##*:}"
+    m="$dest/modules/$dir"
+    [ -f "$m/expo-module.config.json" ] || miss="$miss $dir/expo-module.config.json"
+    [ -f "$m/ios/${base}Module.swift" ] || miss="$miss $dir/ios/${base}Module.swift"
+    [ -f "$m/ios/$base.podspec" ] || miss="$miss $dir/ios/$base.podspec"
+  done
+  [ -z "$miss" ] && pass "$n" || fail "$n" "missing:$miss"
 else skip "$n" "filtered"; fi
 
 section "Full install (opt-in)"

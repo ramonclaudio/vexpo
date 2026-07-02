@@ -2,7 +2,7 @@ import { useEffect } from "react";
 import { AccessibilityInfo } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { router, type ErrorBoundaryProps } from "expo-router";
-import { Host, VStack, Text, Button, Image, Spacer } from "@expo/ui/swift-ui";
+import { Host, ScrollView, VStack, Text, Button, Image } from "@expo/ui/swift-ui";
 import {
   accessibilityHidden,
   foregroundStyle,
@@ -10,13 +10,16 @@ import {
   frame,
   padding,
   multilineTextAlignment,
+  dynamicTypeSize,
+  defaultScrollAnchor,
   tint,
 } from "@expo/ui/swift-ui/modifiers";
 import { useDynamicFont } from "@/lib/dynamic-font";
-import { useSymbolSize } from "@/lib/dynamic-symbol-size";
+import { accessibilityAddTraits } from "@/lib/ui-traits";
 import { ProminentButton } from "@/components/ui/prominent-button";
 import { useColors } from "@/hooks/use-theme";
 import { TouchTarget } from "@/constants/layout";
+import { DynamicType } from "@/constants/ui";
 
 export function AppErrorBoundary({
   error,
@@ -24,7 +27,6 @@ export function AppErrorBoundary({
   testID,
 }: ErrorBoundaryProps & { testID?: string }) {
   const dfont = useDynamicFont();
-  const symbolSize = useSymbolSize();
   const colors = useColors();
   const insets = useSafeAreaInsets();
 
@@ -40,50 +42,60 @@ export function AppErrorBoundary({
 
   return (
     <Host style={{ flex: 1 }}>
-      <VStack
-        spacing={20}
-        alignment="center"
-        modifiers={[
-          padding({ horizontal: 24, top: insets.top + 32, bottom: insets.bottom + 32 }),
-          tint(colors.primary as string),
-        ]}
-      >
-        <Spacer />
-        <Image
-          systemName="exclamationmark.triangle"
-          size={symbolSize(72)}
-          color={colors.destructive as string}
-          modifiers={[accessibilityHidden(true)]}
-        />
-        <Text modifiers={[dfont({ size: 28, weight: "bold" }), multilineTextAlignment("center")]}>
-          Something went wrong
-        </Text>
-        <Text
-          testID={testID}
+      <ScrollView modifiers={[defaultScrollAnchor("center")]}>
+        <VStack
+          spacing={20}
+          alignment="center"
           modifiers={[
-            dfont({ size: 16 }),
-            foregroundStyle(colors.mutedForeground as string),
-            multilineTextAlignment("center"),
+            frame({ maxWidth: Infinity }),
+            padding({ horizontal: 24, top: insets.top + 32, bottom: insets.bottom + 32 }),
+            tint(colors.primary as string),
           ]}
         >
-          Don&apos;t worry. Let&apos;s get you back on track.
-        </Text>
-        <VStack spacing={12} modifiers={[frame({ maxWidth: Infinity })]}>
-          <ProminentButton testID="error-boundary-retry" label="Try Again" onPress={retry} />
-          <Button
-            testID="error-boundary-home"
-            label="Go Home"
+          <Image
+            systemName="exclamationmark.triangle"
+            color={colors.destructive as string}
             modifiers={[
-              buttonStyle("plain"),
-              dfont({ size: 16, weight: "medium" }),
-              foregroundStyle(colors.mutedForeground as string),
-              frame({ minHeight: TouchTarget.min }),
+              dfont({ size: 72 }),
+              dynamicTypeSize({ max: DynamicType.control }),
+              accessibilityHidden(true),
             ]}
-            onPress={() => router.replace("/")}
           />
+          <Text
+            modifiers={[
+              dfont({ size: 28, weight: "bold" }),
+              multilineTextAlignment("center"),
+              accessibilityAddTraits(["isHeader"]),
+            ]}
+          >
+            Something went wrong
+          </Text>
+          <Text
+            testID={testID}
+            modifiers={[
+              dfont({ size: 16 }),
+              foregroundStyle(colors.mutedForeground as string),
+              multilineTextAlignment("center"),
+            ]}
+          >
+            Don&apos;t worry. Let&apos;s get you back on track.
+          </Text>
+          <VStack spacing={12} modifiers={[frame({ maxWidth: Infinity })]}>
+            <ProminentButton testID="error-boundary-retry" label="Try Again" onPress={retry} />
+            <Button
+              testID="error-boundary-home"
+              label="Go Home"
+              modifiers={[
+                buttonStyle("plain"),
+                dfont({ size: 16, weight: "medium" }),
+                foregroundStyle(colors.mutedForeground as string),
+                frame({ minHeight: TouchTarget.min }),
+              ]}
+              onPress={() => router.replace("/")}
+            />
+          </VStack>
         </VStack>
-        <Spacer />
-      </VStack>
+      </ScrollView>
     </Host>
   );
 }

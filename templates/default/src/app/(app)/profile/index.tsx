@@ -41,18 +41,19 @@ import {
   kerning,
   multilineTextAlignment,
   padding,
+  privacySensitive,
   frame,
   contentShape,
   shapes,
   progressViewStyle,
   scrollDismissesKeyboard,
+  accessibilityElement,
   accessibilityHidden,
   accessibilityLabel,
   accessibilityHint,
   tint,
 } from "@expo/ui/swift-ui/modifiers";
 import { useDynamicFont } from "@/lib/dynamic-font";
-import { useSymbolSize } from "@/lib/dynamic-symbol-size";
 import { Button as ButtonTokens, TouchTarget } from "@/constants/layout";
 import { DynamicType } from "@/constants/ui";
 
@@ -63,6 +64,7 @@ import { authClient } from "@/lib/auth-client";
 import { haptics } from "@/lib/haptics";
 import { maskOtp, maskUsername } from "@/lib/masks";
 import { setNativeValue } from "@/lib/native-state";
+import { strokeBorder } from "@/lib/ui-stroke-border";
 import {
   firstError,
   profileUpdateOptionalUsernameSchema,
@@ -70,6 +72,7 @@ import {
 } from "@/lib/schemas";
 import { validateBio } from "@/convex/validators";
 import { useColors } from "@/hooks/use-theme";
+import { useScenePrivacy } from "@/hooks/use-scene-privacy";
 import { ProminentButton } from "@/components/ui/prominent-button";
 import { ErrorText, SuccessText } from "@/components/ui/status-text";
 import { formatError } from "@/components/ui/convex-error";
@@ -83,8 +86,8 @@ type OtpState = { error?: string; success?: string };
 
 export default function ProfileScreen() {
   const dfont = useDynamicFont();
-  const symbolSize = useSymbolSize();
   const colors = useColors();
+  const scenePrivacy = useScenePrivacy();
   const me = useQuery(api.users.getMe);
   const hasPasswordResult = useQuery(api.auth.hasPassword);
   // Email change requires the email-OTP flow which requires Resend. In lite
@@ -348,7 +351,13 @@ export default function ProfileScreen() {
         />
       </Stack.Toolbar>
 
-      <Host testID="profile-screen" style={{ flex: 1, backgroundColor: colors.background }}>
+      <Host
+        testID="profile-screen"
+        style={{ flex: 1, backgroundColor: colors.background }}
+        // upstream expo/expo#47269: raises redacted("privacy") when the app
+        // resigns, hiding privacySensitive leaves in the app-switcher snapshot
+        modifiers={scenePrivacy}
+      >
         <ScrollView
           modifiers={[
             scrollDismissesKeyboard("interactively"),
@@ -402,6 +411,7 @@ export default function ProfileScreen() {
                         modifiers={[
                           dfont({ size: 14 }),
                           foregroundStyle(colors.mutedForeground as string),
+                          privacySensitive(),
                         ]}
                       >
                         {me.email}
@@ -410,9 +420,12 @@ export default function ProfileScreen() {
                     <Spacer />
                     <Image
                       systemName="camera.circle.fill"
-                      size={symbolSize(28)}
                       color={colors.primary as string}
-                      modifiers={[accessibilityHidden(true)]}
+                      modifiers={[
+                        dfont({ size: 28 }),
+                        dynamicTypeSize({ max: DynamicType.control }),
+                        accessibilityHidden(true),
+                      ]}
                     />
                   </HStack>
                 </Button>
@@ -464,6 +477,19 @@ export default function ProfileScreen() {
                     autoFocus
                     modifiers={[
                       ...inputModifiers,
+                      // upstream expo/expo#47426: the invalid-code ring strokes
+                      // an inset border that hugs the capsule instead of boxing
+                      // it. Gated on the OTP action's own error so a save or
+                      // avatar failure never flags this field.
+                      ...(otpState.error
+                        ? [
+                            strokeBorder({
+                              color: colors.destructiveBorder as string,
+                              style: { lineWidth: 1.5 },
+                              shape: "capsule",
+                            }),
+                          ]
+                        : []),
                       keyboardType("numeric"),
                       textContentType("oneTimeCode"),
                       onSubmit(() => startTransition(() => verifyOtp())),
@@ -500,6 +526,8 @@ export default function ProfileScreen() {
                       buttonStyle("plain"),
                       foregroundStyle(colors.mutedForeground as string),
                       dfont({ size: 14, weight: "semibold" }),
+                      frame({ minHeight: TouchTarget.min }),
+                      contentShape(shapes.rectangle()),
                       disabled(isVerifying),
                     ]}
                     onPress={() => {
@@ -573,6 +601,7 @@ export default function ProfileScreen() {
                       autocorrectionDisabled(),
                       textInputAutocapitalization("never"),
                       textContentType("emailAddress"),
+                      privacySensitive(),
                       disabled(isSaving || !emailFeatures),
                       submitLabel("next"),
                       accessibilityLabel("Email address"),
@@ -617,10 +646,14 @@ export default function ProfileScreen() {
                   </Text>
                 </VStack>
 
-                <VStack spacing={6} alignment="leading" modifiers={[frame({ maxWidth: Infinity })]}>
+                <VStack
+                  testID="profile-member-since"
+                  spacing={6}
+                  alignment="leading"
+                  modifiers={[frame({ maxWidth: Infinity }), accessibilityElement("combine")]}
+                >
                   <Text modifiers={labelModifiers}>Member since</Text>
                   <Text
-                    testID="profile-member-since-value"
                     modifiers={[
                       dfont({ size: 16 }),
                       foregroundStyle(colors.mutedForeground as string),
@@ -784,7 +817,18 @@ function AvatarView({ avatarUrl, loading }: { avatarUrl: string | null; loading:
     return (
       <VStack
         alignment="center"
-        modifiers={[frame({ width: AVATAR_SIZE, height: AVATAR_SIZE }), clipShape("circle")]}
+        modifiers={[
+          frame({ width: AVATAR_SIZE, height: AVATAR_SIZE }),
+          clipShape("circle"),
+          // upstream expo/expo#47426: dashed in-flight ring keeps the avatar
+          // slot's footprint visible while the upload swaps the photo for a
+          // bare spinner. Round caps keep the dashes soft on the small circle.
+          strokeBorder({
+            color: colors.mutedForeground as string,
+            style: { lineWidth: 1.5, lineCap: "round", dash: [4, 6] },
+            shape: "circle",
+          }),
+        ]}
       >
         <ProgressView
           modifiers={[progressViewStyle("circular"), accessibilityLabel("Updating profile photo")]}

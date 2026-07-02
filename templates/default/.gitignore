@@ -12,8 +12,8 @@ node_modules/
 dist/
 expo-env.d.ts
 
-# Native project (CNG)
-ios/
+# Native project (CNG). Anchored so local expo modules keep their ios/ sources.
+/ios/
 *.p8
 *.p12
 *.mobileprovision

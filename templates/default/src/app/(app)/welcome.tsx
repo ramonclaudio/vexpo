@@ -15,24 +15,29 @@ import {
 import {
   foregroundStyle,
   buttonStyle,
+  clipped,
   multilineTextAlignment,
+  opacity,
   progressViewStyle,
   frame,
   padding,
   kerning,
+  scaleEffect,
   tint,
   accessibilityHidden,
   accessibilityLabel,
   accessibilityValue,
   tabViewStyle,
+  dynamicTypeSize,
 } from "@expo/ui/swift-ui/modifiers";
 import { useDynamicFont } from "@/lib/dynamic-font";
-import { useSymbolSize } from "@/lib/dynamic-symbol-size";
-import { Button as ButtonTokens } from "@/constants/layout";
+import { Button as ButtonTokens, TouchTarget } from "@/constants/layout";
+import { DynamicType } from "@/constants/ui";
 import { ProminentButton } from "@/components/ui/prominent-button";
 
 import { assets } from "@/lib/assets";
 import { haptics } from "@/lib/haptics";
+import { accessibilityAddTraits } from "@/lib/ui-traits";
 import { useColors, useThemedAsset } from "@/hooks/use-theme";
 import { useOnboarding } from "@/hooks/use-onboarding";
 
@@ -63,7 +68,6 @@ const STEPS: readonly WelcomeStep[] = [
 
 export default function WelcomeScreen() {
   const dfont = useDynamicFont();
-  const symbolSize = useSymbolSize();
   const colors = useColors();
   const brandIcon = useThemedAsset(assets.brandIconLight, assets.brandIconDark);
   const [step, setStep] = useState(0);
@@ -140,16 +144,43 @@ export default function WelcomeScreen() {
                     />
                   </RNHostView>
                 ) : (
-                  <Image
-                    systemName={s.icon}
-                    size={symbolSize(48)}
-                    color={colors.primary as string}
-                    modifiers={[frame({ width: 80, height: 80 }), accessibilityHidden(true)]}
-                  />
+                  <VStack spacing={0} modifiers={[accessibilityHidden(true)]}>
+                    {/* upstream expo/expo#46714: <Image systemName> honors
+                        font/dynamicTypeSize natively, so the SF Symbol scales on
+                        the Dynamic Type curve and clamps in the SwiftUI
+                        environment instead of the old JS useSymbolSize multiply */}
+                    <Image
+                      systemName={s.icon}
+                      color={colors.primary as string}
+                      modifiers={[
+                        frame({ width: 80, height: 80 }),
+                        dfont({ size: 48 }),
+                        dynamicTypeSize({ max: DynamicType.control }),
+                      ]}
+                    />
+                    {/* upstream expo/expo#43228: per-axis scaleEffect flips the
+                        glyph vertically for the reflection under the hero */}
+                    <Image
+                      systemName={s.icon}
+                      color={colors.primary as string}
+                      modifiers={[
+                        dfont({ size: 48 }),
+                        dynamicTypeSize({ max: DynamicType.control }),
+                        scaleEffect({ x: 1, y: -1 }),
+                        opacity(0.12),
+                        frame({ width: 80, height: 28, alignment: "top" }),
+                        clipped(),
+                      ]}
+                    />
+                  </VStack>
                 )}
                 <Text
                   testID={`welcome-step-${s.id}-title`}
-                  modifiers={[dfont({ size: 34, weight: "bold" }), kerning(-0.5)]}
+                  modifiers={[
+                    dfont({ size: 34, weight: "bold" }),
+                    kerning(-0.5),
+                    accessibilityAddTraits(["isHeader"]),
+                  ]}
                 >
                   {s.title}
                 </Text>
@@ -183,6 +214,7 @@ export default function WelcomeScreen() {
                 buttonStyle("plain"),
                 dfont({ size: ButtonTokens.fontSize, weight: ButtonTokens.secondaryFontWeight }),
                 foregroundStyle(colors.mutedForeground as string),
+                frame({ minHeight: TouchTarget.min }),
               ]}
               onPress={handleContinue}
             />

@@ -41,7 +41,6 @@ import {
   scrollTargetLayout,
 } from "@expo/ui/swift-ui/modifiers";
 import { useDynamicFont } from "@/lib/dynamic-font";
-import { useSymbolSize } from "@/lib/dynamic-symbol-size";
 import { Button as ButtonTokens } from "@/constants/layout";
 
 import { api } from "@/convex/_generated/api";
@@ -53,6 +52,7 @@ import { assets } from "@/lib/assets";
 import { haptics } from "@/lib/haptics";
 import { maskUsername } from "@/lib/masks";
 import { setNativeValue } from "@/lib/native-state";
+import { accessibilityAddTraits } from "@/lib/ui-traits";
 import { OtpVerification } from "@/components/auth/otp-verification";
 import { PasswordField } from "@/components/auth/password-field";
 import { SegmentedToggle } from "@/components/auth/segmented-toggle";
@@ -68,7 +68,6 @@ const initialState: SignUpState = {};
 
 export default function SignUpScreen() {
   const dfont = useDynamicFont();
-  const symbolSize = useSymbolSize();
   const colors = useColors();
   const brandIcon = useThemedAsset(assets.brandIconLight, assets.brandIconDark);
   const [name, setName] = useState("");
@@ -133,6 +132,13 @@ export default function SignUpScreen() {
     },
     [],
   );
+
+  // Key on the resolved boolean, not the status text, so the transient
+  // "Checking..." tick and the per-keystroke null resets don't announce.
+  useEffect(() => {
+    if (usernameAvailable === true) announce("Username is available");
+    else if (usernameAvailable === false) announce("This username is not available");
+  }, [usernameAvailable]);
 
   useEffect(() => {
     AppleAuthentication.isAvailableAsync().then(setAppleAvailable);
@@ -309,7 +315,13 @@ export default function SignUpScreen() {
           </RNHostView>
 
           <VStack spacing={6} alignment="leading">
-            <Text testID="sign-up-title" modifiers={[dfont({ size: 28, weight: "bold" })]}>
+            <Text
+              testID="sign-up-title"
+              modifiers={[
+                dfont({ size: 28, weight: "bold" }),
+                accessibilityAddTraits(["isHeader"]),
+              ]}
+            >
               Create your account
             </Text>
             <Text
@@ -390,9 +402,8 @@ export default function SignUpScreen() {
               <HStack spacing={6} alignment="center">
                 <Image
                   systemName={usernameStatus.icon}
-                  size={symbolSize(13)}
                   color={usernameStatus.color}
-                  modifiers={[accessibilityHidden(true)]}
+                  modifiers={[dfont({ size: 13 }), accessibilityHidden(true)]}
                 />
                 <Text
                   testID="sign-up-username-status"

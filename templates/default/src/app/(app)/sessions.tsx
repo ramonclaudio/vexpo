@@ -1,6 +1,9 @@
 import { useEffect, useState } from "react";
 import { Host, ScrollView, Button, Text, VStack, HStack, Spacer, Alert } from "@expo/ui/swift-ui";
 import {
+  accessibilityElement,
+  accessibilityInputLabels,
+  accessibilityLabel,
   background,
   buttonStyle,
   contentShape,
@@ -11,6 +14,7 @@ import {
   frame,
   multilineTextAlignment,
   padding,
+  privacySensitive,
   refreshable,
   textSelection,
   tint,
@@ -20,12 +24,15 @@ import { TouchTarget } from "@/constants/layout";
 import { DynamicType } from "@/constants/ui";
 import { ContentUnavailable } from "@/components/ui/content-unavailable";
 import { SkeletonSessions } from "@/components/ui/skeleton";
+import { ErrorText } from "@/components/ui/status-text";
 import { useDynamicFont } from "@/lib/dynamic-font";
 
 import { authClient } from "@/lib/auth-client";
 import { haptics } from "@/lib/haptics";
 import { announce } from "@/lib/a11y";
+import { accessibilityAddTraits } from "@/lib/ui-traits";
 import { useColors } from "@/hooks/use-theme";
+import { useScenePrivacy } from "@/hooks/use-scene-privacy";
 
 type SessionRow = {
   id: string;
@@ -66,11 +73,13 @@ function deviceLabel(userAgent?: string | null): string {
 export default function SessionsScreen() {
   const dfont = useDynamicFont();
   const colors = useColors();
+  const scenePrivacy = useScenePrivacy();
   const { data: current } = authClient.useSession();
   const currentToken = current?.session?.token ?? null;
   const [sessions, setSessions] = useState<SessionRow[] | null>(null);
   const [loadError, setLoadError] = useState<"network" | "stale" | null>(null);
   const [revoking, setRevoking] = useState<string | null>(null);
+  const [revokeError, setRevokeError] = useState(false);
   const [confirmToken, setConfirmToken] = useState<string | null>(null);
 
   const load = async () => {
@@ -105,6 +114,7 @@ export default function SessionsScreen() {
   const revoke = async (token: string) => {
     haptics.medium();
     setRevoking(token);
+    setRevokeError(false);
     try {
       // revokeSession resolves with an `error` object (not a throw) on a
       // server-side failure, so check it before announcing success, matching
@@ -112,6 +122,7 @@ export default function SessionsScreen() {
       const res = await authClient.revokeSession({ token });
       if (res.error) {
         haptics.error();
+        setRevokeError(true);
         return;
       }
       haptics.success();
@@ -119,13 +130,20 @@ export default function SessionsScreen() {
       await load();
     } catch {
       haptics.error();
+      setRevokeError(true);
     } finally {
       setRevoking(null);
     }
   };
 
   return (
-    <Host testID="sessions-screen" style={{ flex: 1, backgroundColor: colors.background }}>
+    <Host
+      testID="sessions-screen"
+      style={{ flex: 1, backgroundColor: colors.background }}
+      // upstream expo/expo#47269: raises redacted("privacy") when the app
+      // resigns, hiding privacySensitive leaves in the app-switcher snapshot
+      modifiers={scenePrivacy}
+    >
       {sessions === null ? (
         loadError === "stale" ? (
           <ContentUnavailable
@@ -163,6 +181,7 @@ export default function SessionsScreen() {
               modifiers={[
                 dfont({ size: 13, weight: "semibold" }),
                 foregroundStyle(colors.mutedForeground as string),
+                accessibilityAddTraits(["isHeader"]),
               ]}
             >
               ACTIVE SESSIONS
@@ -182,7 +201,15 @@ export default function SessionsScreen() {
                     cornerRadius(20),
                   ]}
                 >
-                  <VStack alignment="leading" spacing={2}>
+                  <VStack
+                    testID={`session-identity-${s.token}`}
+                    alignment="leading"
+                    spacing={2}
+                    modifiers={[
+                      // upstream expo/expo#47156: combine collapses the identity block into one VoiceOver stop
+                      accessibilityElement("combine"),
+                    ]}
+                  >
                     <HStack spacing={8} alignment="center">
                       <Text
                         testID={`session-device-${s.token}`}
@@ -214,6 +241,7 @@ export default function SessionsScreen() {
                         dfont({ size: 13 }),
                         foregroundStyle(colors.mutedForeground as string),
                         textSelection(true),
+                        privacySensitive(),
                       ]}
                     >
                       {s.ipAddress ?? "Unknown IP"} · {formatRelative(s.createdAt)}
@@ -233,6 +261,9 @@ export default function SessionsScreen() {
                             buttonStyle("plain"),
                             frame({ minHeight: TouchTarget.min }),
                             contentShape(shapes.rectangle()),
+                            accessibilityLabel(`Revoke ${deviceLabel(s.userAgent)}`),
+                            // upstream expo/expo#46661: every row's button says "Revoke", so give Voice Control the device name as a spoken alias
+                            accessibilityInputLabels([`Revoke ${deviceLabel(s.userAgent)}`]),
                           ]}
                           onPress={() => {
                             haptics.warning();
@@ -288,6 +319,9 @@ export default function SessionsScreen() {
               >
                 Revoking session...
               </Text>
+            ) : null}
+            {revokeError ? (
+              <ErrorText testID="sessions-revoke-error">Couldn't revoke session</ErrorText>
             ) : null}
           </VStack>
         </ScrollView>
