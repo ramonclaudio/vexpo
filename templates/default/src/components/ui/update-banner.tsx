@@ -21,6 +21,7 @@ import { ZIndex } from "@/constants/ui";
 import { useColors } from "@/hooks/use-theme";
 import { announce } from "@/lib/a11y";
 import { useDynamicFont } from "@/lib/dynamic-font";
+import { accessibilityAddTraits } from "@/lib/ui-traits";
 
 export function UpdateBanner({ testID }: { testID?: string } = {}) {
   const updates = useAppUpdates();
@@ -77,6 +78,9 @@ export function UpdateBanner({ testID }: { testID?: string } = {}) {
             disabledModifier(!showError),
             accessibilityLabel(label),
             ...(showError ? [accessibilityHint("Re-attempts the update download")] : []),
+            // The percentage label changes continuously during download only;
+            // the error state is static, so the trait gates on progress.
+            ...(showError ? [] : [accessibilityAddTraits(["updatesFrequently"])]),
           ]}
           onPress={showError ? () => updates.downloadAndApply() : () => {}}
         >
