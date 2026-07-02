@@ -27,6 +27,7 @@ import {
   foregroundStyle,
   frame,
   padding,
+  privacySensitive,
   progressViewStyle,
   scrollDismissesKeyboard,
   textSelection,
@@ -38,6 +39,7 @@ import { executionEnvironment, expoRuntimeVersion, sessionId, debugMode } from "
 import { isEnabled as updatesEnabled, readLogEntries, type UpdatesLogEntry } from "@/lib/updates";
 import { useAppUpdates } from "@/hooks/use-updates";
 import { useColors } from "@/hooks/use-theme";
+import { useScenePrivacy } from "@/hooks/use-scene-privacy";
 import { useDynamicFont } from "@/lib/dynamic-font";
 import { Button as ButtonTokens } from "@/constants/layout";
 
@@ -149,6 +151,7 @@ function useApplicationInfo() {
 export default function DebugScreen() {
   const dfont = useDynamicFont();
   const colors = useColors();
+  const scenePrivacy = useScenePrivacy();
   const appInfo = useApplicationInfo();
   const updates = useAppUpdates();
   const updateLog = useUpdateLogEntries(updates.isUpdatePending, updates.restartCount);
@@ -181,7 +184,13 @@ export default function DebugScreen() {
   ];
 
   return (
-    <Host testID="debug-screen" style={{ flex: 1, backgroundColor: colors.background }}>
+    <Host
+      testID="debug-screen"
+      style={{ flex: 1, backgroundColor: colors.background }}
+      // upstream expo/expo#47269: raises redacted("privacy") when the app
+      // resigns, hiding privacySensitive leaves in the app-switcher snapshot
+      modifiers={scenePrivacy}
+    >
       <ScrollView
         modifiers={[scrollDismissesKeyboard("interactively"), tint(colors.primary as string)]}
       >
@@ -386,7 +395,7 @@ export default function DebugScreen() {
                 testID="debug-session-id-value"
                 label="Session id"
                 value={sessionId.slice(0, 8)}
-                valueModifiers={[dfont({ size: 13, design: "monospaced" })]}
+                valueModifiers={[dfont({ size: 13, design: "monospaced" }), privacySensitive()]}
               />
               <InfoRow
                 testID="debug-build-mode-value"

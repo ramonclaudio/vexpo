@@ -41,6 +41,7 @@ import {
   kerning,
   multilineTextAlignment,
   padding,
+  privacySensitive,
   frame,
   contentShape,
   shapes,
@@ -70,6 +71,7 @@ import {
 } from "@/lib/schemas";
 import { validateBio } from "@/convex/validators";
 import { useColors } from "@/hooks/use-theme";
+import { useScenePrivacy } from "@/hooks/use-scene-privacy";
 import { ProminentButton } from "@/components/ui/prominent-button";
 import { ErrorText, SuccessText } from "@/components/ui/status-text";
 import { formatError } from "@/components/ui/convex-error";
@@ -84,6 +86,7 @@ type OtpState = { error?: string; success?: string };
 export default function ProfileScreen() {
   const dfont = useDynamicFont();
   const colors = useColors();
+  const scenePrivacy = useScenePrivacy();
   const me = useQuery(api.users.getMe);
   const hasPasswordResult = useQuery(api.auth.hasPassword);
   // Email change requires the email-OTP flow which requires Resend. In lite
@@ -347,7 +350,13 @@ export default function ProfileScreen() {
         />
       </Stack.Toolbar>
 
-      <Host testID="profile-screen" style={{ flex: 1, backgroundColor: colors.background }}>
+      <Host
+        testID="profile-screen"
+        style={{ flex: 1, backgroundColor: colors.background }}
+        // upstream expo/expo#47269: raises redacted("privacy") when the app
+        // resigns, hiding privacySensitive leaves in the app-switcher snapshot
+        modifiers={scenePrivacy}
+      >
         <ScrollView
           modifiers={[
             scrollDismissesKeyboard("interactively"),
@@ -401,6 +410,7 @@ export default function ProfileScreen() {
                         modifiers={[
                           dfont({ size: 14 }),
                           foregroundStyle(colors.mutedForeground as string),
+                          privacySensitive(),
                         ]}
                       >
                         {me.email}
@@ -577,6 +587,7 @@ export default function ProfileScreen() {
                       autocorrectionDisabled(),
                       textInputAutocapitalization("never"),
                       textContentType("emailAddress"),
+                      privacySensitive(),
                       disabled(isSaving || !emailFeatures),
                       submitLabel("next"),
                       accessibilityLabel("Email address"),

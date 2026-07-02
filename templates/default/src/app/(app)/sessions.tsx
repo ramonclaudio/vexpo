@@ -14,6 +14,7 @@ import {
   frame,
   multilineTextAlignment,
   padding,
+  privacySensitive,
   refreshable,
   textSelection,
   tint,
@@ -30,6 +31,7 @@ import { authClient } from "@/lib/auth-client";
 import { haptics } from "@/lib/haptics";
 import { announce } from "@/lib/a11y";
 import { useColors } from "@/hooks/use-theme";
+import { useScenePrivacy } from "@/hooks/use-scene-privacy";
 
 type SessionRow = {
   id: string;
@@ -70,6 +72,7 @@ function deviceLabel(userAgent?: string | null): string {
 export default function SessionsScreen() {
   const dfont = useDynamicFont();
   const colors = useColors();
+  const scenePrivacy = useScenePrivacy();
   const { data: current } = authClient.useSession();
   const currentToken = current?.session?.token ?? null;
   const [sessions, setSessions] = useState<SessionRow[] | null>(null);
@@ -133,7 +136,13 @@ export default function SessionsScreen() {
   };
 
   return (
-    <Host testID="sessions-screen" style={{ flex: 1, backgroundColor: colors.background }}>
+    <Host
+      testID="sessions-screen"
+      style={{ flex: 1, backgroundColor: colors.background }}
+      // upstream expo/expo#47269: raises redacted("privacy") when the app
+      // resigns, hiding privacySensitive leaves in the app-switcher snapshot
+      modifiers={scenePrivacy}
+    >
       {sessions === null ? (
         loadError === "stale" ? (
           <ContentUnavailable
@@ -230,6 +239,7 @@ export default function SessionsScreen() {
                         dfont({ size: 13 }),
                         foregroundStyle(colors.mutedForeground as string),
                         textSelection(true),
+                        privacySensitive(),
                       ]}
                     >
                       {s.ipAddress ?? "Unknown IP"} · {formatRelative(s.createdAt)}

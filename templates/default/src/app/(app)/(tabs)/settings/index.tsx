@@ -33,6 +33,7 @@ import {
   accessibilityHint,
   accessibilityInputLabels,
   lineLimit,
+  privacySensitive,
   truncationMode,
   textSelection,
   scrollDismissesKeyboard,
@@ -47,6 +48,7 @@ import { haptics } from "@/lib/haptics";
 import { announce } from "@/lib/a11y";
 import { ErrorText } from "@/components/ui/status-text";
 import { useColors } from "@/hooks/use-theme";
+import { useScenePrivacy } from "@/hooks/use-scene-privacy";
 import { useDebugEnabled } from "@/lib/preferences";
 
 const HEADER_AVATAR_SIZE = 56;
@@ -54,6 +56,7 @@ const HEADER_AVATAR_SIZE = 56;
 export default function SettingsScreen() {
   const dfont = useDynamicFont();
   const colors = useColors();
+  const scenePrivacy = useScenePrivacy();
   const me = useQuery(api.users.getMe);
   const removeAllTokens = useMutation(api.pushTokens.removeAll);
   const { deleteAccount, deleteError } = useDeleteAccount();
@@ -150,7 +153,13 @@ export default function SettingsScreen() {
   };
 
   return (
-    <Host testID="settings-screen" style={{ flex: 1, backgroundColor: colors.background }}>
+    <Host
+      testID="settings-screen"
+      style={{ flex: 1, backgroundColor: colors.background }}
+      // upstream expo/expo#47269: raises redacted("privacy") when the app
+      // resigns, hiding privacySensitive leaves in the app-switcher snapshot
+      modifiers={scenePrivacy}
+    >
       <ScrollView
         modifiers={[scrollDismissesKeyboard("interactively"), tint(colors.primary as string)]}
       >
@@ -203,6 +212,7 @@ export default function SettingsScreen() {
                       lineLimit(1),
                       truncationMode("middle"),
                       textSelection(true),
+                      privacySensitive(),
                     ]}
                   >
                     {me.email}
