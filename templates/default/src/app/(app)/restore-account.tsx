@@ -89,7 +89,10 @@ export default function RestoreAccountScreen() {
 
   if (!me) {
     return (
-      <Host style={{ flex: 1, backgroundColor: colors.background }}>
+      <Host
+        testID="restore-account-loading"
+        style={{ flex: 1, backgroundColor: colors.background }}
+      >
         <Spacer />
       </Host>
     );
