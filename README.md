@@ -45,6 +45,7 @@ Two packages: [`create-vexpo`](https://www.npmjs.com/package/@ramonclaudio/creat
 
 - Expo SDK 57, RN 0.86, React 19. Strict TypeScript, no NativeWind.
 - Every screen is SwiftUI via `@expo/ui/swift-ui`, Liquid Glass on iOS 26+, blur fallback below.
+- VoiceOver, Voice Control, and Dynamic Type across every screen: a navigable Headings rotor, spoken async state, native symbol scaling, redaction-built skeletons, and an app-switcher privacy shield. Built on our 27 merged `expo/expo` PRs, with the two unreleased modifiers vendored as local modules until `@expo/ui` ships them.
 - Email, password, OTP, and Apple Sign In, with per-device session revocation and account soft-delete.
 - Convex reactive queries and storage, Resend webhooks, App Attest primitives ready to wire.
 - APNs push and Apple Universal Links.
