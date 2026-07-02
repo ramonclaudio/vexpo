@@ -26,6 +26,8 @@ import {
   textFieldStyle,
   padding,
   frame,
+  contentShape,
+  shapes,
   scrollDismissesKeyboard,
   multilineTextAlignment,
   monospacedDigit,
@@ -38,7 +40,7 @@ import {
   tint,
 } from "@expo/ui/swift-ui/modifiers";
 import { useDynamicFont } from "@/lib/dynamic-font";
-import { Button as ButtonTokens } from "@/constants/layout";
+import { Button as ButtonTokens, TouchTarget } from "@/constants/layout";
 import { DynamicType } from "@/constants/ui";
 
 import { runOnJS } from "react-native-worklets";
@@ -260,7 +262,12 @@ export default function ResetPasswordScreen() {
                 <Button
                   testID="reset-password-request-code"
                   label="Request a new code"
-                  modifiers={[buttonStyle("plain"), dfont({ size: 14 })]}
+                  modifiers={[
+                    buttonStyle("plain"),
+                    dfont({ size: 14 }),
+                    frame({ minHeight: TouchTarget.min }),
+                    contentShape(shapes.rectangle()),
+                  ]}
                   onPress={() => {
                     haptics.light();
                     router.push("/auth/forgot-password");
@@ -348,6 +355,8 @@ export default function ResetPasswordScreen() {
                 buttonStyle("plain"),
                 foregroundStyle(colors.mutedForeground as string),
                 dfont({ size: 14, weight: "semibold" }),
+                frame({ minHeight: TouchTarget.min }),
+                contentShape(shapes.rectangle()),
               ]}
               onPress={() => {
                 haptics.light();

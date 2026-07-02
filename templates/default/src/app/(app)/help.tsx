@@ -27,7 +27,7 @@ import {
 } from "@expo/ui/swift-ui/modifiers";
 import { useDynamicFont } from "@/lib/dynamic-font";
 import { ContentUnavailable } from "@/components/ui/content-unavailable";
-import { Button as ButtonTokens } from "@/constants/layout";
+import { Button as ButtonTokens, TouchTarget } from "@/constants/layout";
 
 import { ErrorText } from "@/components/ui/status-text";
 import { haptics } from "@/lib/haptics";
@@ -239,7 +239,10 @@ export default function HelpScreen() {
                       label={item.question}
                       isExpanded={!!expanded[item.question]}
                       onIsExpandedChange={(v) => toggleExpanded(item.question, v)}
-                      modifiers={[dfont({ size: 16, weight: "medium" })]}
+                      modifiers={[
+                        frame({ minHeight: TouchTarget.min }),
+                        dfont({ size: 16, weight: "medium" }),
+                      ]}
                     >
                       <Text
                         modifiers={[

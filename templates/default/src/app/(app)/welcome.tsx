@@ -28,7 +28,7 @@ import {
   dynamicTypeSize,
 } from "@expo/ui/swift-ui/modifiers";
 import { useDynamicFont } from "@/lib/dynamic-font";
-import { Button as ButtonTokens } from "@/constants/layout";
+import { Button as ButtonTokens, TouchTarget } from "@/constants/layout";
 import { DynamicType } from "@/constants/ui";
 import { ProminentButton } from "@/components/ui/prominent-button";
 
@@ -191,6 +191,7 @@ export default function WelcomeScreen() {
                 buttonStyle("plain"),
                 dfont({ size: ButtonTokens.fontSize, weight: ButtonTokens.secondaryFontWeight }),
                 foregroundStyle(colors.mutedForeground as string),
+                frame({ minHeight: TouchTarget.min }),
               ]}
               onPress={handleContinue}
             />
