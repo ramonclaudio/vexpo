@@ -21,6 +21,9 @@ concurrency:
 jobs:
   publish:
     runs-on: ubuntu-latest
+    # Forks lack NPM_TOKEN and don't own the packages, so a synced v* tag would
+    # run the whole pipeline into a doomed npm publish (upstream expo/expo#45859).
+    if: github.repository == 'ramonclaudio/vexpo'
     # Least privilege: `contents: write` for the GitHub release, `id-token: write`
     # so npm can attach build provenance to the published packages.
     permissions:
