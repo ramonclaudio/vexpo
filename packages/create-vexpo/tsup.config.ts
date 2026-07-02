@@ -43,13 +43,14 @@ export default defineConfig({
     // tokens). `vexpo rebrand` overwrites it with real values. `eas submit`
     // needs the file to exist; placeholder version means `eas:tf` doesn't error
     // before rebrand has run.
+    // CNG/build outputs are anchored to the template ROOT. The vendored local
+    // expo module ships its own ios/ sources (modules/vexpo-ui-traits/ios,
+    // upstream expo/expo#47387), and an unanchored "ios" match would gut them
+    // from the published tarball: same bug class as the /ios/ anchor in the
+    // template .gitignore.
+    const ROOT_ONLY_DIRS = ["ios", "android", ".expo", ".tanstack", ".output"];
     const SKIP_DIRS = [
       "node_modules",
-      ".expo",
-      "ios",
-      "android",
-      ".tanstack",
-      ".output",
       ".claude",
       ".agents",
       ".cursor",
@@ -100,6 +101,10 @@ export default defineConfig({
     await cp(src, dest, {
       recursive: true,
       filter: (path) => {
+        const rel = path.slice(src.length);
+        if (ROOT_ONLY_DIRS.some((s) => rel === `/${s}` || rel.startsWith(`/${s}/`))) {
+          return false;
+        }
         if (SKIP_DIRS.some((s) => path.includes(`/${s}/`) || path.endsWith(`/${s}`))) {
           return false;
         }
