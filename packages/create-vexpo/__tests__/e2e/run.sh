@@ -131,17 +131,20 @@ if match_grep "$n"; then
   [ -z "$miss" ] && pass "$n" || fail "$n" "missing:$miss"
 else skip "$n" "filtered"; fi
 
-# The vendored local expo module (upstream expo/expo#47387) lives under
-# modules/**/ios/, which an unanchored ios filter once gutted from the
+# The vendored local expo modules (upstream expo/expo#47387 and #47426) live
+# under modules/**/ios/, which an unanchored ios filter once gutted from the
 # tarball. A scaffold without the Swift + podspec autolinks a module that
 # cannot compile at pod install.
-n="vendored ui-traits module survives scaffold (swift, podspec, config)"
+n="vendored modules survive scaffold (swift, podspec, config)"
 if match_grep "$n"; then
   miss=""
-  m="$proj/modules/vexpo-ui-traits"
-  [ -f "$m/expo-module.config.json" ] || miss="$miss expo-module.config.json"
-  [ -f "$m/ios/VexpoUITraitsModule.swift" ] || miss="$miss ios/VexpoUITraitsModule.swift"
-  [ -f "$m/ios/VexpoUITraits.podspec" ] || miss="$miss ios/VexpoUITraits.podspec"
+  for mod in vexpo-ui-traits:VexpoUITraits vexpo-ui-stroke-border:VexpoUIStrokeBorder; do
+    dir="${mod%%:*}" base="${mod##*:}"
+    m="$proj/modules/$dir"
+    [ -f "$m/expo-module.config.json" ] || miss="$miss $dir/expo-module.config.json"
+    [ -f "$m/ios/${base}Module.swift" ] || miss="$miss $dir/ios/${base}Module.swift"
+    [ -f "$m/ios/$base.podspec" ] || miss="$miss $dir/ios/$base.podspec"
+  done
   [ -z "$miss" ] && pass "$n" || fail "$n" "missing:$miss"
 else skip "$n" "filtered"; fi
 
@@ -263,16 +266,20 @@ if match_grep "$n"; then
 else skip "$n" "filtered"; fi
 
 # Positive twin of the excludes test: the root ios/ must NOT ship, but the
-# vendored module's nested ios/ MUST (upstream expo/expo#47387). pack-guard
-# can't catch a missing file, only a leaked one, so this is the sole tripwire.
-n="dist payload keeps the vendored ui-traits module intact"
+# vendored modules' nested ios/ MUST (upstream expo/expo#47387, #47426).
+# pack-guard can't catch a missing file, only a leaked one, so this is the
+# sole tripwire.
+n="dist payload keeps the vendored modules intact"
 if match_grep "$n"; then
   dest="$PKG_ROOT/dist/templates/default"
   miss=""
-  m="$dest/modules/vexpo-ui-traits"
-  [ -f "$m/expo-module.config.json" ] || miss="$miss expo-module.config.json"
-  [ -f "$m/ios/VexpoUITraitsModule.swift" ] || miss="$miss ios/VexpoUITraitsModule.swift"
-  [ -f "$m/ios/VexpoUITraits.podspec" ] || miss="$miss ios/VexpoUITraits.podspec"
+  for mod in vexpo-ui-traits:VexpoUITraits vexpo-ui-stroke-border:VexpoUIStrokeBorder; do
+    dir="${mod%%:*}" base="${mod##*:}"
+    m="$dest/modules/$dir"
+    [ -f "$m/expo-module.config.json" ] || miss="$miss $dir/expo-module.config.json"
+    [ -f "$m/ios/${base}Module.swift" ] || miss="$miss $dir/ios/${base}Module.swift"
+    [ -f "$m/ios/$base.podspec" ] || miss="$miss $dir/ios/$base.podspec"
+  done
   [ -z "$miss" ] && pass "$n" || fail "$n" "missing:$miss"
 else skip "$n" "filtered"; fi
 

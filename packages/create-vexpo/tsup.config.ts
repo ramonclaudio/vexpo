@@ -44,10 +44,10 @@ export default defineConfig({
     // needs the file to exist; placeholder version means `eas:tf` doesn't error
     // before rebrand has run.
     // CNG/build outputs are anchored to the template ROOT. The vendored local
-    // expo module ships its own ios/ sources (modules/vexpo-ui-traits/ios,
-    // upstream expo/expo#47387), and an unanchored "ios" match would gut them
-    // from the published tarball: same bug class as the /ios/ anchor in the
-    // template .gitignore.
+    // expo modules ship their own ios/ sources (modules/*/ios, upstream
+    // expo/expo#47387 and #47426), and an unanchored "ios" match would gut
+    // them from the published tarball: same bug class as the /ios/ anchor in
+    // the template .gitignore.
     const ROOT_ONLY_DIRS = ["ios", "android", ".expo", ".tanstack", ".output"];
     const SKIP_DIRS = [
       "node_modules",
