@@ -26,9 +26,11 @@ import {
   defaultScrollAnchor,
   foregroundStyle,
   frame,
+  invalidatableContent,
   padding,
   privacySensitive,
   progressViewStyle,
+  redacted,
   scrollDismissesKeyboard,
   textSelection,
   tint,
@@ -40,6 +42,7 @@ import { isEnabled as updatesEnabled, readLogEntries, type UpdatesLogEntry } fro
 import { useAppUpdates } from "@/hooks/use-updates";
 import { useColors } from "@/hooks/use-theme";
 import { useScenePrivacy } from "@/hooks/use-scene-privacy";
+import { accessibilityAddTraits } from "@/lib/ui-traits";
 import { useDynamicFont } from "@/lib/dynamic-font";
 import { Button as ButtonTokens } from "@/constants/layout";
 
@@ -181,6 +184,7 @@ export default function DebugScreen() {
     dfont({ size: 13, weight: "semibold" }),
     foregroundStyle(colors.mutedForeground as string),
     padding({ horizontal: 8, top: 4 }),
+    accessibilityAddTraits(["isHeader"]),
   ];
 
   return (
@@ -238,13 +242,24 @@ export default function DebugScreen() {
           </VStack>
 
           {updatesEnabled && !__DEV__ ? (
-            <VStack spacing={8} alignment="leading" modifiers={[frame({ maxWidth: Infinity })]}>
+            <VStack
+              spacing={8}
+              alignment="leading"
+              modifiers={[
+                frame({ maxWidth: Infinity }),
+                // upstream expo/expo#47269: while a check is in flight the shown
+                // status is possibly stale, so raise the invalidated reason; it
+                // redacts only the invalidatableContent-marked Status value.
+                ...(updates.isChecking ? [redacted("invalidated")] : []),
+              ]}
+            >
               <Text modifiers={sectionLabelModifiers}>OTA UPDATES</Text>
               <InfoCard>
                 <InfoRow
                   testID="debug-ota-status-value"
                   label="Status"
                   value={updates.statusText}
+                  valueModifiers={[invalidatableContent()]}
                 />
                 <InfoRow
                   testID="debug-ota-channel-value"
