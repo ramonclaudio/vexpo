@@ -37,7 +37,6 @@ import { ProminentButton } from "@/components/ui/prominent-button";
 
 import { assets } from "@/lib/assets";
 import { haptics } from "@/lib/haptics";
-import { accessibilityAddTraits } from "@/lib/ui-traits";
 import { useColors, useThemedAsset } from "@/hooks/use-theme";
 import { useOnboarding } from "@/hooks/use-onboarding";
 
@@ -176,11 +175,7 @@ export default function WelcomeScreen() {
                 )}
                 <Text
                   testID={`welcome-step-${s.id}-title`}
-                  modifiers={[
-                    dfont({ size: 34, weight: "bold" }),
-                    kerning(-0.5),
-                    accessibilityAddTraits(["isHeader"]),
-                  ]}
+                  modifiers={[dfont({ size: 34, weight: "bold" }), kerning(-0.5)]}
                 >
                   {s.title}
                 </Text>

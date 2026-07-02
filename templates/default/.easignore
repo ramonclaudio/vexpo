@@ -10,8 +10,8 @@ __tests__
 .env.example
 .env.convex.local
 README.md
-# Anchored: the vendored local expo modules ship modules/*/ios/ (upstream
-# expo/expo#47387, #47426); an unanchored ios/ would strip them from EAS uploads.
+# Anchored: a local expo module ships its own modules/*/ios/ sources, and an
+# unanchored ios/ would strip them from EAS uploads.
 /ios/
 plans/
 docs/

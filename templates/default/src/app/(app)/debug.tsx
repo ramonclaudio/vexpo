@@ -42,7 +42,6 @@ import { isEnabled as updatesEnabled, readLogEntries, type UpdatesLogEntry } fro
 import { useAppUpdates } from "@/hooks/use-updates";
 import { useColors } from "@/hooks/use-theme";
 import { useScenePrivacy } from "@/hooks/use-scene-privacy";
-import { accessibilityAddTraits } from "@/lib/ui-traits";
 import { useDynamicFont } from "@/lib/dynamic-font";
 import { Button as ButtonTokens } from "@/constants/layout";
 
@@ -184,7 +183,6 @@ export default function DebugScreen() {
     dfont({ size: 13, weight: "semibold" }),
     foregroundStyle(colors.mutedForeground as string),
     padding({ horizontal: 8, top: 4 }),
-    accessibilityAddTraits(["isHeader"]),
   ];
 
   return (

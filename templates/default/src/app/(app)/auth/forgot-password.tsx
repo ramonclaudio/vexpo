@@ -35,7 +35,6 @@ import { firstError, forgotPasswordSchema } from "@/lib/schemas";
 import { ProminentButton } from "@/components/ui/prominent-button";
 import { ErrorText } from "@/components/ui/status-text";
 import { announce } from "@/lib/a11y";
-import { accessibilityAddTraits } from "@/lib/ui-traits";
 import { useColors, useThemedAsset } from "@/hooks/use-theme";
 
 type ForgotState = { error?: string };
@@ -110,13 +109,7 @@ export default function ForgotPasswordScreen() {
           </RNHostView>
 
           <VStack spacing={6} alignment="leading">
-            <Text
-              testID="forgot-password-title"
-              modifiers={[
-                dfont({ size: 28, weight: "bold" }),
-                accessibilityAddTraits(["isHeader"]),
-              ]}
-            >
+            <Text testID="forgot-password-title" modifiers={[dfont({ size: 28, weight: "bold" })]}>
               Reset your password
             </Text>
             <Text

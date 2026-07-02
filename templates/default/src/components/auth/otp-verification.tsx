@@ -49,8 +49,6 @@ import { maskOtp } from "@/lib/masks";
 import { ProminentButton } from "@/components/ui/prominent-button";
 import { ErrorText } from "@/components/ui/status-text";
 import { announce } from "@/lib/a11y";
-import { accessibilityAddTraits } from "@/lib/ui-traits";
-import { strokeBorder } from "@/lib/ui-stroke-border";
 
 export type OtpFlow = "verify-email" | "sign-in";
 
@@ -176,11 +174,7 @@ export function OtpVerification({ email, onBack, flow = "verify-email" }: OtpVer
 
           <Text
             testID="otp-title"
-            modifiers={[
-              dfont({ size: 28, weight: "bold" }),
-              multilineTextAlignment("center"),
-              accessibilityAddTraits(["isHeader"]),
-            ]}
+            modifiers={[dfont({ size: 28, weight: "bold" }), multilineTextAlignment("center")]}
           >
             {isSignIn ? "Sign in with code" : "Verify your email"}
           </Text>
@@ -224,19 +218,6 @@ export function OtpVerification({ email, onBack, flow = "verify-email" }: OtpVer
                 frame({ maxWidth: Infinity, minHeight: ButtonTokens.height }),
                 background(colors.muted as string),
                 clipShape("capsule"),
-                // upstream expo/expo#47426: the invalid-code ring strokes an
-                // inset border that hugs the capsule instead of boxing it.
-                // Gated on the verify action so a resend failure (which says
-                // nothing about the typed code) never flags the field.
-                ...(lastAction === "verify" && error
-                  ? [
-                      strokeBorder({
-                        color: colors.destructiveBorder as string,
-                        style: { lineWidth: 1.5 },
-                        shape: "capsule",
-                      }),
-                    ]
-                  : []),
                 dfont({ size: 24, design: "monospaced" }),
                 monospacedDigit(),
                 kerning(8),
