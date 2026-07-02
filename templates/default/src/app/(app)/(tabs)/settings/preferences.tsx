@@ -36,6 +36,7 @@ import {
   type ReduceMotionPref,
 } from "@/lib/preferences";
 import { useDynamicFont } from "@/lib/dynamic-font";
+import { accessibilityAddTraits } from "@/lib/ui-traits";
 
 const MODE_BY_INDEX: ThemeMode[] = ["light", "dark", "system"];
 const INDEX_BY_MODE: Record<ThemeMode, number> = { light: 0, dark: 1, system: 2 };
@@ -59,6 +60,7 @@ export default function PreferencesScreen() {
     dfont({ size: 13, weight: "semibold" }),
     foregroundStyle(colors.mutedForeground as string),
     padding({ horizontal: 8 }),
+    accessibilityAddTraits(["isHeader"]),
   ];
 
   const helperModifiers = [

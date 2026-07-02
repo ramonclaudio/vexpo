@@ -30,6 +30,7 @@ import { useDynamicFont } from "@/lib/dynamic-font";
 import { authClient } from "@/lib/auth-client";
 import { haptics } from "@/lib/haptics";
 import { announce } from "@/lib/a11y";
+import { accessibilityAddTraits } from "@/lib/ui-traits";
 import { useColors } from "@/hooks/use-theme";
 import { useScenePrivacy } from "@/hooks/use-scene-privacy";
 
@@ -180,6 +181,7 @@ export default function SessionsScreen() {
               modifiers={[
                 dfont({ size: 13, weight: "semibold" }),
                 foregroundStyle(colors.mutedForeground as string),
+                accessibilityAddTraits(["isHeader"]),
               ]}
             >
               ACTIVE SESSIONS

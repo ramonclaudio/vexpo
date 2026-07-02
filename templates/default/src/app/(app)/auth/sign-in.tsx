@@ -43,6 +43,7 @@ import { Button as ButtonTokens, TouchTarget } from "@/constants/layout";
 import { api } from "@/convex/_generated/api";
 import { authClient } from "@/lib/auth-client";
 import { assets } from "@/lib/assets";
+import { accessibilityAddTraits } from "@/lib/ui-traits";
 import { haptics } from "@/lib/haptics";
 import { maskUsername } from "@/lib/masks";
 import {
@@ -284,7 +285,13 @@ export default function SignInScreen() {
           </RNHostView>
 
           <VStack spacing={6} alignment="leading">
-            <Text testID="sign-in-title" modifiers={[dfont({ size: 28, weight: "bold" })]}>
+            <Text
+              testID="sign-in-title"
+              modifiers={[
+                dfont({ size: 28, weight: "bold" }),
+                accessibilityAddTraits(["isHeader"]),
+              ]}
+            >
               Sign in
             </Text>
             <Text

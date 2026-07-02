@@ -26,6 +26,7 @@ import {
   tint,
 } from "@expo/ui/swift-ui/modifiers";
 import { useDynamicFont } from "@/lib/dynamic-font";
+import { accessibilityAddTraits } from "@/lib/ui-traits";
 import { ContentUnavailable } from "@/components/ui/content-unavailable";
 import { Button as ButtonTokens, TouchTarget } from "@/constants/layout";
 
@@ -219,6 +220,7 @@ export default function HelpScreen() {
                     dfont({ size: 13, weight: "semibold" }),
                     foregroundStyle(colors.mutedForeground as string),
                     padding({ horizontal: 8, top: 4 }),
+                    accessibilityAddTraits(["isHeader"]),
                   ]}
                 >
                   FREQUENTLY ASKED

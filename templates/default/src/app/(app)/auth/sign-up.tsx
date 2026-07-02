@@ -52,6 +52,7 @@ import { assets } from "@/lib/assets";
 import { haptics } from "@/lib/haptics";
 import { maskUsername } from "@/lib/masks";
 import { setNativeValue } from "@/lib/native-state";
+import { accessibilityAddTraits } from "@/lib/ui-traits";
 import { OtpVerification } from "@/components/auth/otp-verification";
 import { PasswordField } from "@/components/auth/password-field";
 import { SegmentedToggle } from "@/components/auth/segmented-toggle";
@@ -314,7 +315,13 @@ export default function SignUpScreen() {
           </RNHostView>
 
           <VStack spacing={6} alignment="leading">
-            <Text testID="sign-up-title" modifiers={[dfont({ size: 28, weight: "bold" })]}>
+            <Text
+              testID="sign-up-title"
+              modifiers={[
+                dfont({ size: 28, weight: "bold" }),
+                accessibilityAddTraits(["isHeader"]),
+              ]}
+            >
               Create your account
             </Text>
             <Text

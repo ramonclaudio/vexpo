@@ -47,6 +47,7 @@ import { maskOtp } from "@/lib/masks";
 import { ProminentButton } from "@/components/ui/prominent-button";
 import { ErrorText } from "@/components/ui/status-text";
 import { announce } from "@/lib/a11y";
+import { accessibilityAddTraits } from "@/lib/ui-traits";
 
 export type OtpFlow = "verify-email" | "sign-in";
 
@@ -163,7 +164,11 @@ export function OtpVerification({ email, onBack, flow = "verify-email" }: OtpVer
 
         <Text
           testID="otp-title"
-          modifiers={[dfont({ size: 28, weight: "bold" }), multilineTextAlignment("center")]}
+          modifiers={[
+            dfont({ size: 28, weight: "bold" }),
+            multilineTextAlignment("center"),
+            accessibilityAddTraits(["isHeader"]),
+          ]}
         >
           {isSignIn ? "Sign in with code" : "Verify your email"}
         </Text>

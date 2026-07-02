@@ -43,6 +43,7 @@ import { assets } from "@/lib/assets";
 import { authClient } from "@/lib/auth-client";
 import { useDynamicFont } from "@/lib/dynamic-font";
 import { haptics } from "@/lib/haptics";
+import { accessibilityAddTraits } from "@/lib/ui-traits";
 
 // Mirror of `ACCOUNT_DELETION_GRACE_MS` in `convex/users.ts`. Importing
 // across the convex / app boundary costs a runtime require for a single
@@ -141,6 +142,7 @@ export default function RestoreAccountScreen() {
               dfont({ size: 24, weight: "bold" }),
               foregroundStyle(colors.foreground as string),
               multilineTextAlignment("center"),
+              accessibilityAddTraits(["isHeader"]),
             ]}
           >
             Account Scheduled for Deletion

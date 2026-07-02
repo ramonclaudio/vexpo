@@ -15,6 +15,7 @@ import {
   tint,
 } from "@expo/ui/swift-ui/modifiers";
 import { useDynamicFont } from "@/lib/dynamic-font";
+import { accessibilityAddTraits } from "@/lib/ui-traits";
 import { ProminentButton } from "@/components/ui/prominent-button";
 import { useColors } from "@/hooks/use-theme";
 import { TouchTarget } from "@/constants/layout";
@@ -60,7 +61,13 @@ export function AppErrorBoundary({
               accessibilityHidden(true),
             ]}
           />
-          <Text modifiers={[dfont({ size: 28, weight: "bold" }), multilineTextAlignment("center")]}>
+          <Text
+            modifiers={[
+              dfont({ size: 28, weight: "bold" }),
+              multilineTextAlignment("center"),
+              accessibilityAddTraits(["isHeader"]),
+            ]}
+          >
             Something went wrong
           </Text>
           <Text
