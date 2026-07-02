@@ -11,7 +11,6 @@ import {
   tint,
 } from "@expo/ui/swift-ui/modifiers";
 import { useDynamicFont } from "@/lib/dynamic-font";
-import { accessibilityAddTraits } from "@/lib/ui-traits";
 
 import { ContentUnavailable } from "@/components/ui/content-unavailable";
 import { useColors } from "@/hooks/use-theme";
@@ -34,13 +33,7 @@ export default function LinkedScreen() {
           modifiers={[padding({ horizontal: 24, top: 24, bottom: 40 })]}
         >
           <VStack spacing={6} alignment="leading">
-            <Text
-              testID="linked-title"
-              modifiers={[
-                dfont({ size: 22, weight: "bold" }),
-                accessibilityAddTraits(["isHeader"]),
-              ]}
-            >
+            <Text testID="linked-title" modifiers={[dfont({ size: 22, weight: "bold" })]}>
               You got here via a deep link
             </Text>
             <Text
@@ -57,7 +50,6 @@ export default function LinkedScreen() {
                   dfont({ size: 13, weight: "semibold" }),
                   foregroundStyle(colors.mutedForeground as string),
                   padding({ horizontal: 8 }),
-                  accessibilityAddTraits(["isHeader"]),
                 ]}
               >
                 PARAMS

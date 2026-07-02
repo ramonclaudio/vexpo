@@ -64,7 +64,6 @@ import { authClient } from "@/lib/auth-client";
 import { haptics } from "@/lib/haptics";
 import { maskOtp, maskUsername } from "@/lib/masks";
 import { setNativeValue } from "@/lib/native-state";
-import { strokeBorder } from "@/lib/ui-stroke-border";
 import {
   firstError,
   profileUpdateOptionalUsernameSchema,
@@ -477,19 +476,6 @@ export default function ProfileScreen() {
                     autoFocus
                     modifiers={[
                       ...inputModifiers,
-                      // upstream expo/expo#47426: the invalid-code ring strokes
-                      // an inset border that hugs the capsule instead of boxing
-                      // it. Gated on the OTP action's own error so a save or
-                      // avatar failure never flags this field.
-                      ...(otpState.error
-                        ? [
-                            strokeBorder({
-                              color: colors.destructiveBorder as string,
-                              style: { lineWidth: 1.5 },
-                              shape: "capsule",
-                            }),
-                          ]
-                        : []),
                       keyboardType("numeric"),
                       textContentType("oneTimeCode"),
                       onSubmit(() => startTransition(() => verifyOtp())),
@@ -817,18 +803,7 @@ function AvatarView({ avatarUrl, loading }: { avatarUrl: string | null; loading:
     return (
       <VStack
         alignment="center"
-        modifiers={[
-          frame({ width: AVATAR_SIZE, height: AVATAR_SIZE }),
-          clipShape("circle"),
-          // upstream expo/expo#47426: dashed in-flight ring keeps the avatar
-          // slot's footprint visible while the upload swaps the photo for a
-          // bare spinner. Round caps keep the dashes soft on the small circle.
-          strokeBorder({
-            color: colors.mutedForeground as string,
-            style: { lineWidth: 1.5, lineCap: "round", dash: [4, 6] },
-            shape: "circle",
-          }),
-        ]}
+        modifiers={[frame({ width: AVATAR_SIZE, height: AVATAR_SIZE }), clipShape("circle")]}
       >
         <ProgressView
           modifiers={[progressViewStyle("circular"), accessibilityLabel("Updating profile photo")]}

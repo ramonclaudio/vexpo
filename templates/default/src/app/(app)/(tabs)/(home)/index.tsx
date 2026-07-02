@@ -11,7 +11,6 @@ import {
 import { ContentUnavailable } from "@/components/ui/content-unavailable";
 import { authClient } from "@/lib/auth-client";
 import { useDynamicFont } from "@/lib/dynamic-font";
-import { accessibilityAddTraits } from "@/lib/ui-traits";
 import { useColors } from "@/hooks/use-theme";
 
 export default function HomeScreen() {
@@ -48,11 +47,7 @@ export default function HomeScreen() {
             {/* upstream expo/expo#46509: the nested bold run resolves its font on the Text concatenation path */}
             <Text
               testID="home-greeting"
-              modifiers={[
-                dfont({ size: 32, design: "rounded" }),
-                kerning(-0.5),
-                accessibilityAddTraits(["isHeader"]),
-              ]}
+              modifiers={[dfont({ size: 32, design: "rounded" }), kerning(-0.5)]}
             >
               Hey,{" "}
               <Text modifiers={[dfont({ size: 32, weight: "bold", design: "rounded" })]}>

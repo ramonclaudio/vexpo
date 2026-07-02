@@ -31,7 +31,6 @@ import {
 import { api } from "@/convex/_generated/api";
 import { authClient } from "@/lib/auth-client";
 import { announce } from "@/lib/a11y";
-import { accessibilityAddTraits } from "@/lib/ui-traits";
 import { haptics } from "@/lib/haptics";
 import { Button as ButtonTokens, TouchTarget } from "@/constants/layout";
 import { PasswordField } from "@/components/auth/password-field";
@@ -134,13 +133,7 @@ function ChangePasswordForm({ email }: { email: string }) {
           modifiers={[padding({ horizontal: 24, top: 24, bottom: 40 })]}
         >
           <VStack spacing={6} alignment="leading">
-            <Text
-              testID="change-password-title"
-              modifiers={[
-                dfont({ size: 28, weight: "bold" }),
-                accessibilityAddTraits(["isHeader"]),
-              ]}
-            >
+            <Text testID="change-password-title" modifiers={[dfont({ size: 28, weight: "bold" })]}>
               Change password
             </Text>
             <Text
