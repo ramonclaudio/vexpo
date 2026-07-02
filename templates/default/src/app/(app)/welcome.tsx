@@ -15,11 +15,14 @@ import {
 import {
   foregroundStyle,
   buttonStyle,
+  clipped,
   multilineTextAlignment,
+  opacity,
   progressViewStyle,
   frame,
   padding,
   kerning,
+  scaleEffect,
   tint,
   accessibilityHidden,
   accessibilityLabel,
@@ -140,20 +143,35 @@ export default function WelcomeScreen() {
                     />
                   </RNHostView>
                 ) : (
-                  // upstream expo/expo#46714: <Image systemName> honors
-                  // font/dynamicTypeSize natively, so the SF Symbol scales on the
-                  // Dynamic Type curve and clamps in the SwiftUI environment
-                  // instead of the old JS useSymbolSize multiply
-                  <Image
-                    systemName={s.icon}
-                    color={colors.primary as string}
-                    modifiers={[
-                      frame({ width: 80, height: 80 }),
-                      dfont({ size: 48 }),
-                      dynamicTypeSize({ max: DynamicType.control }),
-                      accessibilityHidden(true),
-                    ]}
-                  />
+                  <VStack spacing={0} modifiers={[accessibilityHidden(true)]}>
+                    {/* upstream expo/expo#46714: <Image systemName> honors
+                        font/dynamicTypeSize natively, so the SF Symbol scales on
+                        the Dynamic Type curve and clamps in the SwiftUI
+                        environment instead of the old JS useSymbolSize multiply */}
+                    <Image
+                      systemName={s.icon}
+                      color={colors.primary as string}
+                      modifiers={[
+                        frame({ width: 80, height: 80 }),
+                        dfont({ size: 48 }),
+                        dynamicTypeSize({ max: DynamicType.control }),
+                      ]}
+                    />
+                    {/* upstream expo/expo#43228: per-axis scaleEffect flips the
+                        glyph vertically for the reflection under the hero */}
+                    <Image
+                      systemName={s.icon}
+                      color={colors.primary as string}
+                      modifiers={[
+                        dfont({ size: 48 }),
+                        dynamicTypeSize({ max: DynamicType.control }),
+                        scaleEffect({ x: 1, y: -1 }),
+                        opacity(0.12),
+                        frame({ width: 80, height: 28, alignment: "top" }),
+                        clipped(),
+                      ]}
+                    />
+                  </VStack>
                 )}
                 <Text
                   testID={`welcome-step-${s.id}-title`}
