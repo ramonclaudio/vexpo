@@ -460,8 +460,9 @@ export default function DebugScreen() {
             <Spacer />
             <Text
               testID="debug-footer-version-value"
-              // duplicates the BUILD > Version row above, so hide the footer
-              // stamp from VoiceOver instead of announcing the version twice.
+              // upstream expo/expo#46579: duplicates the BUILD > Version row
+              // above, so hide the footer stamp from VoiceOver instead of
+              // announcing the version twice.
               modifiers={[
                 dfont({ size: 12 }),
                 foregroundStyle(colors.mutedForeground as string),

@@ -54,6 +54,7 @@ import { PasswordField } from "@/components/auth/password-field";
 import { ProminentButton } from "@/components/ui/prominent-button";
 import { ErrorText } from "@/components/ui/status-text";
 import { announce } from "@/lib/a11y";
+import { accessibilityAddTraits } from "@/lib/ui-traits";
 import { useColors, useThemedAsset } from "@/hooks/use-theme";
 import { useQuery } from "convex/react";
 
@@ -174,7 +175,7 @@ export default function ResetPasswordScreen() {
           />
           <Text
             testID="reset-password-success-title"
-            modifiers={[dfont({ size: 28, weight: "bold" })]}
+            modifiers={[dfont({ size: 28, weight: "bold" }), accessibilityAddTraits(["isHeader"])]}
           >
             Password reset!
           </Text>
@@ -230,7 +231,10 @@ export default function ResetPasswordScreen() {
           </RNHostView>
 
           <VStack spacing={6} alignment="leading">
-            <Text testID="reset-password-title" modifiers={[dfont({ size: 28, weight: "bold" })]}>
+            <Text
+              testID="reset-password-title"
+              modifiers={[dfont({ size: 28, weight: "bold" }), accessibilityAddTraits(["isHeader"])]}
+            >
               Reset password
             </Text>
             <Text
