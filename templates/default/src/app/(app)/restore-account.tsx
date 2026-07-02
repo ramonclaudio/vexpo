@@ -20,11 +20,12 @@
 import { router } from "expo-router";
 import { startTransition, useActionState, useState } from "react";
 import { Image as ExpoImage } from "expo-image";
-import { Button, Host, Spacer, Text, VStack } from "@expo/ui/swift-ui";
+import { Button, Host, ScrollView, Spacer, Text, VStack } from "@expo/ui/swift-ui";
 import {
   background,
   buttonStyle,
   clipShape,
+  defaultScrollAnchor,
   disabled,
   foregroundStyle,
   frame,
@@ -120,78 +121,81 @@ export default function RestoreAccountScreen() {
 
   return (
     <Host testID="restore-account-screen" style={{ flex: 1, backgroundColor: colors.background }}>
-      <VStack
-        spacing={24}
-        alignment="center"
-        modifiers={[
-          frame({ maxWidth: Infinity, maxHeight: Infinity }),
-          padding({ horizontal: 24, vertical: 48 }),
-        ]}
-      >
-        <ExpoImage
-          source={brandIcon}
-          style={{ width: 72, height: 72 }}
-          contentFit="contain"
-          accessibilityLabel=""
-        />
-
-        <VStack spacing={12} alignment="center">
-          <Text
-            testID="restore-account-title"
-            modifiers={[
-              dfont({ size: 24, weight: "bold" }),
-              foregroundStyle(colors.foreground as string),
-              multilineTextAlignment("center"),
-              accessibilityAddTraits(["isHeader"]),
-            ]}
-          >
-            Account Scheduled for Deletion
-          </Text>
-          <Text
-            testID="restore-account-deletion-date"
-            modifiers={[
-              dfont({ size: 15 }),
-              foregroundStyle(colors.mutedForeground as string),
-              multilineTextAlignment("center"),
-            ]}
-          >
-            {`Your account is set to be permanently deleted on ${formattedDate}. Restore now to keep your account and all of its data.`}
-          </Text>
-        </VStack>
-
-        <VStack spacing={12} alignment="center" modifiers={[frame({ maxWidth: Infinity })]}>
-          <ProminentButton
-            testID="restore-account-restore"
-            label={restorePending ? "Restoring…" : "Restore Account"}
-            onPress={() => startTransition(() => restore())}
-            disabled={restorePending || signingOut}
+      {/* This modal traps the user (gestureEnabled false), so the Restore and
+          Sign Out buttons must stay reachable when Dynamic Type overflows the
+          frame: scroll instead of clipping, centered when it fits (iOS 17+,
+          plain scroll on the floor). */}
+      <ScrollView modifiers={[defaultScrollAnchor("center")]}>
+        <VStack
+          spacing={24}
+          alignment="center"
+          modifiers={[frame({ maxWidth: Infinity }), padding({ horizontal: 24, vertical: 48 })]}
+        >
+          <ExpoImage
+            source={brandIcon}
+            style={{ width: 72, height: 72 }}
+            contentFit="contain"
+            accessibilityLabel=""
           />
-          <Button
-            testID="restore-account-sign-out"
-            modifiers={[
-              buttonStyle("plain"),
-              frame({ maxWidth: Infinity, minHeight: ButtonTokens.height }),
-              background(colors.muted as string),
-              clipShape("capsule"),
-              disabled(restorePending || signingOut),
-            ]}
-            onPress={handleSignOut}
-          >
+
+          <VStack spacing={12} alignment="center">
             <Text
+              testID="restore-account-title"
               modifiers={[
-                dfont({ size: 16, weight: "medium" }),
-                foregroundStyle(colors.destructive as string),
+                dfont({ size: 24, weight: "bold" }),
+                foregroundStyle(colors.foreground as string),
+                multilineTextAlignment("center"),
+                accessibilityAddTraits(["isHeader"]),
               ]}
             >
-              {signingOut ? "Signing Out…" : "Sign Out"}
+              Account Scheduled for Deletion
             </Text>
-          </Button>
-        </VStack>
+            <Text
+              testID="restore-account-deletion-date"
+              modifiers={[
+                dfont({ size: 15 }),
+                foregroundStyle(colors.mutedForeground as string),
+                multilineTextAlignment("center"),
+              ]}
+            >
+              {`Your account is set to be permanently deleted on ${formattedDate}. Restore now to keep your account and all of its data.`}
+            </Text>
+          </VStack>
 
-        {restoreState.error ? (
-          <ErrorText testID="restore-account-error">{restoreState.error}</ErrorText>
-        ) : null}
-      </VStack>
+          <VStack spacing={12} alignment="center" modifiers={[frame({ maxWidth: Infinity })]}>
+            <ProminentButton
+              testID="restore-account-restore"
+              label={restorePending ? "Restoring…" : "Restore Account"}
+              onPress={() => startTransition(() => restore())}
+              disabled={restorePending || signingOut}
+            />
+            <Button
+              testID="restore-account-sign-out"
+              modifiers={[
+                buttonStyle("plain"),
+                frame({ maxWidth: Infinity, minHeight: ButtonTokens.height }),
+                background(colors.muted as string),
+                clipShape("capsule"),
+                disabled(restorePending || signingOut),
+              ]}
+              onPress={handleSignOut}
+            >
+              <Text
+                modifiers={[
+                  dfont({ size: 16, weight: "medium" }),
+                  foregroundStyle(colors.destructive as string),
+                ]}
+              >
+                {signingOut ? "Signing Out…" : "Sign Out"}
+              </Text>
+            </Button>
+          </VStack>
+
+          {restoreState.error ? (
+            <ErrorText testID="restore-account-error">{restoreState.error}</ErrorText>
+          ) : null}
+        </VStack>
+      </ScrollView>
     </Host>
   );
 }

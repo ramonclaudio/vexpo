@@ -1,13 +1,13 @@
 import { startTransition, useActionState, useState } from "react";
 import {
   Host,
+  ScrollView,
   VStack,
   HStack,
   Text,
   TextField,
   Button,
   Image,
-  Spacer,
   useNativeState,
 } from "@expo/ui/swift-ui";
 import { runOnJS } from "react-native-worklets";
@@ -31,7 +31,9 @@ import {
   accessibilityHidden,
   accessibilityLabel,
   accessibilityHint,
+  defaultScrollAnchorForRole,
   dynamicTypeSize,
+  scrollDismissesKeyboard,
   tint,
   textContentType,
   textFieldStyle,
@@ -145,146 +147,158 @@ export function OtpVerification({ email, onBack, flow = "verify-email" }: OtpVer
 
   return (
     <Host testID="otp-screen" style={{ flex: 1, backgroundColor: colors.background }}>
-      <VStack
-        spacing={16}
-        alignment="center"
-        modifiers={[padding({ horizontal: 24 }), tint(colors.primary as string)]}
+      <ScrollView
+        modifiers={[
+          scrollDismissesKeyboard("interactively"),
+          tint(colors.primary as string),
+          // The autoFocus OTP field keeps the keyboard up, and at AX sizes the
+          // uncapped title and buttons overflow the remaining space. Scroll
+          // like the sibling auth forms, keyboard reflow pinned to the visible
+          // center. Anchor is a no-op below iOS 18, plain scroll on the floor.
+          defaultScrollAnchorForRole("center", "sizeChanges"),
+        ]}
       >
-        <Spacer />
-
-        <Image
-          systemName={isSignIn ? "lock.shield" : "envelope.badge"}
-          color={colors.primary}
-          modifiers={[
-            dfont({ size: 56 }),
-            dynamicTypeSize({ max: DynamicType.control }),
-            accessibilityHidden(true),
-          ]}
-        />
-
-        <Text
-          testID="otp-title"
-          modifiers={[
-            dfont({ size: 28, weight: "bold" }),
-            multilineTextAlignment("center"),
-            accessibilityAddTraits(["isHeader"]),
-          ]}
-        >
-          {isSignIn ? "Sign in with code" : "Verify your email"}
-        </Text>
-
         <VStack
-          testID="otp-email-value"
-          spacing={4}
+          spacing={16}
           alignment="center"
-          // upstream expo/expo#47156: combine the instruction and email into one VoiceOver stop; child testID moves to this root since combine collapses child ids
-          modifiers={[accessibilityElement("combine")]}
+          modifiers={[padding({ horizontal: 24, top: 60, bottom: 40 })]}
         >
-          <Text
+          <Image
+            systemName={isSignIn ? "lock.shield" : "envelope.badge"}
+            color={colors.primary}
             modifiers={[
-              dfont({ size: 15 }),
-              foregroundStyle(colors.mutedForeground as string),
+              dfont({ size: 56 }),
+              dynamicTypeSize({ max: DynamicType.control }),
+              accessibilityHidden(true),
+            ]}
+          />
+
+          <Text
+            testID="otp-title"
+            modifiers={[
+              dfont({ size: 28, weight: "bold" }),
               multilineTextAlignment("center"),
+              accessibilityAddTraits(["isHeader"]),
             ]}
           >
-            Enter the 6-digit code sent to
+            {isSignIn ? "Sign in with code" : "Verify your email"}
           </Text>
-          <Text modifiers={[dfont({ size: 15, weight: "semibold" })]}>{email}</Text>
-        </VStack>
 
-        {error && <ErrorText testID="otp-error">{error}</ErrorText>}
-
-        <VStack spacing={12} modifiers={[frame({ maxWidth: Infinity })]}>
-          <TextField
-            testID="otp-field"
-            text={otpState}
-            placeholder="000000"
-            onTextChange={(text) => {
-              "worklet";
-              const digits = maskOtp(text);
-              otpState.value = digits;
-              runOnJS(setOtp)(digits);
-            }}
-            autoFocus
-            modifiers={[
-              textFieldStyle("plain"),
-              padding({ horizontal: 16 }),
-              frame({ maxWidth: Infinity, minHeight: ButtonTokens.height }),
-              background(colors.muted as string),
-              clipShape("capsule"),
-              dfont({ size: 24, design: "monospaced" }),
-              monospacedDigit(),
-              kerning(8),
-              multilineTextAlignment("center"),
-              // upstream expo/expo#46540: cap Dynamic Type on the fixed-height
-              // capsule so six 24pt monospaced glyphs can't scale past the box.
-              dynamicTypeSize({ max: DynamicType.otp }),
-              keyboardType("numeric"),
-              textContentType("oneTimeCode"),
-              onSubmit(runVerify),
-              submitLabel("done"),
-              accessibilityLabel("Verification code"),
-              accessibilityHint("Enter the 6 digit code sent to your email"),
-            ]}
-          />
-
-          <ProminentButton
-            testID="otp-verify"
-            label={
-              isVerifying
-                ? isSignIn
-                  ? "Signing in..."
-                  : "Verifying..."
-                : isSignIn
-                  ? "Sign in"
-                  : "Verify"
-            }
-            onPress={runVerify}
-            disabled={isVerifying || otp.length !== 6}
-          />
-
-          <Button
-            testID="otp-resend"
-            modifiers={[buttonStyle("plain"), frame({ maxWidth: Infinity }), disabled(isResending)]}
-            onPress={runResend}
+          <VStack
+            testID="otp-email-value"
+            spacing={4}
+            alignment="center"
+            // upstream expo/expo#47156: combine the instruction and email into one VoiceOver stop; child testID moves to this root since combine collapses child ids
+            modifiers={[accessibilityElement("combine")]}
           >
             <Text
               modifiers={[
-                frame({ maxWidth: Infinity, minHeight: ButtonTokens.height }),
+                dfont({ size: 15 }),
+                foregroundStyle(colors.mutedForeground as string),
                 multilineTextAlignment("center"),
-                dfont({ size: ButtonTokens.fontSize, weight: ButtonTokens.secondaryFontWeight }),
-                foregroundStyle(colors.primary as string),
               ]}
             >
-              {isResending ? "Sending..." : "Resend code"}
+              Enter the 6-digit code sent to
             </Text>
-          </Button>
+            <Text modifiers={[dfont({ size: 15, weight: "semibold" })]}>{email}</Text>
+          </VStack>
+
+          {error && <ErrorText testID="otp-error">{error}</ErrorText>}
+
+          <VStack spacing={12} modifiers={[frame({ maxWidth: Infinity })]}>
+            <TextField
+              testID="otp-field"
+              text={otpState}
+              placeholder="000000"
+              onTextChange={(text) => {
+                "worklet";
+                const digits = maskOtp(text);
+                otpState.value = digits;
+                runOnJS(setOtp)(digits);
+              }}
+              autoFocus
+              modifiers={[
+                textFieldStyle("plain"),
+                padding({ horizontal: 16 }),
+                frame({ maxWidth: Infinity, minHeight: ButtonTokens.height }),
+                background(colors.muted as string),
+                clipShape("capsule"),
+                dfont({ size: 24, design: "monospaced" }),
+                monospacedDigit(),
+                kerning(8),
+                multilineTextAlignment("center"),
+                // upstream expo/expo#46540: cap Dynamic Type on the fixed-height
+                // capsule so six 24pt monospaced glyphs can't scale past the box.
+                dynamicTypeSize({ max: DynamicType.otp }),
+                keyboardType("numeric"),
+                textContentType("oneTimeCode"),
+                onSubmit(runVerify),
+                submitLabel("done"),
+                accessibilityLabel("Verification code"),
+                accessibilityHint("Enter the 6 digit code sent to your email"),
+              ]}
+            />
+
+            <ProminentButton
+              testID="otp-verify"
+              label={
+                isVerifying
+                  ? isSignIn
+                    ? "Signing in..."
+                    : "Verifying..."
+                  : isSignIn
+                    ? "Sign in"
+                    : "Verify"
+              }
+              onPress={runVerify}
+              disabled={isVerifying || otp.length !== 6}
+            />
+
+            <Button
+              testID="otp-resend"
+              modifiers={[
+                buttonStyle("plain"),
+                frame({ maxWidth: Infinity }),
+                disabled(isResending),
+              ]}
+              onPress={runResend}
+            >
+              <Text
+                modifiers={[
+                  frame({ maxWidth: Infinity, minHeight: ButtonTokens.height }),
+                  multilineTextAlignment("center"),
+                  dfont({ size: ButtonTokens.fontSize, weight: ButtonTokens.secondaryFontWeight }),
+                  foregroundStyle(colors.primary as string),
+                ]}
+              >
+                {isResending ? "Sending..." : "Resend code"}
+              </Text>
+            </Button>
+          </VStack>
+
+          <HStack modifiers={[padding({ top: 8 })]}>
+            <Text
+              modifiers={[dfont({ size: 14 }), foregroundStyle(colors.mutedForeground as string)]}
+            >
+              Wrong email?
+            </Text>
+            <Button
+              testID="otp-back"
+              label="Go back"
+              modifiers={[
+                buttonStyle("plain"),
+                dfont({ size: 14, weight: "semibold" }),
+                frame({ minHeight: TouchTarget.min }),
+                contentShape(shapes.rectangle()),
+              ]}
+              onPress={() => {
+                haptics.light();
+                onBack();
+              }}
+            />
+          </HStack>
         </VStack>
-
-        <HStack modifiers={[padding({ top: 8 })]}>
-          <Text
-            modifiers={[dfont({ size: 14 }), foregroundStyle(colors.mutedForeground as string)]}
-          >
-            Wrong email?
-          </Text>
-          <Button
-            testID="otp-back"
-            label="Go back"
-            modifiers={[
-              buttonStyle("plain"),
-              dfont({ size: 14, weight: "semibold" }),
-              frame({ minHeight: TouchTarget.min }),
-              contentShape(shapes.rectangle()),
-            ]}
-            onPress={() => {
-              haptics.light();
-              onBack();
-            }}
-          />
-        </HStack>
-
-        <Spacer />
-      </VStack>
+      </ScrollView>
     </Host>
   );
 }
