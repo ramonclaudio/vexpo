@@ -132,6 +132,13 @@ export default function SignUpScreen() {
     [],
   );
 
+  // Key on the resolved boolean, not the status text, so the transient
+  // "Checking..." tick and the per-keystroke null resets don't announce.
+  useEffect(() => {
+    if (usernameAvailable === true) announce("Username is available");
+    else if (usernameAvailable === false) announce("This username is not available");
+  }, [usernameAvailable]);
+
   useEffect(() => {
     AppleAuthentication.isAvailableAsync().then(setAppleAvailable);
   }, []);

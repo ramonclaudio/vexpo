@@ -3,6 +3,7 @@ import { Host, ScrollView, Button, Text, VStack, HStack, Spacer, Alert } from "@
 import {
   accessibilityElement,
   accessibilityInputLabels,
+  accessibilityLabel,
   background,
   buttonStyle,
   contentShape,
@@ -22,6 +23,7 @@ import { TouchTarget } from "@/constants/layout";
 import { DynamicType } from "@/constants/ui";
 import { ContentUnavailable } from "@/components/ui/content-unavailable";
 import { SkeletonSessions } from "@/components/ui/skeleton";
+import { ErrorText } from "@/components/ui/status-text";
 import { useDynamicFont } from "@/lib/dynamic-font";
 
 import { authClient } from "@/lib/auth-client";
@@ -73,6 +75,7 @@ export default function SessionsScreen() {
   const [sessions, setSessions] = useState<SessionRow[] | null>(null);
   const [loadError, setLoadError] = useState<"network" | "stale" | null>(null);
   const [revoking, setRevoking] = useState<string | null>(null);
+  const [revokeError, setRevokeError] = useState(false);
   const [confirmToken, setConfirmToken] = useState<string | null>(null);
 
   const load = async () => {
@@ -107,6 +110,7 @@ export default function SessionsScreen() {
   const revoke = async (token: string) => {
     haptics.medium();
     setRevoking(token);
+    setRevokeError(false);
     try {
       // revokeSession resolves with an `error` object (not a throw) on a
       // server-side failure, so check it before announcing success, matching
@@ -114,6 +118,7 @@ export default function SessionsScreen() {
       const res = await authClient.revokeSession({ token });
       if (res.error) {
         haptics.error();
+        setRevokeError(true);
         return;
       }
       haptics.success();
@@ -121,6 +126,7 @@ export default function SessionsScreen() {
       await load();
     } catch {
       haptics.error();
+      setRevokeError(true);
     } finally {
       setRevoking(null);
     }
@@ -185,6 +191,7 @@ export default function SessionsScreen() {
                   ]}
                 >
                   <VStack
+                    testID={`session-identity-${s.token}`}
                     alignment="leading"
                     spacing={2}
                     modifiers={[
@@ -242,6 +249,7 @@ export default function SessionsScreen() {
                             buttonStyle("plain"),
                             frame({ minHeight: TouchTarget.min }),
                             contentShape(shapes.rectangle()),
+                            accessibilityLabel(`Revoke ${deviceLabel(s.userAgent)}`),
                             // upstream expo/expo#46661: every row's button says "Revoke", so give Voice Control the device name as a spoken alias
                             accessibilityInputLabels([`Revoke ${deviceLabel(s.userAgent)}`]),
                           ]}
@@ -299,6 +307,9 @@ export default function SessionsScreen() {
               >
                 Revoking session...
               </Text>
+            ) : null}
+            {revokeError ? (
+              <ErrorText testID="sessions-revoke-error">Couldn't revoke session</ErrorText>
             ) : null}
           </VStack>
         </ScrollView>

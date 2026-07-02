@@ -6,17 +6,20 @@ import { accessibilityHidden, foregroundStyle } from "@expo/ui/swift-ui/modifier
 import { useDynamicFont } from "@/lib/dynamic-font";
 import { Colors } from "@/constants/theme";
 
-type Props = { children: string; size?: number; testID?: string };
+// `attempt` re-fires the announcement when consecutive submits produce the
+// identical message: the string dependency alone would stay unchanged and
+// VoiceOver would hear nothing on the second failure.
+type Props = { children: string; size?: number; testID?: string; attempt?: number };
 
 function announce(prefix: string, message: string) {
   AccessibilityInfo.announceForAccessibility(`${prefix}: ${message}`);
 }
 
-export function ErrorText({ children, size = 14, testID }: Props) {
+export function ErrorText({ children, size = 14, testID, attempt }: Props) {
   const dfont = useDynamicFont();
   useEffect(() => {
     announce("Error", children);
-  }, [children]);
+  }, [children, attempt]);
 
   return (
     <HStack spacing={6} alignment="center">
@@ -35,11 +38,11 @@ export function ErrorText({ children, size = 14, testID }: Props) {
   );
 }
 
-export function SuccessText({ children, size = 14, testID }: Props) {
+export function SuccessText({ children, size = 14, testID, attempt }: Props) {
   const dfont = useDynamicFont();
   useEffect(() => {
     announce("Success", children);
-  }, [children]);
+  }, [children, attempt]);
 
   return (
     <HStack spacing={6} alignment="center">

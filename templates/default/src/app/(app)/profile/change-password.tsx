@@ -40,7 +40,7 @@ import { LoadingScreen } from "@/components/ui/loading-screen";
 import { useColors } from "@/hooks/use-theme";
 import { useDynamicFont } from "@/lib/dynamic-font";
 
-type ChangePasswordState = { error?: string; ok?: boolean };
+type ChangePasswordState = { error?: string; ok?: boolean; attempt?: number };
 const initialState: ChangePasswordState = {};
 
 export default function ChangePasswordScreen() {
@@ -61,19 +61,20 @@ function ChangePasswordForm({ email }: { email: string }) {
   // would land orphaned in iCloud Keychain.
   const emailState = useNativeState(email);
 
-  const [state, submit, isPending] = useActionState<ChangePasswordState, void>(async () => {
+  const [state, submit, isPending] = useActionState<ChangePasswordState, void>(async (prev) => {
     haptics.light();
+    const attempt = (prev.attempt ?? 0) + 1;
     if (!current || !next || !confirm) {
       haptics.error();
-      return { error: "Fill in every field" };
+      return { error: "Fill in every field", attempt };
     }
     if (next.length < 10 || next.length > 128) {
       haptics.error();
-      return { error: "Password must be 10-128 characters" };
+      return { error: "Password must be 10-128 characters", attempt };
     }
     if (next !== confirm) {
       haptics.error();
-      return { error: "Passwords do not match" };
+      return { error: "Passwords do not match", attempt };
     }
     try {
       const res = await authClient.changePassword({
@@ -83,14 +84,14 @@ function ChangePasswordForm({ email }: { email: string }) {
       });
       if (res.error) {
         haptics.error();
-        return { error: res.error.message ?? "Failed to change password" };
+        return { error: res.error.message ?? "Failed to change password", attempt };
       }
       haptics.success();
       announce("Password changed. Other sessions have been signed out.");
       return { ok: true };
     } catch {
       haptics.error();
-      return { error: "An unexpected error occurred" };
+      return { error: "An unexpected error occurred", attempt };
     }
   }, initialState);
 
@@ -201,7 +202,11 @@ function ChangePasswordForm({ email }: { email: string }) {
             />
           </VStack>
 
-          {state.error ? <ErrorText testID="change-password-error">{state.error}</ErrorText> : null}
+          {state.error ? (
+            <ErrorText testID="change-password-error" attempt={state.attempt}>
+              {state.error}
+            </ErrorText>
+          ) : null}
 
           <ProminentButton
             testID="change-password-submit"

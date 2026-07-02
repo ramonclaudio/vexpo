@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Button, Host, Text } from "@expo/ui/swift-ui";
 import {
@@ -18,6 +19,7 @@ import { Spacing, FontSize, TouchTarget } from "@/constants/layout";
 import { Radius } from "@/constants/theme";
 import { ZIndex } from "@/constants/ui";
 import { useColors } from "@/hooks/use-theme";
+import { announce } from "@/lib/a11y";
 import { useDynamicFont } from "@/lib/dynamic-font";
 
 export function UpdateBanner({ testID }: { testID?: string } = {}) {
@@ -28,6 +30,12 @@ export function UpdateBanner({ testID }: { testID?: string } = {}) {
 
   const showProgress = updates.isDownloading;
   const showError = !!updates.downloadError;
+
+  // Above the early return: rules of hooks. iOS never auto-announces the banner.
+  useEffect(() => {
+    if (showError) announce("Update failed. Tap to retry.");
+  }, [showError]);
+
   if (!showProgress && !showError) return null;
 
   const tint = showError ? (colors.destructive as string) : (colors.primary as string);

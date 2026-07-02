@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Constants from "expo-constants";
 import * as Application from "expo-application";
 import { ApplicationReleaseType } from "expo-application";
@@ -33,6 +33,7 @@ import {
   tint,
 } from "@expo/ui/swift-ui/modifiers";
 
+import { announce } from "@/lib/a11y";
 import { executionEnvironment, expoRuntimeVersion, sessionId, debugMode } from "@/lib/device";
 import { isEnabled as updatesEnabled, readLogEntries, type UpdatesLogEntry } from "@/lib/updates";
 import { useAppUpdates } from "@/hooks/use-updates";
@@ -151,6 +152,19 @@ export default function DebugScreen() {
   const appInfo = useApplicationInfo();
   const updates = useAppUpdates();
   const updateLog = useUpdateLogEntries(updates.isUpdatePending, updates.restartCount);
+
+  // OTA status rows render silently; announce check outcomes to VoiceOver.
+  // Download errors/progress stay unannounced here, the global UpdateBanner owns them.
+  const wasCheckingRef = useRef(false);
+  useEffect(() => {
+    if (updates.checkError) announce(`Update check failed: ${updates.checkError.message}`);
+  }, [updates.checkError]);
+  useEffect(() => {
+    if (wasCheckingRef.current && !updates.isChecking && !updates.checkError) {
+      announce(updates.isUpdateAvailable ? "Update available" : "Up to date");
+    }
+    wasCheckingRef.current = updates.isChecking;
+  }, [updates.isChecking, updates.checkError, updates.isUpdateAvailable]);
 
   const appVersion =
     Application.nativeApplicationVersion ?? Constants.expoConfig?.version ?? "1.0.0";
