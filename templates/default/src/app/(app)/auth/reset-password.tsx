@@ -233,7 +233,10 @@ export default function ResetPasswordScreen() {
           <VStack spacing={6} alignment="leading">
             <Text
               testID="reset-password-title"
-              modifiers={[dfont({ size: 28, weight: "bold" }), accessibilityAddTraits(["isHeader"])]}
+              modifiers={[
+                dfont({ size: 28, weight: "bold" }),
+                accessibilityAddTraits(["isHeader"]),
+              ]}
             >
               Reset password
             </Text>
