@@ -99,6 +99,7 @@ export default function PreferencesScreen() {
         modifiers={[
           dfont({ size: 16, weight: "medium" }),
           foregroundStyle(colors.foreground as string),
+          accessibilityHidden(true),
         ]}
       >
         {label}

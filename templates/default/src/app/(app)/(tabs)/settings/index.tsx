@@ -30,7 +30,8 @@ import {
   imageScale,
   padding,
   accessibilityHidden,
-  accessibilityLabel,
+  accessibilityHint,
+  accessibilityInputLabels,
   lineLimit,
   truncationMode,
   textSelection,
@@ -89,6 +90,7 @@ export default function SettingsScreen() {
   const rowButton = ({
     testID,
     label,
+    inputLabels,
     systemImage,
     onPress,
     role,
@@ -96,6 +98,7 @@ export default function SettingsScreen() {
   }: {
     testID: string;
     label: string;
+    inputLabels?: string[];
     systemImage: SFSymbol;
     onPress: () => void;
     role?: "destructive";
@@ -112,6 +115,7 @@ export default function SettingsScreen() {
           frame({ maxWidth: Infinity }),
           background(colors.muted as string),
           clipShape("capsule"),
+          ...(inputLabels ? [accessibilityInputLabels(inputLabels)] : []),
         ]}
         onPress={onPress}
       >
@@ -162,7 +166,7 @@ export default function SettingsScreen() {
               frame({ maxWidth: Infinity }),
               background(colors.muted as string),
               clipShape("capsule"),
-              accessibilityLabel("Open profile"),
+              accessibilityHint("Opens your profile"),
             ]}
             onPress={() => {
               haptics.light();
@@ -233,6 +237,7 @@ export default function SettingsScreen() {
             {rowButton({
               testID: "settings-help",
               label: "Help & Feedback",
+              inputLabels: ["Help and Feedback", "Help", "Feedback"],
               systemImage: "questionmark.bubble.fill",
               onPress: () => navigate("/help"),
             })}

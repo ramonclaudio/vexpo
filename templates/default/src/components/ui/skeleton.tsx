@@ -1,6 +1,7 @@
 import { VStack, HStack, Spacer, Text } from "@expo/ui/swift-ui";
 import {
-  accessibilityHidden,
+  accessibilityElement,
+  accessibilityLabel,
   background,
   clipShape,
   cornerRadius,
@@ -24,8 +25,11 @@ import { useDynamicFont } from "@/lib/dynamic-font";
 // stay literal muted fills (they stand in for geometry, not text) with a
 // whitespace `Text` forcing the framed VStack to draw its background; each opts
 // out with `unredacted()` so that spacer Text doesn't draw a nub over the fill.
-// Each root carries `accessibilityHidden(true)` (upstream expo/expo#46579) to
-// drop the whole subtree from the spoken hierarchy.
+// Each root collapses to one element with `accessibilityElement("ignore")`
+// (upstream expo/expo#47156) plus an `accessibilityLabel` ("Loading profile" /
+// "Loading sessions"), so VoiceOver speaks a single "Loading" instead of swiping
+// a silent screen; "ignore" keeps the fake children (Jane Appleseed, iPhone 15
+// Pro) unspoken.
 
 function FieldBox(): React.ReactNode {
   const colors = useColors();
@@ -76,7 +80,12 @@ export function SkeletonProfile({ testID }: { testID?: string } = {}): React.Rea
       testID={testID}
       alignment="leading"
       spacing={Spacing.xl}
-      modifiers={[padding({ all: 24 }), redacted("placeholder"), accessibilityHidden(true)]}
+      modifiers={[
+        padding({ all: 24 }),
+        redacted("placeholder"),
+        accessibilityElement("ignore"),
+        accessibilityLabel("Loading profile"),
+      ]}
     >
       <HStack spacing={Spacing.lg}>
         <Circle size={72} />
@@ -99,7 +108,12 @@ export function SkeletonSessions({ testID }: { testID?: string } = {}): React.Re
       testID={testID}
       alignment="leading"
       spacing={Spacing.md}
-      modifiers={[padding({ all: 24 }), redacted("placeholder"), accessibilityHidden(true)]}
+      modifiers={[
+        padding({ all: 24 }),
+        redacted("placeholder"),
+        accessibilityElement("ignore"),
+        accessibilityLabel("Loading sessions"),
+      ]}
     >
       <SkeletonSessionRow />
       <SkeletonSessionRow />

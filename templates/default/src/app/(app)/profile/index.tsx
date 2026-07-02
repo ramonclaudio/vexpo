@@ -46,6 +46,7 @@ import {
   shapes,
   progressViewStyle,
   scrollDismissesKeyboard,
+  accessibilityElement,
   accessibilityHidden,
   accessibilityLabel,
   accessibilityHint,
@@ -501,6 +502,8 @@ export default function ProfileScreen() {
                       buttonStyle("plain"),
                       foregroundStyle(colors.mutedForeground as string),
                       dfont({ size: 14, weight: "semibold" }),
+                      frame({ minHeight: TouchTarget.min }),
+                      contentShape(shapes.rectangle()),
                       disabled(isVerifying),
                     ]}
                     onPress={() => {
@@ -618,10 +621,14 @@ export default function ProfileScreen() {
                   </Text>
                 </VStack>
 
-                <VStack spacing={6} alignment="leading" modifiers={[frame({ maxWidth: Infinity })]}>
+                <VStack
+                  testID="profile-member-since"
+                  spacing={6}
+                  alignment="leading"
+                  modifiers={[frame({ maxWidth: Infinity }), accessibilityElement("combine")]}
+                >
                   <Text modifiers={labelModifiers}>Member since</Text>
                   <Text
-                    testID="profile-member-since-value"
                     modifiers={[
                       dfont({ size: 16 }),
                       foregroundStyle(colors.mutedForeground as string),

@@ -13,6 +13,7 @@ import {
 } from "@expo/ui/swift-ui";
 import {
   accessibilityHidden,
+  accessibilityInputLabels,
   accessibilityLabel,
   background,
   buttonStyle,
@@ -45,6 +46,7 @@ export default function PrivacyScreen() {
   const rowButton = ({
     testID,
     label,
+    inputLabels,
     systemImage,
     onPress,
     chevron = true,
@@ -52,6 +54,7 @@ export default function PrivacyScreen() {
   }: {
     testID: string;
     label: string;
+    inputLabels?: string[];
     systemImage: SFSymbol;
     onPress: () => void;
     chevron?: boolean;
@@ -64,6 +67,7 @@ export default function PrivacyScreen() {
         frame({ maxWidth: Infinity }),
         background(colors.muted as string),
         clipShape("capsule"),
+        ...(inputLabels ? [accessibilityInputLabels(inputLabels)] : []),
       ]}
       onPress={onPress}
     >
@@ -113,6 +117,7 @@ export default function PrivacyScreen() {
             {rowButton({
               testID: "privacy-camera-photos",
               label: "Camera & Photos",
+              inputLabels: ["camera and photos", "camera"],
               systemImage: "camera.fill",
               onPress: handleOpenSettings,
             })}
@@ -150,6 +155,9 @@ export default function PrivacyScreen() {
               modifiers={[
                 dfont({ size: 16, weight: "medium" }),
                 foregroundStyle(colors.foreground as string),
+                // The labeled Toggle already announces "Share analytics"; hiding
+                // the visual label drops the duplicate VoiceOver stop.
+                accessibilityHidden(true),
               ]}
             >
               Share Analytics

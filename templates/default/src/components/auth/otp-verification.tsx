@@ -27,6 +27,7 @@ import {
   padding,
   frame,
   shapes,
+  accessibilityElement,
   accessibilityHidden,
   accessibilityLabel,
   accessibilityHint,
@@ -142,7 +143,7 @@ export function OtpVerification({ email, onBack, flow = "verify-email" }: OtpVer
   const error = lastAction === "resend" ? resendState.error : verifyState.error;
 
   return (
-    <Host style={{ flex: 1, backgroundColor: colors.background }}>
+    <Host testID="otp-screen" style={{ flex: 1, backgroundColor: colors.background }}>
       <VStack
         spacing={16}
         alignment="center"
@@ -160,11 +161,20 @@ export function OtpVerification({ email, onBack, flow = "verify-email" }: OtpVer
           ]}
         />
 
-        <Text modifiers={[dfont({ size: 28, weight: "bold" }), multilineTextAlignment("center")]}>
+        <Text
+          testID="otp-title"
+          modifiers={[dfont({ size: 28, weight: "bold" }), multilineTextAlignment("center")]}
+        >
           {isSignIn ? "Sign in with code" : "Verify your email"}
         </Text>
 
-        <VStack spacing={4} alignment="center">
+        <VStack
+          testID="otp-email-value"
+          spacing={4}
+          alignment="center"
+          // upstream expo/expo#47156: combine the instruction and email into one VoiceOver stop; child testID moves to this root since combine collapses child ids
+          modifiers={[accessibilityElement("combine")]}
+        >
           <Text
             modifiers={[
               dfont({ size: 15 }),
@@ -174,9 +184,7 @@ export function OtpVerification({ email, onBack, flow = "verify-email" }: OtpVer
           >
             Enter the 6-digit code sent to
           </Text>
-          <Text testID="otp-email-value" modifiers={[dfont({ size: 15, weight: "semibold" })]}>
-            {email}
-          </Text>
+          <Text modifiers={[dfont({ size: 15, weight: "semibold" })]}>{email}</Text>
         </VStack>
 
         {error && <ErrorText testID="otp-error">{error}</ErrorText>}
