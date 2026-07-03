@@ -33,6 +33,15 @@ export async function runReviewAccount(options: ReviewAccountOptions): Promise<n
     return 1;
   }
 
+  // The template ships a placeholder password; seeding it would put a
+  // guessable login on the deployment and a dead credential in the ASC form.
+  if (password === "REPLACE_BEFORE_SUBMIT") {
+    bad(
+      "store.config.json still has the placeholder demo password; set apple.review.demoPassword (or pass --password) first",
+    );
+    return 1;
+  }
+
   ok(`email: ${email}`);
 
   const payload = JSON.stringify({

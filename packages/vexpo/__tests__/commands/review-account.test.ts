@@ -22,6 +22,18 @@ const runSpy = run as unknown as ReturnType<typeof vi.fn>;
 afterEach(() => vi.clearAllMocks());
 
 describe("runReviewAccount", () => {
+  it("refuses the template's placeholder demo password", async () => {
+    vi.mocked(readFile).mockResolvedValueOnce(
+      JSON.stringify({
+        apple: {
+          review: { demoUsername: "review@example.com", demoPassword: "REPLACE_BEFORE_SUBMIT" },
+        },
+      }),
+    );
+    expect(await runReviewAccount({})).toBe(1);
+    expect(runSpy).not.toHaveBeenCalled();
+  });
+
   it("runs admin:createReviewAccount with no --component-function via a single run()", async () => {
     const exit = await runReviewAccount({});
     expect(exit).toBe(0);
