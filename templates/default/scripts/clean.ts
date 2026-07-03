@@ -12,12 +12,10 @@
  * - package-lock.json / bun.lock / yarn.lock (lockfile; `npm ci` or
  *   `<pm> install --frozen-lockfile` when present)
  * - convex/_generated/ (regenerated via `npx convex codegen` after --all)
- *
- * Uses macOS `trash` for every delete so anything wiped is recoverable.
  */
 
 import { spawn as nodeSpawn } from "node:child_process";
-import { readdir, readFile, stat } from "node:fs/promises";
+import { readdir, readFile, rm, stat } from "node:fs/promises";
 import { homedir } from "node:os";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -89,7 +87,7 @@ async function trySignal(pids: readonly number[], signal: "TERM" | "KILL"): Prom
 
 type PM = "bun" | "pnpm" | "yarn" | "npm";
 
-// Capture which PM ran this script BEFORE any wipes: --all trashes the lockfile.
+// Capture which PM ran this script BEFORE any wipes: --all wipes the lockfile.
 async function detectPackageManager(): Promise<PM> {
   const execpath = (process.env.npm_execpath ?? "").toLowerCase();
   if (execpath.includes("bun")) return "bun";
@@ -170,8 +168,8 @@ ${DIM}npx vexpo full${RESET} re-probes every phase against external services
 (slower, but the cure when state has drifted from reality).
 
 Bundlers (Metro, expo CLI, react-native start, Watchman) are stopped
-automatically before the wipe so macOS ${DIM}trash${RESET} can't silently skip files
-held open. ${BOLD}convex dev${RESET} is left alone (it's your data layer, not a
+automatically before the wipe so a restarting bundler can't repopulate
+caches mid-delete. ${BOLD}convex dev${RESET} is left alone (it's your data layer, not a
 bundler); restart it manually if it misbehaves after a full wipe.
 `;
 
@@ -213,22 +211,10 @@ async function pathExists(p: string): Promise<boolean> {
   }
 }
 
-/**
- * Pass paths to `trash` (recoverable). Skips paths that don't exist so the
- * macOS `trash` CLI doesn't error out on missing entries.
- */
-async function trashPaths(paths: string[]): Promise<void> {
-  const existing: string[] = [];
+async function removePaths(paths: string[]): Promise<void> {
   for (const p of paths) {
-    if (await pathExists(p)) existing.push(p);
+    await rm(p, { recursive: true, force: true });
   }
-  if (existing.length === 0) return;
-  const proc = spawn(["trash", ...existing], {
-    stdin: "ignore",
-    stdout: "ignore",
-    stderr: "ignore",
-  });
-  await proc.exited;
 }
 
 async function expandGlob(dir: string, pattern: string): Promise<string[]> {
@@ -281,9 +267,8 @@ const PROJECT_GLOBS = ["bun-error.*", "*.log"];
 const TMP_GLOBS = ["metro-*", "haste-map-*", "react-*", "node-compile-cache", "expo-*", "RN*"];
 
 /**
- * Stop bundlers before wiping their caches. macOS `trash` silently skips
- * files held open by a running process, so caches survive the wipe and the
- * bundler restarts onto stale state. Killing first prevents that.
+ * Stop bundlers before wiping their caches, or a live Metro/expo process
+ * repopulates them mid-delete and restarts onto stale state.
  */
 async function stepStopBundlers(): Promise<void> {
   section("Stop bundlers");
@@ -340,8 +325,8 @@ async function stepMetroCachesOnly(): Promise<void> {
     nop("nothing to wipe under $TMPDIR");
     return;
   }
-  await trashPaths(matches);
-  ok(`trashed ${matches.length} cache director${matches.length === 1 ? "y" : "ies"}`);
+  await removePaths(matches);
+  ok(`removed ${matches.length} cache director${matches.length === 1 ? "y" : "ies"}`);
 }
 
 async function stepProjectArtifacts(all: boolean): Promise<void> {
@@ -359,8 +344,8 @@ async function stepProjectArtifacts(all: boolean): Promise<void> {
     nop("nothing to wipe");
     return;
   }
-  await trashPaths(existing);
-  for (const t of existing) ok(`trashed ${t.replace(REPO + "/", "")}`);
+  await removePaths(existing);
+  for (const t of existing) ok(`removed ${t.replace(REPO + "/", "")}`);
 }
 
 /**
@@ -380,9 +365,9 @@ async function stepEasState(): Promise<void> {
     nop("only .eas/workflows/ present (kept)");
     return;
   }
-  await trashPaths(targets);
+  await removePaths(targets);
   ok(
-    `trashed ${targets.length} .eas/ ${targets.length === 1 ? "entry" : "entries"} (kept workflows/)`,
+    `removed ${targets.length} .eas/ ${targets.length === 1 ? "entry" : "entries"} (kept workflows/)`,
   );
 }
 
@@ -397,8 +382,8 @@ async function stepDsStores(): Promise<void> {
     nop("none found");
     return;
   }
-  await trashPaths(matches);
-  ok(`trashed ${matches.length} .DS_Store ${matches.length === 1 ? "file" : "files"}`);
+  await removePaths(matches);
+  ok(`removed ${matches.length} .DS_Store ${matches.length === 1 ? "file" : "files"}`);
 }
 
 async function stepTmpdirCaches(): Promise<void> {
@@ -411,8 +396,8 @@ async function stepTmpdirCaches(): Promise<void> {
     nop("nothing to wipe under $TMPDIR");
     return;
   }
-  await trashPaths(matches);
-  ok(`trashed ${matches.length} cache entr${matches.length === 1 ? "y" : "ies"} under $TMPDIR`);
+  await removePaths(matches);
+  ok(`removed ${matches.length} cache entr${matches.length === 1 ? "y" : "ies"} under $TMPDIR`);
 }
 
 async function stepCocoaPodsCache(): Promise<void> {
@@ -422,8 +407,8 @@ async function stepCocoaPodsCache(): Promise<void> {
     nop("not present");
     return;
   }
-  await trashPaths([path]);
-  ok("trashed ~/Library/Caches/CocoaPods");
+  await removePaths([path]);
+  ok("removed ~/Library/Caches/CocoaPods");
 }
 
 async function stepXcodeDerivedData(pkgName: string): Promise<void> {
@@ -444,8 +429,8 @@ async function stepXcodeDerivedData(pkgName: string): Promise<void> {
     nop("no matching DerivedData entries");
     return;
   }
-  await trashPaths(matches);
-  ok(`trashed ${matches.length} DerivedData ${matches.length === 1 ? "entry" : "entries"}`);
+  await removePaths(matches);
+  ok(`removed ${matches.length} DerivedData ${matches.length === 1 ? "entry" : "entries"}`);
 }
 
 async function stepExpoCache(): Promise<void> {
@@ -455,8 +440,8 @@ async function stepExpoCache(): Promise<void> {
     nop("~/.expo not present");
     return;
   }
-  await trashPaths([path]);
-  ok("trashed ~/.expo");
+  await removePaths([path]);
+  ok("removed ~/.expo");
 }
 
 async function stepSetupState(): Promise<void> {
@@ -466,8 +451,8 @@ async function stepSetupState(): Promise<void> {
     nop(".setup-state.json not present");
     return;
   }
-  await trashPaths([path]);
-  ok("trashed .setup-state.json (next `npx vexpo full` re-probes every phase)");
+  await removePaths([path]);
+  ok("removed .setup-state.json (next `npx vexpo full` re-probes every phase)");
 }
 
 async function stepInstall(pm: PM): Promise<void> {
@@ -517,7 +502,7 @@ void (async () => {
       await stepStopBundlers();
       await stepMetroCachesOnly();
     } else {
-      // Capture PM BEFORE any wipes; --all trashes the lockfile.
+      // Capture PM BEFORE any wipes; --all wipes the lockfile.
       const pm = await detectPackageManager();
       const pkgName = await readPkgName();
       const all = args.all === true;

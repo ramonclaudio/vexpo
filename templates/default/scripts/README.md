@@ -16,7 +16,7 @@ Anything else (preflight checks, env validation, version bumps) lives in the `ve
 ## Cleaning
 
 ```bash
-npm run clean              # trash + reinstall
+npm run clean              # wipe + reinstall
 npm run clean:metro        # just Metro/Haste/node-compile-cache
 npm run clean:state        # also wipe .setup-state.json
 ```
@@ -46,6 +46,3 @@ Version bumps run through `eas build:version:set` or `eas build:version:sync`. `
 
 The CLI itself ships from [`@ramonclaudio/vexpo` on npm](https://www.npmjs.com/package/@ramonclaudio/vexpo). Source lives at [`github.com/ramonclaudio/vexpo`](https://github.com/ramonclaudio/vexpo).
 
-## Conventions
-
-- All deletions go through `trash`.

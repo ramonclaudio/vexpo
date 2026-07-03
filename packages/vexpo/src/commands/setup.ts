@@ -1,4 +1,5 @@
-import { access } from "node:fs/promises";
+import { readdir, rm } from "node:fs/promises";
+import { join } from "node:path";
 
 import {
   envMap as convexEnvMap,
@@ -115,26 +116,13 @@ async function isXcodeInstalled(): Promise<boolean> {
   return (await proc.exited) === 0;
 }
 
-async function trashPaths(paths: string[]): Promise<void> {
-  const existing: string[] = [];
+async function removePaths(paths: string[]): Promise<void> {
   for (const p of paths) {
-    try {
-      await access(p);
-      existing.push(p);
-    } catch {}
+    await rm(p, { recursive: true, force: true });
   }
-  if (existing.length === 0) return;
-  const proc = spawn(["trash", ...existing], {
-    stdin: "ignore",
-    stdout: "ignore",
-    stderr: "ignore",
-  });
-  await proc.exited;
 }
 
 async function wipeMetroCaches(tmpdir: string): Promise<void> {
-  const { readdir } = await import("node:fs/promises");
-  const { join } = await import("node:path");
   let entries: string[] = [];
   try {
     entries = await readdir(tmpdir);
@@ -145,7 +133,7 @@ async function wipeMetroCaches(tmpdir: string): Promise<void> {
   const targets = entries
     .filter((e) => matchers.some((m) => m.test(e)))
     .map((e) => join(tmpdir, e));
-  await trashPaths(targets);
+  await removePaths(targets);
 }
 
 async function nodeModulesPresent(): Promise<boolean> {
@@ -438,12 +426,12 @@ async function stepCleanup(fresh: boolean): Promise<void> {
     "tsconfig.tsbuildinfo",
     ...(fresh ? [ENV_FILE] : []),
   ];
-  await trashPaths(targets);
+  await removePaths(targets);
   await wipeMetroCaches(tmpdir);
   ok(
     fresh
-      ? `trashed node_modules, lockfile, ios/, build artifacts, Metro caches, and ${ENV_FILE}`
-      : "trashed node_modules, lockfile, ios/, build artifacts, and Metro caches",
+      ? `removed node_modules, lockfile, ios/, build artifacts, Metro caches, and ${ENV_FILE}`
+      : "removed node_modules, lockfile, ios/, build artifacts, and Metro caches",
   );
   await runInstall();
 }
