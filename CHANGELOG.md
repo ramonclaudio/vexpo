@@ -4,6 +4,23 @@ All notable changes to vexpo are tracked here. Format follows [Keep a Changelog]
 
 ## [Unreleased]
 
+## [0.1.12] - 2026-07-03
+
+Three adversarially-verified audit waves over the whole repo: every finding below survived an independent refutation pass before it was fixed. Net -3,000 lines.
+
+- **Breaking:** the colon commands are gone. `asc:connect`, `asc:privacy`, `asc:accessibility`, and `convex:migrate` are now space-form groups (`vexpo asc connect`, `vexpo asc privacy lint`, `vexpo convex migrate`), matching `apple`, `env`, and `testflight`. `vexpo eas` is a registered command (EAS link, channels, branches, env push) instead of a setup-only step, so the doctor hint that named it actually works.
+- Keep secrets off the process table everywhere: `convex env` writes go through a `0600` file with dotenv-safe quoting (single-quote first, since dotenv expands `\n` inside double quotes and would corrupt PEM-shaped values), the review-account password and CI JWT rotation follow the same path, and one `withTempEnvFile` helper owns the pattern.
+- Bound every retry: shared `http-retry` caps a server-driven `Retry-After` at 30s and surfaces the real last status when attempts run out, in both the ASC and Resend clients. A transient Resend 429/5xx no longer reads as "invalid key".
+- Fail loud in the CLI plumbing: `eas env:list` failures are distinct from an empty deployment instead of triggering blind create-on-existing, garbled JSON throws instead of returning `[]`, spawn failures carry the real error, and swallowed ASC auth errors propagate.
+- `vexpo rebrand` survives quotes and backslashes in app names (function replacers + `JSON.stringify` literals), derives a sensible bundle-id hint, and a re-run on an already-branded project stays a clean no-op.
+- One error boundary in `cli.ts` renders every uncaught failure identically. Ten copy-pasted per-command `try/catch` blocks deleted.
+- Template: a shared SwiftUI form-primitive layer (capsule text field, row button, toggle row, secondary button, section label, helper text, remote avatar, segmented toggle in `ui/`) replaces per-screen copies, and the profile screen decomposes from 858 lines to sections. New `use-apple-auth`, `use-sign-out`, and `use-unsaved-changes` hooks own the previously duplicated flows.
+- Template behavior fixes: OTP verify reads the native field so a same-frame submit can't see five digits, repeated identical errors re-announce to VoiceOver, notification listeners stop re-subscribing on inline callbacks, stale delete-account errors clear on retry, and the bio dirty-check matches what save writes.
+- Push notifications chunk at Expo's 100-message limit with each ticket paired to its own chunk's token, so a failed middle chunk can't revoke healthy devices. The webhook body cap is enforced while streaming, so a lying `Content-Length` can't buffer the whole payload. `sent` counts only accepted tickets.
+- Template diet: `expo-sharing` (unused) and 15 unreferenced font files (~2.1MB in every scaffolded app binary) are gone, along with dead theme/layout/ui tokens and unused re-export surfaces. `eas.json` ships generic again, `metro.config.js` merges over Expo's minifier defaults instead of replacing them, and scaffolds no longer inherit the template author's LICENSE.
+- CI: the template job builds and drives the locally packed CLI instead of the last npm release, `pack-guard` matches npm's forced-include basenames exactly so a `readme-impostor.env` can't ship, publishes are re-runnable after a partial failure, and the Node matrix pins the `20.10` engines floor.
+- Docs match the code: SECURITY.md drops the deleted App Attest section and catalogs every elevated CI token, workflow counts and version pins are verified against source, the 60-second claim is scoped to provisioning (the first native build takes minutes), and Maestro troubleshooting covers the Homebrew JDK path.
+
 ## [0.1.11] - 2026-07-02
 
 - Move every SF Symbol off the JS `fontScale` multiply onto native `font` and `dynamicTypeSize` scaling and delete the `useSymbolSize` workaround, so icons ride the same Dynamic Type curve as their labels ([expo/expo#46714](https://github.com/expo/expo/pull/46714), [#46774](https://github.com/expo/expo/pull/46774)).
@@ -159,7 +176,8 @@ First public release.
 
 See [`README.md`](./README.md) for the feature list and [`SECURITY.md`](./SECURITY.md) for the threat model.
 
-[Unreleased]: https://github.com/ramonclaudio/vexpo/compare/v0.1.11...HEAD
+[Unreleased]: https://github.com/ramonclaudio/vexpo/compare/v0.1.12...HEAD
+[0.1.12]: https://github.com/ramonclaudio/vexpo/releases/tag/v0.1.12
 [0.1.11]: https://github.com/ramonclaudio/vexpo/releases/tag/v0.1.11
 [0.1.10]: https://github.com/ramonclaudio/vexpo/releases/tag/v0.1.10
 [0.1.9]: https://github.com/ramonclaudio/vexpo/releases/tag/v0.1.9
