@@ -96,7 +96,7 @@
   },
   "devDependencies": {
     "@ramonclaudio/vexpo": "^0.1.8",
-    "@types/node": "^25.9.4",
+    "@types/node": "^22",
     "@types/react": "~19.2.16",
     "convex-test": "^0.0.54",
     "oxfmt": "^0.57.0",
