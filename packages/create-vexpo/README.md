@@ -36,7 +36,7 @@ npx vexpo full --new   # same + Apple, Convex, Expo, and Resend signup walkthrou
 ## Pre-reqs
 
 - macOS with Xcode, to build and run the app in the iOS Simulator.
-- Bun, or Node 20+.
+- Bun, or Node 22.12+.
 - An Apple Developer membership, only when you ship to TestFlight or the App Store. Not needed for local dev with `npx vexpo lite`.
 
 ## Options

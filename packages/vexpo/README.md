@@ -108,7 +108,7 @@ npx eas integrations:asc [...]   # status, connect, disconnect
 
 ## Architecture
 
-Commander tree in `src/cli.ts`, one file per top-level command in `src/commands/`. `src/lib/eas-cli.ts` shells out to `eas-cli`. Built with tsup to ESM, a `cli.js` entry plus shared chunks. Node 20+. The CLI absorbs four post-2025 Apple ASC API changes and keeps working when Apple loosens them.
+Commander tree in `src/cli.ts`, one file per top-level command in `src/commands/`. `src/lib/eas-cli.ts` shells out to `eas-cli`. Built with tsup to ESM, a `cli.js` entry plus shared chunks. Node 22.12+. The CLI absorbs four post-2025 Apple ASC API changes and keeps working when Apple loosens them.
 
 ## Repo
 
