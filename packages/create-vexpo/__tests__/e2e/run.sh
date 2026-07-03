@@ -100,6 +100,13 @@ if match_grep "$n"; then
   [ "$got" = "true" ] && pass "$n" || fail "$n" "private=$got"
 else skip "$n" "filtered"; fi
 
+n="vexpo devDependency pinned to the scaffolder's own version"
+if match_grep "$n"; then
+  want="^$(node -e "process.stdout.write(require('$PKG_ROOT/package.json').version)")"
+  got=$(node -e "const p=require('$proj/package.json'); process.stdout.write((p.devDependencies||{})['@ramonclaudio/vexpo']||'__undef__');")
+  [ "$got" = "$want" ] && pass "$n" || fail "$n" "pin=$got want=$want"
+else skip "$n" "filtered"; fi
+
 n="monorepo publish fields stripped from package.json"
 if match_grep "$n"; then
   miss=""

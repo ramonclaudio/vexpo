@@ -127,8 +127,6 @@ npm run upgrade                expo install expo@next && expo install --fix
 npm run upgrade:stable         expo install expo@latest && expo install --fix
 ```
 
-Setup is one-shot, not a `package.json` script. Run `npx vexpo lite`, `npx vexpo full`, or `npx vexpo doctor` directly.
-
 ## What's wired up
 
 - Convex backend: reactive queries, storage, real-time sync, per-mutation rate limiting

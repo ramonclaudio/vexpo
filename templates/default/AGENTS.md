@@ -6,9 +6,7 @@ project.
 ## Stack at a glance
 
 - Backend. Convex. No raw DB calls. Everything goes through `convex/` (server)
-  and `convex/react` (client). After running `npx convex ai-files install`,
-  read `convex/_generated/ai/guidelines.md` before touching anything in
-  `convex/`.
+  and `convex/react` (client).
 - Auth. Better Auth via `@convex-dev/better-auth@0.12.4`. Email
   verification is gated on the `REQUIRE_EMAIL_VERIFICATION` Convex env var.
 - Mobile. Expo SDK 57, RN 0.86, React 19. **iOS only today.**
@@ -62,7 +60,7 @@ project.
 - Run `npx vexpo doctor` to check that `.env.local`, Convex env, EAS env,
   and `app.config.ts` agree.
 - Use `npx eas <subcommand>` for canonical EAS operations. **Don't reinvent
-  EAS.** That's the vexpo design principle.
+  EAS.**
 - Run `npx vexpo full --plan` for the full setup walkthrough.
 
 ## Agent setup
@@ -74,9 +72,7 @@ project.
 - Pre-approved commands: `.claude/settings.json` allows read-only
   `git`/`expo`/`eas`/`convex`/`vexpo` calls + the project's `npm run`
   scripts (`typecheck`, `lint`, `test`, `format`, `dev`, `fp`) without
-  per-step permission prompts. The file carries only an allowlist, no
-  denylist, so anything not on it (`git push`, `git reset`, `npm install`,
-  `expo deploy`, and the rest) prompts by default.
+  per-step permission prompts.
 - EAS Convex bootstrap: `eas integrations:convex:connect` is the
   upstream SDK 57 path for provisioning a Convex backend, writing
   `CONVEX_DEPLOY_KEY` + `EXPO_PUBLIC_CONVEX_URL`, and registering the env

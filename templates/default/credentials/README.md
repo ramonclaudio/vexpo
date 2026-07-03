@@ -2,9 +2,6 @@
 
 Staging area for the one-time Apple `.p8` downloads you upload to EAS. This folder is gitignored (only this README is tracked).
 
-> [!IMPORTANT]
-> A `.p8` here is **not** the home for the key. The real home is EAS, where it's stored encrypted (KMS) and used by cloud builds and submissions. EAS cloud runners never read this folder or your `.env` files.
-
 ## What goes here
 
 | File                | What it is                                            | Where it ends up                         |

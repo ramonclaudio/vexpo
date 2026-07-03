@@ -198,6 +198,12 @@ async function rewritePackage(target: string, requestedName: string): Promise<vo
   parsed.name = toPackageName(requestedName);
   parsed.version = "0.0.0";
   parsed.private = true;
+  // Pin the CLI to this scaffolder's own release line. The template can't
+  // hardcode a registry range: it drifts the moment a breaking vexpo ships,
+  // and caret ranges never cross the minor while the major is 0.
+  const devDeps = (parsed.devDependencies ?? {}) as Record<string, string>;
+  devDeps["@ramonclaudio/vexpo"] = `^${pkg.version}`;
+  parsed.devDependencies = devDeps;
   delete parsed.author;
   delete parsed.repository;
   delete parsed.bugs;

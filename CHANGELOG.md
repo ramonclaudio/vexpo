@@ -1,8 +1,25 @@
 # Changelog
 
-All notable changes to vexpo are tracked here. Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Pre-1.0, the minor version bumps for breaking changes, the patch for everything else.
 
 ## [Unreleased]
+
+## [0.2.0] - 2026-07-03
+
+- **Breaking:** colon commands are gone. `asc:connect`, `asc:privacy`, `asc:accessibility`, and `convex:migrate` are now `asc connect`, `asc privacy`, `asc accessibility`, and `convex migrate`, matching the other command groups. `vexpo eas` (EAS link, channels, branches, env push) is a registered command instead of a setup-only step.
+- **Breaking:** the Node floor is `>=22.12`, what `commander@15` and oxlint's platform binding actually require. CI tests the exact floor.
+- Convex env writes never touch argv: values go through a `0600` temp file with dotenv-safe quoting, including the CI JWT rotation script.
+- Retries are bounded: `Retry-After` caps at 30s, exhaustion throws the real status, and a transient Resend 429 no longer reports "invalid key".
+- CLI plumbing fails loud: an `eas env:list` failure is distinct from an empty deployment, garbled JSON throws, spawn errors carry the real cause, and ASC auth errors propagate.
+- `vexpo rebrand` survives quotes and backslashes in app names, and a re-run on a rebranded project is a clean no-op.
+- One error boundary in `cli.ts` replaces ten per-command `try/catch` copies.
+- Shared SwiftUI form primitives (capsule field, row button, toggle row, secondary button, section label, helper text, avatar) replace per-screen copies. The profile screen drops from 858 lines to composed sections.
+- OTP verify reads the native field so a same-frame submit sees all six digits, repeated errors re-announce to VoiceOver, notification listeners stop re-subscribing, and stale delete-account errors clear on retry.
+- Push sends chunk at Expo's 100-message limit with tickets aligned per chunk, the webhook body cap is enforced while streaming, and `sent` counts accepted tickets only.
+- Bump template `better-auth` and `@better-auth/expo` to 1.6.22 and `convex` to `~1.42.0`.
+- Every scaffold gets lighter: unused `expo-sharing`, 15 unreferenced fonts (~2.1MB per app binary), dead design tokens, and the template author's LICENSE no longer ship.
+- CI drives the locally packed CLI in the template job, `pack-guard` matches npm's forced-include rules exactly, and a half-failed publish is re-runnable.
+- Docs verified against source: the stale App Attest section is gone, CI token scopes are cataloged, and the 60-second claim covers provisioning, not the native build.
 
 ## [0.1.11] - 2026-07-02
 
@@ -159,7 +176,8 @@ First public release.
 
 See [`README.md`](./README.md) for the feature list and [`SECURITY.md`](./SECURITY.md) for the threat model.
 
-[Unreleased]: https://github.com/ramonclaudio/vexpo/compare/v0.1.11...HEAD
+[Unreleased]: https://github.com/ramonclaudio/vexpo/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/ramonclaudio/vexpo/releases/tag/v0.2.0
 [0.1.11]: https://github.com/ramonclaudio/vexpo/releases/tag/v0.1.11
 [0.1.10]: https://github.com/ramonclaudio/vexpo/releases/tag/v0.1.10
 [0.1.9]: https://github.com/ramonclaudio/vexpo/releases/tag/v0.1.9

@@ -17,6 +17,7 @@ vexpo is a small monorepo:
 - [Code style](#code-style)
 - [Tests](#tests)
 - [Commits](#commits)
+- [Versioning](#versioning)
 - [Before you open a PR](#before-you-open-a-pr)
 - [Security](#security)
 
@@ -121,6 +122,10 @@ Conventional commits: `type(scope): lowercase summary under 72 chars`, no traili
 fix(submit): forward .env.local identity to the eas subprocess
 feat(apple): add asc connect for the eas to app store link
 ```
+
+## Versioning
+
+Pre-1.0, the minor version bumps for breaking changes, the patch for everything else. A caret range like `^0.2.0` never pulls a breaking release. Breaking changes lead their changelog entry as **Breaking:** lines.
 
 ## Before you open a PR
 
