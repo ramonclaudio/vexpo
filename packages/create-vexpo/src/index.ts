@@ -89,36 +89,47 @@ async function main() {
 
   if (flags.git) {
     const gitSpin = ora("Initializing git").start();
+    let initialized = false;
     try {
       await execa("git", ["init", "--initial-branch=main"], { cwd: target, stdio: "ignore" });
-      // Don't commit a half-built project. Init the repo so the user can commit
-      // themselves once deps land, but skip add/commit when install failed.
-      if (depsReady) {
-        await execa("git", ["add", "-A"], { cwd: target, stdio: "ignore" });
-        // git commit hard-fails without an identity (fresh machines, CI). Stage
-        // everything and let the user commit once they set one.
-        const identity = await execa("git", ["config", "user.email"], {
-          cwd: target,
-          reject: false,
-        });
-        if (identity.exitCode !== 0 || !identity.stdout.trim()) {
-          gitSpin.warn("Git repo initialized, commit skipped (no git identity)");
-          console.error(
-            kleur.gray("  Set git config user.name and user.email, then commit yourself."),
-          );
-        } else {
-          await execa("git", ["commit", "-m", "feat: initial commit", "--no-gpg-sign"], {
-            cwd: target,
-            stdio: "ignore",
-          });
-          gitSpin.succeed("Git repo initialized");
-        }
-      } else {
-        gitSpin.warn("Git repo initialized, commit skipped (install failed)");
-        console.error(kleur.gray(`  Commit yourself after ${pm} install lands.`));
-      }
+      initialized = true;
     } catch {
       gitSpin.warn("Git init skipped");
+    }
+    if (initialized) {
+      try {
+        // Don't commit a half-built project. The repo is init'd so the user can
+        // commit once deps land, but skip add/commit when install failed.
+        if (!depsReady) {
+          gitSpin.warn("Git repo initialized, commit skipped (install failed)");
+          console.error(kleur.gray(`  Commit yourself after ${pm} install lands.`));
+        } else {
+          await execa("git", ["add", "-A"], { cwd: target, stdio: "ignore" });
+          // git commit hard-fails without an identity (fresh machines, CI). It
+          // needs both name and email, so stage everything and let the user
+          // commit once they set one.
+          const email = await execa("git", ["config", "user.email"], {
+            cwd: target,
+            reject: false,
+          });
+          const uname = await execa("git", ["config", "user.name"], { cwd: target, reject: false });
+          if (!email.stdout.trim() || !uname.stdout.trim()) {
+            gitSpin.warn("Git repo initialized, commit skipped (no git identity)");
+            console.error(
+              kleur.gray("  Set git config user.name and user.email, then commit yourself."),
+            );
+          } else {
+            await execa("git", ["commit", "-m", "feat: initial commit", "--no-gpg-sign"], {
+              cwd: target,
+              stdio: "ignore",
+            });
+            gitSpin.succeed("Git repo initialized");
+          }
+        }
+      } catch {
+        gitSpin.warn("Git repo initialized, commit failed");
+        console.error(kleur.gray("  Commit yourself once the working tree is ready."));
+      }
     }
   }
 
@@ -197,11 +208,7 @@ async function rewritePackage(target: string, requestedName: string): Promise<vo
 }
 
 function toPackageName(raw: string): string {
-  const name = basename(raw)
-    .toLowerCase()
-    .replace(/[^a-z0-9-]/g, "-")
-    .replace(/^-+|-+$/g, "");
-  return name || "my-vexpo-app";
+  return basename(raw).replace(/-+$/, "");
 }
 
 function detectPackageManager(): PM {
@@ -209,7 +216,6 @@ function detectPackageManager(): PM {
   if (ua.startsWith("bun")) return "bun";
   if (ua.startsWith("pnpm")) return "pnpm";
   if (ua.startsWith("yarn")) return "yarn";
-  if (ua.startsWith("npm")) return "npm";
   return "npm";
 }
 

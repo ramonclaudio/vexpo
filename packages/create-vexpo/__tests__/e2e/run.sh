@@ -237,7 +237,7 @@ if match_grep "$n"; then
   for d in node_modules ios android .expo .dev; do
     [ -e "$dest/$d" ] && bad="$bad $d"
   done
-  for f in package-lock.json bun.lock .env.local .env.prod .setup-state.json SETUP.md DESIGN.md; do
+  for f in package-lock.json bun.lock .env.local .env.prod .setup-state.json SETUP.md DESIGN.md LICENSE; do
     [ -e "$dest/$f" ] && bad="$bad $f"
   done
   # No private key may ever ship, including one staged in credentials/.

@@ -27,18 +27,9 @@ export default defineConfig({
     // template destination explicitly here to keep the published tarball in
     // sync with the source.
     await rm(dest, { recursive: true, force: true });
-    // Defensive filters. `.gitignore` exists in the template but rsync/cp
-    // doesn't honor it, so we belt-and-suspenders against:
-    //  - generated dirs (node_modules, ios, android, .expo, .tanstack, .output)
-    //  - personal Claude Code / agent config (.claude, .agents, .cursor)
-    //  - working notes the template author keeps locally (plans, docs, .dev, .vexpo-manual-setup, .rebrand-backup)
-    //  - test/coverage outputs (coverage, .vitest-cache)
-    //  - Apple secret keys (*.p8, *.p12, *.mobileprovision, *.cer, AuthKey_*, SubscriptionKey_*)
-    //  - local env / state files (.env.local, .env.prod, .setup-state.json)
-    //  - generated files (expo-env.d.ts, tsconfig.tsbuildinfo, bun-error.*, *.log, *.tgz)
-    //  - macOS detritus (.DS_Store)
-    //  - Personal store metadata (store.config.json. example ships, real one doesn't)
-    //  - Internal agent skill metadata (skills-lock.json)
+    // `cp` doesn't honor `.gitignore`, so filter explicitly: keys and local
+    // state must never ship, and generated trees would bloat the tarball. The
+    // arrays below are the source of truth for what's excluded.
     // `store.config.json` SHIPS with the template as a placeholder (with `YOUR_*`
     // tokens). `vexpo rebrand` overwrites it with real values. `eas submit`
     // needs the file to exist; placeholder version means `eas:tf` doesn't error
@@ -76,6 +67,9 @@ export default defineConfig({
       /^\.setup-state\.json\..*\.tmp$/,
       /^\.DS_Store$/,
       /^skills-lock\.json$/,
+      // The template LICENSE carries the vexpo author's copyright. Never ship
+      // it into a scaffold, consistent with rewritePackage stripping `license`.
+      /^LICENSE$/i,
       /^expo-env\.d\.ts$/,
       /^CODEOWNERS$/,
       /^tsconfig\.tsbuildinfo$/,
