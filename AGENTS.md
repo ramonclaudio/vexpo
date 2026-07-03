@@ -1,6 +1,6 @@
 # AGENTS.md
 
-Guidance for AI coding agents working in this repository. Complements the README.
+Guidance for AI coding agents. Complements the README.
 
 ## Project
 
@@ -10,7 +10,7 @@ Monorepo for vexpo, a one-shot Expo + Convex + Better Auth + Resend starter targ
 - `packages/vexpo`: operational CLI. Runs as `vexpo <subcommand>` inside a scaffolded project. Deliberately small: it doesn't wrap what `eas` already does. Scope test for every command: does it help an empty directory reach a first shipped iOS app? Two-mode setup (`lite`, `full`) with standalone phases, cross-source drift detection (`doctor`), Apple work `eas-cli` doesn't expose (`apple {asc-key, credentials, services-id, jwt, eas-rotation-secrets}`), App Store Connect steps (`testflight`, `asc privacy`, `asc accessibility`, `asc connect`), and env sync (`env push`). Post-launch ops are out of scope.
 - `templates/default/`: the Expo SDK 57 + Convex + Better Auth app that gets copied. Includes auth, push, OTA, and App Store submission. Standalone (own `package-lock.json`, `node_modules`), not a workspace member.
 
-npm workspace at the root with `packages/*` as members. Templates stay outside the workspace because Expo's hoisting doesn't survive npm's workspace install layout. The CLI links into the template via `npm run link:dev` for monorepo dev.
+Templates stay outside the workspace because Expo's hoisting doesn't survive npm's workspace install layout.
 
 ## Conventions
 

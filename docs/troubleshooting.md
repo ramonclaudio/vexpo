@@ -1,6 +1,6 @@
 # Troubleshooting
 
-The failure modes you actually hit shipping a vexpo app, grouped by surface. Each entry is the symptom, then the fix, then the `vexpo` command that handles it. When in doubt, run `npx vexpo doctor` first, it names the broken check and points at the fix.
+Failure modes grouped by surface. Run `npx vexpo doctor` first, it names the broken check and points at the fix.
 
 ## Apple / App Store Connect
 
@@ -44,7 +44,7 @@ Same root as above. The integration is connected but a submit profile in `eas.js
 
 ### A second ASC API key showed up on Apple
 
-Expected. `vexpo asc connect` lets the EAS wizard generate its own key for build/submit/metadata, kept separate from the master key cached in vexpo state. The master key stays out of EAS's control for direct ASC API calls (`vexpo apple services-id`, `vexpo apple jwt`). Two keys, two owners, on purpose.
+Expected. `vexpo asc connect` lets the EAS wizard generate its own key for build/submit/metadata, kept separate from the master key cached in vexpo state. The master key stays out of EAS's control for direct ASC API calls (`vexpo apple services-id`, `vexpo apple jwt`).
 
 ## Convex
 
@@ -56,7 +56,7 @@ A multi-team Convex account shows an interactive team picker on `convex dev --co
 CONVEX_TEAM=<slug> npx vexpo lite
 ```
 
-The slug is in the Convex dashboard under team settings. `vexpo convex` also reads `CONVEX_TEAM` from `.env.local`. With it set, the picker is skipped.
+The slug is in the Convex dashboard under team settings. `vexpo convex` also reads `CONVEX_TEAM` from `.env.local`.
 
 ### `Convex token expired or revoked`
 

@@ -1,9 +1,9 @@
 # credentials/
 
-Staging area for the one-time Apple `.p8` downloads you upload to EAS. Drop a key here, upload it, done. This folder is gitignored (only this README is tracked), so nothing in it ships or gets committed.
+Staging area for the one-time Apple `.p8` downloads you upload to EAS. This folder is gitignored (only this README is tracked).
 
 > [!IMPORTANT]
-> A `.p8` here is **not** the home for the key. The real home is EAS, where it's stored encrypted (KMS) and used by cloud builds and submissions. Your local copy is a one-time download you can delete after uploading. EAS cloud runners never read this folder or your `.env` files.
+> A `.p8` here is **not** the home for the key. The real home is EAS, where it's stored encrypted (KMS) and used by cloud builds and submissions. EAS cloud runners never read this folder or your `.env` files.
 
 ## What goes here
 
@@ -27,6 +27,6 @@ npx eas-cli credentials --platform ios   # App Store Connect API Key -> set up
 npx vexpo asc connect
 ```
 
-After upload you can delete the local `.p8`, EAS holds it. If you keep it, it stays gitignored.
+After upload, delete the local `.p8`. EAS holds it.
 
 Run `npx vexpo doctor` to confirm the key, its role, and the linkage are all green.

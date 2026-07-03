@@ -6,8 +6,6 @@ Forces automatic code signing for the Xcode project during local `prebuild`. Set
 
 No-ops when `EAS_BUILD` is set, so EAS continues to use the provisioning profile from the build credentials.
 
-Use: local `npm run ios` on a physical device without juggling provisioning profiles in Xcode.
-
 ## `with-pod-deployment-target.js`
 
 Forces every CocoaPods target to `IPHONEOS_DEPLOYMENT_TARGET = 16.4` during `prebuild`, injected into the `Podfile` right after `react_native_post_install`. Without it, transitive pods can fall back to a lower minimum and break the iOS 16.4 floor the template targets. Re-running is safe: a marker comment makes it a no-op once applied.

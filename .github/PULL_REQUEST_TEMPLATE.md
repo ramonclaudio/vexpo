@@ -1,6 +1,4 @@
-<!-- Thanks for the PR. A short description and a test plan make this quick to review. -->
-
-Closes #<!-- the issue this addresses. If there isn't one yet, open one first. -->
+Closes #<!-- open an issue first if there isn't one -->
 
 ## What and why
 

@@ -1,7 +1,5 @@
 # Contributing
 
-Thanks for wanting to help with vexpo. This guide covers how to report a bug, propose a change, and open a pull request that's quick to review.
-
 vexpo is a small monorepo:
 
 - `packages/vexpo` is the operational CLI you run inside a scaffolded project.
@@ -24,7 +22,7 @@ vexpo is a small monorepo:
 
 ## Open an issue first
 
-For anything past a typo, open an issue before you write code. A short issue lets us agree on the approach first, so your time goes toward something that will land. A pull request that isn't tied to an open issue may sit for a while or get a friendly nudge to file one. It saves everyone a round trip.
+For anything past a typo, open an issue before you write code, so we can agree on the approach first. A pull request that isn't tied to an open issue may sit until one is filed.
 
 Security reports are the exception. Please don't open a public issue for those, see [Security](#security).
 
@@ -35,9 +33,7 @@ Open a [bug report](https://github.com/ramonclaudio/vexpo/issues/new?template=bu
 - what's broken, in a sentence or two
 - how to reproduce it, the exact commands in order
 - what you expected versus what happened
-- your environment. `npx vexpo doctor --redact` covers most of it, and the `--redact` flag masks anything identifying, so it's safe to paste
-
-The more of that you give, the faster it gets fixed.
+- your environment. `npx vexpo doctor --redact` covers most of it, `--redact` masks anything identifying so it's safe to paste
 
 ## Proposing a change
 
@@ -59,8 +55,6 @@ After `link:dev`, `cd templates/default && npx vexpo lite` runs the CLI you just
 
 ## Checks
 
-One command runs the local check suite:
-
 ```bash
 npm run validate     # format, lint, typecheck, knip, package tests
 ```
@@ -80,7 +74,7 @@ To drive the real Convex Platform API, there's an opt-in e2e suite. It self-skip
 VEXPO_E2E_CONVEX=1 VEXPO_E2E_DEPLOYMENT=<dev-slug> npm run test:e2e:api -w @ramonclaudio/vexpo
 ```
 
-CI runs these same checks, so green locally means green on the PR.
+CI runs these same checks.
 
 ## Testing against a real eas build
 
@@ -113,7 +107,7 @@ direnv allow templates/default
 - Oxlint and Oxfmt only. No ESLint, Prettier, or Biome.
 - No emojis in source, and no AI attribution or `Co-authored-by` trailers in commits or PRs.
 
-Use whatever tools you like to get the code written, AI assistants included. The only thing we ask is that you understand what you're submitting and can walk through it in review. If a tool wrote your commit message or PR description, give it a pass to clean it up and strip any attribution trailers, same as the rule above.
+Use whatever tools you like, AI assistants included. We ask that you understand what you're submitting and can walk through it in review.
 
 ## Tests
 

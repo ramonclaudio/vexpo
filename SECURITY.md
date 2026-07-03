@@ -1,10 +1,10 @@
 # Security
 
-Threat model, the defenses vexpo ships, and what's out of scope. If you operate a vexpo-derived production app, this is the surface to think about.
+Threat model, the defenses vexpo ships, and what's out of scope.
 
 ## Threat model
 
-What vexpo's surface is positioned to defend against:
+Defends against:
 
 1. Forged inbound webhooks. Anyone who learns a webhook URL can otherwise POST whatever they want.
 2. Replayed inbound webhooks. An attacker captures a legitimate webhook and replays it later.
@@ -29,7 +29,7 @@ Out of scope:
 The `convex/webhook.ts` factory wraps every signed POST handler with:
 
 - Constant-time HMAC verification, per the algorithm the source declares (EAS SHA-1, Stripe SHA-256). Mismatch returns 401 with a request ID, no body details.
-- Body size cap, default 1 MiB. The `Content-Length` header is checked first, then the body is read as a stream and aborted the moment it passes the cap, so a client that lies about its length can't buffer fully. Defends against memory-exhaustion uploads.
+- Body size cap, default 1 MiB. The `Content-Length` header is checked first, then the body is read as a stream and aborted the moment it passes the cap, so a client that lies about its length can't buffer fully.
 - Optional replay window. Source-dependent. EAS doesn't sign a timestamp, Stripe does. When opted in, the factory checks `|now - t| < maxAgeSeconds`.
 - Per-request correlation ID, returned as `X-Request-Id` and logged on every line.
 - Structured access log: `webhook.ok`, `webhook.bad_signature`, `webhook.too_large`, `webhook.stale`, `webhook.handler_error`, one-line JSON to Convex's log surface.
@@ -55,7 +55,7 @@ Better Auth routes (`authComponent.registerRoutesLazy`) handle their own CSRF + 
 
   After that, every bundle is signed during `eas update` and verified on-device against the bundled cert before install. A compromised CDN or EAS account cannot ship arbitrary JS. If the env var is unset, `eas update` skips signing without erroring.
 
-- Gradual rollouts. `rollout.yml` publishes at controlled percentages (5% → 25% → 100%). A broken update reaches a fraction of users.
+- Gradual rollouts. `rollout.yml` publishes at controlled percentages (5% → 25% → 100%).
 - Rollback workflows. `rollback.yml` runs `update:republish` or `update:roll-back-to-embedded` non-interactively.
 
 ### Apple credentials
@@ -104,7 +104,7 @@ Apple App Store Review 5.1.1(v) requires in-app account deletion. vexpo ships a 
 | `EAS_WEBHOOK_SECRET`           | When suspected compromise | `npx eas-cli webhook:update --id <id> --secret <new>` + `npx convex env set EAS_WEBHOOK_SECRET <new>`                                    |
 | `RESEND_WEBHOOK_SECRET`        | When suspected compromise | Resend dashboard → reissue + `npx convex env set RESEND_WEBHOOK_SECRET <new>`                                                            |
 
-The SIWA JWT is the only one with automated rotation, because it's the only one Apple's API will sign on our behalf. The rest require human-in-the-loop rotation by Apple's design. For `BETTER_AUTH_SECRET`, prefer the versioned `BETTER_AUTH_SECRETS` array from the start: highest version is the active signing key, older versions stay valid for decryption, so a rotation doesn't sign every user out.
+The SIWA JWT is the only one with automated rotation, because it's the only one Apple's API will sign on our behalf. The rest require human-in-the-loop rotation by Apple's design.
 
 ## Reporting issues
 
