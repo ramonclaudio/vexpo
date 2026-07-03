@@ -19,7 +19,9 @@ export function buildReloadScreenConfig(
 ): ReloadScreenOptions {
   const dark = scheme === "dark";
   return {
-    backgroundColor: dark ? "#0E0E0E" : "#FFFFFF",
+    // Match the app's dark background (theme.ts NEUTRAL.n950) so the reload
+    // screen hands off to the app with no seam. NEUTRAL isn't exported.
+    backgroundColor: dark ? "#0A0A0A" : "#FFFFFF",
     fade: !reduceMotion,
     spinner: { color: dark ? "#FFFFFF" : "#0E0E0E", enabled: true, size: "medium" },
   };

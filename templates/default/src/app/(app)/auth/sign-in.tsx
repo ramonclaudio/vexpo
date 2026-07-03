@@ -1,4 +1,4 @@
-import { startTransition, useActionState, useEffect, useState } from "react";
+import { startTransition, useActionState, useState } from "react";
 import * as AppleAuthentication from "expo-apple-authentication";
 import { Image as ExpoImage } from "expo-image";
 import { router } from "expo-router";
@@ -56,6 +56,7 @@ import { ProminentButton } from "@/components/ui/prominent-button";
 import { ErrorText } from "@/components/ui/status-text";
 import { announce } from "@/lib/a11y";
 import { useColors, useThemedAsset } from "@/hooks/use-theme";
+import { useAppleAuth } from "@/hooks/use-apple-auth";
 import { AppleButton } from "@/components/auth/apple-button";
 
 type SignInState = { error?: string };
@@ -75,19 +76,15 @@ export default function SignInScreen() {
   const [password, setPassword] = useState("");
   const [otpEmail, setOtpEmail] = useState("");
   const [showOtpVerification, setShowOtpVerification] = useState(false);
-  const [appleAvailable, setAppleAvailable] = useState(false);
+  const apple = useAppleAuth({ successMessage: "Signed in with Apple" });
   const providers = useQuery(api.auth.getEnabledProviders);
-  const showApple = appleAvailable && providers?.apple === true;
+  const showApple = apple.available && providers?.apple === true;
   // Email features (OTP sign-in, password reset) require the Convex env to
   // have `REQUIRE_EMAIL_VERIFICATION=true` (set by `npx vexpo full`).
   // Until then, hide them so users don't hit a code-was-logged-to-console
   // dead end. Email + password sign-up/sign-in remains available.
   const emailFeatures = providers?.emailFeatures === true;
   const isOtp = signInMethod === "otp";
-
-  useEffect(() => {
-    AppleAuthentication.isAvailableAsync().then(setAppleAvailable);
-  }, []);
 
   const [emailState, signInWithEmail, isEmailPending] = useActionState<SignInState, void>(
     async () => {
@@ -180,46 +177,8 @@ export default function SignInScreen() {
     initialState,
   );
 
-  const [appleState, signInWithApple, isApplePending] = useActionState<SignInState, void>(
-    async () => {
-      haptics.light();
-      try {
-        const credential = await AppleAuthentication.signInAsync({
-          requestedScopes: [
-            AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
-            AppleAuthentication.AppleAuthenticationScope.EMAIL,
-          ],
-        });
-
-        if (!credential.identityToken) {
-          haptics.error();
-          return { error: "Apple did not return an identity token" };
-        }
-
-        const response = await authClient.signIn.social({
-          provider: "apple",
-          idToken: { token: credential.identityToken },
-        });
-
-        if (response.error) {
-          haptics.error();
-          return { error: response.error.message ?? "Apple sign-in failed" };
-        }
-        haptics.success();
-        announce("Signed in with Apple");
-        return {};
-      } catch (e) {
-        if (e instanceof Error && "code" in e && e.code === "ERR_REQUEST_CANCELED") return {};
-        haptics.error();
-        return { error: e instanceof Error ? e.message : "Apple sign-in failed" };
-      }
-    },
-    initialState,
-  );
-
-  const error =
-    emailState.error ?? usernameState.error ?? otpRequestState.error ?? appleState.error;
-  const isLoading = isEmailPending || isUsernamePending || isSendingOtp || isApplePending;
+  const error = emailState.error ?? usernameState.error ?? otpRequestState.error ?? apple.error;
+  const isLoading = isEmailPending || isUsernamePending || isSendingOtp || apple.isPending;
 
   if (showOtpVerification) {
     return (
@@ -462,7 +421,7 @@ export default function SignInScreen() {
             <AppleButton
               testID="sign-in-apple"
               type={AppleAuthentication.AppleAuthenticationButtonType.SIGN_IN}
-              onPress={() => startTransition(() => signInWithApple())}
+              onPress={() => startTransition(() => apple.signIn())}
               disabled={isLoading}
             />
           )}

@@ -56,6 +56,7 @@ import { firstError, firstErrorField, signUpSchema } from "@/lib/schemas";
 import { ErrorText } from "@/components/ui/status-text";
 import { announce } from "@/lib/a11y";
 import { useColors, useThemedAsset } from "@/hooks/use-theme";
+import { useAppleAuth } from "@/hooks/use-apple-auth";
 import { AppleButton } from "@/components/auth/apple-button";
 
 type SignUpState = { error?: string };
@@ -71,9 +72,9 @@ export default function SignUpScreen() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showVerification, setShowVerification] = useState(false);
-  const [appleAvailable, setAppleAvailable] = useState(false);
+  const apple = useAppleAuth({ successMessage: "Signed up with Apple" });
   const providers = useQuery(api.auth.getEnabledProviders);
-  const showApple = appleAvailable && providers?.apple === true;
+  const showApple = apple.available && providers?.apple === true;
   // When `emailFeatures` is false (minimal-tier setup, no Resend), the
   // server auto-verifies on sign-up and the user is signed in immediately
   // no OTP step. When true (testflight tier+), the OTP verification
@@ -144,10 +145,6 @@ export default function SignUpScreen() {
     else if (usernameAvailable === false) announce("This username is not available");
   }, [usernameAvailable]);
 
-  useEffect(() => {
-    AppleAuthentication.isAvailableAsync().then(setAppleAvailable);
-  }, []);
-
   const hasInput =
     name.length > 0 || username.length > 0 || email.length > 0 || password.length > 0;
   const { pendingNavAction, discard, dismiss } = useUnsavedChanges(hasInput && !showVerification);
@@ -195,45 +192,8 @@ export default function SignUpScreen() {
     }
   }, initialState);
 
-  const [appleState, signUpWithApple, isApplePending] = useActionState<SignUpState, void>(
-    async () => {
-      haptics.light();
-      try {
-        const credential = await AppleAuthentication.signInAsync({
-          requestedScopes: [
-            AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
-            AppleAuthentication.AppleAuthenticationScope.EMAIL,
-          ],
-        });
-
-        if (!credential.identityToken) {
-          haptics.error();
-          return { error: "Apple did not return an identity token" };
-        }
-
-        const response = await authClient.signIn.social({
-          provider: "apple",
-          idToken: { token: credential.identityToken },
-        });
-
-        if (response.error) {
-          haptics.error();
-          return { error: response.error.message ?? "Apple sign-up failed" };
-        }
-        haptics.success();
-        announce("Signed up with Apple");
-        return {};
-      } catch (e) {
-        if (e instanceof Error && "code" in e && e.code === "ERR_REQUEST_CANCELED") return {};
-        haptics.error();
-        return { error: "Apple sign-up failed" };
-      }
-    },
-    initialState,
-  );
-
-  const isLoading = isPending || isApplePending;
-  const error = state.error ?? appleState.error;
+  const isLoading = isPending || apple.isPending;
+  const error = state.error ?? apple.error;
   // HIG: pair color with a non-color signal. The status row carries text +
   // color + an SF Symbol so a colorblind user gets the same answer.
   const usernameStatus: {
@@ -446,7 +406,7 @@ export default function SignUpScreen() {
             <AppleButton
               testID="sign-up-apple"
               type={AppleAuthentication.AppleAuthenticationButtonType.SIGN_UP}
-              onPress={() => startTransition(() => signUpWithApple())}
+              onPress={() => startTransition(() => apple.signIn())}
               disabled={isLoading}
             />
           )}

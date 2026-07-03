@@ -58,7 +58,7 @@ import { useQuery } from "convex/react";
 
 import { api } from "@/convex/_generated/api";
 
-type ResetState = { error?: string; ok?: boolean };
+type ResetState = { error?: string; ok?: boolean; expired?: boolean };
 const initialState: ResetState = {};
 
 export default function ResetPasswordScreen() {
@@ -91,7 +91,7 @@ export default function ResetPasswordScreen() {
 
     if (!email) {
       haptics.error();
-      return { error: "Missing email. Start over from forgot password." };
+      return { error: "Missing email. Start over from forgot password.", expired: true };
     }
 
     const parsed = resetPasswordSchema.safeParse({ email, otp, password, confirmPassword });
@@ -112,7 +112,7 @@ export default function ResetPasswordScreen() {
         const message = response.error.message ?? "Failed to reset password";
         const lower = message.toLowerCase();
         if (lower.includes("expired") || lower.includes("invalid")) {
-          return { error: "This code has expired. Request a new one." };
+          return { error: "This code has expired. Request a new one.", expired: true };
         }
         return { error: message };
       }
@@ -129,7 +129,7 @@ export default function ResetPasswordScreen() {
   const { pendingNavAction, discard, dismiss } = useUnsavedChanges(hasInput && !state.ok);
 
   const error = state.error;
-  const isExpiredError = error && (error.includes("expired") || error.includes("Missing email"));
+  const isExpiredError = state.expired === true;
 
   if (state.ok) {
     return (

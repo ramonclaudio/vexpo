@@ -60,7 +60,7 @@ export default function PreferencesScreen() {
             <SectionLabel>HAPTICS</SectionLabel>
             <CapsuleToggleRow
               testID="preferences-haptics"
-              icon="iphone.radiowaves.left.and.right"
+              systemImage="iphone.radiowaves.left.and.right"
               label="Haptic feedback"
               value={hapticsOn}
               onChange={(v) => {
@@ -74,7 +74,7 @@ export default function PreferencesScreen() {
             <SectionLabel>DEBUG</SectionLabel>
             <CapsuleToggleRow
               testID="preferences-debug"
-              icon="ant.circle.fill"
+              systemImage="ant.circle.fill"
               label="Debug mode"
               value={debugOn}
               onChange={(v) => {

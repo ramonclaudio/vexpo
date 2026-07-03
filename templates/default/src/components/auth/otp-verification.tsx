@@ -149,6 +149,11 @@ export function OtpVerification({ email, onBack, flow = "verify-email" }: OtpVer
   const error = lastAction === "resend" ? resendState.error : verifyState.error;
   const attempt = lastAction === "resend" ? resendState.attempt : verifyState.attempt;
 
+  const verifyLabel = (() => {
+    if (isVerifying) return isSignIn ? "Signing in..." : "Verifying...";
+    return isSignIn ? "Sign in" : "Verify";
+  })();
+
   return (
     <Host testID="otp-screen" style={{ flex: 1, backgroundColor: colors.background }}>
       <ScrollView
@@ -240,15 +245,7 @@ export function OtpVerification({ email, onBack, flow = "verify-email" }: OtpVer
 
             <ProminentButton
               testID="otp-verify"
-              label={
-                isVerifying
-                  ? isSignIn
-                    ? "Signing in..."
-                    : "Verifying..."
-                  : isSignIn
-                    ? "Sign in"
-                    : "Verify"
-              }
+              label={verifyLabel}
               onPress={runVerify}
               disabled={isVerifying || otp.length !== 6}
             />

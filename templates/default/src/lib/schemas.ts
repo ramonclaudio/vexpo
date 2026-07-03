@@ -23,22 +23,14 @@ const usernameSchema = z
   .regex(USERNAME_FORMAT_REGEX, { error: "Letters, numbers, dots, and underscores only" })
   .refine((value) => !isReservedUsername(value), { error: "That username is reserved" });
 
+// Same rules as `usernameSchema`, but an empty field is allowed (accounts can
+// exist without a username). Trim and lowercase first so a whitespace-only
+// entry collapses to "" and passes, then require either "" or a valid username.
 const optionalUsernameSchema = z
   .string()
   .trim()
   .toLowerCase()
-  .refine((value) => value === "" || value.length >= USERNAME_MIN_LENGTH, {
-    error: `Username must be at least ${USERNAME_MIN_LENGTH} characters`,
-  })
-  .refine((value) => value === "" || value.length <= USERNAME_MAX_LENGTH, {
-    error: `Username must be ${USERNAME_MAX_LENGTH} characters or fewer`,
-  })
-  .refine((value) => value === "" || USERNAME_FORMAT_REGEX.test(value), {
-    error: "Letters, numbers, dots, and underscores only",
-  })
-  .refine((value) => value === "" || !isReservedUsername(value), {
-    error: "That username is reserved",
-  });
+  .pipe(z.literal("").or(usernameSchema));
 
 const passwordSchema = z
   .string()

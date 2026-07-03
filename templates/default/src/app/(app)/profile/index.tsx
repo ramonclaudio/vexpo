@@ -197,6 +197,8 @@ export default function ProfileScreen() {
   const pickAvatar = async (source: "library" | "camera") => {
     haptics.light();
     setAvatarPicker(false);
+    // Let the avatar picker sheet finish dismissing before presenting the
+    // image picker. iOS drops a present that starts while a sheet is animating out.
     await new Promise((r) => setTimeout(r, 350));
     const perm =
       source === "camera"

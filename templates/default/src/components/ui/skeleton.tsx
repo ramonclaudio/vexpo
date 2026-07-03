@@ -31,7 +31,7 @@ import { useDynamicFont } from "@/lib/dynamic-font";
 // a silent screen; "ignore" keeps the fake children (Jane Appleseed, iPhone 15
 // Pro) unspoken.
 
-function FieldBox(): React.ReactNode {
+function FieldBox() {
   const colors = useColors();
   return (
     <VStack
@@ -47,7 +47,7 @@ function FieldBox(): React.ReactNode {
   );
 }
 
-function Circle({ size }: { size: number }): React.ReactNode {
+function Circle({ size }: { size: number }) {
   const colors = useColors();
   return (
     <VStack
@@ -63,7 +63,7 @@ function Circle({ size }: { size: number }): React.ReactNode {
   );
 }
 
-function Field({ label }: { label: string }): React.ReactNode {
+function Field({ label }: { label: string }) {
   const dfont = useDynamicFont();
   return (
     <VStack alignment="leading" spacing={Spacing.md}>
@@ -73,7 +73,7 @@ function Field({ label }: { label: string }): React.ReactNode {
   );
 }
 
-export function SkeletonProfile({ testID }: { testID?: string } = {}): React.ReactNode {
+export function SkeletonProfile({ testID }: { testID?: string } = {}) {
   const dfont = useDynamicFont();
   return (
     <VStack
@@ -102,7 +102,7 @@ export function SkeletonProfile({ testID }: { testID?: string } = {}): React.Rea
   );
 }
 
-export function SkeletonSessions({ testID }: { testID?: string } = {}): React.ReactNode {
+export function SkeletonSessions({ testID }: { testID?: string } = {}) {
   return (
     <VStack
       testID={testID}
@@ -122,7 +122,7 @@ export function SkeletonSessions({ testID }: { testID?: string } = {}): React.Re
   );
 }
 
-function SkeletonSessionRow(): React.ReactNode {
+function SkeletonSessionRow() {
   const dfont = useDynamicFont();
   const colors = useColors();
   return (

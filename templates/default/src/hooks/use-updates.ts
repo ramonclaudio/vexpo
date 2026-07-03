@@ -15,8 +15,7 @@ import { useReducedMotion } from "@/hooks/use-reduced-motion";
 type UpdatesState = ReturnType<typeof useUpdates>;
 
 function deriveStatusText(state: UpdatesState): string {
-  if (state.isRestarting) return "Restarting...";
-  if (state.isUpdatePending) return "Restarting...";
+  if (state.isRestarting || state.isUpdatePending) return "Restarting...";
   if (state.isDownloading) {
     const pct =
       state.downloadProgress != null ? ` ${Math.round(state.downloadProgress * 100)}%` : "";

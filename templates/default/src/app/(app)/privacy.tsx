@@ -50,7 +50,7 @@ export default function PrivacyScreen() {
 
           <CapsuleToggleRow
             testID="privacy-share-analytics"
-            icon="chart.bar.fill"
+            systemImage="chart.bar.fill"
             label="Share Analytics"
             a11yLabel="Share analytics"
             value={analyticsEnabled}

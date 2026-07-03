@@ -22,14 +22,14 @@ type SFSymbol = NonNullable<ComponentProps<typeof Image>["systemName"]>;
 // already announces it. `a11yLabel` defaults to `label`.
 export function CapsuleToggleRow({
   testID,
-  icon,
+  systemImage,
   label,
   value,
   onChange,
   a11yLabel,
 }: {
   testID: string;
-  icon: SFSymbol;
+  systemImage: SFSymbol;
   label: string;
   value: boolean;
   onChange: (value: boolean) => void;
@@ -49,7 +49,7 @@ export function CapsuleToggleRow({
       ]}
     >
       <Image
-        systemName={icon}
+        systemName={systemImage}
         color={colors.foreground as string}
         modifiers={[dfont({ size: 18 }), accessibilityHidden(true)]}
       />

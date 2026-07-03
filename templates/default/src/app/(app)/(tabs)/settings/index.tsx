@@ -3,9 +3,6 @@ import Constants from "expo-constants";
 import * as Clipboard from "expo-clipboard";
 import { useDeleteAccount } from "@/hooks/use-delete-account";
 import { router, type Href } from "expo-router";
-
-const PROFILE_HREF = "/profile" as Href;
-const DEBUG_HREF = "/debug" as Href;
 import { useQuery } from "convex/react";
 import {
   Host,
@@ -48,6 +45,9 @@ import { useColors } from "@/hooks/use-theme";
 import { useScenePrivacy } from "@/hooks/use-scene-privacy";
 import { useSignOut } from "@/hooks/use-sign-out";
 import { useDebugEnabled } from "@/lib/preferences";
+
+const PROFILE_HREF = "/profile" as Href;
+const DEBUG_HREF = "/debug" as Href;
 
 const HEADER_AVATAR_SIZE = 56;
 
@@ -102,10 +102,7 @@ export default function SettingsScreen() {
               clipShape("capsule"),
               accessibilityHint("Opens your profile"),
             ]}
-            onPress={() => {
-              haptics.light();
-              navigate(PROFILE_HREF);
-            }}
+            onPress={() => navigate(PROFILE_HREF)}
           >
             <HStack
               spacing={16}

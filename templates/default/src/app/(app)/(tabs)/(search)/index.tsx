@@ -127,8 +127,8 @@ export default function SearchScreen() {
   );
 
   const results = useMemo(() => {
-    if (query.trim().length === 0) return destinations;
     const trimmed = query.trim();
+    if (trimmed.length === 0) return destinations;
     const scored = destinations.map((d) => ({ d, s: score(d, trimmed) })).filter(({ s }) => s > 0);
     // `.toSorted` is ES2023 and not in Hermes V1 (default in SDK 56); `.sort`
     // mutates in place, and `.filter` above already returned a fresh array.
