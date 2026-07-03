@@ -125,7 +125,7 @@ Conventional commits: `type(scope): lowercase summary under 72 chars`, no traili
 
 ```
 fix(submit): forward .env.local identity to the eas subprocess
-feat(apple): add asc:connect for the eas to app store link
+feat(apple): add asc connect for the eas to app store link
 ```
 
 ## Before you open a PR

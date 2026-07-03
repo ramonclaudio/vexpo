@@ -29,7 +29,7 @@ Out of scope:
 The `convex/webhook.ts` factory wraps every signed POST handler with:
 
 - Constant-time HMAC verification, per the algorithm the source declares (EAS SHA-1, Stripe SHA-256). Mismatch returns 401 with a request ID, no body details.
-- Body size cap, default 1 MiB, rejected before parsing JSON. Defends against memory-exhaustion uploads.
+- Body size cap, default 1 MiB. The `Content-Length` header is checked first, then the body is read as a stream and aborted the moment it passes the cap, so a client that lies about its length can't buffer fully. Defends against memory-exhaustion uploads.
 - Optional replay window. Source-dependent. EAS doesn't sign a timestamp, Stripe does. When opted in, the factory checks `|now - t| < maxAgeSeconds`.
 - Per-request correlation ID, returned as `X-Request-Id` and logged on every line.
 - Structured access log: `webhook.ok`, `webhook.bad_signature`, `webhook.too_large`, `webhook.stale`, `webhook.handler_error`, one-line JSON to Convex's log surface.
@@ -74,17 +74,6 @@ Apple App Store Review 5.1.1(v) requires in-app account deletion. vexpo ships a 
 - `internal.users.hardDeleteExpired` cron runs daily at 04:00 UTC. For each row past the window it revokes Apple Sign In refresh tokens (Apple guideline 5.1.1(v) requires the SIWA REST API to revoke user tokens), drops every Better Auth row keyed to the user (`session`, `account`, `twoFactor`, `oauthAccessToken`, `oauthConsent`, `oauthApplication`, `verification`), deletes the Better Auth user (the `onDelete` trigger drops the app `users` row and frees the avatar blob), and writes an audit row.
 - `accountDeletionAudit` is the compliance trail. One row per transition (`requested`, `restored`, `permanent`) keyed on `authId`, so the lifecycle is reconstructable after the user row is purged.
 
-### App Attest
-
-App Attest ships as primitives ready to wire, not a live flow. The goal is cryptographic proof that a request came from an unmodified vexpo binary on a real iOS device with a Secure Enclave. Rate limiting slows attackers. App Attest proves the device is real. Two pieces:
-
-- Server verifiers in `convex/appAttest.ts` (`issueChallenge`, `verifyAttestation`, `verifyAssertion`), all `internalAction` so the client can't call them yet. `verifyAttestation` runs Apple's full protocol: verifies the cert chain from `x5c[0]` to the pinned Apple App Attest Root CA, recomputes the nonce and matches the leaf cert's `1.2.840.113635.100.8.2` extension, checks the public-key hash against `credentialId`, verifies `rpIdHash == SHA256(<TEAM_ID>.<BUNDLE_ID>)` and the AAGUID for the environment, and that the initial counter is zero. `verifyAssertion` checks the ECDSA-P256-SHA256 signature against the stored key and bumps a strictly-increasing counter in one mutation. `appAttestChallenges` is single-use + TTL'd (5 min), swept hourly.
-- Client helper in `src/lib/appAttest.ts` (`attestThisDevice`, `signRequest`) drives `@expo/app-integrity` against an `AppAttestClient` the caller provides.
-
-To wire it: expose a public action over the `internalAction` verifiers, implement `AppAttestClient` to call it, then guard the anti-abuse surfaces by verifying `X-App-Attest-KeyId` + `X-App-Attest-Assertion` + the body. The iOS entitlement (`com.apple.developer.devicecheck.appattest-environment: production`) lives in `app.config.ts`'s `ios.entitlements`. Debug builds attest against the development AAGUID automatically.
-
-https://developer.apple.com/documentation/devicecheck/validating-apps-that-connect-to-your-server
-
 ### Convex deploy keys
 
 - Production deploy key lives in EAS env at `secret` visibility. `deploy_convex` pulls it via `environment: production`. Never inlined in YAML or logs.
@@ -93,14 +82,14 @@ https://developer.apple.com/documentation/devicecheck/validating-apps-that-conne
 ### CI
 
 - `.github/workflows/check.yml` declares `permissions: contents: read`. We narrow GitHub Actions' broad default to read-only.
-- `.github/workflows/release.yml` is the only workflow requesting write scopes (`contents: write` for the release, `id-token: write` for npm provenance). Tag push triggers it, no PR can.
+- `.github/workflows/release.yml` is the only workflow with `contents: write` (for the release, plus `id-token: write` for npm provenance). Tag push triggers it, no PR can. `scorecard.yml` elevates to `security-events: write` plus `id-token: write` to sign its results upload. `codeql.yml` elevates to `security-events: write` only. Neither touches repo content.
 - `npm ci` on every install (frozen lockfile), so a PR changing a transitive dep version can't sneak through.
 
 ### Developer machine compromise
 
 - `.setup-state.json`: IDs and timestamps, no secrets. The Convex deployment name and Apple Team ID alone don't authenticate as the developer.
 - `.env.local`, `.env.prod`: these DO contain secrets. `.gitignored`. Manage like any local credentials.
-- `.p8` files (ASC API, SIWA): private keys. `.gitignored`. Stage one-time downloads in the `credentials/` dir; their real home is EAS (uploaded, KMS-encrypted), so a stolen laptop yields at most a key to rotate, not the canonical copy. Delete the local `.p8` after upload if you like.
+- `.p8` files (ASC API, SIWA): private keys. `.gitignored`. Stage one-time downloads in the `credentials/` dir. Their real home is EAS, uploaded and KMS-encrypted, so a stolen laptop yields at most a key to rotate, not the canonical copy. Delete the local `.p8` after upload if you like.
 
 ## Secret rotation
 
@@ -110,8 +99,8 @@ https://developer.apple.com/documentation/devicecheck/validating-apps-that-conne
 | Convex production deploy key   | When suspected compromise | `npx convex auth` → revoke + reissue                                                                                                     |
 | Apple distribution cert        | Annual (Apple's choice)   | `eas credentials -p ios` interactive flow                                                                                                |
 | Apple APNs push key            | When suspected compromise | Apple Developer Portal → Keys → Revoke + Create                                                                                          |
-| ASC API key                    | Every 6-12 months         | App Store Connect → Users and Access → Integrations → Revoke + Create (Team key, App Manager role; no in-place edit)                     |
-| `BETTER_AUTH_SECRET`           | When suspected compromise | Rotate with the versioned `BETTER_AUTH_SECRETS=2:new,1:old` form so live sessions survive; never swap the singular secret mid OAuth flow |
+| ASC API key                    | Every 6-12 months         | App Store Connect → Users and Access → Integrations → Revoke + Create (Team key, App Manager role, no in-place edit)                     |
+| `BETTER_AUTH_SECRET`           | When suspected compromise | Rotate with the versioned `BETTER_AUTH_SECRETS=2:new,1:old` form so live sessions survive. Never swap the singular secret mid OAuth flow |
 | `EAS_WEBHOOK_SECRET`           | When suspected compromise | `npx eas-cli webhook:update --id <id> --secret <new>` + `npx convex env set EAS_WEBHOOK_SECRET <new>`                                    |
 | `RESEND_WEBHOOK_SECRET`        | When suspected compromise | Resend dashboard → reissue + `npx convex env set RESEND_WEBHOOK_SECRET <new>`                                                            |
 

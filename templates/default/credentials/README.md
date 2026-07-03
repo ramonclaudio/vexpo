@@ -24,7 +24,7 @@ npx vexpo apple asc-key
 # 3. Upload it to EAS so cloud builds/submits can use it:
 npx eas-cli credentials --platform ios   # App Store Connect API Key -> set up
 # 4. Link the project to its ASC app (writes ascAppId into eas.json):
-npx vexpo asc:connect
+npx vexpo asc connect
 ```
 
 After upload you can delete the local `.p8`, EAS holds it. If you keep it, it stays gitignored.

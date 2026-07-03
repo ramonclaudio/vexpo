@@ -10,7 +10,7 @@ hand. These are conventions.
   calls. Everything goes through `convex/` (server) and `convex/react`
   (client). After running `npx convex ai-files install`, read
   `convex/_generated/ai/guidelines.md` before touching anything in `convex/`.
-- Auth. Better Auth via `@convex-dev/better-auth@0.12.3`. Email
+- Auth. Better Auth via `@convex-dev/better-auth@0.12.4`. Email
   verification is gated on the `REQUIRE_EMAIL_VERIFICATION` Convex env var.
 - Mobile. Expo SDK 57, RN 0.86, React 19. **iOS only today.**
   Native UI exclusively via `@expo/ui/swift-ui`. No NativeWind, no Tailwind,
@@ -35,7 +35,7 @@ hand. These are conventions.
   the server (`convex/validators.ts`). Don't pick one. Both, at each
   boundary.
 - Errors: Throw real `Error` instances. Wrap server errors with
-  `formatError` from `components/ui/convex-error.tsx`. Don't swallow.
+  `formatError` from `lib/convex-error.ts`. Don't swallow.
 - Tests: Vitest. `templates/default/__tests__/` covers Convex constants,
   validators, and deep-link parsing. Add tests for new validator logic and
   new HTTP handlers.

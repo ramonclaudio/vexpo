@@ -42,11 +42,13 @@ vexpo review-account              seed the App Review demo account on Convex
 vexpo convex                      provision or connect a Convex deployment
 vexpo better-auth                 set SITE_URL, BETTER_AUTH_SECRET, APP_NAME on Convex
 vexpo resend                      provision Resend sending key + webhook, write to Convex env
+vexpo eas                         EAS bootstrap: link project, ensure channels + branches, push env
+vexpo eas --with-prod             same + push .env.prod EXPO_PUBLIC_* vars to production + preview
 vexpo env push                    push .env.local + .env.prod to Convex + EAS env
 vexpo env convex-key              sync Convex deploy key + selector to EAS (post-migration fix)
 vexpo adopt                       finish a project created by `eas integrations:convex:connect`
-vexpo convex:migrate              copy server-side Convex env from another deployment
-vexpo asc:connect                 link the EAS project to its ASC app (wraps `eas integrations:asc:connect`)
+vexpo convex migrate              copy server-side Convex env from another deployment
+vexpo asc connect                 link the EAS project to its ASC app (wraps `eas integrations:asc:connect`)
 ```
 
 ## Apple
@@ -74,10 +76,10 @@ vexpo testflight testers list                list beta testers
 vexpo testflight invite <email>              add a tester + send a TestFlight invite
 vexpo testflight whats-new <buildId> <text>  set the "What's new" notes
 
-vexpo asc:privacy show [file]                show the declared privacy.config.json
-vexpo asc:privacy lint <file>                validate privacy.config.json against Apple's enums
-vexpo asc:accessibility show                 fetch the app's accessibility declarations
-vexpo asc:accessibility lint <file>          validate accessibility.config.json against Apple's enums
+vexpo asc privacy show [file]                show the declared privacy.config.json
+vexpo asc privacy lint <file>                validate privacy.config.json against Apple's enums
+vexpo asc accessibility show                 fetch the app's accessibility declarations
+vexpo asc accessibility lint <file>          validate accessibility.config.json against Apple's enums
 ```
 
 ## Don't reinvent EAS
@@ -102,7 +104,7 @@ npx eas env [...]                # env:push, env:pull, env:get, env:delete, env:
 npx eas integrations:asc [...]   # status, connect, disconnect
 ```
 
-`vexpo full` drives `eas init`, `eas env:push`, `eas credentials`, and the ASC link internally using the cached ASC key. Only the ASC link is also standalone, as `vexpo asc:connect`.
+`vexpo full` drives `eas init`, `eas env:push`, `eas credentials`, and the ASC link internally using the cached ASC key. Only the ASC link is also standalone, as `vexpo asc connect`.
 
 ## Architecture
 

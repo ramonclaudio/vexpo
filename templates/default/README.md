@@ -61,16 +61,16 @@ Three rules cover all of it:
 | ASC API key `.p8` (App Manager role)               | EAS credential store                   | `credentials/` | `eas credentials`                  |
 | SIWA `.p8`                                         | EAS env (secret)                       | `credentials/` | `vexpo apple eas-rotation-secrets` |
 | dist cert, provisioning, push key                  | EAS (managed)                          | none           | `eas credentials`                  |
-| EAS Update key                                     | EAS file secret; public cert committed | `keys/`        | `npm run updates:gen-cert`         |
+| EAS Update key                                     | EAS file secret, public cert committed | `keys/`        | `npm run updates:gen-cert`         |
 
 ### App Store submission
 
-TestFlight and App Store submission need two things: your App Store Connect agreements accepted, and an ASC API key registered in EAS. A missing or expired agreement makes every ASC API call return 403, which reads as an auth failure but isn't. Accept it at App Store Connect -> Business (Agreements, Tax, and Banking); only the Account Holder can.
+TestFlight and App Store submission need two things: your App Store Connect agreements accepted, and an ASC API key registered in EAS. A missing or expired agreement makes every ASC API call return 403, which reads as an auth failure but isn't. Accept it at App Store Connect -> Business (Agreements, Tax, and Banking). Only the Account Holder can.
 
-1. App Store Connect -> Users and Access -> Integrations -> App Store Connect API. Generate a **Team** key with the **App Manager** role (least privilege that can submit; Admin also works). Download the `.p8` once into `credentials/`.
+1. App Store Connect -> Users and Access -> Integrations -> App Store Connect API. Generate a **Team** key with the **App Manager** role (least privilege that can submit, Admin also works). Download the `.p8` once into `credentials/`.
 2. `npx vexpo apple asc-key`, registers and validates it (auto-detects `credentials/`).
 3. `npx eas-cli credentials --platform ios` -> App Store Connect API Key -> set it up, so cloud submits can use it.
-4. `npx vexpo asc:connect`, writes `ascAppId` into your `eas.json` and links the project to its ASC app. eas-cli takes the app id only from the submit profile (no flag, no env var), so this write is what makes a non-interactive submit work, and it lands the id even headless (CI) once the app record exists.
+4. `npx vexpo asc connect`, writes `ascAppId` into your `eas.json` and links the project to its ASC app. eas-cli takes the app id only from the submit profile (no flag, no env var), so this write is what makes a non-interactive submit work, and it lands the id even headless (CI) once the app record exists.
 5. `npm run eas:tf`, builds and submits to TestFlight.
 
 The ASC app record appears only after your first submit, so a brand-new app's first `eas:tf` runs interactively. After that, `npx vexpo submit` re-submits the latest build fully non-interactively: it sets `EXPO_ASC_*` from your cached key and writes `ascAppId` into `eas.json`, no EAS credential store needed. Pass `--profile production` to submit to the App Store, or `--id <buildId>` for a specific build.
@@ -141,7 +141,7 @@ Setup is one-shot, not a `package.json` script. Run `npx vexpo lite`, `npx vexpo
 - Theme switching, haptics, reduced motion, VoiceOver, and Dynamic Type end to end
 - Liquid Glass on iOS 26+, with a `UIVisualEffectView` blur fallback on iOS 16.4-25
 - OTA updates code-signed end to end, so only signed bundles install
-- EAS Build, Update, Submit, and Metadata, with ten workflows under `.eas/workflows/`
+- EAS Build, Update, Submit, and Metadata, with nine workflows under `.eas/workflows/`
 
 `runtimeVersion` uses the fingerprint policy with `appVersionSource: "remote"`, ASC key managed by EAS. PR previews, Maestro E2E, and the production deploy are `workflow_dispatch`-only by default. Restore the `pull_request` triggers to build on every PR, or add a `push: main` trigger to deploy on merge.
 
@@ -165,7 +165,7 @@ convex/                           Convex backend
 plugins/
   with-auto-signing.js            CODE_SIGN_STYLE=Automatic + DEVELOPMENT_TEAM
   with-pod-deployment-target.js   Forces every pod to iOS 16.4
-.eas/workflows/                   10 EAS Workflow YAML files
+.eas/workflows/                   9 EAS Workflow YAML files
 .github/workflows/check.yml       Typecheck, lint, format, tests
 scripts/
   clean.ts                        Trash + reinstall
@@ -202,10 +202,7 @@ The template used to ship an Apple App Attest stack (a Convex verifier plus a cl
 Every `expo-*` package tracks the same SDK 57 release. `npm run upgrade:stable` rolls them forward together. `npm run upgrade` tracks the next SDK preview.
 
 > [!CAUTION]
-> Two deps are pinned on purpose, don't bump them blind:
->
-> - `better-auth@1.6.16` + `@convex-dev/better-auth@0.12.3`. Older `@convex-dev/better-auth` breaks signup.
-> - `convex@~1.40.0`. 1.41.0 breaks the `convex/http.ts` typecheck against `@convex-dev/resend@0.2.4`.
+> Don't downgrade `@convex-dev/better-auth` below `0.12.4` (pinned with `better-auth@1.6.20`). Older `@convex-dev/better-auth` breaks signup.
 
 ## License
 

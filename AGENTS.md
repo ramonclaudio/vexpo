@@ -7,8 +7,8 @@ Guidance for AI coding agents working in this repository. Complements the README
 Monorepo for vexpo, a one-shot Expo + Convex + Better Auth + Resend starter targeting iOS. Three pieces:
 
 - `packages/create-vexpo`: npm scaffolder. Runs as `npm create @ramonclaudio/vexpo@latest my-app`. Copies `templates/default/`, rewrites `package.json` (name, version, `private`, strips publish metadata), installs via the detected package manager (`npm_config_user_agent`, defaults to npm), inits git.
-- `packages/vexpo`: operational CLI. Runs as `vexpo <subcommand>` inside a scaffolded project. Deliberately small: it doesn't wrap what `eas` already does. Scope test for every command: does it help an empty directory reach a first shipped iOS app? Two-mode setup (`lite`, `full`) with standalone phases, cross-source drift detection (`doctor`), Apple work `eas-cli` doesn't expose (`apple {asc-key, credentials, services-id, jwt, eas-rotation-secrets}`), App Store Connect steps (`testflight`, `asc:privacy`, `asc:accessibility`, `asc:connect`), and env sync (`env push`). Post-launch ops are out of scope.
-- `templates/default/`: the Expo SDK 56 + Convex + Better Auth app that gets copied. Includes auth, push, OTA, and App Store submission. Standalone (own `package-lock.json`, `node_modules`), not a workspace member.
+- `packages/vexpo`: operational CLI. Runs as `vexpo <subcommand>` inside a scaffolded project. Deliberately small: it doesn't wrap what `eas` already does. Scope test for every command: does it help an empty directory reach a first shipped iOS app? Two-mode setup (`lite`, `full`) with standalone phases, cross-source drift detection (`doctor`), Apple work `eas-cli` doesn't expose (`apple {asc-key, credentials, services-id, jwt, eas-rotation-secrets}`), App Store Connect steps (`testflight`, `asc privacy`, `asc accessibility`, `asc connect`), and env sync (`env push`). Post-launch ops are out of scope.
+- `templates/default/`: the Expo SDK 57 + Convex + Better Auth app that gets copied. Includes auth, push, OTA, and App Store submission. Standalone (own `package-lock.json`, `node_modules`), not a workspace member.
 
 npm workspace at the root with `packages/*` as members. Templates stay outside the workspace because Expo's hoisting doesn't survive npm's workspace install layout. The CLI links into the template via `npm run link:dev` for monorepo dev.
 
@@ -32,7 +32,7 @@ npm workspace at the root with `packages/*` as members. Templates stay outside t
 
 - Expo SDK 57, RN 0.86+, React 19. Convex backend. Better Auth via `@convex-dev/better-auth`. Resend via `@convex-dev/resend`.
 - Native SwiftUI via `@expo/ui/swift-ui`. Material translucency via `expo-glass-effect` (iOS 26+) + `expo-blur` fallback.
-- EAS Workflows for all CI/CD. PR previews and Maestro E2E ship `workflow_dispatch`-only to conserve build credits. GitHub Actions only for general checks (typecheck, lint, format, tests, fingerprint).
+- EAS Workflows for all CI/CD. PR previews and Maestro E2E ship `workflow_dispatch`-only to conserve build credits. GitHub Actions only for general checks (expo-doctor, typecheck, lint, format, tests).
 - Setup is a CLI concern (`npx vexpo lite` / `full`), not a `package.json` script.
 
 ### Operational CLI (`packages/vexpo/`)
