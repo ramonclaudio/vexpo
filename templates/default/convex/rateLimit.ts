@@ -11,14 +11,11 @@ export const rateLimiter = new RateLimiter(components.rateLimiter, {
     capacity: 10,
   },
 
-  // Sensitive account mutations (delete/restore). A throttle, not a hard block:
-  // a legitimate one-shot call never approaches the capacity-5 bucket, and a
-  // throttled caller's tokens refill at `rate`, so a retry after the
-  // `retryAfter` window succeeds. That, not `reserve`, is how these "must
-  // eventually succeed" (reserve returns ok-with-retryAfter, which `throws`
-  // would reject anyway, and is meant for deferred/scheduled work, not a
-  // synchronous mutation that returns its result inline). Apple 5.1.1(v) in-app
-  // deletion still works: a real user deletes once.
+  // Sensitive account mutations (delete/restore). A throttle, not a hard block.
+  // A real user deletes once, so a legitimate one-shot call never approaches the
+  // capacity-5 bucket. A throttled caller's tokens refill at `rate`, so a retry
+  // after the `retryAfter` window succeeds. Apple 5.1.1(v) in-app deletion still
+  // works.
   criticalAction: {
     kind: "token bucket",
     rate: 10,

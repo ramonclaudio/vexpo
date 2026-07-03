@@ -21,35 +21,9 @@ import { internal } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { RECEIPT_PAGE } from "@/convex/pushSender";
 
-import { type AuthedTest, initConvexTest } from "./_harness";
+import { type AuthedTest, initConvexTest, seedToken, seedUser } from "./_harness";
 
 afterEach(() => vi.unstubAllGlobals());
-
-async function seedUser(t: AuthedTest) {
-  const now = Date.now();
-  return t.run((ctx) =>
-    ctx.db.insert("users", {
-      authId: `auth-${now}-${Math.random()}`,
-      createdAt: now,
-      updatedAt: now,
-    }),
-  );
-}
-
-async function seedToken(t: AuthedTest, userId: Id<"users">, token: string) {
-  const now = Date.now();
-  return t.run((ctx) =>
-    ctx.db.insert("pushTokens", {
-      userId,
-      token,
-      deviceType: "ios" as const,
-      createdAt: now,
-      updatedAt: now,
-      lastSeenAt: now,
-      revoked: false,
-    }),
-  );
-}
 
 async function seedReceipt(
   t: AuthedTest,

@@ -18,4 +18,3 @@ docs/
 .agents/
 .claude/
 app-store/
-convex/*.test.ts

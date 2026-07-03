@@ -37,7 +37,7 @@ export const createReviewAccount = internalAction({
       (await ctx.runQuery(components.betterAuth.adapter.findOne, {
         model: "user",
         where: [{ field: "email", value: email }],
-      } as never)) as User | null;
+      })) as User | null;
 
     let user = await lookup();
     let created = false;
@@ -63,7 +63,7 @@ export const createReviewAccount = internalAction({
         where: [{ field: "_id", value: docId }],
         update: { emailVerified: true },
       },
-    } as never);
+    });
 
     return {
       userId: docId,

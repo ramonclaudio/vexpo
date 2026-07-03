@@ -1,5 +1,5 @@
 {
-  "_comment": "Drives `vexpo asc privacy lint`. The dashboard form at App Store Connect is the source of truth for submission; this file is for keeping a versioned, reviewable copy alongside the code. Default state: the starter collects no data beyond what Better Auth needs for sign-in (email + opaque user id), which `IDENTIFIERS` covers. Tighten or expand to match your app.",
+  "_comment": "Drives `vexpo asc privacy lint`. The dashboard form at App Store Connect is the source of truth for submission. This file keeps a versioned, reviewable copy next to the code. Default state declares three categories: CONTACT_INFO for the sign-in email, IDENTIFIERS for the opaque user id, and DIAGNOSTICS for crash and performance data. Drop the DIAGNOSTICS entry if your build ships no analytics. Tighten or expand to match your app.",
   "collectsData": true,
   "entries": [
     {

@@ -109,8 +109,8 @@ function installCmdFor(pm: PM, frozen: boolean): string {
   return `${pm} install --frozen-lockfile`;
 }
 
-const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-process.chdir(REPO_ROOT);
+const REPO = resolve(dirname(fileURLToPath(import.meta.url)), "..");
+process.chdir(REPO);
 
 const RESET = "\x1b[0m";
 const BOLD = "\x1b[1m";
@@ -240,7 +240,6 @@ async function expandGlob(dir: string, pattern: string): Promise<string[]> {
   return entries.filter((e) => re.test(e)).map((e) => `${dir}/${e}`);
 }
 
-const REPO = REPO_ROOT;
 const TMPDIR = process.env.TMPDIR?.replace(/\/$/, "") ?? "/tmp";
 const HOME = homedir();
 

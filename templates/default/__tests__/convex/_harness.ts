@@ -96,6 +96,34 @@ export async function seedAuthedUser(
   return { authUserId, sessionId, appUserId, name, email };
 }
 
+/** Minimal app `users` row for push tests, no auth chain. */
+export async function seedUser(t: AuthedTest) {
+  const now = Date.now();
+  return t.run((ctx) =>
+    ctx.db.insert("users", {
+      authId: `auth-${now}-${Math.random()}`,
+      createdAt: now,
+      updatedAt: now,
+    }),
+  );
+}
+
+/** Active push token owned by `userId`. */
+export async function seedToken(t: AuthedTest, userId: Id<"users">, token: string) {
+  const now = Date.now();
+  return t.run((ctx) =>
+    ctx.db.insert("pushTokens", {
+      userId,
+      token,
+      deviceType: "ios" as const,
+      createdAt: now,
+      updatedAt: now,
+      lastSeenAt: now,
+      revoked: false,
+    }),
+  );
+}
+
 /** Identity for `t.withIdentity(...)` matching a seeded user's component ids. */
 export function identityFor(authUserId: string, sessionId: string) {
   return {

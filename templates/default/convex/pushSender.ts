@@ -2,6 +2,7 @@ import { v } from "convex/values";
 
 import type { Id } from "./_generated/dataModel";
 import { internal } from "./_generated/api";
+import type { ActionCtx } from "./_generated/server";
 import { internalAction } from "./_generated/server";
 
 const EXPO_PUSH_URL = "https://exp.host/--/api/v2/push/send";
@@ -258,15 +259,7 @@ function planReceiptReconciliation(
  * ticket with the token it was sent to, so alignment holds even when a chunk
  * returned fewer tickets than messages or was skipped entirely.
  */
-async function reconcileTickets(
-  ctx: {
-    runMutation: (
-      ref: typeof internal.pushTokens.markRevoked,
-      args: { tokenIds: Id<"pushTokens">[]; errorCode: string },
-    ) => Promise<number>;
-  },
-  entries: TicketEntry[],
-): Promise<number> {
+async function reconcileTickets(ctx: ActionCtx, entries: TicketEntry[]): Promise<number> {
   const buckets = new Map<string, Id<"pushTokens">[]>();
   for (const { ticket, token } of entries) {
     if (ticket.status !== "error") continue;

@@ -36,7 +36,7 @@ hand. These are conventions.
   boundary.
 - Errors: Throw real `Error` instances. Wrap server errors with
   `formatError` from `lib/convex-error.ts`. Don't swallow.
-- Tests: Vitest. `templates/default/__tests__/` covers Convex constants,
+- Tests: Vitest. `__tests__/` covers Convex constants,
   validators, and deep-link parsing. Add tests for new validator logic and
   new HTTP handlers.
 

@@ -20,7 +20,7 @@ import { afterEach, describe, expect, test, vi } from "vitest";
 import { internal } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 
-import { type AuthedTest, initConvexTest } from "./_harness";
+import { initConvexTest, seedToken, seedUser } from "./_harness";
 
 afterEach(() => vi.unstubAllGlobals());
 
@@ -37,32 +37,6 @@ type Msg = {
 type Ticket =
   | { status: "ok"; id: string }
   | { status: "error"; message: string; details: { error: string } };
-
-async function seedUser(t: AuthedTest) {
-  const now = Date.now();
-  return t.run((ctx) =>
-    ctx.db.insert("users", {
-      authId: `auth-${now}-${Math.random()}`,
-      createdAt: now,
-      updatedAt: now,
-    }),
-  );
-}
-
-async function seedToken(t: AuthedTest, userId: Id<"users">, token: string) {
-  const now = Date.now();
-  return t.run((ctx) =>
-    ctx.db.insert("pushTokens", {
-      userId,
-      token,
-      deviceType: "ios" as const,
-      createdAt: now,
-      updatedAt: now,
-      lastSeenAt: now,
-      revoked: false,
-    }),
-  );
-}
 
 type FetchResult = { ok: boolean; status: number; json: () => Promise<unknown> };
 
