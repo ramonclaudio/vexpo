@@ -89,7 +89,7 @@ export const sendToUser = internalAction({
   }),
   handler: async (ctx, args) => {
     const tokens = await ctx.runQuery(internal.pushTokens.listActiveByUser, {
-      userId: args.userId as Id<"users">,
+      userId: args.userId,
     });
     if (tokens.length === 0) return { sent: 0, revoked: 0 };
 

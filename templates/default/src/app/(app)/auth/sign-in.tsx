@@ -225,7 +225,7 @@ export default function SignInScreen() {
           <RNHostView matchContents>
             <ExpoImage
               source={brandIcon}
-              style={{ width: 56, height: 56 } as never}
+              style={{ width: 56, height: 56 }}
               accessibilityLabel=""
               contentFit="contain"
             />

@@ -6,7 +6,7 @@ import { authClient } from "@/lib/auth-client";
 import { haptics } from "@/lib/haptics";
 
 // Push-token cleanup is best-effort. A stale token gets garbage-collected by
-// `pushTokens.cleanupStale` after 30 days, so don't gate sign-out on it.
+// `pushTokens.cleanupStale` after 90 days, so don't gate sign-out on it.
 export function useSignOut() {
   const removeAllTokens = useMutation(api.pushTokens.removeAll);
   return useCallback(async () => {

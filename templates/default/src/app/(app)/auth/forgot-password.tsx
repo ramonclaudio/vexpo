@@ -100,7 +100,7 @@ export default function ForgotPasswordScreen() {
           <RNHostView matchContents>
             <ExpoImage
               source={brandIcon}
-              style={{ width: 56, height: 56 } as never}
+              style={{ width: 56, height: 56 }}
               accessibilityLabel="App icon"
               contentFit="contain"
             />
