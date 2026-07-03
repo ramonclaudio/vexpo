@@ -1,26 +1,10 @@
 # Security
 
-Threat model, the defenses vexpo ships, and what's out of scope.
+## Reporting issues
 
-## Threat model
+For vulnerabilities in vexpo's own code, open a private security advisory: `https://github.com/ramonclaudio/vexpo/security/advisories/new`. Please don't file public issues.
 
-Defends against:
-
-1. Forged inbound webhooks. Anyone who learns a webhook URL can otherwise POST whatever they want.
-2. Replayed inbound webhooks. An attacker captures a legitimate webhook and replays it later.
-3. Stolen OTA bundles. A compromised CDN serves a malicious JS bundle.
-4. Stolen Apple credentials. APNs `.p8`, SIWA `.p8`, distribution certs.
-5. Stolen Convex deploy keys. Lets an attacker push code to your deployment.
-6. Stale Apple Sign In JWTs. Apple caps `client_secret` JWTs at 180 days. An expired one silently breaks every new sign-in.
-7. Compromised CI runners. Workflow steps run with broad token scope by default.
-8. Token theft from `.setup-state.json`. A developer's machine is compromised: what does the attacker learn?
-
-Out of scope:
-
-- TLS termination and cert management (Convex + EAS handle it).
-- DDoS protection on Convex's HTTP routes (Convex's CDN handles the first tier).
-- Per-endpoint auth rate-limit tuning. `@convex-dev/rate-limiter` is wired, but tuning is the operator's call.
-- Forensics and SIEM. We log structured events, not full request bodies.
+For vulnerabilities in dependencies (Expo, Convex, Better Auth, Resend), report upstream first per their disclosure policies. We'll bump the affected dependency and ship a patched release once upstream has a fix.
 
 ## Defenses, by surface
 
@@ -33,13 +17,12 @@ The `convex/webhook.ts` factory wraps every signed POST handler with:
 - Optional replay window. Source-dependent. EAS doesn't sign a timestamp, Stripe does. When opted in, the factory checks `|now - t| < maxAgeSeconds`.
 - Per-request correlation ID, returned as `X-Request-Id` and logged on every line.
 - Structured access log: `webhook.ok`, `webhook.bad_signature`, `webhook.too_large`, `webhook.stale`, `webhook.handler_error`, one-line JSON to Convex's log surface.
-- No secret echo. Error responses carry the request ID, never the body, signature, or secret name.
 
 Better Auth routes (`authComponent.registerRoutesLazy`) handle their own CSRF + session protection per Better Auth's spec.
 
 ### OTA updates
 
-- `runtimeVersion: { policy: "fingerprint" }`. A native change auto-bumps the hash, so an OTA can never load against an incompatible binary, no manual version discipline. `@expo/fingerprint >= 0.19.3` makes the policy deterministic across machines and CI by default, so the template needs no `fingerprint.config.js` and no JSI entry in `.fingerprintignore`. Native version bumps still flip the fingerprint via `package.json` + the `expoAutolinkingConfig:ios` JSON.
+- `runtimeVersion: { policy: "fingerprint" }`. A native change auto-bumps the hash, so an OTA can never load against an incompatible binary. `@expo/fingerprint >= 0.19.3` makes the policy deterministic across machines and CI by default, so the template needs no `fingerprint.config.js` and no JSI entry in `.fingerprintignore`.
 - End-to-end code signing is wired. `app.config.ts` detects `certs/certificate.pem` at config-eval time and turns on `codeSigningCertificate` and `codeSigningMetadata`. `deploy-production.yml`'s `update_ios` job passes `private_key_path: "$EAS_UPDATE_PRIVATE_KEY"` so `eas update` signs locally before publish. Two one-time steps activate it:
   1. Generate the keypair:
      ```bash
@@ -53,7 +36,7 @@ Better Auth routes (`authComponent.registerRoutesLazy`) handle their own CSRF + 
        --value ../keys/private-key.pem
      ```
 
-  After that, every bundle is signed during `eas update` and verified on-device against the bundled cert before install. A compromised CDN or EAS account cannot ship arbitrary JS. If the env var is unset, `eas update` skips signing without erroring.
+  After that, every bundle is signed during `eas update` and verified on-device against the bundled cert before install. If the env var is unset, `eas update` skips signing without erroring.
 
 - Gradual rollouts. `rollout.yml` publishes at controlled percentages (5% → 25% → 100%).
 - Rollback workflows. `rollback.yml` runs `update:republish` or `update:roll-back-to-embedded` non-interactively.
@@ -61,7 +44,7 @@ Better Auth routes (`authComponent.registerRoutesLazy`) handle their own CSRF + 
 ### Apple credentials
 
 - `.p8` keys never land in committed files. Template `.gitignore` matches Apple's default download names (`AuthKey_*`, `SubscriptionKey_*`, `*.p8`). The state cache stores only paths, never contents.
-- SIWA JWT rotation runs on EAS, not GitHub. `rotate-apple-jwt.yml` cron fires `0 12 1 */3 *`. Reads `APPLE_P8_PRIVATE_KEY` etc. from EAS env at `secret` visibility, never logged.
+- SIWA JWT rotation runs on EAS, not GitHub. Apple caps `client_secret` JWTs at 180 days and an expired one silently breaks every new sign-in, so `rotate-apple-jwt.yml` re-signs on a cron (`0 12 1 */3 *`). Reads `APPLE_P8_PRIVATE_KEY` etc. from EAS env at `secret` visibility, never logged.
 - Managed credentials only. EAS holds the dist cert + provisioning profile + push key. `vexpo apple credentials` passes the cached ASC key to `eas credentials:configure-build` via env vars. The credentials never leave EAS.
 - ASC API key validation. `vexpo apple asc-key` calls `GET /v1/apps` and rejects anything other than 200, so a key that authenticates but lacks capabilities is caught at validation time, not submit time.
 
@@ -104,10 +87,3 @@ Apple App Store Review 5.1.1(v) requires in-app account deletion. vexpo ships a 
 | `EAS_WEBHOOK_SECRET`           | When suspected compromise | `npx eas-cli webhook:update --id <id> --secret <new>` + `npx convex env set EAS_WEBHOOK_SECRET <new>`                                    |
 | `RESEND_WEBHOOK_SECRET`        | When suspected compromise | Resend dashboard → reissue + `npx convex env set RESEND_WEBHOOK_SECRET <new>`                                                            |
 
-The SIWA JWT is the only one with automated rotation, because it's the only one Apple's API will sign on our behalf. The rest require human-in-the-loop rotation by Apple's design.
-
-## Reporting issues
-
-For vulnerabilities in vexpo's own code, open a private security advisory: `https://github.com/ramonclaudio/vexpo/security/advisories/new`. Please don't file public issues.
-
-For vulnerabilities in dependencies (Expo, Convex, Better Auth, Resend), report upstream first per their disclosure policies. We'll bump the affected dependency and ship a patched release once upstream has a fix.

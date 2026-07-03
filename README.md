@@ -39,8 +39,6 @@ npx vexpo doctor        # auth-checks every credential against the real service
   <img src=".github/assets/demo-doctor.gif" width="720" alt="vexpo doctor auth-checking every credential against the live services and flagging real drift">
 </p>
 
-Two packages: [`create-vexpo`](https://www.npmjs.com/package/@ramonclaudio/create-vexpo) scaffolds the app, [`vexpo`](https://www.npmjs.com/package/@ramonclaudio/vexpo) provisions, verifies, and repairs the setup.
-
 ## What's included
 
 - Expo SDK 57, RN 0.86, React 19. Strict TypeScript, no NativeWind.

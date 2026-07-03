@@ -1,12 +1,10 @@
 # Changelog
 
-All notable changes to vexpo are tracked here. Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versioning is uv-style pre-1.0: minor for breaking changes, patch for everything else (see [CONTRIBUTING.md](./CONTRIBUTING.md#versioning)).
+Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Pre-1.0, the minor version bumps for breaking changes, the patch for everything else.
 
 ## [Unreleased]
 
 ## [0.2.0] - 2026-07-03
-
-First breaking release, so the minor bumps (see the versioning policy in [`CONTRIBUTING.md`](./CONTRIBUTING.md)).
 
 - **Breaking:** colon commands are gone. `asc:connect`, `asc:privacy`, `asc:accessibility`, and `convex:migrate` are now `asc connect`, `asc privacy`, `asc accessibility`, and `convex migrate`, matching the other command groups. `vexpo eas` (EAS link, channels, branches, env push) is a registered command instead of a setup-only step.
 - **Breaking:** the Node floor is `>=22.12`, what `commander@15` and oxlint's platform binding actually require. CI tests the exact floor.

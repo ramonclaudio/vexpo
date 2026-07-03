@@ -32,16 +32,6 @@ eas-cli evaluates `app.config` with `EXPO_NO_DOTENV` set, so it never reads `.en
 
 ## EAS
 
-### Not signed in
-
-```bash
-npx eas-cli login
-```
-
-### `asc-submit-id` warns a profile is missing `ascAppId`
-
-Same root as above. The integration is connected but a submit profile in `eas.json` has no `ascAppId`, so a non-interactive `eas submit` fails. Run `npx vexpo asc connect`, it fills every profile and tells you to commit it.
-
 ### A second ASC API key showed up on Apple
 
 Expected. `vexpo asc connect` lets the EAS wizard generate its own key for build/submit/metadata, kept separate from the master key cached in vexpo state. The master key stays out of EAS's control for direct ASC API calls (`vexpo apple services-id`, `vexpo apple jwt`).
@@ -57,12 +47,6 @@ CONVEX_TEAM=<slug> npx vexpo lite
 ```
 
 The slug is in the Convex dashboard under team settings. `vexpo convex` also reads `CONVEX_TEAM` from `.env.local`.
-
-### `Convex token expired or revoked`
-
-```bash
-npx convex login
-```
 
 ## Expo
 

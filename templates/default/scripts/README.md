@@ -42,7 +42,5 @@ npx vexpo apple services-id  # attach SIWA capability to App ID
 npx vexpo apple jwt          # sign client_secret JWT, push to Convex
 ```
 
-Version bumps run through `eas build:version:set` or `eas build:version:sync`. `appVersionSource: "remote"` in `eas.json` puts EAS in charge of the version.
-
 The CLI itself ships from [`@ramonclaudio/vexpo` on npm](https://www.npmjs.com/package/@ramonclaudio/vexpo). Source lives at [`github.com/ramonclaudio/vexpo`](https://github.com/ramonclaudio/vexpo).
 

@@ -125,7 +125,7 @@ feat(apple): add asc connect for the eas to app store link
 
 ## Versioning
 
-Pre-1.0, same scheme as [uv](https://docs.astral.sh/uv/reference/policies/versioning/): the minor version bumps for breaking changes, the patch version for everything else. This lines up with npm's caret semantics, where `^0.2.0` resolves below `0.3.0`, so a breaking release never flows into existing installs uninvited. Breaking changes lead their changelog entry as **Breaking:** lines. There is no 1.0 timeline. The care in each change is proportional to its real-world impact, not the version number.
+Pre-1.0, the minor version bumps for breaking changes, the patch for everything else. A caret range like `^0.2.0` never pulls a breaking release. Breaking changes lead their changelog entry as **Breaking:** lines.
 
 ## Before you open a PR
 
