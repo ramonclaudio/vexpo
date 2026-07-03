@@ -72,7 +72,7 @@ vexpo/
 ## Pre-reqs
 
 - macOS and Xcode
-- Bun or Node 20+
+- Bun or Node 22.12+
 - Apple Developer Program ($99/yr), when you're ready to ship
 - A domain you control DNS for (Resend sending domain)
 
