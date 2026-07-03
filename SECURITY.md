@@ -20,11 +20,11 @@ Out of scope:
 - TLS termination and cert management (Convex + EAS handle it).
 - DDoS protection on Convex's HTTP routes (Convex's CDN handles the first tier).
 - Per-endpoint auth rate-limit tuning. `@convex-dev/rate-limiter` is wired, but tuning is the operator's call.
-- Forensics / SIEM. We log structured events, not full request bodies.
+- Forensics and SIEM. We log structured events, not full request bodies.
 
 ## Defenses, by surface
 
-### Inbound webhooks (EAS, Resend, future Stripe / GitHub)
+### Inbound webhooks (EAS, Resend, future Stripe and GitHub)
 
 The `convex/webhook.ts` factory wraps every signed POST handler with:
 
@@ -39,8 +39,8 @@ Better Auth routes (`authComponent.registerRoutesLazy`) handle their own CSRF + 
 
 ### OTA updates
 
-- `runtimeVersion: { policy: "fingerprint" }`. A native change auto-bumps the hash, so an OTA can never load against an incompatible binary, no manual version discipline. `@expo/fingerprint >= 0.19.3` makes the policy deterministic across machines and CI by default, so the template needs no `fingerprint.config.js` and no jsi `.fingerprintignore` entry. Native version bumps still flip the fingerprint via `package.json` + the `expoAutolinkingConfig:ios` JSON.
-- End-to-end code signing is wired. `app.config.ts` detects `certs/certificate.pem` at config-eval time and turns on `codeSigningCertificate` / `codeSigningMetadata`. `deploy-production.yml`'s `update_ios` job passes `private_key_path: "$EAS_UPDATE_PRIVATE_KEY"` so `eas update` signs locally before publish. Two one-time steps activate it:
+- `runtimeVersion: { policy: "fingerprint" }`. A native change auto-bumps the hash, so an OTA can never load against an incompatible binary, no manual version discipline. `@expo/fingerprint >= 0.19.3` makes the policy deterministic across machines and CI by default, so the template needs no `fingerprint.config.js` and no JSI entry in `.fingerprintignore`. Native version bumps still flip the fingerprint via `package.json` + the `expoAutolinkingConfig:ios` JSON.
+- End-to-end code signing is wired. `app.config.ts` detects `certs/certificate.pem` at config-eval time and turns on `codeSigningCertificate` and `codeSigningMetadata`. `deploy-production.yml`'s `update_ios` job passes `private_key_path: "$EAS_UPDATE_PRIVATE_KEY"` so `eas update` signs locally before publish. Two one-time steps activate it:
   1. Generate the keypair:
      ```bash
      npm run updates:gen-cert -- --name "Your Organization Name"

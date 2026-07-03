@@ -32,7 +32,7 @@ Templates stay outside the workspace because Expo's hoisting doesn't survive npm
 - Expo SDK 57, RN 0.86+, React 19. Convex backend. Better Auth via `@convex-dev/better-auth`. Resend via `@convex-dev/resend`.
 - Native SwiftUI via `@expo/ui/swift-ui`. Material translucency via `expo-glass-effect` (iOS 26+) + `expo-blur` fallback.
 - EAS Workflows for all CI/CD. PR previews and Maestro E2E ship `workflow_dispatch`-only to conserve build credits. GitHub Actions only for general checks (expo-doctor, typecheck, lint, format, tests).
-- Setup is a CLI concern (`npx vexpo lite` / `full`), not a `package.json` script.
+- Setup is a CLI concern (`npx vexpo lite` or `full`), not a `package.json` script.
 
 ### Operational CLI (`packages/vexpo/`)
 
@@ -56,7 +56,7 @@ Templates stay outside the workspace because Expo's hoisting doesn't survive npm
 
 ## Not appropriate
 
-- Adding a backend service / Worker / telemetry endpoint. Static config in the published package answers compatibility matrices and version checks.
+- Adding a backend service, Worker, or telemetry endpoint. Static config in the published package answers compatibility matrices and version checks.
 - Adding NativeWind, ESLint, Prettier, or Biome to the template. Oxlint + Oxfmt only.
 - Adding `@better-auth/stripe`. It pulls SolidJS deps that break Metro. Use `@convex-dev/stripe`.
 - Re-introducing `_run.mjs` to the published CLI, or `setup-*.ts` scripts to the template. The CLI is the source of truth.
