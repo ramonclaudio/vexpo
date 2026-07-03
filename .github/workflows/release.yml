@@ -77,17 +77,31 @@ jobs:
       # `--access public` and `--provenance` come from each package's
       # `publishConfig`, so the CLI needs no flags. Auth is the NPM_TOKEN secret;
       # `id-token: write` above lets npm attach provenance.
+      # Guard each publish so a re-run finishes a half-published release instead
+      # of dying on npm's "cannot publish over previously published version".
       - name: Publish vexpo
         working-directory: packages/vexpo
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-        run: npm publish
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          if npm view "@ramonclaudio/vexpo@$VERSION" version >/dev/null 2>&1; then
+            echo "@ramonclaudio/vexpo@$VERSION already published, skipping."
+          else
+            npm publish
+          fi
 
       - name: Publish create-vexpo
         working-directory: packages/create-vexpo
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-        run: npm publish
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          if npm view "@ramonclaudio/create-vexpo@$VERSION" version >/dev/null 2>&1; then
+            echo "@ramonclaudio/create-vexpo@$VERSION already published, skipping."
+          else
+            npm publish
+          fi
 
       - name: Extract changelog entry
         id: changelog

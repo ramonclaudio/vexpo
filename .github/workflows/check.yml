@@ -10,7 +10,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: check-${{ github.workflow }}-${{ github.ref }}
+  group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 jobs:
@@ -21,7 +21,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        node-version: ["20", "22", "24"]
+        node-version: ["20.10", "22", "24"]
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
       - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
@@ -57,10 +57,23 @@ jobs:
           node-version: "22"
           cache: npm
           cache-dependency-path: templates/default/package-lock.json
-      # `@ramonclaudio/vexpo` is on npm, so the template installs directly
-      # without needing the monorepo's `link:dev` plumbing. This also exercises
-      # the customer journey: a fresh `npm ci` resolves vexpo from npm.
+      # Integration-test the CLI source in this PR, not the last npm release.
+      # Build and pack the local `@ramonclaudio/vexpo`, then install the tarball
+      # over the lockfile pin (`--no-save` keeps the committed lockfile clean).
       - run: npm ci
+        working-directory: .
+      - run: npm run build -w @ramonclaudio/vexpo
+        working-directory: .
+      - run: npm pack -w @ramonclaudio/vexpo --pack-destination templates/default
+        working-directory: .
+      - run: npm ci
+      - run: npm install --no-save ramonclaudio-vexpo-*.tgz
+      # Drive the packed binary: help must exit 0, and `doctor --json` in the
+      # scaffolded template must emit a parseable report (same shape the package
+      # e2e asserts). A not-fully-provisioned project is fine, this exercises the
+      # real CLI, not just that the tarball installed.
+      - run: npx vexpo --help
+      - run: npx vexpo doctor --json | node -e 'const r=JSON.parse(require("fs").readFileSync(0));process.exit(Array.isArray(r.checks)&&"summary"in r&&"channel"in r?0:1)'
       - run: npm run typecheck
       - run: npm run lint
       - run: npm run format:check

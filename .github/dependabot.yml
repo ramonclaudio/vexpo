@@ -1,38 +1,9 @@
 version: 2
 
 updates:
+  # Root workspace lockfile spans both packages, so one `/` entry covers them.
   - package-ecosystem: npm
     directory: /
-    schedule:
-      interval: weekly
-    cooldown:
-      default-days: 7
-    groups:
-      minor-and-patch:
-        update-types:
-          - minor
-          - patch
-    ignore:
-      - dependency-name: "@types/node"
-        update-types: ["version-update:semver-major"]
-
-  - package-ecosystem: npm
-    directory: /packages/vexpo
-    schedule:
-      interval: weekly
-    cooldown:
-      default-days: 7
-    groups:
-      minor-and-patch:
-        update-types:
-          - minor
-          - patch
-    ignore:
-      - dependency-name: "@types/node"
-        update-types: ["version-update:semver-major"]
-
-  - package-ecosystem: npm
-    directory: /packages/create-vexpo
     schedule:
       interval: weekly
     cooldown:

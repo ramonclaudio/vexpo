@@ -6,7 +6,7 @@
 
 import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
-import { join } from "node:path";
+import { basename, join } from "node:path";
 
 const dir = process.argv[2];
 if (!dir) {
@@ -18,7 +18,13 @@ const pkg = JSON.parse(readFileSync(join(dir, "package.json"), "utf8"));
 const allowed = (pkg.files ?? []).map((entry) => entry.replace(/\/+$/, ""));
 
 // npm always ships these regardless of `files`, so they are never offenders.
-const alwaysShipped = /^(package\.json|README|LICENSE|LICENCE)/i;
+// Match npm-packlist's forced-include set by basename: exact `package.json`,
+// and README/LICENSE/LICENCE with any single extension. A prefix match here
+// would wave through `readme-secrets.env` or `package.json.bak`.
+const isAlwaysShipped = (path) => {
+  const name = basename(path);
+  return name === "package.json" || /^(readme|license|licence)(\.[^/]+)?$/i.test(name);
+};
 
 const json = execFileSync("npm", ["pack", "--dry-run", "--json", "-w", pkg.name], {
   encoding: "utf8",
@@ -26,7 +32,7 @@ const json = execFileSync("npm", ["pack", "--dry-run", "--json", "-w", pkg.name]
 const [{ files }] = JSON.parse(json);
 
 const isAllowed = (path) =>
-  alwaysShipped.test(path) ||
+  isAlwaysShipped(path) ||
   allowed.some((prefix) => path === prefix || path.startsWith(`${prefix}/`));
 
 const offenders = files.map((file) => file.path).filter((path) => !isAllowed(path));
