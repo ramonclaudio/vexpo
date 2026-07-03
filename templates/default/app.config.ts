@@ -263,7 +263,6 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       "expo-system-ui",
       "expo-secure-store",
       "expo-web-browser",
-      "expo-sharing",
       ["expo-dev-client", { launchMode: "most-recent" }],
       ["expo-build-properties", { ios: { deploymentTarget: "16.4" } }],
       ["./plugins/with-pod-deployment-target", { target: "16.4" }],
