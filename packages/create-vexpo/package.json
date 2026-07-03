@@ -1,6 +1,6 @@
 {
   "name": "@ramonclaudio/create-vexpo",
-  "version": "0.1.12",
+  "version": "0.2.0",
   "description": "Scaffold a new vexpo project. Expo SDK 57 + Convex + Better Auth + Resend, wired for iOS, real auth, real push, real OTA, real App Store submission.",
   "keywords": [
     "better-auth",
