@@ -439,7 +439,7 @@ async function stepCleanup(fresh: boolean): Promise<void> {
 async function runInstall(): Promise<void> {
   const pm = await detectPackageManager();
   const cmd = installCmdFor(pm).split(" ");
-  const proc = spawn(cmd, { stdio: ["inherit", "inherit", "inherit"] });
+  const proc = spawn(cmd);
   if ((await proc.exited) !== 0) throw new Error(`${cmd.join(" ")} failed`);
   ok(cmd.join(" "));
 }

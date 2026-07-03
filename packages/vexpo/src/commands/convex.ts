@@ -124,7 +124,7 @@ export async function runConvex(options: ConvexOptions): Promise<number> {
     ok(`connecting to existing deployment ${existing}`);
   }
 
-  const proc = spawn(cmd, { stdin: "inherit", stdout: "inherit", stderr: "inherit" });
+  const proc = spawn(cmd);
   if ((await proc.exited) !== 0) {
     bad("convex dev exited with a non-zero code");
     if (needsProvisioning && !team && !process.stdin.isTTY) {
