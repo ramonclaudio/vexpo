@@ -135,6 +135,7 @@ feat(apple): add asc connect for the eas to app store link
 - [ ] `npm audit --audit-level=high` is clean.
 - [ ] Tests added for any behavior change.
 - [ ] `CHANGELOG.md` has an `Unreleased` entry if the change is user-facing.
+- [ ] Cutting a release: repoint the `[Unreleased]` compare link to the new tag and add the new version's reference definition at the bottom of `CHANGELOG.md`.
 - [ ] Commits follow the convention, with no attribution trailers.
 
 The pull request template walks you through the rest, including a short test plan of what you ran to verify.

@@ -31,7 +31,7 @@
     "test:packages:e2e": "npm run test:e2e -w @ramonclaudio/vexpo && npm run test:create:e2e",
     "test:create:e2e": "npm run test:e2e -w @ramonclaudio/create-vexpo",
     "test:all": "npm run test && npm run test:packages:e2e",
-    "link:dev": "npm run build -w @ramonclaudio/vexpo && cd packages/vexpo && npm link && cd ../../templates/default && npm link @ramonclaudio/vexpo && echo '\\nlinked. now `npm run setup` from templates/default routes to the local vexpo build.\\nrun `npm run build -w @ramonclaudio/vexpo` whenever you change cli source.\\n'",
+    "link:dev": "npm run build -w @ramonclaudio/vexpo && cd packages/vexpo && npm link && cd ../../templates/default && npm link @ramonclaudio/vexpo && echo '\\nlinked. now `npx vexpo lite` from templates/default routes to the local vexpo build.\\nrun `npm run build -w @ramonclaudio/vexpo` whenever you change cli source.\\n'",
     "template:install": "cd templates/default && npm install",
     "template:dev": "cd templates/default && npm run dev",
     "template:typecheck": "cd templates/default && npm run typecheck",

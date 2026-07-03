@@ -159,7 +159,10 @@ First public release.
 
 See [`README.md`](./README.md) for the feature list and [`SECURITY.md`](./SECURITY.md) for the threat model.
 
-[Unreleased]: https://github.com/ramonclaudio/vexpo/compare/v0.1.8...HEAD
+[Unreleased]: https://github.com/ramonclaudio/vexpo/compare/v0.1.11...HEAD
+[0.1.11]: https://github.com/ramonclaudio/vexpo/releases/tag/v0.1.11
+[0.1.10]: https://github.com/ramonclaudio/vexpo/releases/tag/v0.1.10
+[0.1.9]: https://github.com/ramonclaudio/vexpo/releases/tag/v0.1.9
 [0.1.8]: https://github.com/ramonclaudio/vexpo/releases/tag/v0.1.8
 [0.1.7]: https://github.com/ramonclaudio/vexpo/releases/tag/v0.1.7
 [0.1.6]: https://github.com/ramonclaudio/vexpo/releases/tag/v0.1.6

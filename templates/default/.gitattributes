@@ -1,7 +1,13 @@
-.gitattributes merge=ours
-README.md merge=ours
-.env.example merge=ours
-package.json merge=ours
-package-lock.json merge=ours
-app.json merge=ours
-eas.json merge=ours
+# Normalize line endings: text files commit with LF, checkout per platform.
+* text=auto eol=lf
+
+# Binary assets: never diff or merge as text.
+*.gif binary
+*.png binary
+*.jpg binary
+*.ttf binary
+*.wav binary
+*.p8 binary
+
+# Convex codegen: exclude from language stats and collapse diffs.
+convex/_generated/** linguist-generated=true
