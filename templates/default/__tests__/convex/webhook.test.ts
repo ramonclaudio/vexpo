@@ -209,6 +209,49 @@ describe("withWebhook (HMAC signature verification)", () => {
     expect(res.status).toBe(413);
   });
 
+  test("413 while streaming when a body with no content-length exceeds the cap", async () => {
+    // No content-length header, so the up-front check is bypassed and the cap is
+    // enforced while reading. The reader must cancel once it crosses the cap
+    // instead of buffering the whole body; the stub stream errors if pulled a
+    // third time (past the two chunks needed to cross a 100-byte cap).
+    let canceled = false;
+    let pulls = 0;
+    const body = new ReadableStream<Uint8Array>({
+      pull(controller) {
+        pulls++;
+        if (pulls > 2) {
+          controller.error(new Error("read past the cap"));
+          return;
+        }
+        controller.enqueue(new Uint8Array(60));
+      },
+      cancel() {
+        canceled = true;
+      },
+    });
+
+    const handler = withWebhook(
+      {
+        source: "test",
+        signatureHeader: "x-signature",
+        secretEnv: "TEST_WEBHOOK_SECRET",
+        algorithm: "sha256",
+        maxBodyBytes: 100,
+      },
+      () => new Response("ok"),
+    );
+    const req = new Request("https://example.convex.site/webhook", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-signature": "deadbeef" },
+      body,
+      duplex: "half",
+    } as RequestInit & { duplex: "half" });
+
+    const res = await handler(ctx, req);
+    expect(res.status).toBe(413);
+    expect(canceled).toBe(true);
+  });
+
   test("401 when replay timestamp is missing", async () => {
     const handler = withWebhook(
       {

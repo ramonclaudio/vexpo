@@ -78,12 +78,8 @@ describe("users.updateProfile", () => {
     const tooLong = "a".repeat(501);
     const asUser = t.withIdentity(identityFor(authUserId, sessionId));
 
-    await expect(asUser.mutation(api.users.updateProfile, { bio: tooLong })).rejects.toThrowError(
-      ConvexError,
-    );
-
-    // Assert the structured error code + field, and that the bad write was
-    // rejected before touching the row (mutation transaction rolled back).
+    // One call: assert it's a ConvexError with the structured code + field, and
+    // that the bad write was rejected before touching the row (rolled back).
     let caught: unknown;
     try {
       await asUser.mutation(api.users.updateProfile, { bio: tooLong });
@@ -105,10 +101,6 @@ describe("users.updateProfile", () => {
     // throws authenticationRequired() (AUTH_1001) before the handler runs.
     const { appUserId } = await seedAuthedUser(t);
     await setBio(t, appUserId, "before");
-
-    await expect(t.mutation(api.users.updateProfile, { bio: "after" })).rejects.toThrowError(
-      ConvexError,
-    );
 
     let caught: unknown;
     try {

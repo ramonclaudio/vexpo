@@ -124,7 +124,7 @@ export const deleteAvatar = authMutation({
 // within the app; the window lets a confused tap be recovered. After it
 // expires, `internal.users.hardDeleteExpired` purges everything irreversibly.
 export const ACCOUNT_DELETION_GRACE_MS = 30 * 24 * 60 * 60 * 1000;
-const HARD_DELETE_BATCH = 50;
+export const HARD_DELETE_BATCH = 50;
 
 /**
  * Better Auth credentials stay intact until the 30-day window expires so a

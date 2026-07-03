@@ -13,21 +13,19 @@
 import { describe, expect, test } from "vitest";
 
 import { internal } from "@/convex/_generated/api";
-import { ACCOUNT_DELETION_GRACE_MS } from "@/convex/users";
+import { ACCOUNT_DELETION_GRACE_MS, HARD_DELETE_BATCH } from "@/convex/users";
 
 import { auditRowsFor, initConvexTest, seedAuthedUser } from "./_harness";
-
-const HARD_DELETE_BATCH = 50;
 
 describe("users.hardDeleteExpired", () => {
   test("purges only tombstones past the grace window, even behind a full batch of active users", async () => {
     const t = initConvexTest();
     const now = Date.now();
 
-    // Active (deletedAt unset) users filling the batch. Under an unbounded
+    // Active (deletedAt unset) users overfilling the batch. Under an unbounded
     // `by_deletedAt` scan these sort ahead of any tombstone and crowd it out.
     await t.run(async (ctx) => {
-      for (let i = 0; i < HARD_DELETE_BATCH; i++) {
+      for (let i = 0; i <= HARD_DELETE_BATCH; i++) {
         await ctx.db.insert("users", { authId: `active_${i}`, createdAt: now, updatedAt: now });
       }
     });

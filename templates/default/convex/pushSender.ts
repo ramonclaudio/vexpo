@@ -7,9 +7,13 @@ import { internalAction } from "./_generated/server";
 const EXPO_PUSH_URL = "https://exp.host/--/api/v2/push/send";
 const EXPO_RECEIPTS_URL = "https://exp.host/--/api/v2/push/getReceipts";
 
+// Expo rejects a /push/send batch above 100 messages, so slice into pages.
+// https://docs.expo.dev/push-notifications/sending-notifications/#push-tickets
+const PUSH_CHUNK = 100;
+
 // getReceipts caps at 1000 ids per call; we stay well under and reschedule
 // when a full page comes back so a backlog drains without unbounded reads.
-const RECEIPT_PAGE = 100;
+export const RECEIPT_PAGE = 100;
 
 // Expo keeps receipts for about a day. A row with no receipt by then is a
 // lost cause, so drop it instead of polling forever.
@@ -44,6 +48,10 @@ type ExpoMessage = {
 type ExpoTicket =
   | { status: "ok"; id: string }
   | { status: "error"; message: string; details?: { error?: string } };
+
+type PushToken = { _id: Id<"pushTokens">; token: string };
+
+type TicketEntry = { ticket: ExpoTicket; token: PushToken };
 
 type ExpoResponse = { data?: ExpoTicket[]; errors?: Array<{ code?: string; message?: string }> };
 
@@ -98,42 +106,49 @@ export const sendToUser = internalAction({
       return m;
     });
 
-    let payload: ExpoResponse | null = null;
-    try {
-      const res = await fetch(EXPO_PUSH_URL, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Accept: "application/json",
-          "Accept-Encoding": "gzip, deflate",
-        },
-        body: JSON.stringify(messages),
-      });
-      payload = (await res.json()) as ExpoResponse;
-      if (!res.ok) {
-        console.warn(`[push] send non-2xx ${res.status}: ${JSON.stringify(payload?.errors)}`);
+    // Expo caps /push/send at 100 messages per request. Pair each ticket with
+    // its own token slice as we go, so a short or skipped chunk can't shift the
+    // alignment of later chunks.
+    const entries: TicketEntry[] = [];
+    for (let i = 0; i < messages.length; i += PUSH_CHUNK) {
+      const chunk = messages.slice(i, i + PUSH_CHUNK);
+      const slice = tokens.slice(i, i + PUSH_CHUNK);
+      try {
+        const res = await fetch(EXPO_PUSH_URL, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Accept: "application/json",
+            "Accept-Encoding": "gzip, deflate",
+          },
+          body: JSON.stringify(chunk),
+        });
+        const payload = (await res.json()) as ExpoResponse;
+        if (!res.ok) {
+          console.warn(`[push] send non-2xx ${res.status}: ${JSON.stringify(payload?.errors)}`);
+          continue;
+        }
+        (payload?.data ?? []).forEach((ticket, j) => {
+          const token = slice[j];
+          if (token) entries.push({ ticket, token });
+        });
+      } catch (err) {
+        console.warn(`[push] send threw: ${err instanceof Error ? err.message : String(err)}`);
+        break;
       }
-    } catch (err) {
-      console.warn(`[push] send threw: ${err instanceof Error ? err.message : String(err)}`);
-      return { sent: 0, revoked: 0 };
     }
-
-    const tickets = payload?.data ?? [];
-    const revoked = await reconcileTickets(ctx, tokens, tickets);
+    const revoked = await reconcileTickets(ctx, entries);
 
     // Park accepted tickets so `reconcileReceipts` can poll for the receipt
-    // that reveals a dead device. Order is preserved: tickets[i] -> tokens[i].
-    const receipts = tickets.flatMap((ticket, index) => {
-      if (ticket.status !== "ok") return [];
-      const tokenId = tokens[index]?._id;
-      if (!tokenId) return [];
-      return [{ ticketId: ticket.id, tokenId }];
-    });
+    // that reveals a dead device. Each entry already carries its own token.
+    const receipts = entries.flatMap(({ ticket, token }) =>
+      ticket.status === "ok" ? [{ ticketId: ticket.id, tokenId: token._id }] : [],
+    );
     if (receipts.length > 0) {
       await ctx.runMutation(internal.pushTokens.recordReceipts, { receipts });
     }
 
-    return { sent: tickets.length, revoked };
+    return { sent: entries.filter((e) => e.ticket.status === "ok").length, revoked };
   },
 });
 
@@ -239,10 +254,9 @@ function planReceiptReconciliation(
 }
 
 /**
- * Match each ticket back to its originating token and tombstone tokens
- * whose ticket reported a permanent error. The Expo API preserves order:
- * `tickets[i]` corresponds to `messages[i]`, which corresponds to
- * `tokens[i]`.
+ * Tombstone tokens whose ticket reported a permanent error. Each entry pairs a
+ * ticket with the token it was sent to, so alignment holds even when a chunk
+ * returned fewer tickets than messages or was skipped entirely.
  */
 async function reconcileTickets(
   ctx: {
@@ -251,20 +265,17 @@ async function reconcileTickets(
       args: { tokenIds: Id<"pushTokens">[]; errorCode: string },
     ) => Promise<number>;
   },
-  tokens: Array<{ _id: Id<"pushTokens">; token: string }>,
-  tickets: ExpoTicket[],
+  entries: TicketEntry[],
 ): Promise<number> {
   const buckets = new Map<string, Id<"pushTokens">[]>();
-  tickets.forEach((ticket, index) => {
-    if (ticket.status !== "error") return;
+  for (const { ticket, token } of entries) {
+    if (ticket.status !== "error") continue;
     const code = ticket.details?.error;
-    if (!code || !PERMANENT_ERROR_CODES.has(code)) return;
-    const tokenId = tokens[index]?._id;
-    if (!tokenId) return;
+    if (!code || !PERMANENT_ERROR_CODES.has(code)) continue;
     const list = buckets.get(code) ?? [];
-    list.push(tokenId);
+    list.push(token._id);
     buckets.set(code, list);
-  });
+  }
 
   let revoked = 0;
   for (const [code, tokenIds] of buckets) {

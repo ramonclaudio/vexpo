@@ -8,15 +8,18 @@
  *   - a permanent-error receipt (e.g. DeviceNotRegistered) tombstones the token,
  *   - an ok or transient-error receipt leaves the token alone,
  *   - every returned receipt's row is cleaned up,
- *   - a row with no receipt yet is kept for the next run.
+ *   - a row with no receipt yet is kept, but one aged past RECEIPT_MAX_AGE_MS is
+ *     pruned instead of polled forever,
+ *   - a full page reschedules the action to drain the backlog.
  *
  * We stub `global.fetch` so no network is touched and assert the real DB
- * effects, mirroring the ticket-path coverage in the pushTokens tests.
+ * effects. The send/ticket path is covered in `pushSender-sendToUser`.
  */
 import { afterEach, describe, expect, test, vi } from "vitest";
 
 import { internal } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
+import { RECEIPT_PAGE } from "@/convex/pushSender";
 
 import { type AuthedTest, initConvexTest } from "./_harness";
 
@@ -131,5 +134,59 @@ describe("pushSender.reconcileReceipts", () => {
     expect((await t.run((ctx) => ctx.db.get(tokenId)))?.revoked).toBe(false);
     // Row survives for the next poll.
     expect(await t.run((ctx) => ctx.db.query("pushReceipts").collect())).toHaveLength(1);
+  });
+
+  test("prunes a receiptless row aged past RECEIPT_MAX_AGE_MS instead of polling forever", async () => {
+    const t = initConvexTest();
+    const userId = await seedUser(t);
+    const tokenId = await seedToken(t, userId, "ExponentPushToken[stale]");
+    // A month old: well past the ~1-day receipt retention, so it's a lost cause.
+    await seedReceipt(t, tokenId, "ticket-stale", Date.now() - 30 * 24 * 60 * 60 * 1000);
+
+    // Expo still has no receipt for it (aged out on their side too).
+    stubReceipts({});
+
+    const res = await t.action(internal.pushSender.reconcileReceipts, {});
+    expect(res).toEqual({ checked: 1, revoked: 0, pruned: 1 });
+
+    // Token untouched, but the dead row is gone.
+    expect((await t.run((ctx) => ctx.db.get(tokenId)))?.revoked).toBe(false);
+    expect(await t.run((ctx) => ctx.db.query("pushReceipts").collect())).toHaveLength(0);
+  });
+
+  test("reschedules itself when a full page comes back", async () => {
+    const t = initConvexTest();
+    const userId = await seedUser(t);
+    await t.run(async (ctx) => {
+      for (let i = 0; i < RECEIPT_PAGE; i++) {
+        const tokenId = await ctx.db.insert("pushTokens", {
+          userId,
+          token: `ExponentPushToken[${i}]`,
+          deviceType: "ios" as const,
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
+          lastSeenAt: Date.now(),
+          revoked: false,
+        });
+        await ctx.db.insert("pushReceipts", {
+          ticketId: `ticket-${i}`,
+          tokenId,
+          createdAt: Date.now(),
+        });
+      }
+    });
+
+    stubReceipts(
+      Object.fromEntries(
+        Array.from({ length: RECEIPT_PAGE }, (_, i) => [`ticket-${i}`, { status: "ok" }]),
+      ),
+    );
+
+    const res = await t.action(internal.pushSender.reconcileReceipts, {});
+    expect(res).toEqual({ checked: RECEIPT_PAGE, revoked: 0, pruned: RECEIPT_PAGE });
+
+    // A full page means more may be queued, so the action reschedules a drain.
+    const scheduled = await t.run((ctx) => ctx.db.system.query("_scheduled_functions").collect());
+    expect(scheduled.some((s) => s.name.includes("reconcileReceipts"))).toBe(true);
   });
 });

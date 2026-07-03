@@ -8,12 +8,9 @@ export type WithWebhookOptions = {
   source: string;
   signatureHeader: string;
   secretEnv: string;
-  /** HMAC algorithm. EAS uses SHA-1, Stripe uses SHA-256, Resend uses Svix's HMAC-SHA256. */
+  /** HMAC algorithm. EAS signs with SHA-1. */
   algorithm: SignatureAlgorithm;
-  /**
-   * Prefix expected in the signature header before the hex digest.
-   * EAS sends `sha1=<hex>`, Stripe sends `t=<ts>,v1=<hex>`, etc. Default `""`.
-   */
+  /** Prefix before the hex digest. EAS sends `sha1=<hex>`. Default `""`. */
   signaturePrefix?: string;
   maxBodyBytes?: number;
   replay?: {
@@ -81,9 +78,9 @@ export function withWebhook<T = unknown>(
       return jsonError(413, "payload too large", requestId);
     }
 
-    const rawBody = await req.text();
-    if (rawBody.length > maxBodyBytes) {
-      log.warn({ ...baseFields, event: "webhook.too_large", bytes: rawBody.length });
+    const rawBody = await readCappedBody(req, maxBodyBytes);
+    if (rawBody === null) {
+      log.warn({ ...baseFields, event: "webhook.too_large", maxBodyBytes });
       return jsonError(413, "payload too large", requestId);
     }
 
@@ -136,6 +133,35 @@ function jsonError(status: number, message: string, requestId: string): Response
     status,
     headers: { "Content-Type": "application/json", "X-Request-Id": requestId },
   });
+}
+
+// Read the body while enforcing the byte cap, aborting the stream past the
+// limit so an oversized or content-length-lying client never buffers fully.
+async function readCappedBody(req: Request, maxBytes: number): Promise<string | null> {
+  const reader = req.body?.getReader();
+  if (!reader) {
+    const buf = await req.arrayBuffer();
+    return buf.byteLength > maxBytes ? null : new TextDecoder().decode(buf);
+  }
+  const chunks: Uint8Array[] = [];
+  let total = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    total += value.byteLength;
+    if (total > maxBytes) {
+      await reader.cancel();
+      return null;
+    }
+    chunks.push(value);
+  }
+  const merged = new Uint8Array(total);
+  let offset = 0;
+  for (const chunk of chunks) {
+    merged.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return new TextDecoder().decode(merged);
 }
 
 async function hmacHex(
