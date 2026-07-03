@@ -16,6 +16,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Pre-1.0
 - Shared SwiftUI form primitives (capsule field, row button, toggle row, secondary button, section label, helper text, avatar) replace per-screen copies. The profile screen drops from 858 lines to composed sections.
 - OTP verify reads the native field so a same-frame submit sees all six digits, repeated errors re-announce to VoiceOver, notification listeners stop re-subscribing, and stale delete-account errors clear on retry.
 - Push sends chunk at Expo's 100-message limit with tickets aligned per chunk, the webhook body cap is enforced while streaming, and `sent` counts accepted tickets only.
+- Bump template `better-auth` and `@better-auth/expo` to 1.6.22 and `convex` to `~1.42.0`.
 - Every scaffold gets lighter: unused `expo-sharing`, 15 unreferenced fonts (~2.1MB per app binary), dead design tokens, and the template author's LICENSE no longer ship.
 - CI drives the locally packed CLI in the template job, `pack-guard` matches npm's forced-include rules exactly, and a half-failed publish is re-runnable.
 - Docs verified against source: the stale App Attest section is gone, CI token scopes are cataloged, and the 60-second claim covers provisioning, not the native build.
