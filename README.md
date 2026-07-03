@@ -16,7 +16,7 @@ vexpo is an Expo SDK 57 iOS template with Convex and Better Auth wired in, plus 
 npm create @ramonclaudio/vexpo@latest my-app
 cd my-app
 
-npx vexpo lite          # Convex + Better Auth, simulator-ready in about a minute
+npx vexpo lite          # Convex + Better Auth provisioned in about a minute
 ```
 
 Run it in two terminals:

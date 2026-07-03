@@ -76,7 +76,7 @@ const exitWith = (p: Promise<number>): void => {
 program
   .command("lite")
   .description(
-    "Dev-mode setup: Convex + Better Auth only. ~60 seconds from clone to the iOS Simulator. No Apple Developer account, no domain, no EAS, no Resend. Sign-up auto-verifies (no OTP). Re-run `vexpo full` later to provision the rest.",
+    "Dev-mode setup: Convex + Better Auth only, provisioned in ~60 seconds (the first `npm run ios` native build takes a few minutes on top). No Apple Developer account, no domain, no EAS, no Resend. Sign-up auto-verifies (no OTP). Re-run `vexpo full` later to provision the rest.",
   )
   .option("--new", "first-time user: walk Convex signup before provisioning", false)
   .option("--force", "re-run every step idempotently regardless of cache", false)

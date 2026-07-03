@@ -25,13 +25,13 @@ After scaffold:
 ```bash
 cd my-app
 
-npx vexpo lite         # 60 seconds: Convex + Better Auth, simulator-ready
+npx vexpo lite         # Convex + Better Auth provisioned in about a minute
 npx vexpo lite --new   # same + Convex signup walkthrough for first-time users
 npx vexpo full         # full provisioning: TestFlight-ready
 npx vexpo full --new   # same + Apple, Convex, Expo, and Resend signup walkthrough
 ```
 
-`lite` is the dev shortcut: no Apple account, domain, EAS, or Resend, simulator-ready in about a minute. `full` provisions everything in order (Convex, Better Auth, Resend, Apple Sign In, EAS, rebrand), about 30 minutes hands-on plus Apple-side wait times, then prints the `eas build` command for you to run. Add `--new` to either for the signup walkthroughs.
+`lite` is the dev shortcut: no Apple account, domain, EAS, or Resend. Provisioning takes about a minute, and the first native build a few minutes on top. `full` provisions everything in order (Convex, Better Auth, Resend, Apple Sign In, EAS, rebrand), about 30 minutes hands-on plus Apple-side wait times, then prints the `eas build` command for you to run. Add `--new` to either for the signup walkthroughs.
 
 ## Pre-reqs
 

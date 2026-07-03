@@ -370,7 +370,7 @@ export function printJourneyPlan(lite: boolean): void {
   if (lite) {
     section("Setup journey (lite)");
     line(
-      `  ${DIM}Lite mode provisions only what the iOS Simulator needs. No Apple Developer account, no domain, no Resend, no EAS account. ~60 seconds from start to \`npm run ios\`.${RESET}`,
+      `  ${DIM}Lite mode provisions only what the iOS Simulator needs. No Apple Developer account, no domain, no Resend, no EAS account. ~60 seconds to provision, then \`npm run ios\`.${RESET}`,
     );
     line();
     line(`  ${BOLD}${GREEN}Auto${RESET} ${DIM}(CLI does it, no input needed)${RESET}`);

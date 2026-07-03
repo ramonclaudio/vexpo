@@ -18,7 +18,7 @@ Requires macOS and Xcode (iOS-only). The `vexpo` CLI ships as a dependency, so `
 ```bash
 npm install
 
-npx vexpo lite         # Convex + Better Auth, simulator-ready in about a minute
+npx vexpo lite         # Convex + Better Auth provisioned in about a minute
 npx vexpo lite --new   # same, plus a Convex signup walkthrough if you don't have one
 ```
 

@@ -17,7 +17,7 @@ Scaffolded by [`create-vexpo`](https://www.npmjs.com/package/@ramonclaudio/creat
 Run these inside a scaffolded vexpo project (macOS and Xcode, iOS-only):
 
 ```bash
-npx vexpo lite          # Convex + Better Auth, simulator-ready in about a minute
+npx vexpo lite          # Convex + Better Auth provisioned in about a minute
 npx vexpo full          # full provisioning to TestFlight-ready
 npx vexpo doctor        # auth-check every credential, surface drift
 ```
@@ -25,7 +25,7 @@ npx vexpo doctor        # auth-check every credential, surface drift
 ## Setup
 
 ```text
-vexpo lite                        Convex + Better Auth only, simulator-ready (~60s)
+vexpo lite                        Convex + Better Auth only, provisioned in ~60s
 vexpo lite --new                  same + Convex signup walkthrough for first-timers
 vexpo full                        full provisioning (Convex + Better Auth + Resend + Apple + EAS init + rebrand)
 vexpo full --new                  same + walks Apple/Convex/Expo/Resend signups

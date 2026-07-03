@@ -249,7 +249,7 @@ function nextSteps(target: string, pm: PM, depsReady: boolean): void {
   if (!depsReady) console.log(kleur.gray(`  ${pm} install`));
   console.log(
     kleur.gray(
-      `  npx vexpo lite     ${kleur.dim("# dev mode: Convex + Better Auth, 60s to simulator")}`,
+      `  npx vexpo lite     ${kleur.dim("# dev mode: Convex + Better Auth, provisioned in ~60s")}`,
     ),
   );
   console.log(
