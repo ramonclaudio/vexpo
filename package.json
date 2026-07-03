@@ -34,9 +34,6 @@
     "link:dev": "npm run build -w @ramonclaudio/vexpo && cd packages/vexpo && npm link && cd ../../templates/default && npm link @ramonclaudio/vexpo && echo '\\nlinked. now `npx vexpo lite` from templates/default routes to the local vexpo build.\\nrun `npm run build -w @ramonclaudio/vexpo` whenever you change cli source.\\n'",
     "template:install": "cd templates/default && npm install",
     "template:dev": "cd templates/default && npm run dev",
-    "template:typecheck": "cd templates/default && npm run typecheck",
-    "template:lint": "cd templates/default && npm run lint",
-    "template:format:check": "cd templates/default && npm run format:check",
     "template:test": "cd templates/default && npm run test"
   },
   "devDependencies": {

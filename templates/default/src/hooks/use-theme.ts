@@ -4,7 +4,7 @@ import { Appearance, useColorScheme as useRNColorScheme } from "react-native";
 import { createStorage } from "@/lib/storage";
 import { Colors, type ColorPalette } from "@/constants/theme";
 
-export type ThemeMode = "light" | "dark" | "system";
+type ThemeMode = "light" | "dark" | "system";
 
 const store = createStorage<ThemeMode>("pref.theme.mode", "system");
 
@@ -17,10 +17,6 @@ applyToWindow(store.get());
 export function setTheme(mode: ThemeMode) {
   store.set(mode);
   applyToWindow(mode);
-}
-
-export function getTheme(): ThemeMode {
-  return store.get();
 }
 
 export function useColorScheme(): "light" | "dark" {

@@ -4,9 +4,14 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Pre-1.0
 
 ## [Unreleased]
 
+## [0.2.1] - 2026-07-03
+
 - Fix `rebrand --force` re-runs after a rebrand whose app name carried quotes or backslashes: the config markers are now escape-aware, so validation passes and the name rewrite no longer silently no-ops.
 - `vexpo review-account` refuses the template's placeholder demo password instead of seeding a guessable login.
 - Point accounts whose Convex team is managed by the EAS integration at the working path (`eas integrations:convex:connect` + `vexpo adopt`) when provisioning fails, in the CLI hint and the troubleshooting guide.
+- Drop `doctor --redact`. It was an internal screenshot helper, not a product feature.
+- Slim the template: drop the unused `react-dom` and `expo-symbols` dependencies (and the now-dead `react-dom` override) plus a handful of dead exports.
+- Trim `notifications.ts` to the surface the app uses: drop 19 uncalled `expo-notifications` wrappers (scheduling, badges, dismiss, presented).
 
 ## [0.2.0] - 2026-07-03
 
@@ -180,7 +185,8 @@ First public release.
 
 See [`README.md`](./README.md) for the feature list and [`SECURITY.md`](./SECURITY.md) for the threat model.
 
-[Unreleased]: https://github.com/ramonclaudio/vexpo/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/ramonclaudio/vexpo/compare/v0.2.1...HEAD
+[0.2.1]: https://github.com/ramonclaudio/vexpo/releases/tag/v0.2.1
 [0.2.0]: https://github.com/ramonclaudio/vexpo/releases/tag/v0.2.0
 [0.1.11]: https://github.com/ramonclaudio/vexpo/releases/tag/v0.1.11
 [0.1.10]: https://github.com/ramonclaudio/vexpo/releases/tag/v0.1.10

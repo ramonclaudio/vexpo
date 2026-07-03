@@ -1,6 +1,6 @@
 {
   "name": "vexpo",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "private": true,
   "main": "expo-router/entry",
   "scripts": {
@@ -77,13 +77,11 @@
     "expo-splash-screen": "~57.0.1",
     "expo-sqlite": "~57.0.0",
     "expo-status-bar": "~57.0.0",
-    "expo-symbols": "~57.0.0",
     "expo-system-ui": "~57.0.0",
     "expo-task-manager": "~57.0.1",
     "expo-updates": "~57.0.4",
     "expo-web-browser": "~57.0.0",
     "react": "19.2.3",
-    "react-dom": "19.2.3",
     "react-native": "0.86.0",
     "react-native-gesture-handler": "~2.32.0",
     "react-native-keyboard-controller": "1.21.9",
@@ -102,9 +100,6 @@
     "tsx": "^4.22.4",
     "typescript": "^6.0.3",
     "vitest": "^4.1.9"
-  },
-  "overrides": {
-    "react-dom": "19.2.3"
   },
   "expo": {
     "doctor": {

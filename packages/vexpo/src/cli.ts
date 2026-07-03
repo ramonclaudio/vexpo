@@ -198,8 +198,7 @@ program
   .option("--channel <channel>", "dev | prod", "dev")
   .option("--json", "machine-readable output", false)
   .option("--strict", "exit non-zero on any warn", false)
-  .option("--redact", "mask identifying values (for screenshots and issue reports)", false)
-  .action((options: { channel?: string; json?: boolean; strict?: boolean; redact?: boolean }) => {
+  .action((options: { channel?: string; json?: boolean; strict?: boolean }) => {
     exitWith(runDoctor(options));
   });
 

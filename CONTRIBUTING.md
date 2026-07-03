@@ -34,7 +34,7 @@ Open a [bug report](https://github.com/ramonclaudio/vexpo/issues/new?template=bu
 - what's broken, in a sentence or two
 - how to reproduce it, the exact commands in order
 - what you expected versus what happened
-- your environment. `npx vexpo doctor --redact` covers most of it, `--redact` masks anything identifying so it's safe to paste
+- your environment. `npx vexpo doctor` covers most of it
 
 ## Proposing a change
 

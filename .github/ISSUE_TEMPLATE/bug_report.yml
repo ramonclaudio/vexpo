@@ -5,7 +5,7 @@ body:
   - type: markdown
     attributes:
       value: |
-        Thanks for the report. Fill in `npx vexpo doctor --redact` below so we can see the real state without leaking your credentials.
+        Thanks for the report. Fill in `npx vexpo doctor` below so we can see the real state.
   - type: checkboxes
     id: searched
     attributes:
@@ -50,7 +50,7 @@ body:
     id: doctor
     attributes:
       label: vexpo doctor output
-      description: Paste the full output of `npx vexpo doctor --redact`. The `--redact` flag masks identifying values, so it is safe to paste here.
+      description: Paste the full output of `npx vexpo doctor`. Scrub anything you'd rather not share first.
       render: text
     validations:
       required: true

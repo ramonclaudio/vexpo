@@ -2,7 +2,7 @@ import { useSyncExternalStore } from "react";
 
 import { createStorage } from "@/lib/storage";
 
-export type ReduceMotionPref = "system" | "always" | "never";
+type ReduceMotionPref = "system" | "always" | "never";
 
 const hapticsStore = createStorage<boolean>("pref.hapticsEnabled", true);
 const reduceMotionStore = createStorage<ReduceMotionPref>("pref.reduceMotion", "system");

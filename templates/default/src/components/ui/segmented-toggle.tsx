@@ -13,7 +13,7 @@ import { Button as ButtonTokens } from "@/constants/layout";
 import { DynamicType } from "@/constants/ui";
 import { haptics } from "@/lib/haptics";
 
-export type SegmentedOption<T extends string> = {
+type SegmentedOption<T extends string> = {
   value: T;
   label: string;
 };
