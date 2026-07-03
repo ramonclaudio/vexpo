@@ -11,7 +11,6 @@ type PhaseDescription = {
   label: string;
   action: string;
   details: string[];
-  irreversible?: boolean;
 };
 
 async function describePhase(
@@ -47,7 +46,6 @@ async function describePhase(
           "rewrite app.config.ts, app.json, package.json, store.config.json",
           "back up originals to .rebrand-backup/<timestamp>/",
         ],
-        irreversible: false,
       };
     case "convex": {
       const localOk = probe.rows.get("convex")?.status === "live";
@@ -432,7 +430,7 @@ export function printJourneyPlan(lite: boolean): void {
 }
 
 // Auto-tier phases that lite mode also runs. Keep the labels in sync with
-// JOURNEY.auto entries below.
+// JOURNEY.auto entries above.
 const LITE_AUTO_LABELS = new Set<string>([
   "Convex deployment provisioning",
   "BETTER_AUTH_SECRET generation",

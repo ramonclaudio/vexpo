@@ -52,21 +52,22 @@ type RebrandInputs = {
   expoOwner?: string;
 };
 
-function slug(value: string): string {
-  return value
+// Lowercase, strip combining diacritics (NFKD leaves them as separate marks).
+const normalize = (value: string): string =>
+  value
     .toLowerCase()
     .normalize("NFKD")
-    .replace(/[̀-ͯ]/g, "")
+    .replace(/[̀-ͯ]/g, "");
+
+function slug(value: string): string {
+  return normalize(value)
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "")
     .slice(0, 32);
 }
 
 function bundleSlug(value: string): string {
-  return value
-    .toLowerCase()
-    .normalize("NFKD")
-    .replace(/[̀-ͯ]/g, "")
+  return normalize(value)
     .replace(/[^a-z0-9]+/g, "")
     .slice(0, 32);
 }

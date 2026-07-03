@@ -13,6 +13,9 @@ vi.mock("../../src/lib/eas-project.ts", () => ({
 vi.mock("../../src/lib/env-files.ts", () => ({
   ROUTING: { EXPO_PUBLIC_CONVEX_URL: { routes: () => [{ type: "eas" }] } },
   readEnvFile: vi.fn().mockResolvedValue(new Map([["EXPO_PUBLIC_CONVEX_URL", "https://x"]])),
+  withTempEnvFile: vi.fn((_lines: string[], fn: (p: string) => Promise<unknown>) =>
+    fn("/tmp/fake.env"),
+  ),
 }));
 vi.mock("../../src/lib/fs.ts", () => ({ fileExists: vi.fn() }));
 vi.mock("../../src/lib/state.ts", () => ({ recordStep: vi.fn().mockResolvedValue(undefined) }));

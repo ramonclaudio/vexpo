@@ -15,6 +15,7 @@ import {
   missingKeys,
   readSources,
   unrecognizedKeys,
+  withTempEnvFile,
   type Channel,
   type Destination,
   type SyncEntry,
@@ -240,29 +241,22 @@ export async function applyPlan(plan: FilePlan): Promise<{ applied: number; fail
 
   let applied = 0;
   let failed = 0;
-  const { writeFile, unlink, mkdtemp, rmdir } = await import("node:fs/promises");
-  const { tmpdir } = await import("node:os");
-  const { join } = await import("node:path");
 
   for (const [channel, entries] of convexBatches) {
     if (entries.length === 0) continue;
-    // Plaintext secrets go into a fresh private mkdtemp dir (0700, unguessable
-    // name) so no predictable or pre-planted path can capture them or dodge the
-    // 0600 file mode. Removed in finally.
-    const dir = await mkdtemp(join(tmpdir(), "vexpo-env-"));
-    const tmp = join(dir, "convex.env");
     try {
-      await writeFile(tmp, entries.map(([k, v]) => `${k}=${v}`).join("\n") + "\n", {
-        mode: 0o600,
-      });
-      // The plan and the interactive confirm already gate overwrites, so force
-      // the overwrite to match the EAS path. Without --force the Convex CLI
-      // rejects the whole batch when a secret already exists (a TTY user who
-      // confirms still carries no opts.force, and CI has none either).
-      await convexEnvSetFromFile(
-        tmp,
-        channel === "prod" ? { prod: true, envFile: plan.sourceFile } : undefined,
-        { force: true },
+      await withTempEnvFile(
+        entries.map(([k, v]) => `${k}=${v}`),
+        (tmp) =>
+          // The plan and the interactive confirm already gate overwrites, so
+          // force the overwrite to match the EAS path. Without --force the
+          // Convex CLI rejects the whole batch when a secret already exists (a
+          // TTY user who confirms still carries no opts.force, and CI has none).
+          convexEnvSetFromFile(
+            tmp,
+            channel === "prod" ? { prod: true, envFile: plan.sourceFile } : undefined,
+            { force: true },
+          ),
       );
       ok(`convex(${channel}) bulk-set ${entries.length} var${entries.length === 1 ? "" : "s"}`);
       for (const [k] of entries) note(`  ${k}`);
@@ -270,30 +264,22 @@ export async function applyPlan(plan: FilePlan): Promise<{ applied: number; fail
     } catch (err) {
       bad(`convex(${channel}) bulk-set failed: ${err instanceof Error ? err.message : err}`);
       failed += entries.length;
-    } finally {
-      await unlink(tmp).catch(() => {});
-      await rmdir(dir).catch(() => {});
     }
   }
 
   for (const { envs, entries } of easBatches.values()) {
     if (entries.length === 0) continue;
-    const dir = await mkdtemp(join(tmpdir(), "vexpo-env-"));
-    const tmp = join(dir, "eas.env");
     try {
-      await writeFile(tmp, entries.map(([k, v]) => `${k}=${v}`).join("\n") + "\n", {
-        mode: 0o600,
-      });
-      await easEnvPush({ path: tmp, environments: envs, force: true });
+      await withTempEnvFile(
+        entries.map(([k, v]) => `${k}=${v}`),
+        (tmp) => easEnvPush({ path: tmp, environments: envs, force: true }),
+      );
       ok(`eas(${envs.join(",")}) pushed ${entries.length} var${entries.length === 1 ? "" : "s"}`);
       for (const [k] of entries) note(`  ${k}`);
       applied += entries.length;
     } catch (err) {
       bad(`eas(${envs.join(",")}) push failed: ${err instanceof Error ? err.message : err}`);
       failed += entries.length;
-    } finally {
-      await unlink(tmp).catch(() => {});
-      await rmdir(dir).catch(() => {});
     }
   }
 

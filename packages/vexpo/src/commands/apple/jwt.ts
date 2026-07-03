@@ -50,6 +50,18 @@ const APPLE_ENV_KEYS = [
   "APPLE_CLIENT_SECRET",
 ] as const;
 
+// Write `key` to the current deployment only when it differs from `env`.
+// Returns whether a write happened so the caller logs the right line.
+async function setIfChanged(
+  env: Map<string, string>,
+  key: string,
+  value: string,
+): Promise<boolean> {
+  if (env.get(key) === value) return false;
+  await envSet(key, value);
+  return true;
+}
+
 /**
  * Copy the Apple Sign In env from another deployment onto the current one. The
  * client_secret JWT and key id live on the deployment, not in any .env file, so
@@ -70,14 +82,10 @@ async function copyAppleEnv(from: string): Promise<number> {
   const dst = (await envMap()) ?? new Map<string, string>();
   let copied = 0;
   for (const key of present) {
-    const value = src.get(key)!;
-    if (dst.get(key) === value) {
-      nop(`${key} already matches`);
-      continue;
-    }
-    await envSet(key, value);
-    ok(`copied ${key} from ${slug}`);
-    copied += 1;
+    if (await setIfChanged(dst, key, src.get(key)!)) {
+      ok(`copied ${key} from ${slug}`);
+      copied += 1;
+    } else nop(`${key} already matches`);
   }
   line();
   ok(`Apple env copied from ${slug} (${copied} changed)`);
@@ -177,20 +185,14 @@ export async function runAppleJwt(options: AppleJwtOptions): Promise<number> {
     return 1;
   }
 
-  if (!env.has("APPLE_CLIENT_ID") || env.get("APPLE_CLIENT_ID") !== servicesId) {
-    await envSet("APPLE_CLIENT_ID", servicesId);
-    ok(`set APPLE_CLIENT_ID=${servicesId}`);
-  } else nop("APPLE_CLIENT_ID already set");
-
-  if (!env.has("APPLE_TEAM_ID") || env.get("APPLE_TEAM_ID") !== teamId) {
-    await envSet("APPLE_TEAM_ID", teamId);
-    ok(`set APPLE_TEAM_ID=${teamId}`);
-  } else nop("APPLE_TEAM_ID already set");
-
-  if (!env.has("APPLE_KEY_ID") || env.get("APPLE_KEY_ID") !== keyId) {
-    await envSet("APPLE_KEY_ID", keyId);
-    ok(`set APPLE_KEY_ID=${keyId}`);
-  } else nop("APPLE_KEY_ID already set");
+  for (const [key, value] of [
+    ["APPLE_CLIENT_ID", servicesId],
+    ["APPLE_TEAM_ID", teamId],
+    ["APPLE_KEY_ID", keyId],
+  ] as const) {
+    if (await setIfChanged(env, key, value)) ok(`set ${key}=${value}`);
+    else nop(`${key} already set`);
+  }
 
   const p8Path = await resolveSiwaP8Path(await loadState());
   if (!p8Path) {

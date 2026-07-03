@@ -15,6 +15,9 @@
 
 import type { AscClient } from "./asc-api.ts";
 import { isRecord } from "./json.ts";
+import type { LintIssue } from "./lint.ts";
+
+export type { LintIssue };
 
 const ACCESSIBILITY_FEATURES = [
   "VOICE_OVER",
@@ -49,10 +52,8 @@ const ACCESSIBILITY_DEVICE_FAMILIES = [
 ] as const;
 type AccessibilityDeviceFamily = (typeof ACCESSIBILITY_DEVICE_FAMILIES)[number];
 
-export type AccessibilityLintIssue = { severity: "error" | "warning"; message: string };
-
-export function lintAccessibilityConfig(config: unknown): AccessibilityLintIssue[] {
-  const issues: AccessibilityLintIssue[] = [];
+export function lintAccessibilityConfig(config: unknown): LintIssue[] {
+  const issues: LintIssue[] = [];
   if (!isRecord(config)) {
     issues.push({ severity: "error", message: "config must be a JSON object" });
     return issues;

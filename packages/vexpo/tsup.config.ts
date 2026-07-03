@@ -10,5 +10,5 @@ export default defineConfig({
   dts: false,
   sourcemap: false,
   treeshake: true,
-  banner: ({ format }) => (format === "esm" ? { js: "#!/usr/bin/env node" } : {}),
+  banner: { js: "#!/usr/bin/env node" },
 });

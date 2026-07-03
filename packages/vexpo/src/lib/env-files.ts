@@ -1,6 +1,30 @@
-import { readFile } from "node:fs/promises";
+import { mkdtemp, readFile, rmdir, unlink, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 
 import { fileExists } from "./fs.ts";
+
+/**
+ * Write env `lines` to a 0600 file in a fresh 0700 mkdtemp dir, run `fn` with
+ * its path, then remove both in finally. Plaintext secrets (BETTER_AUTH_SECRET,
+ * RESEND_API_KEY, APPLE_CLIENT_SECRET, ...) never land on a predictable path or
+ * in the process table, and never outlive the call. Callers pass secrets via
+ * the file, never as an argv element.
+ */
+export async function withTempEnvFile<T>(
+  lines: string[],
+  fn: (path: string) => Promise<T>,
+): Promise<T> {
+  const dir = await mkdtemp(join(tmpdir(), "vexpo-env-"));
+  const file = join(dir, "env");
+  try {
+    await writeFile(file, lines.join("\n") + "\n", { mode: 0o600 });
+    return await fn(file);
+  } finally {
+    await unlink(file).catch(() => {});
+    await rmdir(dir).catch(() => {});
+  }
+}
 
 export type Channel = "dev" | "prod";
 

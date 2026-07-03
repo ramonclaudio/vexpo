@@ -9,7 +9,7 @@ import {
   whoami,
   type EasEnvironment,
 } from "../lib/eas-project.ts";
-import { ROUTING, readEnvFile } from "../lib/env-files.ts";
+import { ROUTING, readEnvFile, withTempEnvFile } from "../lib/env-files.ts";
 import { fileExists } from "../lib/fs.ts";
 import { BOLD, RESET, askYesNo, bad, line, nop, note, ok, section, yep } from "../lib/output.ts";
 import { recordStep } from "../lib/state.ts";
@@ -37,19 +37,13 @@ async function pushEasRoutedKeys(
   }
   if (easKeys.length === 0) return [];
 
-  const { writeFile, unlink, mkdtemp, rmdir } = await import("node:fs/promises");
-  const { tmpdir } = await import("node:os");
-  const { join } = await import("node:path");
-  const dir = await mkdtemp(join(tmpdir(), "vexpo-env-"));
-  const tmp = join(dir, "eas.env");
-  try {
-    await writeFile(tmp, easKeys.map(([k, v]) => `${k}=${v}`).join("\n") + "\n", { mode: 0o600 });
-    await envPush({ path: tmp, environments, force: true });
-    return easKeys.map(([k]) => k);
-  } finally {
-    await unlink(tmp).catch(() => {});
-    await rmdir(dir).catch(() => {});
-  }
+  return withTempEnvFile(
+    easKeys.map(([k, v]) => `${k}=${v}`),
+    async (tmp) => {
+      await envPush({ path: tmp, environments, force: true });
+      return easKeys.map(([k]) => k);
+    },
+  );
 }
 
 export async function runEas(options: EasOptions): Promise<number> {

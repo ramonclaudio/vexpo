@@ -1,5 +1,6 @@
 import { access } from "node:fs/promises";
 
+import { withTempEnvFile } from "./env-files.ts";
 import { dlx } from "./pkg-manager.ts";
 import { run } from "./proc.ts";
 
@@ -87,18 +88,9 @@ export async function envMap(target?: ConvexTarget): Promise<Map<string, string>
  * never land in the process table where any local user could read them.
  */
 export async function envSet(name: string, value: string, target?: ConvexTarget): Promise<void> {
-  const { writeFile, unlink, mkdtemp, rmdir } = await import("node:fs/promises");
-  const { tmpdir } = await import("node:os");
-  const { join } = await import("node:path");
-  const dir = await mkdtemp(join(tmpdir(), "vexpo-env-"));
-  const file = join(dir, "convex.env");
-  try {
-    await writeFile(file, `${name}=${quoteEnvValue(value)}\n`, { mode: 0o600 });
-    await envSetFromFile(file, target, { force: true });
-  } finally {
-    await unlink(file).catch(() => {});
-    await rmdir(dir).catch(() => {});
-  }
+  await withTempEnvFile([`${name}=${quoteEnvValue(value)}`], (file) =>
+    envSetFromFile(file, target, { force: true }),
+  );
 }
 
 /**

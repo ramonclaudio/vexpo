@@ -80,7 +80,10 @@ export async function load(): Promise<SetupState> {
     const s = await stat(STATE_FILE);
     if (s.isDirectory()) throw new Error(`${STATE_FILE} is a directory, not a file`);
   } catch (err) {
-    if (err instanceof Error && err.message.includes("is a directory")) throw err;
+    // Swallow only a racing delete (file gone between fileExists and stat) so
+    // readFile surfaces it. The directory guard and real stat errors
+    // (permissions, I/O) propagate instead of being masked as invalid JSON.
+    if ((err as { code?: string }).code !== "ENOENT") throw err;
   }
   let raw: unknown;
   try {

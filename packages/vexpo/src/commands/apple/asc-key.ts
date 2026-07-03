@@ -29,6 +29,9 @@ export type AscKeyOptions = {
   revalidate?: boolean;
 };
 
+const p8PathOf = (creds: AscCredentials): string | undefined =>
+  "path" in creds.privateKey ? creds.privateKey.path : undefined;
+
 async function promptCredsInteractive(): Promise<AscCredentials | null> {
   if (!process.stdin.isTTY) return null;
   line();
@@ -121,7 +124,7 @@ export async function runAscKey(options: AscKeyOptions): Promise<number> {
     await recordStep("asc-key", {
       issuerId: cached.issuerId,
       keyId: cached.keyId,
-      p8Path: "path" in cached.privateKey ? cached.privateKey.path : undefined,
+      p8Path: p8PathOf(cached),
     });
     return 0;
   }
@@ -135,7 +138,7 @@ export async function runAscKey(options: AscKeyOptions): Promise<number> {
       await recordStep("asc-key", {
         issuerId: cached.issuerId,
         keyId: cached.keyId,
-        p8Path: "path" in cached.privateKey ? cached.privateKey.path : undefined,
+        p8Path: p8PathOf(cached),
       });
       return 0;
     }
@@ -158,7 +161,7 @@ export async function runAscKey(options: AscKeyOptions): Promise<number> {
     `ASC API authenticated (${validation.appCount} app${validation.appCount === 1 ? "" : "s"} on team)`,
   );
 
-  const p8Path = "path" in creds.privateKey ? creds.privateKey.path : undefined;
+  const p8Path = p8PathOf(creds);
   await recordStep("asc-key", {
     issuerId: creds.issuerId,
     keyId: creds.keyId,

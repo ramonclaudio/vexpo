@@ -156,10 +156,12 @@ async function walkDomain(): Promise<{ ready: boolean }> {
   return { ready };
 }
 
-async function walkConvex(): Promise<void> {
+// Returns the final auth status so the caller records the post-login snapshot
+// without re-spawning the CLI.
+async function walkConvex(): Promise<AccountStatus> {
   if ((await statusConvex()).status === "ok") {
     ok("Convex CLI logged in");
-    return;
+    return "ok";
   }
   whereBlock({
     title: "Convex",
@@ -172,7 +174,7 @@ async function walkConvex(): Promise<void> {
   });
   if (!process.stdin.isTTY) {
     bad("non-TTY: run `npx convex login` then re-run");
-    return;
+    return "missing";
   }
   if (await askYesNo(`Run \`${dlx()} convex login\` now?`, false)) {
     const proc = spawn([dlx(), "convex", "login"], {
@@ -180,20 +182,24 @@ async function walkConvex(): Promise<void> {
     });
     if ((await proc.exited) !== 0) {
       yep("convex login did not complete; run `npx convex login` later");
-      return;
+      return "missing";
     }
-    if ((await statusConvex()).status === "ok") ok("Convex authenticated");
+    const after = (await statusConvex()).status;
+    if (after === "ok") ok("Convex authenticated");
     else yep("still not signed in; run `npx convex login` later");
-  } else {
-    nop("`npx convex login` will prompt automatically when `npx vexpo convex` runs");
+    return after;
   }
+  nop("`npx convex login` will prompt automatically when `npx vexpo convex` runs");
+  return "missing";
 }
 
-async function walkExpo(): Promise<void> {
+// Returns the final auth status so the caller records the post-login snapshot
+// without re-spawning eas whoami.
+async function walkExpo(): Promise<AccountStatus> {
   const cur = await statusExpo();
   if (cur.status === "ok") {
     ok(`Expo CLI logged in as ${cur.detail}`);
-    return;
+    return "ok";
   }
   whereBlock({
     title: "Expo",
@@ -209,21 +215,20 @@ async function walkExpo(): Promise<void> {
   });
   if (!process.stdin.isTTY) {
     bad("non-TTY: run `npx eas-cli login` then re-run");
-    return;
+    return "missing";
   }
   if (await askYesNo(`Run \`${dlx()} eas login\` now?`, false)) {
     if ((await easSpawn(["login"])) !== 0) {
       yep("eas login did not complete; run `npx eas-cli login` later");
-      return;
+      return "missing";
     }
     const after = await statusExpo();
     if (after.status === "ok") ok(`signed in as ${after.detail}`);
     else yep("still not signed in; run `npx eas-cli login` later");
-  } else {
-    nop(
-      "`npx eas-cli login` will prompt automatically when the EAS phase of `npx vexpo full` runs",
-    );
+    return after.status;
   }
+  nop("`npx eas-cli login` will prompt automatically when the EAS phase of `npx vexpo full` runs");
+  return "missing";
 }
 
 async function walkResend(): Promise<void> {
@@ -256,10 +261,10 @@ export async function runAccounts(options: AccountsOptions): Promise<number> {
     const convex = await statusConvex();
     printTable([convex]);
     if (options.check) return convex.status === "ok" ? 0 : 1;
-    await walkConvex();
+    const convexFinal = await walkConvex();
     await recordStep("accounts", {
       lite: true,
-      convex: { signedIn: (await statusConvex()).status === "ok" },
+      convex: { signedIn: convexFinal === "ok" },
     });
     line();
     ok("accounts step complete (lite)");
@@ -278,8 +283,8 @@ export async function runAccounts(options: AccountsOptions): Promise<number> {
 
   const apple = await walkApple();
   const domain = await walkDomain();
-  await walkConvex();
-  await walkExpo();
+  const convexFinal = await walkConvex();
+  const expoFinal = await walkExpo();
   await walkResend();
 
   section("What you'll be prompted for later");
@@ -301,9 +306,9 @@ export async function runAccounts(options: AccountsOptions): Promise<number> {
   await recordStep("accounts", {
     apple: { enrolled: apple.enrolled },
     domain: { ready: domain.ready },
-    expo: { signedIn: (await statusExpo()).status === "ok" },
-    convex: { signedIn: (await statusConvex()).status === "ok" },
-    resend: { fullAccessKeyInEnv: (await statusResend()).status === "ok" },
+    expo: { signedIn: expoFinal === "ok" },
+    convex: { signedIn: convexFinal === "ok" },
+    resend: { fullAccessKeyInEnv: resend.status === "ok" },
   });
 
   line();
