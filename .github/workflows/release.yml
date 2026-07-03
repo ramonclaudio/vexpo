@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: Tag to publish (e.g. v0.1.0). Must already exist on the repo.
+        description: Tag to publish (e.g. v0.2.0). Must already exist on the repo.
         required: true
 
 # Least privilege at the top; the publish job widens to exactly what it needs.
