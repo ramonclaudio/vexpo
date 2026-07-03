@@ -33,7 +33,7 @@ Lite skips Apple, EAS, and Resend. Sign-up auto-verifies and drops you in with o
 
 ## Ship path
 
-When you're ready to ship, swap `lite` for `full`:
+Swap `lite` for `full`:
 
 ```bash
 npx vexpo full         # provisions Resend, Apple Sign In, EAS, rebrand wizard
@@ -47,8 +47,6 @@ npx vexpo full --new   # same, plus walks Apple, Convex, Expo, and Resend signup
 - `npx vexpo full --dry-run` shows what the next run would change.
 
 ## Credentials
-
-Three rules cover all of it:
 
 - The app bundle is public. Never put a real secret in an `EXPO_PUBLIC_*` var, it ships in plaintext inside the binary. Only public identifiers (Convex URL, bundle id, team id) belong there.
 - Real secrets live at their destination, EAS or Convex (both encrypted at rest), never in git. `vexpo full` and `vexpo env push` move them there.
@@ -179,7 +177,7 @@ __tests__/                        Convex + lib unit tests (validators, HMAC, dee
 
 ## Re-adding App Attest
 
-The template used to ship an Apple App Attest stack (a Convex verifier plus a client lib). App Attest proves a request came from a real, unmodified build on a real device with a Secure Enclave. Add it back when you have a mutation worth protecting:
+The template used to ship an Apple App Attest stack (a Convex verifier plus a client lib). App Attest proves a request came from a real, unmodified build on a device with a Secure Enclave. Add it back when you have a mutation worth protecting:
 
 1. Install the native module: `npm install @expo/app-integrity`.
 2. Add the entitlement under `ios` in `app.config.ts`:

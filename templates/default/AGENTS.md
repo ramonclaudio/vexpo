@@ -1,15 +1,14 @@
 # AGENTS
 
-Guidance for AI coding assistants (Claude Code, Cursor, Aider, etc.) working in
-a scaffolded vexpo project. The same content applies to humans reading by
-hand. These are conventions.
+Conventions for AI coding assistants and humans working in a scaffolded vexpo
+project.
 
 ## Stack at a glance
 
-- Backend. Convex. Reactive queries, real-time sync, storage. No raw DB
-  calls. Everything goes through `convex/` (server) and `convex/react`
-  (client). After running `npx convex ai-files install`, read
-  `convex/_generated/ai/guidelines.md` before touching anything in `convex/`.
+- Backend. Convex. No raw DB calls. Everything goes through `convex/` (server)
+  and `convex/react` (client). After running `npx convex ai-files install`,
+  read `convex/_generated/ai/guidelines.md` before touching anything in
+  `convex/`.
 - Auth. Better Auth via `@convex-dev/better-auth@0.12.4`. Email
   verification is gated on the `REQUIRE_EMAIL_VERIFICATION` Convex env var.
 - Mobile. Expo SDK 57, RN 0.86, React 19. **iOS only today.**
@@ -29,11 +28,10 @@ hand. These are conventions.
   export the component, named exports for everything else.
 - State: Convex `useQuery`/`useMutation` for server state. React `useState`
   for local UI state. No Redux, no Zustand, no Jotai.
-- Styling: `@expo/ui/swift-ui` primitives + `modifiers`. The chassis is
-  SwiftUI, not RN. `<Host>` boundary tells you you're crossing into native.
+- Styling: `@expo/ui/swift-ui` primitives + `modifiers`. `<Host>` marks the
+  boundary into native SwiftUI.
 - Validation: Zod on the client (`lib/schemas.ts`), Convex validators on
-  the server (`convex/validators.ts`). Don't pick one. Both, at each
-  boundary.
+  the server (`convex/validators.ts`). Both, at each boundary.
 - Errors: Throw real `Error` instances. Wrap server errors with
   `formatError` from `lib/convex-error.ts`. Don't swallow.
 - Tests: Vitest. `__tests__/` covers Convex constants,
@@ -54,7 +52,7 @@ hand. These are conventions.
   that cron depends on (`APPLE_P8_PRIVATE_KEY`, `APPLE_TEAM_ID`,
   `APPLE_KEY_ID`, `APPLE_SERVICES_ID`, `CONVEX_DEPLOY_KEY`).
 - Push notifications: only work on a physical device. iOS Simulator does
-  not deliver APNs. Don't try to test push flows in the simulator.
+  not deliver APNs.
 - `store.config.json`: ships with placeholder values. `npx vexpo rebrand`
   fills them in. App Review will reject builds with placeholder
   contact info.

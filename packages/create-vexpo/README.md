@@ -6,8 +6,6 @@
 
 Scaffold a new [vexpo](https://github.com/ramonclaudio/vexpo) project: an Expo SDK 57 iOS app with Convex, Better Auth, and Resend wired in for backend, auth, and email. Push, OTA updates, and App Store submission all run through EAS.
 
-The CLI creates or links your Convex deployment and runs the setup from the terminal.
-
 <p align="center">
   <img src="https://raw.githubusercontent.com/ramonclaudio/vexpo/main/.github/assets/demo-app.gif" width="300" alt="The scaffolded app: sign up, onboarding, search, and the dark-mode flip">
 </p>
@@ -31,7 +29,7 @@ npx vexpo full         # full provisioning: TestFlight-ready
 npx vexpo full --new   # same + Apple, Convex, Expo, and Resend signup walkthrough
 ```
 
-`lite` is the dev shortcut: no Apple account, domain, EAS, or Resend. Provisioning takes about a minute, and the first native build a few minutes on top. `full` provisions everything in order (Convex, Better Auth, Resend, Apple Sign In, EAS, rebrand), about 30 minutes hands-on plus Apple-side wait times, then prints the `eas build` command for you to run. Add `--new` to either for the signup walkthroughs.
+`lite` is the dev shortcut: no Apple account, domain, EAS, or Resend. Provisioning takes about a minute, and the first native build a few minutes on top. `full` provisions everything in order (Convex, Better Auth, Resend, Apple Sign In, EAS, rebrand), about 30 minutes hands-on plus Apple-side wait times, then prints the `eas build` command for you to run.
 
 ## Pre-reqs
 
@@ -58,7 +56,7 @@ The CLI copies `templates/default/`, rewrites `package.json`, installs with your
 
 [github.com/ramonclaudio/vexpo](https://github.com/ramonclaudio/vexpo)
 
-Development happens in the monorepo. See [CONTRIBUTING.md](https://github.com/ramonclaudio/vexpo/blob/main/CONTRIBUTING.md) on GitHub.
+See [CONTRIBUTING.md](https://github.com/ramonclaudio/vexpo/blob/main/CONTRIBUTING.md) on GitHub.
 
 ## License
 

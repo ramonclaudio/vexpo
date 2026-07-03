@@ -25,14 +25,14 @@ Call it directly with `node scripts/_run.mjs scripts/clean.ts --metro`.
 
 ## Setup orchestration
 
-Use the `vexpo` CLI. `lite` and `full` are alternatives, pick the path you need:
+Use the `vexpo` CLI:
 
 ```bash
 npx vexpo lite               # dev-mode setup (Convex + Better Auth only)
 npx vexpo full               # full provisioning to TestFlight-ready
 ```
 
-The rest are independent maintenance commands, run them when you need them:
+Independent maintenance commands:
 
 ```bash
 npx vexpo doctor             # cross-source drift detection
@@ -48,4 +48,4 @@ The CLI itself ships from [`@ramonclaudio/vexpo` on npm](https://www.npmjs.com/p
 
 ## Conventions
 
-- All deletions go through `trash`. Recoverable from macOS Trash.
+- All deletions go through `trash`.

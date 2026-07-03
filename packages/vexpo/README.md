@@ -4,7 +4,7 @@
 [![Check](https://github.com/ramonclaudio/vexpo/actions/workflows/check.yml/badge.svg)](https://github.com/ramonclaudio/vexpo/actions/workflows/check.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-The setup CLI for [vexpo](https://github.com/ramonclaudio/vexpo) projects (Expo + Convex + Better Auth + Resend, iOS). It creates or links your Convex deployment, signs and rotates the Apple keys, syncs your env, and handles App Store Connect setup. EAS handles builds, updates, and submission. vexpo handles the setup around them.
+The setup CLI for [vexpo](https://github.com/ramonclaudio/vexpo) projects (Expo + Convex + Better Auth + Resend, iOS). It creates or links your Convex deployment, signs and rotates the Apple keys, syncs your env, and handles App Store Connect setup. EAS handles builds, updates, and submission around it.
 
 Scaffolded by [`create-vexpo`](https://www.npmjs.com/package/@ramonclaudio/create-vexpo) into your devDependencies. Run it with `npx vexpo`.
 
@@ -65,7 +65,7 @@ vexpo apple eas-rotation-secrets  push the 5 EAS production secrets the JWT cron
 
 ## App Store Connect
 
-Picks up after `eas submit` hands a build to TestFlight: groups, testers, release notes, plus the privacy and accessibility labels Apple requires before review.
+Picks up after `eas submit` hands a build to TestFlight. Privacy and accessibility labels are the ones Apple requires before review.
 
 ```text
 vexpo testflight groups list                 list beta groups

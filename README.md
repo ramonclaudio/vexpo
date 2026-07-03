@@ -55,8 +55,6 @@ Two packages: [`create-vexpo`](https://www.npmjs.com/package/@ramonclaudio/creat
   <img src=".github/assets/screens.png" width="760" alt="Template screens in light and dark: home, profile, settings">
 </p>
 
-Screen by screen: [`templates/default/README.md`](./templates/default/README.md).
-
 ## Repo layout
 
 ```text
