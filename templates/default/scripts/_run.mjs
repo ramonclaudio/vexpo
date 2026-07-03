@@ -44,7 +44,7 @@ function pickRuntime() {
   const npx = which("npx");
   if (npx) return { cmd: npx, args: ["tsx", target] };
 
-  console.error(`vexpo full needs bun or tsx to run TypeScript.`);
+  console.error(`\`${target}\` needs bun or tsx to run TypeScript.`);
   console.error(`  install bun:  curl -fsSL https://bun.sh/install | bash`);
   console.error(`  or run:       npm install   (vexpo ships tsx as a devDep)`);
   process.exit(1);

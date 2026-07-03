@@ -17,7 +17,7 @@
  */
 
 import { spawn as nodeSpawn } from "node:child_process";
-import { access, readdir, readFile, stat } from "node:fs/promises";
+import { readdir, readFile, stat } from "node:fs/promises";
 import { homedir } from "node:os";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -32,14 +32,23 @@ type SpawnOpts = {
   stderr?: StdioOption;
 };
 
-function spawn(argv: readonly string[], opts: SpawnOpts = {}): { exited: Promise<number> } {
+function spawn(
+  argv: readonly string[],
+  opts: SpawnOpts = {},
+): { exited: Promise<number>; stdout: Promise<string> } {
   const stdio = opts.stdio ?? [
     opts.stdin ?? "inherit",
     opts.stdout ?? "inherit",
     opts.stderr ?? "inherit",
   ];
   const proc = nodeSpawn(argv[0]!, argv.slice(1), { stdio });
+  let out = "";
+  proc.stdout?.on("data", (c) => (out += c.toString()));
   return {
+    stdout: new Promise<string>((resolve) => {
+      proc.on("close", () => resolve(out));
+      proc.on("error", () => resolve(out));
+    }),
     exited: new Promise<number>((resolve) => {
       proc.on("close", (code) => resolve(code ?? 1));
       // ENOENT (command not found) emits 'error' without 'close'. Treat as
@@ -57,24 +66,18 @@ const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
  * own bash parent or itself.
  */
 async function pgrepF(pattern: string): Promise<number[]> {
-  return new Promise((resolve) => {
-    const proc = nodeSpawn("pgrep", ["-f", pattern], {
-      stdio: ["ignore", "pipe", "ignore"],
-    });
-    let buf = "";
-    proc.stdout?.on("data", (c) => (buf += c.toString()));
-    proc.on("error", () => resolve([]));
-    proc.on("close", () => {
-      const self = process.pid;
-      const parent = typeof process.ppid === "number" ? process.ppid : -1;
-      const pids = buf
-        .split("\n")
-        .filter(Boolean)
-        .map((s) => Number.parseInt(s, 10))
-        .filter((n) => Number.isFinite(n) && n !== self && n !== parent);
-      resolve(pids);
-    });
-  });
+  const buf = await spawn(["pgrep", "-f", pattern], {
+    stdin: "ignore",
+    stdout: "pipe",
+    stderr: "ignore",
+  }).stdout;
+  const self = process.pid;
+  const parent = typeof process.ppid === "number" ? process.ppid : -1;
+  return buf
+    .split("\n")
+    .filter(Boolean)
+    .map((s) => Number.parseInt(s, 10))
+    .filter((n) => Number.isFinite(n) && n !== self && n !== parent);
 }
 
 async function trySignal(pids: readonly number[], signal: "TERM" | "KILL"): Promise<void> {
@@ -82,15 +85,6 @@ async function trySignal(pids: readonly number[], signal: "TERM" | "KILL"): Prom
   await spawn(["kill", `-${signal}`, ...pids.map(String)], {
     stdio: ["ignore", "ignore", "ignore"],
   }).exited;
-}
-
-async function fileExists(p: string): Promise<boolean> {
-  try {
-    await access(p);
-    return true;
-  } catch {
-    return false;
-  }
 }
 
 type PM = "bun" | "pnpm" | "yarn" | "npm";
@@ -102,9 +96,9 @@ async function detectPackageManager(): Promise<PM> {
   if (execpath.includes("pnpm")) return "pnpm";
   if (execpath.includes("yarn")) return "yarn";
   if (execpath.includes("npm")) return "npm";
-  if (await fileExists("bun.lock")) return "bun";
-  if (await fileExists("pnpm-lock.yaml")) return "pnpm";
-  if (await fileExists("yarn.lock")) return "yarn";
+  if (await pathExists("bun.lock")) return "bun";
+  if (await pathExists("pnpm-lock.yaml")) return "pnpm";
+  if (await pathExists("yarn.lock")) return "yarn";
   return "npm";
 }
 
@@ -275,7 +269,13 @@ const PROJECT_TARGETS = [
 // Wiped only with --all. Default leaves these alone: the lockfile stays the
 // source of truth (frozen install) and convex/_generated needs a deployment
 // round-trip via `npx convex codegen` to come back.
-const PROJECT_TARGETS_ALL = ["bun.lock", "package-lock.json", "convex/_generated"];
+const PROJECT_TARGETS_ALL = [
+  "bun.lock",
+  "package-lock.json",
+  "pnpm-lock.yaml",
+  "yarn.lock",
+  "convex/_generated",
+];
 
 const PROJECT_GLOBS = ["bun-error.*", "*.log"];
 
@@ -389,16 +389,10 @@ async function stepEasState(): Promise<void> {
 
 async function stepDsStores(): Promise<void> {
   section("macOS .DS_Store");
-  const { stdout } = await new Promise<{ stdout: string }>((resolve) => {
-    const proc = nodeSpawn(
-      "find",
-      [REPO, "-name", ".DS_Store", "-not", "-path", "*/node_modules/*"],
-      { stdio: ["ignore", "pipe", "ignore"] },
-    );
-    let buf = "";
-    proc.stdout?.on("data", (c) => (buf += c.toString()));
-    proc.on("close", () => resolve({ stdout: buf }));
-  });
+  const stdout = await spawn(
+    ["find", REPO, "-name", ".DS_Store", "-not", "-path", "*/node_modules/*"],
+    { stdin: "ignore", stdout: "pipe", stderr: "ignore" },
+  ).stdout;
   const matches = stdout.split("\n").filter(Boolean);
   if (matches.length === 0) {
     nop("none found");

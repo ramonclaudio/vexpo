@@ -9,21 +9,18 @@
       "distribution": "internal",
       "channel": "development",
       "autoIncrement": true,
-      "env": {},
       "cache": {
         "paths": ["node_modules", "ios/Pods"]
       }
     },
     "development:simulator": {
       "extends": "development",
-      "env": {},
       "ios": {
         "simulator": true
       }
     },
     "development:device": {
       "extends": "development",
-      "env": {},
       "ios": {
         "simulator": false
       }
@@ -32,7 +29,6 @@
       "autoIncrement": true,
       "channel": "production",
       "distribution": "store",
-      "env": {},
       "cache": {
         "paths": ["node_modules", "ios/Pods"]
       },

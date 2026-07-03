@@ -20,6 +20,9 @@
 
 import { createSign } from "node:crypto";
 import { spawnSync } from "node:child_process";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 
 const required = [
   "APPLE_P8_PRIVATE_KEY",
@@ -61,19 +64,36 @@ console.log(
   `Signed JWT for ${servicesId} (expires ${new Date((now + 180 * 86400) * 1000).toISOString()})`,
 );
 
-const setEnv = (name, value) => {
-  const args = ["convex", "env", "set", name, value];
-  const res = spawnSync("npx", args, { stdio: "inherit" });
+// The signed JWT is a live 180-day Apple credential, so it never lands on argv
+// where any process on the runner could read it from the process table. Write
+// all four vars to a 0600 file in a fresh 0700 mkdtemp dir and pass it via
+// `--from-file`, mirroring the CLI's `envSetFromFile`.
+const vars = {
+  APPLE_CLIENT_ID: servicesId,
+  APPLE_TEAM_ID: teamId,
+  APPLE_KEY_ID: keyId,
+  APPLE_CLIENT_SECRET: jwt,
+};
+const dir = mkdtempSync(join(tmpdir(), "vexpo-env-"));
+const file = join(dir, "convex.env");
+try {
+  writeFileSync(
+    file,
+    Object.entries(vars)
+      .map(([k, v]) => `${k}=${v}`)
+      .join("\n") + "\n",
+    { mode: 0o600 },
+  );
+  const res = spawnSync("npx", ["convex", "env", "set", "--from-file", file, "--force"], {
+    stdio: "inherit",
+  });
   if (res.status !== 0) {
-    console.error(`convex env set ${name} failed (exit ${res.status})`);
+    console.error(`convex env set --from-file failed (exit ${res.status})`);
     process.exit(1);
   }
-};
-
-setEnv("APPLE_CLIENT_ID", servicesId);
-setEnv("APPLE_TEAM_ID", teamId);
-setEnv("APPLE_KEY_ID", keyId);
-setEnv("APPLE_CLIENT_SECRET", jwt);
+} finally {
+  rmSync(dir, { recursive: true, force: true });
+}
 
 console.log(
   "Pushed APPLE_CLIENT_ID + APPLE_TEAM_ID + APPLE_KEY_ID + APPLE_CLIENT_SECRET to Convex",
