@@ -43,4 +43,3 @@ npx vexpo apple jwt          # sign client_secret JWT, push to Convex
 ```
 
 The CLI itself ships from [`@ramonclaudio/vexpo` on npm](https://www.npmjs.com/package/@ramonclaudio/vexpo). Source lives at [`github.com/ramonclaudio/vexpo`](https://github.com/ramonclaudio/vexpo).
-
