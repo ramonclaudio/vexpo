@@ -17,7 +17,6 @@ Templates stay outside the workspace because Expo's hoisting doesn't survive npm
 - Style: small functions (<50 lines), early returns, no deep nesting, strict TypeScript, no dead code.
 - Commits: conventional. `type(scope): lowercase description`, <72 chars, no trailing period. Verbs: add, fix, extract, drop, rename, move, split, wire, swap. Never: implement, leverage, utilize, streamline, enhance.
 - Voice: terse, direct, specific. No emdashes, no hedging, no marketing copy.
-- Destructive ops: never `rm`, `rmdir`, `dd`, `find -delete`, `> file` truncation. Use `trash`.
 - Attribution: never attribute Claude, Anthropic, Claude Code, or AI in authored content.
 
 ## Stack rules
