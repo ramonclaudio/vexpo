@@ -1,3 +1,5 @@
+import { sleep } from "./http-retry.ts";
+
 export type PollResult<T> =
   | { done: true; value: T; attempts: number; elapsedMs: number }
   | { done: false; attempts: number; elapsedMs: number };
@@ -15,8 +17,8 @@ export async function poll<T>(opts: {
 
   for (;;) {
     attempts += 1;
-    const elapsedMs = Date.now() - start;
     const res = await opts.check();
+    const elapsedMs = Date.now() - start;
     if (res.done) {
       return { done: true, value: res.value, attempts, elapsedMs };
     }
@@ -26,10 +28,6 @@ export async function poll<T>(opts: {
     }
     await sleep(intervalMs);
   }
-}
-
-function sleep(ms: number): Promise<void> {
-  return new Promise((r) => setTimeout(r, ms));
 }
 
 export function formatElapsed(ms: number): string {

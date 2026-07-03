@@ -16,6 +16,7 @@ import {
   listProjectDeployments,
 } from "./convex-management.ts";
 import { ascStatus } from "./eas-integrations.ts";
+import { fetchWithTimeout } from "./http-retry.ts";
 import { submitProfilesMissingAscAppId } from "./eas-submit.ts";
 import {
   envList as easEnvList,
@@ -23,8 +24,10 @@ import {
   projectInfo as easProjectInfo,
   whoami as easWhoami,
 } from "./eas-project.ts";
-import { readEnvFile } from "./env-files.ts";
+import { readEnvFile, type Channel } from "./env-files.ts";
 import { listDomains, listWebhooks, probeAccess } from "./resend-api.ts";
+
+export type { Channel };
 
 export type Severity = "ok" | "warn" | "fail" | "skip";
 
@@ -37,8 +40,6 @@ export type Check = {
   message: string;
   details?: string;
 };
-
-export type Channel = "dev" | "prod";
 
 export type VerifyContext = {
   channel: Channel;
@@ -123,15 +124,12 @@ function deploymentSlugFromHost(host: string): string | null {
 }
 
 async function fetchOk(url: string, timeoutMs = 5000): Promise<{ ok: boolean; status: number }> {
-  const ctl = new AbortController();
-  const t = setTimeout(() => ctl.abort(), timeoutMs);
   try {
-    const res = await fetch(url, { signal: ctl.signal, method: "HEAD" });
+    const res = await fetchWithTimeout(url, { method: "HEAD" }, timeoutMs);
     return { ok: res.ok || res.status === 405, status: res.status }; // 405 = HEAD not allowed but server is up
   } catch {
+    // TimeoutError or a network failure both mean "not reachable".
     return { ok: false, status: 0 };
-  } finally {
-    clearTimeout(t);
   }
 }
 
@@ -227,7 +225,7 @@ async function verifyConvex(ctx: VerifyContext): Promise<Check[]> {
           ),
         );
       } else {
-        checks.push(ok("convex", "deployments", `${deployments.length} total, 1 dev`));
+        checks.push(ok("convex", "deployments", `${deployments.length} total, ${devs.length} dev`));
       }
     }
   }
@@ -537,13 +535,7 @@ async function verifyEas(ctx: VerifyContext): Promise<Check[]> {
   // stubbed app.json with EAS_PROJECT_ID only in the shell).
   const envNames = ["production", "preview", "development"] as const;
   const envMaps = new Map<(typeof envNames)[number], Map<string, string> | null>();
-  for (const e of envNames) {
-    try {
-      envMaps.set(e, await easEnvList(e));
-    } catch {
-      envMaps.set(e, null);
-    }
-  }
+  for (const e of envNames) envMaps.set(e, await easEnvList(e));
   const provisioned = [...envMaps.values()].some((m) => m !== null && m.size > 0);
 
   if (projectId) {
@@ -690,7 +682,7 @@ async function verifyEas(ctx: VerifyContext): Promise<Check[]> {
             "eas",
             "asc-submit-id",
             `submit profile${missing.length === 1 ? "" : "s"} ${missing.join(", ")} missing ascAppId`,
-            "run `vexpo asc:connect` to write it; non-interactive `eas submit` (CI) fails without it",
+            "run `vexpo asc connect` to write it; non-interactive `eas submit` (CI) fails without it",
           ),
         );
       } else if (existsSync("eas.json")) {
@@ -702,7 +694,7 @@ async function verifyEas(ctx: VerifyContext): Promise<Check[]> {
           "eas",
           "asc-integration",
           `not connected (${status.status})`,
-          "run `vexpo asc:connect` so `eas submit` resolves the app from the bundle id",
+          "run `vexpo asc connect` so `eas submit` resolves the app from the bundle id",
         ),
       );
     }
@@ -768,25 +760,26 @@ function verifyCoherence(ctx: VerifyContext): Check[] {
   else if (localServices && convexServices)
     checks.push(ok("coherence", "services-id-match", localServices));
 
+  // SITE_URL on Convex is the *app* URL (e.g. vexpo://), a different thing from
+  // the deployment site URL. Worth a note only when it also doesn't match the
+  // local app scheme (EXPO_PUBLIC_SITE_URL).
   const expoSite = local.get("EXPO_PUBLIC_CONVEX_SITE_URL");
   const convexSite = env.get("SITE_URL");
+  const localSite = local.get("EXPO_PUBLIC_SITE_URL");
   if (
     expoSite &&
     convexSite &&
-    convexSite !== expoSite &&
-    !convexSite.startsWith(local.get("EXPO_PUBLIC_SITE_URL") ?? "")
+    localSite &&
+    convexSite !== localSite &&
+    !convexSite.startsWith(localSite)
   ) {
-    // SITE_URL on Convex is the *app* URL (e.g. vexpo://) and EXPO_PUBLIC_CONVEX_SITE_URL is the *deployment* site URL. they're different things, but worth a sanity note if SITE_URL doesn't match the local app scheme either.
-    const localSite = local.get("EXPO_PUBLIC_SITE_URL");
-    if (localSite && convexSite !== localSite) {
-      checks.push(
-        warn(
-          "coherence",
-          "site-url-match",
-          `Convex SITE_URL='${convexSite}' ≠ EXPO_PUBLIC_SITE_URL='${localSite}'`,
-        ),
-      );
-    }
+    checks.push(
+      warn(
+        "coherence",
+        "site-url-match",
+        `Convex SITE_URL='${convexSite}' ≠ EXPO_PUBLIC_SITE_URL='${localSite}'`,
+      ),
+    );
   }
 
   if (ctx.appConfig.name) {

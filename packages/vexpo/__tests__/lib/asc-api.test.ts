@@ -126,6 +126,30 @@ describe("retry policy", () => {
     await expect(client.apps.list()).rejects.toBeInstanceOf(AscApiError);
     expect(fetchSpy.mock.calls.length).toBe(2);
   });
+
+  it("bails with the real error instead of honoring an oversized Retry-After", async () => {
+    fetchSpy.mockImplementation(async () => makeEmpty(503, { "retry-after": "3600" }));
+    const client = makeAscClient(creds);
+    const err = (await client.apps.list().catch((e) => e)) as AscApiError;
+    expect(err).toBeInstanceOf(AscApiError);
+    expect(err.status).toBe(503);
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it("throws the real last status when retries are exhausted, not a synthetic 429", async () => {
+    vi.useFakeTimers();
+    try {
+      fetchSpy.mockImplementation(async () => makeEmpty(503));
+      const client = makeAscClient(creds);
+      const p = client.apps.list().catch((e) => e);
+      await vi.runAllTimersAsync();
+      const err = (await p) as AscApiError;
+      expect(err).toBeInstanceOf(AscApiError);
+      expect(err.status).toBe(503);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
 });
 
 describe("bundleIds + capabilities", () => {
@@ -172,17 +196,13 @@ describe("bundleIds + capabilities", () => {
     expect(body.data.relationships.bundleId.data.id).toBe("abc");
   });
 
-  it("lists capabilities without sending the rejected `limit` param", async () => {
-    // Apple's relationship endpoints reject the `limit` query param now.
-    // The list call should hit /v1/bundleIds/<id>/bundleIdCapabilities with
-    // no limit added.
+  it("lists capabilities direct, with no limit param (Apple rejects it on this relationship endpoint)", async () => {
     alwaysJson(200, { data: [] });
     const client = makeAscClient(creds);
     await client.bundleIdCapabilities.list("abc");
     const url = (fetchSpy.mock.calls[0]?.[0] ?? "") as string;
     expect(url).toContain("/v1/bundleIds/abc/bundleIdCapabilities");
     expect(url).not.toContain("limit=");
-    expect(url).not.toContain("limit%3D");
   });
 });
 

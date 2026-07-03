@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 
 import { BOLD, RED, RESET, YELLOW, bad, line, ok, section } from "./output.ts";
 
-type LintIssue = { severity: "error" | "warning"; message: string };
+export type LintIssue = { severity: "error" | "warning"; message: string };
 
 export function runLint(
   filePath: string,

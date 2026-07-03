@@ -16,7 +16,7 @@ const FULLY_PROVISIONED = {
 describe("buildFinishRunbook", () => {
   it("emits only the prod-mirror, key sync, and verify when everything dev-side is set", () => {
     expect(cmds(FULLY_PROVISIONED)).toEqual([
-      "vexpo convex:migrate --from happy-otter-100 --prod",
+      "vexpo convex migrate --from happy-otter-100 --prod",
       "vexpo env convex-key",
       "vexpo doctor --channel prod",
     ]);
@@ -34,9 +34,9 @@ describe("buildFinishRunbook", () => {
     ).toEqual([
       "vexpo resend",
       "vexpo apple jwt",
-      "vexpo asc:connect",
+      "vexpo asc connect",
       "npx convex deploy",
-      "vexpo convex:migrate --from abc-1 --prod",
+      "vexpo convex migrate --from abc-1 --prod",
       "vexpo env convex-key",
       "vexpo full",
       "vexpo doctor --channel prod",
@@ -50,7 +50,7 @@ describe("buildFinishRunbook", () => {
 
   it("always threads the resolved dev slug into the migrate command", () => {
     expect(cmds({ ...FULLY_PROVISIONED, devSlug: "wandering-yak-9" })).toContain(
-      "vexpo convex:migrate --from wandering-yak-9 --prod",
+      "vexpo convex migrate --from wandering-yak-9 --prod",
     );
   });
 });

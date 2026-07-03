@@ -99,7 +99,12 @@ export function computeScope(o: SetupOptions): EffectiveScope {
   };
 }
 
-let options: SetupOptions = {};
+type RunContext = {
+  options: SetupOptions;
+  completed: StepName[];
+  skipped: StepName[];
+  failedStep: StepName | null;
+};
 
 async function isXcodeInstalled(): Promise<boolean> {
   const proc = spawn(["xcode-select", "-p"], {
@@ -182,7 +187,12 @@ export type ProbeRow = {
   detail?: string;
 };
 
-async function shouldRun(step: StepName, liveCheck: () => Promise<boolean>): Promise<ProbeRow> {
+async function shouldRun(
+  ctx: RunContext,
+  step: StepName,
+  liveCheck: () => Promise<boolean>,
+): Promise<ProbeRow> {
+  const { options } = ctx;
   if (options.force) return { step, label: step, status: "missing" };
   if (options.noState) {
     const live = await liveCheck();
@@ -225,7 +235,7 @@ async function liveCheckApple(env?: Map<string, string>): Promise<boolean> {
 async function liveCheckEas(): Promise<boolean> {
   const projectId = await resolveProjectId();
   if (!projectId) return false;
-  const eas = await easEnvList("production").catch(() => new Map<string, string>());
+  const eas = (await easEnvList("production")) ?? new Map<string, string>();
   return ["EXPO_PUBLIC_CONVEX_URL", "EXPO_PUBLIC_CONVEX_SITE_URL", "EXPO_PUBLIC_SITE_URL"].every(
     (k) => eas.has(k),
   );
@@ -244,7 +254,7 @@ async function liveCheckAscLink(): Promise<boolean> {
 async function liveCheckRotationSecrets(): Promise<boolean> {
   const projectId = await resolveProjectId();
   if (!projectId) return false;
-  const eas = await easEnvList("production").catch(() => new Map<string, string>());
+  const eas = (await easEnvList("production")) ?? new Map<string, string>();
   return [
     "APPLE_P8_PRIVATE_KEY",
     "APPLE_TEAM_ID",
@@ -313,7 +323,7 @@ const STEP_LABELS: Record<string, string> = {
   accounts: "Accounts",
 };
 
-async function stepProbe(): Promise<{
+async function stepProbe(ctx: RunContext): Promise<{
   rows: Map<string, ProbeRow>;
   needs: Map<string, boolean>;
   install: boolean;
@@ -329,28 +339,32 @@ async function stepProbe(): Promise<{
   const convex = (convexLive ? await convexEnvMap() : null) ?? new Map<string, string>();
 
   const rows = new Map<string, ProbeRow>();
-  rows.set("accounts", await shouldRun("accounts", async () => true));
-  rows.set("rebrand", await shouldRun("rebrand", async () => false));
+  rows.set("accounts", await shouldRun(ctx, "accounts", async () => true));
+  rows.set("rebrand", await shouldRun(ctx, "rebrand", async () => false));
   rows.set("convex", {
     step: "convex",
     label: "convex",
     status: convexLive ? "live" : "missing",
   });
-  rows.set("better-auth", await shouldRun("better-auth", () => liveCheckBetterAuth(convex)));
-  rows.set("resend", await shouldRun("resend", () => liveCheckResend(convex)));
-  rows.set("asc-key", await shouldRun("asc-key", async () => false));
+  rows.set("better-auth", await shouldRun(ctx, "better-auth", () => liveCheckBetterAuth(convex)));
+  rows.set("resend", await shouldRun(ctx, "resend", () => liveCheckResend(convex)));
+  rows.set("asc-key", await shouldRun(ctx, "asc-key", async () => false));
   rows.set(
     "apple-services-id",
-    await shouldRun("apple-services-id", async () => !!(await readAll()).get("APPLE_SERVICES_ID")),
+    await shouldRun(
+      ctx,
+      "apple-services-id",
+      async () => !!(await readAll()).get("APPLE_SERVICES_ID"),
+    ),
   );
-  rows.set("apple-sign-in", await shouldRun("apple-sign-in", () => liveCheckApple(convex)));
-  rows.set("apple-credentials", await shouldRun("apple-credentials", async () => false));
-  rows.set("apple-asc-link", await shouldRun("apple-asc-link", liveCheckAscLink));
+  rows.set("apple-sign-in", await shouldRun(ctx, "apple-sign-in", () => liveCheckApple(convex)));
+  rows.set("apple-credentials", await shouldRun(ctx, "apple-credentials", async () => false));
+  rows.set("apple-asc-link", await shouldRun(ctx, "apple-asc-link", liveCheckAscLink));
   rows.set(
     "apple-eas-rotation-secrets",
-    await shouldRun("apple-eas-rotation-secrets", liveCheckRotationSecrets),
+    await shouldRun(ctx, "apple-eas-rotation-secrets", liveCheckRotationSecrets),
   );
-  rows.set("eas", await shouldRun("eas", liveCheckEas));
+  rows.set("eas", await shouldRun(ctx, "eas", liveCheckEas));
 
   const mark = (status: ProbeRow["status"]) =>
     status === "live"
@@ -447,43 +461,44 @@ async function stepInstallOnly(): Promise<void> {
   await runInstall();
 }
 
-const completed: StepName[] = [];
-const skipped: StepName[] = [];
-let failedStep: StepName | null = null;
-
 type StepRunner = () => Promise<number>;
 
-const STEP_RUNNERS: Record<string, StepRunner> = {
-  "vexpo accounts": () => runAccounts({ lite: options.lite }),
-  "vexpo rebrand": () => runRebrand({}),
-  "vexpo convex": () => runConvex({ fresh: options.fresh, local: options.local }),
-  "vexpo better-auth": () => runBetterAuth({}),
-  "vexpo resend": () => runResend({}),
-  "vexpo apple asc-key": () => runAscKey({}),
-  "vexpo apple credentials": () => runAppleCredentials({}),
-  "vexpo apple services-id": () => runServicesId({}),
-  "vexpo apple jwt": () => runAppleJwt({}),
-  "vexpo apple eas-rotation-secrets": () => runEasRotationSecrets({}),
-  "vexpo asc connect": () => runAscConnect({}),
-  "vexpo eas": async () =>
-    runEas({ withProd: (await fileExists(".env.prod")) || (await fileExists(".env.production")) }),
-  "vexpo review-account": () => runReviewAccount({}),
-};
+function stepRunners(o: SetupOptions): Record<string, StepRunner> {
+  return {
+    "vexpo accounts": () => runAccounts({ lite: o.lite }),
+    "vexpo rebrand": () => runRebrand({}),
+    "vexpo convex": () => runConvex({ fresh: o.fresh, local: o.local }),
+    "vexpo better-auth": () => runBetterAuth({}),
+    "vexpo resend": () => runResend({}),
+    "vexpo apple asc-key": () => runAscKey({}),
+    "vexpo apple credentials": () => runAppleCredentials({}),
+    "vexpo apple services-id": () => runServicesId({}),
+    "vexpo apple jwt": () => runAppleJwt({}),
+    "vexpo apple eas-rotation-secrets": () => runEasRotationSecrets({}),
+    "vexpo asc connect": () => runAscConnect({}),
+    "vexpo eas": async () =>
+      runEas({
+        withProd: (await fileExists(".env.prod")) || (await fileExists(".env.production")),
+      }),
+    "vexpo review-account": () => runReviewAccount({}),
+  };
+}
 
-async function runStep(name: string, state?: StepName): Promise<void> {
-  const runner = STEP_RUNNERS[name];
+async function runStep(ctx: RunContext, name: string, state?: StepName): Promise<void> {
+  const runner = stepRunners(ctx.options)[name];
   if (!runner) throw new Error(`unknown setup step: ${name}`);
   try {
     const code = await runner();
     if (code !== 0) throw new Error(`${name} exited with code ${code}`);
   } catch (err) {
-    if (state) failedStep = state;
+    if (state) ctx.failedStep = state;
     throw err;
   }
-  if (state) completed.push(state);
+  if (state) ctx.completed.push(state);
 }
 
 async function maybeRunStep(
+  ctx: RunContext,
   name: string,
   prompt: string,
   state?: StepName,
@@ -491,15 +506,15 @@ async function maybeRunStep(
 ): Promise<void> {
   if (!process.stdin.isTTY) {
     nop(`non-TTY: skipping ${name} (run \`${name}\` later)`);
-    if (state) skipped.push(state);
+    if (state) ctx.skipped.push(state);
     return;
   }
   if (!(await askYesNo(prompt, defaultYes))) {
     nop(`skipped ${name} (run \`${name}\` later)`);
-    if (state) skipped.push(state);
+    if (state) ctx.skipped.push(state);
     return;
   }
-  await runStep(name, state);
+  await runStep(ctx, name, state);
 }
 
 function printShipNextSteps(): void {
@@ -527,10 +542,8 @@ async function stepExpoDoctor(): Promise<void> {
 }
 
 export async function runSetup(opts: SetupOptions): Promise<number> {
-  options = opts;
-  failedStep = null;
-  completed.length = 0;
-  skipped.length = 0;
+  const ctx: RunContext = { options: opts, completed: [], skipped: [], failedStep: null };
+  const { options } = ctx;
   const startedAtPerf = performance.now();
   const startedAtIso = new Date().toISOString();
   let failureMessage: string | null = null;
@@ -553,7 +566,7 @@ export async function runSetup(opts: SetupOptions): Promise<number> {
     }
 
     await stepPrerequisites();
-    const probe = await stepProbe();
+    const probe = await stepProbe(ctx);
 
     if (options.plan) {
       printJourneyPlan(options.lite === true);
@@ -587,6 +600,7 @@ export async function runSetup(opts: SetupOptions): Promise<number> {
       const status = probe.rows.get("accounts")?.status;
       if (options.force || status === "missing") {
         await maybeRunStep(
+          ctx,
           "vexpo accounts",
           "Walk through Apple/Expo/Convex/Resend signups now?",
           "accounts",
@@ -595,13 +609,14 @@ export async function runSetup(opts: SetupOptions): Promise<number> {
         nop("vexpo accounts cached");
       }
     } else {
-      skipped.push("accounts");
+      ctx.skipped.push("accounts");
     }
 
     if (scope.rebrand) {
       const status = probe.rows.get("rebrand")?.status;
       if (options.force || status === "missing") {
         await maybeRunStep(
+          ctx,
           "vexpo rebrand",
           "Run the rebrand wizard to replace template defaults?",
           "rebrand",
@@ -610,56 +625,58 @@ export async function runSetup(opts: SetupOptions): Promise<number> {
         nop("vexpo rebrand cached");
       }
     } else {
-      skipped.push("rebrand");
+      ctx.skipped.push("rebrand");
     }
 
     if (options.fresh || options.force || probe.needs.get("convex")) {
-      await runStep("vexpo convex", "convex");
+      await runStep(ctx, "vexpo convex", "convex");
     } else {
       nop("vexpo convex already complete");
     }
 
     if (options.force || probe.needs.get("better-auth")) {
-      await runStep("vexpo better-auth", "better-auth");
+      await runStep(ctx, "vexpo better-auth", "better-auth");
     } else {
       nop("vexpo better-auth already complete");
     }
 
     if (scope.resend) {
       if (options.force || probe.needs.get("resend")) {
-        await runStep("vexpo resend", "resend");
+        await runStep(ctx, "vexpo resend", "resend");
       } else {
         nop("vexpo resend already complete");
       }
     } else {
-      skipped.push("resend");
+      ctx.skipped.push("resend");
     }
 
     if (scope.reviewAccount) {
       await maybeRunStep(
+        ctx,
         "vexpo review-account",
         "Seed (or re-seed) the App Review demo account on Convex now?",
         "review-account",
       );
     } else {
-      skipped.push("review-account");
+      ctx.skipped.push("review-account");
     }
 
     if (scope.eas) {
       if (options.force || probe.needs.get("eas")) {
-        await runStep("vexpo eas", "eas");
+        await runStep(ctx, "vexpo eas", "eas");
       } else {
         nop("vexpo eas already complete");
       }
     } else {
       section("EAS (skipped. lite mode)");
       nop("re-run without `--lite` to provision EAS");
-      skipped.push("eas");
+      ctx.skipped.push("eas");
     }
 
     if (scope.apple) {
       if (options.force || probe.needs.get("asc-key")) {
         await maybeRunStep(
+          ctx,
           "vexpo apple asc-key",
           "Validate or upload App Store Connect API key now?",
           "asc-key",
@@ -670,6 +687,7 @@ export async function runSetup(opts: SetupOptions): Promise<number> {
 
       if (options.force || probe.needs.get("apple-credentials")) {
         await maybeRunStep(
+          ctx,
           "vexpo apple credentials",
           "Configure EAS iOS credentials (dist cert + profile + push key) now?",
           "apple-credentials",
@@ -680,6 +698,7 @@ export async function runSetup(opts: SetupOptions): Promise<number> {
 
       if (options.force || probe.needs.get("apple-asc-link")) {
         await maybeRunStep(
+          ctx,
           "vexpo asc connect",
           "Link the EAS project to its ASC app now?",
           "apple-asc-link",
@@ -690,6 +709,7 @@ export async function runSetup(opts: SetupOptions): Promise<number> {
 
       if (options.force || probe.needs.get("apple-services-id")) {
         await maybeRunStep(
+          ctx,
           "vexpo apple services-id",
           "Provision Sign In with Apple Services ID via ASC API now?",
           "apple-services-id",
@@ -704,10 +724,11 @@ export async function runSetup(opts: SetupOptions): Promise<number> {
       const prompt = healthy
         ? "Apple Sign In is configured, rotate the JWT now?"
         : "Sign the Apple Sign In JWT now?";
-      await maybeRunStep("vexpo apple jwt", prompt, "apple-sign-in", !healthy);
+      await maybeRunStep(ctx, "vexpo apple jwt", prompt, "apple-sign-in", !healthy);
 
       if (options.force || probe.needs.get("apple-eas-rotation-secrets")) {
         await maybeRunStep(
+          ctx,
           "vexpo apple eas-rotation-secrets",
           "Push the 5 EAS production secrets the JWT rotation cron needs?",
           "apple-eas-rotation-secrets",
@@ -720,7 +741,7 @@ export async function runSetup(opts: SetupOptions): Promise<number> {
       nop(
         "re-run without `--lite` to provision Apple Sign In, ASC key, services id, EAS credentials",
       );
-      skipped.push(
+      ctx.skipped.push(
         "apple-sign-in",
         "apple-services-id",
         "apple-credentials",
@@ -733,7 +754,7 @@ export async function runSetup(opts: SetupOptions): Promise<number> {
     await stepExpoDoctor();
     await printSummary(!!options.local, performance.now() - startedAtPerf);
 
-    if (!options.lite && !options.dryRun) {
+    if (!options.lite) {
       printShipNextSteps();
     }
   } catch (err) {
@@ -759,10 +780,10 @@ export async function runSetup(opts: SetupOptions): Promise<number> {
           pid: process.pid,
           bunVersion: currentRuntimeVersion(),
           cwd: process.cwd(),
-          completed,
-          skipped,
+          completed: ctx.completed,
+          skipped: ctx.skipped,
           ...(failureMessage
-            ? { failed: { step: failedStep ?? "unknown", message: failureMessage } }
+            ? { failed: { step: ctx.failedStep ?? "unknown", message: failureMessage } }
             : {}),
         });
       } catch {

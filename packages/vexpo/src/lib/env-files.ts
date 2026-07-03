@@ -13,7 +13,6 @@ export type Destination =
     };
 
 type RoutingEntry = {
-  description?: string;
   /**
    * `channel` placeholder gets filled in based on which file the key was read from.
    */
@@ -83,7 +82,6 @@ export const ROUTING: Record<string, RoutingEntry> = {
 
   // Cross-named: APPLE_SERVICES_ID locally → APPLE_CLIENT_ID on Convex (Better Auth's expected key name)
   APPLE_SERVICES_ID: {
-    description: "writes APPLE_CLIENT_ID on Convex (Better Auth's expected key name)",
     routes: (c) => [{ type: "convex", key: "APPLE_CLIENT_ID", channel: c }],
   },
 };

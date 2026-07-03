@@ -1,5 +1,5 @@
 /**
- * `vexpo asc:privacy` group.
+ * `vexpo asc privacy` group.
  *
  *   show [f]   Show the locally declared `privacy.config.json`. Apple exposes
  *              no public read API for the live label (the `App` resource has no

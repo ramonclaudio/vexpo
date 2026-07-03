@@ -4,7 +4,7 @@ import { run, spawn } from "./proc.ts";
 // npx/bunx resolve packages by name. The `eas` binary lives in the `eas-cli`
 // package, so bare `npx eas` fails with "could not determine executable to run"
 // unless eas-cli happens to be globally installed. Invoke the package name.
-export const EAS_CLI = "eas-cli";
+const EAS_CLI = "eas-cli";
 
 export type EasArgs = readonly (string | number | boolean | undefined | null)[];
 
@@ -18,15 +18,18 @@ function compact(argv: EasArgs): string[] {
   return out;
 }
 
+// One error-tail behavior everywhere: prefer stderr, fall back to stdout (some
+// eas subcommands write their error there), then the bare exit code.
+function errorTail(code: number, stdout: string, stderr: string): string {
+  return (stderr || stdout).trim().split("\n").pop()?.trim() ?? `exit ${code}`;
+}
+
 export async function easJson<T = unknown>(argv: EasArgs): Promise<T> {
   const flat = compact(argv);
   if (!flat.includes("--json")) flat.push("--json");
   if (!flat.includes("--non-interactive")) flat.push("--non-interactive");
   const { code, stdout, stderr } = await run([dlx(), EAS_CLI, ...flat]);
-  if (code !== 0) {
-    const tail = (stderr || stdout).trim().split("\n").pop()?.trim() ?? `exit ${code}`;
-    throw new Error(`eas ${flat[0]} failed: ${tail}`);
-  }
+  if (code !== 0) throw new Error(`eas ${flat[0]} failed: ${errorTail(code, stdout, stderr)}`);
   try {
     return JSON.parse(stdout) as T;
   } catch (err) {
@@ -35,6 +38,13 @@ export async function easJson<T = unknown>(argv: EasArgs): Promise<T> {
       { cause: err },
     );
   }
+}
+
+// Run an eas subcommand that returns no JSON, throwing a uniform tail on nonzero.
+export async function easRun(argv: EasArgs): Promise<void> {
+  const flat = compact(argv);
+  const { code, stdout, stderr } = await run([dlx(), EAS_CLI, ...flat]);
+  if (code !== 0) throw new Error(`eas ${flat[0]} failed: ${errorTail(code, stdout, stderr)}`);
 }
 
 export async function easSpawn(

@@ -20,6 +20,10 @@ import { run } from "../../src/lib/proc.ts";
 
 const runSpy = run as unknown as ReturnType<typeof vi.fn>;
 
+// envSet routes the value through a `--from-file` temp file (never argv), so
+// capture that file's contents to assert on the value that reaches Convex.
+const fromFileWrites: string[] = [];
+
 // app.config.ts must carry the exact template lines rewriteAppConfig and
 // detectTemplateDefaults match against.
 const APP_CONFIG = `const pkg = { name: "vexpo" };
@@ -66,8 +70,18 @@ beforeEach(async () => {
   originalCwd = process.cwd();
   workdir = await mkdtemp(path.join(tmpdir(), "rebrand-test-"));
   process.chdir(workdir);
+  fromFileWrites.length = 0;
   runSpy.mockReset();
-  runSpy.mockResolvedValue({ code: 0, stdout: "", stderr: "" });
+  runSpy.mockImplementation(async (argv: string[]) => {
+    const i = argv.indexOf("--from-file");
+    if (i >= 0) {
+      const { readFileSync } = await import("node:fs");
+      try {
+        fromFileWrites.push(readFileSync(argv[i + 1], "utf8"));
+      } catch {}
+    }
+    return { code: 0, stdout: "", stderr: "" };
+  });
   await seed();
 });
 
@@ -126,15 +140,15 @@ describe("runRebrand bundle id sync", () => {
 
     const setCall = runSpy.mock.calls.find((c) => {
       const argv = c[0] as string[];
-      return argv.includes("set") && argv.includes("APP_BUNDLE_ID");
+      return argv.includes("set") && argv.includes("--from-file");
     });
     expect(setCall).toBeDefined();
     const argv = setCall![0] as string[];
-    expect(argv).toContain("com.acme.foobar");
-    expect(argv).not.toContain("com.old.stale");
     const depFlag = argv.indexOf("--deployment");
     expect(depFlag).toBeGreaterThan(-1);
     expect(argv[depFlag + 1]).toBe("happy-frog-12");
+    expect(fromFileWrites.some((c) => c.includes("APP_BUNDLE_ID=com.acme.foobar"))).toBe(true);
+    expect(fromFileWrites.every((c) => !c.includes("com.old.stale"))).toBe(true);
   });
 
   it("does not push to Convex when no deployment is configured, but still writes .env.local", async () => {
@@ -146,7 +160,10 @@ describe("runRebrand bundle id sync", () => {
     const env = await readAll();
     expect(env.get("EXPO_PUBLIC_APP_BUNDLE_ID")).toBe("com.acme.foobar");
 
-    const setCall = runSpy.mock.calls.find((c) => (c[0] as string[]).includes("APP_BUNDLE_ID"));
+    const setCall = runSpy.mock.calls.find((c) => {
+      const argv = c[0] as string[];
+      return argv.includes("set") && argv.includes("--from-file");
+    });
     expect(setCall).toBeUndefined();
   });
 });
@@ -174,6 +191,48 @@ describe("runRebrand rewrite correctness", () => {
 
     const cfg = await readFile("app.config.ts", "utf8");
     expect(cfg).toContain(`name: IS_DEV ? "Foo$&Bar (Dev)" : "Foo$&Bar"`);
+  });
+
+  it("escapes a double-quote in the app name instead of corrupting the literal", async () => {
+    Object.defineProperty(process.stdin, "isTTY", { value: false, configurable: true });
+    const name = 'Foo "Bar"';
+
+    expect(await runRebrand({ ...FLAGS, appName: name, yes: true })).toBe(0);
+
+    const cfg = await readFile("app.config.ts", "utf8");
+    expect(cfg).toContain(
+      `name: IS_DEV ? ${JSON.stringify(`${name} (Dev)`)} : ${JSON.stringify(name)},`,
+    );
+    expect(cfg).not.toContain(`"Foo "Bar" (Dev)"`);
+  });
+
+  it("escapes a backslash in the app name instead of corrupting the literal", async () => {
+    Object.defineProperty(process.stdin, "isTTY", { value: false, configurable: true });
+    const name = "Foo\\Bar";
+
+    expect(await runRebrand({ ...FLAGS, appName: name, yes: true })).toBe(0);
+
+    const cfg = await readFile("app.config.ts", "utf8");
+    expect(cfg).toContain(
+      `name: IS_DEV ? ${JSON.stringify(`${name} (Dev)`)} : ${JSON.stringify(name)},`,
+    );
+  });
+});
+
+describe("runRebrand derived defaults", () => {
+  it("derives the bundle id org from the owner, not a repeat of the app", async () => {
+    Object.defineProperty(process.stdin, "isTTY", { value: true, configurable: true });
+    vi.mocked(ask)
+      .mockResolvedValueOnce("Foo Bar") // app name
+      .mockResolvedValueOnce("Ada Lovelace") // your name
+      .mockResolvedValueOnce("") // bundle id -> falls back to the hint
+      .mockResolvedValueOnce("ada@example.com"); // review email
+
+    expect(await runRebrand({ yes: true })).toBe(0);
+
+    const cfg = await readFile("app.config.ts", "utf8");
+    expect(cfg).toContain(`?? "com.adalovelace.foobar"`);
+    expect(cfg).not.toContain("com.foobar.foobar");
   });
 });
 

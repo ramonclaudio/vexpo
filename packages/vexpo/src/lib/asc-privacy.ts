@@ -11,6 +11,11 @@
  * https://developer.apple.com/app-store/app-privacy-details/
  */
 
+import { isRecord } from "./json.ts";
+import type { LintIssue } from "./lint.ts";
+
+export type { LintIssue };
+
 // Apple's published data categories. Source: App Privacy Details guide.
 // Strings match the keys ASC uses for `AppPrivacyDataCategory`.
 const PRIVACY_DATA_TYPES = [
@@ -40,8 +45,6 @@ const PRIVACY_PURPOSES = [
   "OTHER",
 ] as const;
 type PrivacyPurpose = (typeof PRIVACY_PURPOSES)[number];
-
-export type LintIssue = { severity: "error" | "warning"; message: string };
 
 export function lintPrivacyConfig(config: unknown): LintIssue[] {
   const issues: LintIssue[] = [];
@@ -120,8 +123,4 @@ export function lintPrivacyConfig(config: unknown): LintIssue[] {
   });
 
   return issues;
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
 }

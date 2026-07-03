@@ -73,9 +73,9 @@ const empty = (): SetupState => ({
 
 export async function load(): Promise<SetupState> {
   if (!(await fileExists(STATE_FILE))) return empty();
-  // Stat first so we can label "is a directory" / "is a symlink to nowhere"
-  // distinctly from "JSON parse failed". A misleading "invalid JSON: EISDIR"
-  // sends users hunting for syntax errors in a file that isn't there.
+  // Stat first so we can label "is a directory" distinctly from "JSON parse
+  // failed". A misleading "invalid JSON: EISDIR" sends users hunting for syntax
+  // errors in a file that isn't there.
   try {
     const s = await stat(STATE_FILE);
     if (s.isDirectory()) throw new Error(`${STATE_FILE} is a directory, not a file`);

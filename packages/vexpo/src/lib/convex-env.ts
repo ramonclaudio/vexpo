@@ -40,6 +40,27 @@ function unquoteEnvValue(value: string): string {
 }
 
 /**
+ * Write a value the way `convex env set --from-file` reads it back: the CLI
+ * parses the file with dotenv, whose quote rules are asymmetric. Single/backtick
+ * quotes are fully literal. Double quotes expand \n and \r with no way to escape
+ * a backslash, so any value carrying a literal \n sequence must not be
+ * double-quoted or it silently gains real newlines (PEM keys, JSON blobs).
+ * Prefer the literal quote forms; a value that exhausts them cannot be
+ * represented in a dotenv file, so fail loud instead of corrupting the secret.
+ */
+function quoteEnvValue(value: string): string {
+  if (!/[#'"`\n\r]/.test(value) && value === value.trim()) return value;
+  if (!value.includes("'")) return `'${value}'`;
+  if (!value.includes("`")) return `\`${value}\``;
+  if (!value.includes('"') && !/\\[nr]/.test(value)) {
+    return `"${value.replace(/\n/g, "\\n").replace(/\r/g, "\\r")}"`;
+  }
+  throw new Error(
+    "value mixes ', \", ` and backslash escapes in a way dotenv cannot represent; set it in the Convex dashboard instead",
+  );
+}
+
+/**
  * Returns null on a non-zero `convex env list` (auth/CLI failure or an
  * unreachable deployment) so callers can tell "failed to read" from "genuinely
  * empty". Treating a failure as an empty map makes every remote var look absent,
@@ -59,17 +80,25 @@ export async function envMap(target?: ConvexTarget): Promise<Map<string, string>
   return out;
 }
 
+/**
+ * Set a single var. The value is written to a 0600 file in a fresh 0700 mkdtemp
+ * dir and passed via `--from-file`, never as an argv element, so session and
+ * signing secrets (BETTER_AUTH_SECRET, APPLE_CLIENT_SECRET, RESEND_API_KEY, ...)
+ * never land in the process table where any local user could read them.
+ */
 export async function envSet(name: string, value: string, target?: ConvexTarget): Promise<void> {
-  const argv = [dlx(), "convex", "env", "set", ...targetArgs(target), name, value];
-  const { code, stderr } = await run(argv);
-  if (code === 0) return;
-  const tail = stderr.trim().split("\n").pop()?.trim() ?? `exit ${code}`;
-  throw new Error(`convex env set ${name} failed: ${tail}`);
-}
-
-export async function envRemove(name: string, target?: ConvexTarget): Promise<void> {
-  const argv = [dlx(), "convex", "env", "remove", ...targetArgs(target), name];
-  await run(argv);
+  const { writeFile, unlink, mkdtemp, rmdir } = await import("node:fs/promises");
+  const { tmpdir } = await import("node:os");
+  const { join } = await import("node:path");
+  const dir = await mkdtemp(join(tmpdir(), "vexpo-env-"));
+  const file = join(dir, "convex.env");
+  try {
+    await writeFile(file, `${name}=${quoteEnvValue(value)}\n`, { mode: 0o600 });
+    await envSetFromFile(file, target, { force: true });
+  } finally {
+    await unlink(file).catch(() => {});
+    await rmdir(dir).catch(() => {});
+  }
 }
 
 /**

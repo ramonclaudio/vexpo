@@ -87,13 +87,13 @@ async function readRemoteState(prodEnvFile?: string): Promise<RemoteState> {
     convexEnvMap().catch(() => null),
     convexEnvMap({ prod: true, envFile: prodEnvFile }).catch(() => null),
     hasEasProject
-      ? easEnvList("development").catch(() => new Map<string, string>())
+      ? easEnvList("development").then((m) => m ?? new Map<string, string>())
       : Promise.resolve(new Map<string, string>()),
     hasEasProject
-      ? easEnvList("preview").catch(() => new Map<string, string>())
+      ? easEnvList("preview").then((m) => m ?? new Map<string, string>())
       : Promise.resolve(new Map<string, string>()),
     hasEasProject
-      ? easEnvList("production").catch(() => new Map<string, string>())
+      ? easEnvList("production").then((m) => m ?? new Map<string, string>())
       : Promise.resolve(new Map<string, string>()),
   ]);
 

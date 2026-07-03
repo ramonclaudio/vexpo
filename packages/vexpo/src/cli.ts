@@ -51,6 +51,7 @@ import { runBetterAuth } from "./commands/better-auth.ts";
 import { runConvex } from "./commands/convex.ts";
 import { runConvexMigrate } from "./commands/convex-migrate.ts";
 import { runDoctor } from "./commands/doctor.ts";
+import { runEas } from "./commands/eas.ts";
 import { runConvexKey } from "./commands/env/convex-key.ts";
 import { runEnvPush } from "./commands/env/push.ts";
 import { runRebrand } from "./commands/rebrand.ts";
@@ -58,6 +59,7 @@ import { runResend } from "./commands/resend.ts";
 import { runReviewAccount } from "./commands/review-account.ts";
 import { runSetup } from "./commands/setup.ts";
 import { runSubmit } from "./commands/submit.ts";
+import { bad } from "./lib/output.ts";
 
 const program = new Command()
   .name("vexpo")
@@ -66,7 +68,7 @@ const program = new Command()
 
 const exitWith = (p: Promise<number>): void => {
   p.then((code) => process.exit(code)).catch((err) => {
-    process.stderr.write(`${err instanceof Error ? err.message : String(err)}\n`);
+    bad(err instanceof Error ? err.message : String(err));
     process.exit(1);
   });
 };
@@ -209,7 +211,7 @@ program
   .option("--skip-dev-steps", "report topology + runbook only, don't run convex/better-auth", false)
   .action((options: { skipDevSteps?: boolean }) => exitWith(runAdopt(options)));
 
-program
+const convex = program
   .command("convex")
   .description("Provision or connect a Convex deployment.")
   .option("--fresh", "provision a NEW deployment", false)
@@ -219,8 +221,8 @@ program
     exitWith(runConvex(options)),
   );
 
-program
-  .command("convex:migrate")
+convex
+  .command("migrate")
   .description(
     "Copy server-side Convex env (BETTER_AUTH_SECRET, RESEND_*, APPLE_*, APP_*, ...) from another deployment onto the current one. The piece a deployment migration can't get off disk; CONVEX_* are left untouched.",
   )
@@ -264,6 +266,14 @@ program
       force?: boolean;
     }) => exitWith(runResend(options)),
   );
+
+program
+  .command("eas")
+  .description(
+    "EAS bootstrap: sign-in check, project link (`eas init`), development/preview/production channels + branches, push EXPO_PUBLIC_* env. Everything past init stays on eas-cli.",
+  )
+  .option("--with-prod", "also push .env.prod EXPO_PUBLIC_* vars to production + preview", false)
+  .action((options: { withProd?: boolean }) => exitWith(runEas({ withProd: options.withProd })));
 
 const apple = program.command("apple").description("Apple-side provisioning.");
 
@@ -375,8 +385,10 @@ env
       ),
   );
 
-program
-  .command("asc:connect")
+const asc = program.command("asc").description("App Store Connect: link + required labels.");
+
+asc
+  .command("connect")
   .description(
     "Write the project's ascAppId into eas.json and link the EAS project to its App Store Connect app. Lands the ascAppId even headless (CI); the interactive EAS↔ASC link (wraps `eas integrations:asc:connect`) needs a terminal.",
   )
@@ -394,7 +406,7 @@ program
     exitWith(runSubmit({ profile: options.profile, id: options.id })),
   );
 
-const ascPrivacy = program.command("asc:privacy").description("Privacy nutrition labels (local).");
+const ascPrivacy = asc.command("privacy").description("Privacy nutrition labels (local).");
 
 ascPrivacy
   .command("show [file]")
@@ -409,8 +421,8 @@ ascPrivacy
   .description("Validate a local privacy.config.json against Apple's enums.")
   .action((file: string) => exitWith(runPrivacyLint(file)));
 
-const ascA11y = program
-  .command("asc:accessibility")
+const ascA11y = asc
+  .command("accessibility")
   .description("Accessibility nutrition labels (iOS 26+).");
 
 ascA11y

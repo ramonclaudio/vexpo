@@ -1,6 +1,5 @@
 /**
- * `vexpo asc connect`. Exposed as `vexpo asc:connect` and also run as a step by
- * `vexpo full`. Spawns
+ * `vexpo asc connect`. Also run as a step by `vexpo full`. Spawns
  * `eas integrations:asc:connect --bundle-id <bundle>` with `EXPO_ASC_API_KEY_*`
  * env vars pre-set from the cached `asc-key` state.
  *
@@ -177,7 +176,7 @@ export async function runAscConnect(opts: { force?: boolean } = {}): Promise<num
     note(
       `  ${BOLD}npx eas-cli build -p ios --profile production --auto-submit-with-profile testflight${RESET}`,
     );
-    note("then re-run `npx vexpo asc:connect` to finish the EAS↔ASC link");
+    note("then re-run `npx vexpo asc connect` to finish the EAS↔ASC link");
     return 0;
   }
 
@@ -199,12 +198,12 @@ export async function runAscConnect(opts: { force?: boolean } = {}): Promise<num
         wroteAscAppIdAt: new Date().toISOString(),
       });
       note("enough for a non-interactive submit. for the EAS↔ASC server-side link");
-      note("(cloud builds) run `vexpo asc:connect` in a TTY; for a local submit set");
+      note("(cloud builds) run `vexpo asc connect` in a TTY; for a local submit set");
       note("EXPO_ASC_API_KEY_PATH / EXPO_ASC_KEY_ID / EXPO_ASC_ISSUER_ID.");
       return 0;
     }
     bad("ASC connect needs a TTY and cached creds to resolve ascAppId headless");
-    note("run `vexpo apple asc-key` to cache a key, then `vexpo asc:connect` in a terminal");
+    note("run `vexpo apple asc-key` to cache a key, then `vexpo asc connect` in a terminal");
     return 1;
   }
 

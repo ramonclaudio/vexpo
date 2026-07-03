@@ -25,9 +25,9 @@ async function upsert(
   value: string,
   visibility: "plaintext" | "secret",
   env: EasEnvironment,
+  present: boolean,
 ): Promise<void> {
-  const existing = await envList(env);
-  if (existing.has(name)) await envUpdate(name, value, visibility, [env]);
+  if (present) await envUpdate(name, value, visibility, [env]);
   else await envCreate(name, value, visibility, [env]);
 }
 
@@ -64,8 +64,15 @@ export async function runConvexKey(options: ConvexKeyOptions): Promise<number> {
   // carries only the CONVEX_DEPLOYMENT selector). With --mint, create one via the
   // Platform API instead of reading it off disk, but only if EAS doesn't already
   // hold it, so re-runs and a prior eas-rotation-secrets don't mint a second key.
+  // Fetched once here and reused as the production presence map below.
+  let easProd: Map<string, string> | null = null;
   if (options.mint && !prodKey) {
-    const easProd = await envList("production").catch(() => new Map<string, string>());
+    easProd = await envList("production");
+    if (easProd === null) {
+      bad("could not list EAS production env");
+      note("run `npx eas-cli login` and `npx eas-cli init` first");
+      return 1;
+    }
     if (easProd.has("CONVEX_DEPLOY_KEY")) {
       note("prod CONVEX_DEPLOY_KEY already on EAS; skipping mint");
     } else {
@@ -125,11 +132,29 @@ export async function runConvexKey(options: ConvexKeyOptions): Promise<number> {
     return 1;
   }
 
+  // One env:list per environment, not one per write. Reuse the production map
+  // from the mint pre-check and bail loud on a read failure rather than treating
+  // every var as absent (which would flip updates into create-existing).
+  const envMaps = new Map<EasEnvironment, Map<string, string>>();
+  if (easProd) envMaps.set("production", easProd);
+  for (const w of writes) {
+    for (const env of w.envs) {
+      if (envMaps.has(env)) continue;
+      const map = await envList(env);
+      if (map === null) {
+        bad(`could not list EAS ${env} env`);
+        note("run `npx eas-cli login` and `npx eas-cli init` first");
+        return 1;
+      }
+      envMaps.set(env, map);
+    }
+  }
+
   let failed = 0;
   for (const w of writes) {
     for (const env of w.envs) {
       try {
-        await upsert(w.name, w.value, w.visibility, env);
+        await upsert(w.name, w.value, w.visibility, env, envMaps.get(env)!.has(w.name));
         ok(`${env}: ${w.name} ${DIM}(${w.label})${RESET}`);
       } catch (err) {
         bad(`${env}: ${w.name} failed: ${err instanceof Error ? err.message : err}`);

@@ -14,6 +14,7 @@
  */
 
 import type { AscClient } from "./asc-api.ts";
+import { isRecord } from "./json.ts";
 
 const ACCESSIBILITY_FEATURES = [
   "VOICE_OVER",
@@ -121,8 +122,4 @@ export async function fetchAccessibilityDeclarations(
   appId: string,
 ): Promise<unknown> {
   return client.request("GET", `/v1/apps/${appId}/accessibilityDeclarations`);
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
 }

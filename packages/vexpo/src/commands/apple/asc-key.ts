@@ -82,35 +82,56 @@ async function promptCredsInteractive(): Promise<AscCredentials | null> {
   return { issuerId, keyId, privateKey: { path: p8Path } };
 }
 
-async function readEnvCreds(): Promise<AscCredentials | null> {
+// Env override lets a CI run point at a key without writing setup state.
+export function ascCredsFromEnv(): AscCredentials | null {
   const issuerId = process.env.APPLE_ASC_ISSUER_ID;
   const keyId = process.env.APPLE_ASC_KEY_ID;
   const p8Path = process.env.APPLE_ASC_P8_PATH;
   if (!issuerId || !keyId || !p8Path) return null;
+  return { issuerId, keyId, privateKey: { path: p8Path } };
+}
+
+async function readEnvCreds(): Promise<AscCredentials | null> {
+  const creds = ascCredsFromEnv();
+  if (!creds) return null;
+  const p8Path = process.env.APPLE_ASC_P8_PATH!;
   if (!(await fileExists(expandTilde(p8Path)))) {
     bad(`APPLE_ASC_P8_PATH=${p8Path} not found`);
     return null;
   }
-  return { issuerId, keyId, privateKey: { path: p8Path } };
+  return creds;
 }
 
 export async function runAscKey(options: AscKeyOptions): Promise<number> {
   section("App Store Connect API key");
 
-  try {
-    if (options.revalidate) {
-      const cached = await loadAscCreds();
-      if (!cached) {
-        bad("no cached ASC key in state.json; run without --revalidate first");
-        return 1;
-      }
+  if (options.revalidate) {
+    const cached = await loadAscCreds();
+    if (!cached) {
+      bad("no cached ASC key in state.json; run without --revalidate first");
+      return 1;
+    }
 
-      const result = await validateAsc(cached);
-      if (!result.ok) {
-        bad(`cached key invalid: ${result.reason}`);
-        return 1;
-      }
-      ok(`cached key still valid (${result.appCount} app${result.appCount === 1 ? "" : "s"})`);
+    const result = await validateAsc(cached);
+    if (!result.ok) {
+      bad(`cached key invalid: ${result.reason}`);
+      return 1;
+    }
+    ok(`cached key still valid (${result.appCount} app${result.appCount === 1 ? "" : "s"})`);
+    await recordStep("asc-key", {
+      issuerId: cached.issuerId,
+      keyId: cached.keyId,
+      p8Path: "path" in cached.privateKey ? cached.privateKey.path : undefined,
+    });
+    return 0;
+  }
+
+  const cached = await loadAscCreds();
+  if (cached) {
+    nop(`cached ASC key found (issuer=${cached.issuerId.slice(0, 8)}…, key=${cached.keyId})`);
+    const result = await validateAsc(cached);
+    if (result.ok) {
+      ok(`cached key valid (${result.appCount} app${result.appCount === 1 ? "" : "s"})`);
       await recordStep("asc-key", {
         issuerId: cached.issuerId,
         keyId: cached.keyId,
@@ -118,60 +139,42 @@ export async function runAscKey(options: AscKeyOptions): Promise<number> {
       });
       return 0;
     }
+    yep(`cached key failed validation: ${result.reason}`);
+  }
 
-    const cached = await loadAscCreds();
-    if (cached) {
-      nop(`cached ASC key found (issuer=${cached.issuerId.slice(0, 8)}…, key=${cached.keyId})`);
-      const result = await validateAsc(cached);
-      if (result.ok) {
-        ok(`cached key valid (${result.appCount} app${result.appCount === 1 ? "" : "s"})`);
-        await recordStep("asc-key", {
-          issuerId: cached.issuerId,
-          keyId: cached.keyId,
-          p8Path: "path" in cached.privateKey ? cached.privateKey.path : undefined,
-        });
-        return 0;
-      }
-      yep(`cached key failed validation: ${result.reason}`);
-    }
-
-    let creds = await readEnvCreds();
-    if (!creds) creds = await promptCredsInteractive();
-    if (!creds) {
-      bad("no credentials provided");
-      return 1;
-    }
-
-    const validation = await validateAsc(creds);
-    if (!validation.ok) {
-      bad(validation.reason);
-      return 1;
-    }
-    ok(
-      `ASC API authenticated (${validation.appCount} app${validation.appCount === 1 ? "" : "s"} on team)`,
-    );
-
-    const p8Path = "path" in creds.privateKey ? creds.privateKey.path : undefined;
-    await recordStep("asc-key", {
-      issuerId: creds.issuerId,
-      keyId: creds.keyId,
-      p8Path,
-      validatedAt: new Date().toISOString(),
-    });
-    ok("validated key cached in .setup-state.json");
-
-    line();
-    note(
-      `${BOLD}This step is purely validation${RESET} ${DIM}- EAS still needs the same key uploaded:${RESET}`,
-    );
-    note(`  ${BOLD}npx eas-cli credentials -p ios${RESET}`);
-    note(`  → Build Credentials → 'Use existing App Store Connect API Key'`);
-    note(`  → 'Set up a new key' if no existing match, paste:`);
-    note(`     issuer=${creds.issuerId}, keyId=${creds.keyId}`);
-    note(`     .p8=${p8Path ?? "<paste contents>"}`);
-    return 0;
-  } catch (err) {
-    bad(err instanceof Error ? err.message : String(err));
+  let creds = await readEnvCreds();
+  if (!creds) creds = await promptCredsInteractive();
+  if (!creds) {
+    bad("no credentials provided");
     return 1;
   }
+
+  const validation = await validateAsc(creds);
+  if (!validation.ok) {
+    bad(validation.reason);
+    return 1;
+  }
+  ok(
+    `ASC API authenticated (${validation.appCount} app${validation.appCount === 1 ? "" : "s"} on team)`,
+  );
+
+  const p8Path = "path" in creds.privateKey ? creds.privateKey.path : undefined;
+  await recordStep("asc-key", {
+    issuerId: creds.issuerId,
+    keyId: creds.keyId,
+    p8Path,
+    validatedAt: new Date().toISOString(),
+  });
+  ok("validated key cached in .setup-state.json");
+
+  line();
+  note(
+    `${BOLD}This step is purely validation${RESET} ${DIM}- EAS still needs the same key uploaded:${RESET}`,
+  );
+  note(`  ${BOLD}npx eas-cli credentials -p ios${RESET}`);
+  note(`  → Build Credentials → 'Use existing App Store Connect API Key'`);
+  note(`  → 'Set up a new key' if no existing match, paste:`);
+  note(`     issuer=${creds.issuerId}, keyId=${creds.keyId}`);
+  note(`     .p8=${p8Path ?? "<paste contents>"}`);
+  return 0;
 }

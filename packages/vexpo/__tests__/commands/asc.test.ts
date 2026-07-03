@@ -57,7 +57,7 @@ import { loadAscCreds } from "../../src/lib/asc-state.ts";
 import { ascStatus } from "../../src/lib/eas-integrations.ts";
 import { requireBundleId } from "../../src/lib/env-local.ts";
 import { spawn } from "../../src/lib/proc.ts";
-import { recordStep, save } from "../../src/lib/state.ts";
+import { save } from "../../src/lib/state.ts";
 
 const ascStatusSpy = ascStatus as unknown as ReturnType<typeof vi.fn>;
 const requireBundleIdSpy = requireBundleId as unknown as ReturnType<typeof vi.fn>;
@@ -399,8 +399,3 @@ describe("runAscConnect", () => {
     expect(exit).toBe(42);
   });
 });
-
-// recordStep is imported just to keep the linter happy. It's also exercised
-// implicitly in the connected/skip path above (verified by the lack of a spawn
-// call, which means the skip path's recordStep must have been the terminal op).
-void recordStep;

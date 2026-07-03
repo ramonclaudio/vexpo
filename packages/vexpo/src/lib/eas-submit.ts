@@ -5,52 +5,43 @@
  * profile's `ascAppId` (no CLI flag, no env var) or interactively. So a
  * non-interactive submit (CI, scripts, background) needs `ascAppId` in eas.json;
  * the ASC integration alone only covers interactive mode. The upstream template
- * ships generic (no ascAppId); `vexpo asc:connect` writes the fork's id here
+ * ships generic (no ascAppId); `vexpo asc connect` writes the fork's id here
  * after connecting, the same per-fork-fill pattern as store.config.json +
  * `vexpo rebrand`.
  */
 
+import { isRecord } from "./json.ts";
+
 type EasJson = { submit?: Record<string, { ios?: { ascAppId?: string } }> };
 
-function isObject(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
+function parseEasJson(easJson: string): EasJson | null {
+  try {
+    return JSON.parse(easJson) as EasJson;
+  } catch {
+    return null;
+  }
 }
 
 // True when the named submit profile's `ios` block already carries a non-empty
 // ascAppId. `eas submit` reads the id only from here, so a non-interactive
 // submit can proceed off eas.json alone even when an ASC API lookup is down.
 export function submitProfileHasAscAppId(easJson: string, profile: string): boolean {
-  let cfg: EasJson;
-  try {
-    cfg = JSON.parse(easJson) as EasJson;
-  } catch {
-    return false;
-  }
-  const ios = cfg.submit?.[profile]?.ios;
-  return isObject(ios) && typeof ios.ascAppId === "string" && ios.ascAppId.length > 0;
+  const cfg = parseEasJson(easJson);
+  const ios = cfg?.submit?.[profile]?.ios;
+  return isRecord(ios) && typeof ios.ascAppId === "string" && ios.ascAppId.length > 0;
 }
 
 export function submitProfilesMissingAscAppId(easJson: string): string[] {
-  let cfg: EasJson;
-  try {
-    cfg = JSON.parse(easJson) as EasJson;
-  } catch {
-    return [];
-  }
+  const cfg = parseEasJson(easJson);
+  if (!cfg) return [];
   return Object.entries(cfg.submit ?? {})
-    .filter(([, p]) => isObject(p?.ios) && !p.ios.ascAppId)
+    .filter(([, p]) => isRecord(p?.ios) && !p.ios.ascAppId)
     .map(([name]) => name);
 }
 
-function needsAscAppId(easJson: string, ascAppId: string): boolean {
-  let cfg: EasJson;
-  try {
-    cfg = JSON.parse(easJson) as EasJson;
-  } catch {
-    return false;
-  }
+function needsAscAppId(cfg: EasJson, ascAppId: string): boolean {
   return Object.values(cfg.submit ?? {}).some(
-    (p) => isObject(p?.ios) && p.ios.ascAppId !== ascAppId,
+    (p) => isRecord(p?.ios) && p.ios.ascAppId !== ascAppId,
   );
 }
 
@@ -62,10 +53,10 @@ function needsAscAppId(easJson: string, ascAppId: string): boolean {
  * returns the input unchanged when nothing needs to change.
  */
 export function withAscAppId(easJson: string, ascAppId: string): string {
-  if (!needsAscAppId(easJson, ascAppId)) return easJson;
-  const cfg = JSON.parse(easJson) as EasJson;
+  const cfg = parseEasJson(easJson);
+  if (!cfg || !needsAscAppId(cfg, ascAppId)) return easJson;
   for (const profile of Object.values(cfg.submit ?? {})) {
-    if (isObject(profile?.ios)) profile.ios.ascAppId = ascAppId;
+    if (isRecord(profile?.ios)) profile.ios.ascAppId = ascAppId;
   }
   return JSON.stringify(cfg, null, 2) + "\n";
 }

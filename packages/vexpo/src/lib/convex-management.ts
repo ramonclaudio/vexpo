@@ -15,6 +15,8 @@ import { readFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { join } from "node:path";
 
+import { fetchWithTimeout } from "./http-retry.ts";
+
 const BASE = `${process.env.CONVEX_PROVISION_HOST || "https://api.convex.dev"}/v1`;
 
 type DeploymentType = "dev" | "prod" | "preview" | "custom";
@@ -49,43 +51,36 @@ export type TokenStatus = "valid" | "unauthorized" | "no-token";
 export async function checkToken(): Promise<TokenStatus> {
   const token = await accessToken();
   if (!token) return "no-token";
-  const ctl = new AbortController();
-  const timer = setTimeout(() => ctl.abort(), 8_000);
   try {
-    const res = await fetch(`${BASE}/list_personal_access_tokens`, {
-      headers: { Authorization: `Bearer ${token}`, "Convex-Client": "vexpo-cli" },
-      signal: ctl.signal,
-    });
+    const res = await fetchWithTimeout(
+      `${BASE}/list_personal_access_tokens`,
+      { headers: { Authorization: `Bearer ${token}`, "Convex-Client": "vexpo-cli" } },
+      8_000,
+    );
     return res.status === 401 || res.status === 403 ? "unauthorized" : "valid";
   } catch {
     return "valid";
-  } finally {
-    clearTimeout(timer);
   }
 }
 
 async function get<T>(token: string, path: string): Promise<T | null> {
-  const ctl = new AbortController();
-  const timer = setTimeout(() => ctl.abort(), 10_000);
   try {
-    const res = await fetch(`${BASE}${path}`, {
-      headers: { Authorization: `Bearer ${token}`, "Convex-Client": "vexpo-cli" },
-      signal: ctl.signal,
-    });
+    const res = await fetchWithTimeout(
+      `${BASE}${path}`,
+      { headers: { Authorization: `Bearer ${token}`, "Convex-Client": "vexpo-cli" } },
+      10_000,
+    );
     if (!res.ok) return null;
     return (await res.json()) as T;
   } catch {
     return null;
-  } finally {
-    clearTimeout(timer);
   }
 }
 
 async function post<T>(token: string, path: string, body: unknown): Promise<T> {
-  const ctl = new AbortController();
-  const timer = setTimeout(() => ctl.abort(), 15_000);
-  try {
-    const res = await fetch(`${BASE}${path}`, {
+  const res = await fetchWithTimeout(
+    `${BASE}${path}`,
+    {
       method: "POST",
       headers: {
         Authorization: `Bearer ${token}`,
@@ -93,16 +88,14 @@ async function post<T>(token: string, path: string, body: unknown): Promise<T> {
         "Content-Type": "application/json",
       },
       body: JSON.stringify(body),
-      signal: ctl.signal,
-    });
-    const text = await res.text();
-    if (!res.ok) {
-      throw new Error(`Convex Platform POST ${path} → ${res.status}: ${text.slice(0, 200)}`);
-    }
-    return (text ? JSON.parse(text) : undefined) as T;
-  } finally {
-    clearTimeout(timer);
+    },
+    15_000,
+  );
+  const text = await res.text();
+  if (!res.ok) {
+    throw new Error(`Convex Platform POST ${path} → ${res.status}: ${text.slice(0, 200)}`);
   }
+  return (text ? JSON.parse(text) : undefined) as T;
 }
 
 async function requireToken(): Promise<string> {

@@ -12,6 +12,7 @@ import {
   fingerprint,
   isStepFresh,
   load,
+  lookupCachedPath,
   recordStep,
   save,
   type SetupState,
@@ -269,7 +270,6 @@ describe("checkConcurrentRun", () => {
 
 describe("lookupCachedPath", () => {
   it("returns the value when the file exists", async () => {
-    const { lookupCachedPath } = await import("../../src/lib/state");
     const fixturePath = path.join(workdir, "fixture.p8");
     await writeFile(fixturePath, "fake p8 contents");
     await recordStep("apple-sign-in", { p8Path: fixturePath });
@@ -278,14 +278,12 @@ describe("lookupCachedPath", () => {
   });
 
   it("returns null when the cached file no longer exists", async () => {
-    const { lookupCachedPath } = await import("../../src/lib/state");
     await recordStep("apple-sign-in", { p8Path: path.join(workdir, "missing.p8") });
     const out = await lookupCachedPath(await load(), ["apple-sign-in"], "p8Path");
     expect(out).toBeNull();
   });
 
   it("falls through multiple steps in order", async () => {
-    const { lookupCachedPath } = await import("../../src/lib/state");
     const fixturePath = path.join(workdir, "fixture.p8");
     await writeFile(fixturePath, "x");
     await recordStep("apple-sign-in", { p8Path: path.join(workdir, "missing-1.p8") });
@@ -295,7 +293,6 @@ describe("lookupCachedPath", () => {
   });
 
   it("returns null when no step has the key", async () => {
-    const { lookupCachedPath } = await import("../../src/lib/state");
     const out = await lookupCachedPath(await load(), ["apple-sign-in"], "p8Path");
     expect(out).toBeNull();
   });

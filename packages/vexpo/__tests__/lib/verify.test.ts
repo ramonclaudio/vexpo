@@ -5,6 +5,7 @@ import path from "node:path";
 
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { signClientSecret } from "../../src/lib/apple-jwt";
 import { readAppConfigFacts, summarize, verifyAll, type VerifyContext } from "../../src/lib/verify";
 
 let workdir: string;
@@ -28,30 +29,15 @@ beforeAll(() => {
   p8Pem = privateKey.export({ format: "pem", type: "pkcs8" }).toString();
 });
 
-async function signSiwaJwt(opts: {
+// Sign through the exact production path so fixtures always match what the app
+// emits. A negative expirationDays yields a cleanly past exp for the expiry cases.
+function signSiwaJwt(opts: {
   teamId: string;
   keyId: string;
   servicesId: string;
-  exp: number;
+  expirationDays: number;
 }): Promise<string> {
-  // Reuse the signAscToken machinery isn't right (different aud); build SIWA JWT manually.
-  const { createSign } = await import("node:crypto");
-  const header = { alg: "ES256", kid: opts.keyId };
-  const payload = {
-    iss: opts.teamId,
-    iat: Math.floor(Date.now() / 1000),
-    exp: opts.exp,
-    aud: "https://appleid.apple.com",
-    sub: opts.servicesId,
-  };
-  const headerB64 = Buffer.from(JSON.stringify(header)).toString("base64url");
-  const payloadB64 = Buffer.from(JSON.stringify(payload)).toString("base64url");
-  const signingInput = `${headerB64}.${payloadB64}`;
-  const signer = createSign("SHA256");
-  signer.update(signingInput);
-  signer.end();
-  const sig = signer.sign({ key: p8Pem, dsaEncoding: "ieee-p1363" }).toString("base64url");
-  return `${signingInput}.${sig}`;
+  return signClientSecret({ privateKey: { contents: p8Pem }, ...opts });
 }
 
 function emptyContext(overrides: Partial<VerifyContext> = {}): VerifyContext {
@@ -104,7 +90,7 @@ describe("Apple JWT verification", () => {
       teamId,
       keyId,
       servicesId,
-      exp: Math.floor(Date.now() / 1000) + 90 * 86_400,
+      expirationDays: 90,
     });
     const ctx = emptyContext({
       convexEnv: new Map([
@@ -130,7 +116,7 @@ describe("Apple JWT verification", () => {
       teamId: "ABCDE12345",
       keyId: "WRONG12345",
       servicesId: "com.x.app.signin",
-      exp: Math.floor(Date.now() / 1000) + 86_400,
+      expirationDays: 1,
     });
     const ctx = emptyContext({
       convexEnv: new Map([
@@ -151,7 +137,7 @@ describe("Apple JWT verification", () => {
       teamId: "ABCDE12345",
       keyId: "FGHIJ67890",
       servicesId: "com.x.app.signin",
-      exp: Math.floor(Date.now() / 1000) - 86_400,
+      expirationDays: -1,
     });
     const ctx = emptyContext({
       convexEnv: new Map([
@@ -171,7 +157,7 @@ describe("Apple JWT verification", () => {
       teamId: "ABCDE12345",
       keyId: "FGHIJ67890",
       servicesId: "com.x.app.signin",
-      exp: Math.floor(Date.now() / 1000) + 14 * 86_400,
+      expirationDays: 14,
     });
     const ctx = emptyContext({
       convexEnv: new Map([
@@ -192,7 +178,7 @@ describe("Apple JWT verification", () => {
       teamId: "WRONGTEAM1",
       keyId: "FGHIJ67890",
       servicesId: "com.x.app.signin",
-      exp: Math.floor(Date.now() / 1000) + 86_400,
+      expirationDays: 1,
     });
     const ctx = emptyContext({
       convexEnv: new Map([
@@ -212,7 +198,7 @@ describe("Apple JWT verification", () => {
       teamId: "ABCDE12345",
       keyId: "FGHIJ67890",
       servicesId: "com.wrong.app.signin",
-      exp: Math.floor(Date.now() / 1000) + 86_400,
+      expirationDays: 1,
     });
     const ctx = emptyContext({
       convexEnv: new Map([

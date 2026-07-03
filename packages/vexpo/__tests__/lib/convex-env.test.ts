@@ -99,13 +99,73 @@ describe("envMap", () => {
 });
 
 describe("envSet", () => {
-  it("calls convex env set with name + value + target", async () => {
+  it("routes the value through --from-file, never argv, so secrets stay off the process table", async () => {
     await envSet("APPLE_TEAM_ID", "ABCDE12345", { prod: true });
     const argv = runSpy.mock.calls[0]?.[0] as string[];
-    expect(argv).toContain("env");
     expect(argv).toContain("set");
+    expect(argv).toContain("--from-file");
     expect(argv).toContain("--prod");
-    expect(argv).toContain("APPLE_TEAM_ID");
-    expect(argv).toContain("ABCDE12345");
+    expect(argv).not.toContain("ABCDE12345");
+  });
+
+  // Mirrors dotenv@16's parse, which is what `convex env set --from-file` runs
+  // on the written file: outer quotes strip, ONLY double quotes expand \n/\r,
+  // single/backtick-quoted values stay fully literal.
+  function dotenvParse(src: string): Map<string, string> {
+    const LINE =
+      /(?:^|^)\s*(?:export\s+)?([\w.-]+)(?:\s*=\s*?|:\s+?)(\s*'(?:\\'|[^'])*'|\s*"(?:\\"|[^"])*"|\s*`(?:\\`|[^`])*`|[^#\r\n]+)?\s*(?:#.*)?(?:$|$)/gm;
+    const out = new Map<string, string>();
+    for (const m of src.matchAll(LINE)) {
+      let v = (m[2] ?? "").trim();
+      const q = v[0];
+      v = v.replace(/^(['"`])([\s\S]*)\1$/gm, "$2");
+      if (q === '"') v = v.replace(/\\n/g, "\n").replace(/\\r/g, "\r");
+      out.set(m[1] as string, v);
+    }
+    return out;
+  }
+
+  async function writtenFor(value: string): Promise<string> {
+    let written = "";
+    runSpy.mockImplementationOnce(async (argv: string[]) => {
+      const i = argv.indexOf("--from-file");
+      const { readFileSync } = await import("node:fs");
+      written = readFileSync(argv[i + 1] as string, "utf8");
+      return { code: 0, stdout: "", stderr: "" };
+    });
+    await envSet("MY_SECRET", value);
+    return written;
+  }
+
+  it("single-quotes a real-newline value so dotenv reads it back literally", async () => {
+    const value = "line1\nline2";
+    const written = await writtenFor(value);
+    expect(written).toBe(`MY_SECRET='line1\nline2'\n`);
+    expect(dotenvParse(written).get("MY_SECRET")).toBe(value);
+  });
+
+  it("keeps a literal backslash-n sequence out of double quotes, where dotenv would expand it", async () => {
+    const value = 'pem#"-----BEGIN-----\\nMIIabc\\n-----END-----"';
+    const written = await writtenFor(value);
+    expect(written).toBe(`MY_SECRET='${value}'\n`);
+    expect(dotenvParse(written).get("MY_SECRET")).toBe(value);
+  });
+
+  it("falls back to backticks when the value holds a single quote", async () => {
+    const value = "it's\nfine";
+    const written = await writtenFor(value);
+    expect(written).toBe(`MY_SECRET=\`${value}\`\n`);
+    expect(dotenvParse(written).get("MY_SECRET")).toBe(value);
+  });
+
+  it("double-quotes only when both literal quote forms are taken and expansion is safe", async () => {
+    const value = "a'b`c\nd";
+    const written = await writtenFor(value);
+    expect(written).toBe(`MY_SECRET="a'b\`c\\nd"\n`);
+    expect(dotenvParse(written).get("MY_SECRET")).toBe(value);
+  });
+
+  it("fails loud on a value no dotenv quote form can represent", async () => {
+    await expect(envSet("MY_SECRET", "a'b`c\"d\\ne")).rejects.toThrow(/dotenv cannot represent/);
   });
 });

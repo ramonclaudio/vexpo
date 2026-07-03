@@ -1,8 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("../../src/lib/convex-env.ts", () => ({
-  deploymentSlug: (v?: string) => (v ? v.replace(/^(dev|prod|preview):/, "") : undefined),
-}));
 vi.mock("../../src/lib/convex-management.ts", () => ({ mintProdDeployKey: vi.fn() }));
 vi.mock("../../src/lib/eas-project.ts", () => ({
   resolveProjectId: vi.fn().mockResolvedValue("pid"),

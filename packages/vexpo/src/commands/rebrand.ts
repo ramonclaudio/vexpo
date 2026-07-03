@@ -90,18 +90,21 @@ async function promptInputs(overrides: Partial<RebrandInputs>): Promise<RebrandI
       : "");
   if (!appName) throw new Error("app name required");
 
+  const ownerName =
+    overrides.ownerName ??
+    (interactive ? (await ask(`  ${BOLD}Your name${RESET} > `)).trim() || "Owner" : "Owner");
+
   const defaultPkg = slug(appName);
-  const bundleHint = `com.${slug(appName).replace(/-/g, "")}.${bundleSlug(defaultPkg)}`;
+  // Reverse-DNS middle segment is the org, not a repeat of the app. Derive it
+  // from the expo owner or the person's name, with a placeholder fallback.
+  const orgSlug = bundleSlug(overrides.expoOwner ?? ownerName) || "example";
+  const bundleHint = `com.${orgSlug}.${bundleSlug(defaultPkg)}`;
   const bundleId =
     overrides.bundleId ??
     (interactive
       ? (await ask(`  ${BOLD}Bundle ID${RESET} ${DIM}[${bundleHint}]${RESET} > `)).trim() ||
         bundleHint
       : bundleHint);
-
-  const ownerName =
-    overrides.ownerName ??
-    (interactive ? (await ask(`  ${BOLD}Your name${RESET} > `)).trim() || "Owner" : "Owner");
 
   const reviewEmail =
     overrides.reviewEmail ??
@@ -178,32 +181,31 @@ async function backup(files: string[], stamp: string): Promise<void> {
   ok(`backups → ${dir}`);
 }
 
-// User-supplied values land in String.replace replacements, where $&, $`, $'
-// and $$ have special meaning. Double every $ so the value is inserted verbatim.
-function lit(value: string): string {
-  return value.replace(/\$/g, "$$$$");
-}
-
 async function rewriteAppConfig(inputs: RebrandInputs): Promise<void> {
   const file = "app.config.ts";
   let text = await readFile(file, "utf8");
 
+  // Function replacers, not replacement strings: a returned $&/$`/$' is inserted
+  // verbatim. JSON.stringify builds a valid double-quoted literal, so a name with
+  // a quote or backslash escapes instead of corrupting the file.
   // The template ships the backtick `com.example.${pkg.name}` form; a prior
   // rebrand rewrites it to a double-quoted string. Match either so a --force
   // re-run still moves the id.
   text = text.replace(
     /const BUNDLE_ID = process\.env\.EXPO_PUBLIC_APP_BUNDLE_ID \?\? (?:`[^`]*`|"[^"]*");/,
-    `const BUNDLE_ID = process.env.EXPO_PUBLIC_APP_BUNDLE_ID ?? "${lit(inputs.bundleId)}";`,
+    () =>
+      `const BUNDLE_ID = process.env.EXPO_PUBLIC_APP_BUNDLE_ID ?? ${JSON.stringify(inputs.bundleId)};`,
   );
 
   text = text.replace(
     /name: IS_DEV \? "[^"]+" : "[^"]+",/,
-    `name: IS_DEV ? "${lit(inputs.appName)} (Dev)" : "${lit(inputs.appName)}",`,
+    () =>
+      `name: IS_DEV ? ${JSON.stringify(`${inputs.appName} (Dev)`)} : ${JSON.stringify(inputs.appName)},`,
   );
 
-  text = text.replace(/slug: "[^"]+",/, `slug: "${lit(inputs.packageName)}",`);
+  text = text.replace(/slug: "[^"]+",/, () => `slug: ${JSON.stringify(inputs.packageName)},`);
 
-  text = text.replace(/scheme: "[^"]+",/, `scheme: "${lit(inputs.scheme)}",`);
+  text = text.replace(/scheme: "[^"]+",/, () => `scheme: ${JSON.stringify(inputs.scheme)},`);
 
   await writeFile(file, text);
   ok(`updated ${file}`);
@@ -378,6 +380,11 @@ export async function runRebrand(options: RebrandOptions): Promise<number> {
       note("--force to re-run anyway");
       return 0;
     }
+
+    // Only the paths that actually rewrite files need the strict preflight; a
+    // re-run that's already customized short-circuits above and stays a no-op.
+    await validateTargets();
+
     if (detect.signals.length > 0) {
       note("template defaults still in place:");
       for (const s of detect.signals) note(`  • ${s}`);
@@ -397,8 +404,6 @@ export async function runRebrand(options: RebrandOptions): Promise<number> {
         return 1;
       }
     }
-
-    await validateTargets();
 
     const inputs = await promptInputs(overrides);
     line();

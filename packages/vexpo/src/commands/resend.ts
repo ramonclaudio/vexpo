@@ -66,22 +66,11 @@ export async function runResend(options: ResendOptions): Promise<number> {
 
   const name = options.name ?? (await pkgName());
 
-  let fullKey = process.env.RESEND_FULL_ACCESS_KEY;
+  const fullKey = await resolveFullKey();
   if (!fullKey) {
-    if (!process.stdin.isTTY) {
-      bad("no RESEND_FULL_ACCESS_KEY env var and no TTY for paste");
-      return 1;
-    }
-    line();
-    note("Need a Resend full-access API key. Create one at:");
-    note(`  ${BOLD}https://resend.com/api-keys${RESET} → Create API Key → Permission: Full Access`);
-    note("Used once to provision a scoped sending key + webhook, then discarded.");
-    line();
-    fullKey = await ask(`  RESEND_FULL_ACCESS_KEY > `);
-    if (!fullKey) {
-      bad("aborted");
-      return 1;
-    }
+    if (process.stdin.isTTY) bad("aborted");
+    else bad("no RESEND_FULL_ACCESS_KEY env var and no TTY for paste");
+    return 1;
   }
 
   const keyAccess = await probeAccess(fullKey);
@@ -239,7 +228,8 @@ async function runResendRepoint(options: ResendOptions): Promise<number> {
 
   const fullKey = await resolveFullKey();
   if (!fullKey) {
-    bad("no RESEND_FULL_ACCESS_KEY env var and no TTY for paste");
+    if (process.stdin.isTTY) bad("aborted");
+    else bad("no RESEND_FULL_ACCESS_KEY env var and no TTY for paste");
     return 1;
   }
   if ((await probeAccess(fullKey)) !== "full") {

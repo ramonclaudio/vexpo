@@ -36,13 +36,11 @@ export async function ascBootstrap(): Promise<AscBootstrap> {
     (await readOne("EXPO_PUBLIC_APP_BUNDLE_ID")) ?? (await readOne("APP_BUNDLE_ID")) ?? undefined;
   let ascAppId: string | undefined;
   if (bundleId) {
-    try {
-      const apps = await client.paginatedList<{
-        id: string;
-        attributes: { bundleId?: string };
-      }>("/v1/apps", { "filter[bundleId]": bundleId }, 5);
-      ascAppId = apps[0]?.id;
-    } catch {}
+    const apps = await client.paginatedList<{
+      id: string;
+      attributes: { bundleId?: string };
+    }>("/v1/apps", { "filter[bundleId]": bundleId }, 5);
+    ascAppId = apps[0]?.id;
   }
   return { client, bundleId, ascAppId, creds };
 }

@@ -24,13 +24,11 @@ async function resolveBundleId(profile: string): Promise<{
   if (fromConfig && !fromConfig.startsWith("com.example.")) {
     return { source: "app.config.ts", value: fromConfig, templatePlaceholder: false };
   }
-  try {
-    const env = await easEnvList(profile as "production" | "preview" | "development");
-    const fromEnv = env.get("EXPO_PUBLIC_APP_BUNDLE_ID");
-    if (fromEnv && !fromEnv.startsWith("com.example.")) {
-      return { source: "EAS env", value: fromEnv, templatePlaceholder: false };
-    }
-  } catch {}
+  const env = await easEnvList(profile as "production" | "preview" | "development");
+  const fromEnv = env?.get("EXPO_PUBLIC_APP_BUNDLE_ID");
+  if (fromEnv && !fromEnv.startsWith("com.example.")) {
+    return { source: "EAS env", value: fromEnv, templatePlaceholder: false };
+  }
   return {
     source: fromConfig ? "app.config.ts" : null,
     value: fromConfig,
@@ -49,7 +47,7 @@ export async function runAppleCredentials(options: CredentialsOptions): Promise<
   const asc = await loadAscCreds();
 
   if (!asc || !("path" in asc.privateKey)) {
-    yep("no cached ASC creds. Run `vexpo apple asc-key` first to validate one.");
+    bad("no cached ASC creds. Run `vexpo apple asc-key` first to validate one.");
     return 1;
   }
   const p8Path = asc.privateKey.path;

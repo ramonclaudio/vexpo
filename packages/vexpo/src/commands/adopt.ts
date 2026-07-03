@@ -44,18 +44,21 @@ export function buildFinishRunbook(s: RunbookState): Array<{ cmd: string; desc: 
   }
   if (!s.hasApple) {
     steps.push({ cmd: "vexpo apple jwt", desc: "sign Apple Sign In (or --copy-from <old>)" });
-    steps.push({ cmd: "vexpo asc:connect", desc: "link EAS to App Store Connect for submit" });
+    steps.push({ cmd: "vexpo asc connect", desc: "link EAS to App Store Connect for submit" });
   }
   if (!s.hasProd) {
     steps.push({ cmd: "npx convex deploy", desc: "provision + push to the prod deployment" });
   }
   steps.push({
-    cmd: `vexpo convex:migrate --from ${s.devSlug} --prod`,
+    cmd: `vexpo convex migrate --from ${s.devSlug} --prod`,
     desc: "mirror server-side env onto prod",
   });
   steps.push({ cmd: "vexpo env convex-key", desc: "sync the deploy key + selector to EAS" });
   if (!s.hasEasProdUrl) {
-    steps.push({ cmd: "vexpo full", desc: "push prod/preview EAS env (or `vexpo eas`)" });
+    steps.push({
+      cmd: "vexpo full",
+      desc: "push prod/preview EAS env (or `vexpo eas --with-prod`)",
+    });
   }
   steps.push({ cmd: "vexpo doctor --channel prod", desc: "verify the whole chain" });
   return steps;
@@ -113,7 +116,7 @@ export async function runAdopt(options: AdoptOptions): Promise<number> {
 
   const devEnv = (await envMap()) ?? new Map<string, string>();
   const projectId = await resolveProjectId();
-  const easProd = projectId ? await envList("production").catch(() => null) : null;
+  const easProd = projectId ? await envList("production") : null;
 
   const steps = buildFinishRunbook({
     devSlug,

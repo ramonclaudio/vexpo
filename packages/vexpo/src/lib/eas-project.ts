@@ -1,17 +1,10 @@
 import { access, readFile } from "node:fs/promises";
 
-import { EAS_CLI, easSpawn, easText } from "./eas-cli.ts";
-import { dlx } from "./pkg-manager.ts";
-import { run } from "./proc.ts";
+import { easJson, easRun, easSpawn, easText } from "./eas-cli.ts";
 
 export async function checkCli(): Promise<{ ok: true; version: string } | { ok: false }> {
-  const { code, stdout } = await easText(["--version"]);
-  if (code !== 0) return { ok: false };
-  const detected = stdout
-    .trim()
-    .replace(/^eas-cli\//, "")
-    .split(/\s+/)[0];
-  return { ok: true, version: detected };
+  const v = await version();
+  return v === null ? { ok: false } : { ok: true, version: v };
 }
 
 export async function whoami(): Promise<string | null> {
@@ -51,9 +44,15 @@ export async function resolveProjectId(): Promise<string | null> {
   return null;
 }
 
+/**
+ * Returns null on a non-zero `eas env:list` (not logged in, transient GraphQL
+ * failure, unreachable) so callers can tell "failed to read" from "genuinely
+ * empty". Treating a failure as an empty map makes every remote var look absent,
+ * which turns an env push into a blind overwrite. Mirrors convex-env's envMap.
+ */
 export async function envList(
   environment: "production" | "preview" | "development" = "production",
-): Promise<Map<string, string>> {
+): Promise<Map<string, string> | null> {
   const { code, stdout } = await easText([
     "env:list",
     "--environment",
@@ -61,8 +60,8 @@ export async function envList(
     "--format",
     "short",
   ]);
+  if (code !== 0) return null;
   const out = new Map<string, string>();
-  if (code !== 0) return out;
   for (const raw of stdout.split("\n")) {
     const trimmed = raw.trim();
     if (!trimmed) continue;
@@ -83,9 +82,11 @@ export async function envCreate(
   environments: readonly EasEnvironment[] = ["production", "preview", "development"],
   opts?: { type?: EasEnvType },
 ): Promise<void> {
-  const argv = [
-    dlx(),
-    EAS_CLI,
+  // eas-cli takes the value only via --value argv; its only file channel is
+  // `--type file`, which stores a different (FileBase64) variable type, not a
+  // plaintext string. No stdin, so a string secret can't stay off the process
+  // table here the way convex-env.envSet keeps it.
+  await easRun([
     "env:create",
     "--name",
     name,
@@ -93,15 +94,10 @@ export async function envCreate(
     value,
     "--visibility",
     visibility,
-  ];
-  if (opts?.type) argv.push("--type", opts.type);
-  for (const env of environments) argv.push("--environment", env);
-  argv.push("--non-interactive");
-  const { code, stderr } = await run(argv);
-  if (code !== 0) {
-    const tail = stderr.trim().split("\n").pop()?.trim() ?? `exit ${code}`;
-    throw new Error(`eas env:create ${name} failed: ${tail}`);
-  }
+    ...(opts?.type ? ["--type", opts.type] : []),
+    ...environments.flatMap((env) => ["--environment", env]),
+    "--non-interactive",
+  ]);
 }
 
 export async function envUpdate(
@@ -111,9 +107,13 @@ export async function envUpdate(
   environments: readonly EasEnvironment[] = ["production", "preview", "development"],
   opts?: { type?: EasEnvType },
 ): Promise<void> {
-  const argv = [
-    dlx(),
-    EAS_CLI,
+  // `env:update` identifies the existing variable by name + its CURRENT
+  // environment (--variable-environment). Without it, a name that exists in
+  // several environments is ambiguous and eas-cli prompts "Select variable",
+  // which a --non-interactive run can't answer. We deliberately do NOT pass
+  // --environment (the "new environments"): omitting it leaves the var's
+  // existing env links unchanged, we only want to change the value.
+  await easRun([
     "env:update",
     "--variable-name",
     name,
@@ -121,21 +121,10 @@ export async function envUpdate(
     value,
     "--visibility",
     visibility,
-  ];
-  if (opts?.type) argv.push("--type", opts.type);
-  // `env:update` identifies the existing variable by name + its CURRENT
-  // environment (--variable-environment). Without it, a name that exists in
-  // several environments is ambiguous and eas-cli prompts "Select variable",
-  // which a --non-interactive run can't answer. We deliberately do NOT pass
-  // --environment (the "new environments"): omitting it leaves the var's
-  // existing env links unchanged, we only want to change the value.
-  for (const env of environments) argv.push("--variable-environment", env);
-  argv.push("--non-interactive");
-  const { code, stderr } = await run(argv);
-  if (code !== 0) {
-    const tail = stderr.trim().split("\n").pop()?.trim() ?? `exit ${code}`;
-    throw new Error(`eas env:update ${name} failed: ${tail}`);
-  }
+    ...(opts?.type ? ["--type", opts.type] : []),
+    ...environments.flatMap((env) => ["--variable-environment", env]),
+    "--non-interactive",
+  ]);
 }
 
 export async function envPush(opts: {
@@ -146,13 +135,14 @@ export async function envPush(opts: {
   // eas-cli rejects multiple --environment flags in one `env:push` (fails with
   // "GraphQL request failed"), so push to each environment in its own call.
   for (const env of opts.environments) {
-    const argv = [dlx(), EAS_CLI, "env:push", "--environment", env, "--path", opts.path];
-    if (opts.force) argv.push("--force");
-    const { code, stderr } = await run(argv);
-    if (code !== 0) {
-      const tail = stderr.trim().split("\n").pop()?.trim() ?? `exit ${code}`;
-      throw new Error(`eas env:push (${env}) failed: ${tail}`);
-    }
+    await easRun([
+      "env:push",
+      "--environment",
+      env,
+      "--path",
+      opts.path,
+      ...(opts.force ? ["--force"] : []),
+    ]);
   }
 }
 
@@ -167,37 +157,18 @@ export async function init(): Promise<{ ok: boolean; projectId?: string }> {
 }
 
 async function listChannels(): Promise<string[]> {
-  const { code, stdout, stderr } = await run([
-    dlx(),
-    EAS_CLI,
+  // easJson throws on a garbled zero-exit response instead of reading it as "no
+  // channels" — that footgun would make ensureChannels re-create existing names.
+  const parsed = await easJson<{ currentPage?: Array<{ name?: string }> }>([
     "channel:list",
-    "--json",
-    "--non-interactive",
     "--limit",
     "25",
   ]);
-  if (code !== 0) {
-    throw new Error(
-      `eas channel:list failed: ${stderr.trim().split("\n").pop()?.trim() ?? `exit ${code}`}`,
-    );
-  }
-  try {
-    const parsed = JSON.parse(stdout) as { currentPage?: Array<{ name?: string }> };
-    return (parsed.currentPage ?? []).map((c) => c.name ?? "").filter(Boolean);
-  } catch {
-    return [];
-  }
+  return (parsed.currentPage ?? []).map((c) => c.name ?? "").filter(Boolean);
 }
 
 async function createChannel(name: string): Promise<boolean> {
-  const { code } = await run([
-    dlx(),
-    EAS_CLI,
-    "channel:create",
-    name,
-    "--non-interactive",
-    "--json",
-  ]);
+  const { code } = await easText(["channel:create", name, "--non-interactive", "--json"]);
   return code === 0;
 }
 
@@ -215,40 +186,15 @@ export async function ensureChannels(names: readonly string[]): Promise<string[]
 }
 
 async function listBranches(): Promise<string[]> {
-  const { code, stdout, stderr } = await run([
-    dlx(),
-    EAS_CLI,
-    "branch:list",
-    "--json",
-    "--non-interactive",
-    "--limit",
-    "25",
-  ]);
-  if (code !== 0) {
-    throw new Error(
-      `eas branch:list failed: ${stderr.trim().split("\n").pop()?.trim() ?? `exit ${code}`}`,
-    );
-  }
-  try {
-    const parsed = JSON.parse(stdout) as
-      | Array<{ name?: string }>
-      | { currentPage?: Array<{ name?: string }> };
-    if (Array.isArray(parsed)) return parsed.map((b) => b.name ?? "").filter(Boolean);
-    return (parsed.currentPage ?? []).map((b) => b.name ?? "").filter(Boolean);
-  } catch {
-    return [];
-  }
+  const parsed = await easJson<
+    Array<{ name?: string }> | { currentPage?: Array<{ name?: string }> }
+  >(["branch:list", "--limit", "25"]);
+  if (Array.isArray(parsed)) return parsed.map((b) => b.name ?? "").filter(Boolean);
+  return (parsed.currentPage ?? []).map((b) => b.name ?? "").filter(Boolean);
 }
 
 async function createBranch(name: string): Promise<boolean> {
-  const { code } = await run([
-    dlx(),
-    EAS_CLI,
-    "branch:create",
-    name,
-    "--non-interactive",
-    "--json",
-  ]);
+  const { code } = await easText(["branch:create", name, "--non-interactive", "--json"]);
   return code === 0;
 }
 

@@ -81,10 +81,18 @@ n="vexpo --help lists all subcommands"
 if match_grep "$n"; then
   out=$(run_cli "" --help | strip_ansi)
   miss=""
-  for cmd in lite full accounts rebrand review-account doctor convex better-auth resend submit apple env; do
+  for cmd in lite full accounts rebrand review-account doctor convex better-auth resend submit apple env eas; do
     echo "$out" | grep -q "^  $cmd" || miss="$miss $cmd"
   done
   if [ -z "$miss" ]; then pass "$n"; else fail "$n" "missing:$miss"; fi
+else skip "$n" "filtered"; fi
+
+n="vexpo eas --help documents --with-prod"
+if match_grep "$n"; then
+  out=$(run_cli "" eas --help | strip_ansi); code=$?
+  if [ $code -ne 0 ]; then fail "$n" "exit $code"
+  elif echo "$out" | grep -q -- "--with-prod"; then pass "$n"
+  else fail "$n" "no --with-prod in help"; fi
 else skip "$n" "filtered"; fi
 
 section "Doctor"
@@ -98,14 +106,15 @@ if match_grep "$n"; then
   else pass "$n"; fi
 else skip "$n" "filtered"; fi
 
-n="vexpo doctor --json produces parseable JSON"
+n="vexpo doctor --json serializes a real report inside a project"
 if match_grep "$n"; then
   if ! command -v python3 >/dev/null; then skip "$n" "no python3"
   else
     sb="$TMPROOT/doctor-json-$$-$RANDOM"; mkdir -p "$sb"
+    printf 'export default { name: "Vexpo" };\n' > "$sb/app.config.ts"
     out=$(run_cli "$sb" doctor --json)
-    if echo "$out" | python3 -c 'import json, sys; json.load(sys.stdin)' 2>/dev/null; then pass "$n"
-    else fail "$n" "not valid JSON"; fi
+    if echo "$out" | python3 -c 'import json, sys; r = json.load(sys.stdin); sys.exit(0 if isinstance(r.get("checks"), list) and "summary" in r and "channel" in r else 1)' 2>/dev/null; then pass "$n"
+    else fail "$n" "not a doctor report: $out"; fi
   fi
 else skip "$n" "filtered"; fi
 
@@ -183,14 +192,14 @@ else skip "$n" "filtered"; fi
 
 section "ASC nutrition labels"
 
-n="vexpo asc:privacy lint passes on the template scaffold"
+n="vexpo asc privacy lint passes on the template scaffold"
 if match_grep "$n"; then
-  out=$(node "$CLI" asc:privacy lint "$PKG_ROOT/../../templates/default/app-store/privacy.config.json" 2>&1 | strip_ansi)
+  out=$(node "$CLI" asc privacy lint "$PKG_ROOT/../../templates/default/app-store/privacy.config.json" 2>&1 | strip_ansi)
   if echo "$out" | grep -q "ok"; then pass "$n"
   else fail "$n" "expected ok, got: $out"; fi
 else skip "$n" "filtered"; fi
 
-n="vexpo asc:privacy lint flags an unknown category"
+n="vexpo asc privacy lint flags an unknown category"
 if match_grep "$n"; then
   fixture="$TMPROOT/bad-privacy.json"
   cat > "$fixture" <<JSON
@@ -201,18 +210,18 @@ if match_grep "$n"; then
   ]
 }
 JSON
-  node "$CLI" asc:privacy lint "$fixture" >/dev/null 2>&1; code=$?
+  node "$CLI" asc privacy lint "$fixture" >/dev/null 2>&1; code=$?
   [ $code -ne 0 ] && pass "$n" || fail "$n" "expected non-zero exit, got $code"
 else skip "$n" "filtered"; fi
 
-n="vexpo asc:accessibility lint passes on the template scaffold"
+n="vexpo asc accessibility lint passes on the template scaffold"
 if match_grep "$n"; then
-  out=$(node "$CLI" asc:accessibility lint "$PKG_ROOT/../../templates/default/app-store/accessibility.config.json" 2>&1 | strip_ansi)
+  out=$(node "$CLI" asc accessibility lint "$PKG_ROOT/../../templates/default/app-store/accessibility.config.json" 2>&1 | strip_ansi)
   if echo "$out" | grep -q "ok"; then pass "$n"
   else fail "$n" "expected ok, got: $out"; fi
 else skip "$n" "filtered"; fi
 
-n="vexpo asc:accessibility lint flags an unknown feature"
+n="vexpo asc accessibility lint flags an unknown feature"
 if match_grep "$n"; then
   fixture="$TMPROOT/bad-a11y.json"
   cat > "$fixture" <<JSON
@@ -222,7 +231,7 @@ if match_grep "$n"; then
   ]
 }
 JSON
-  node "$CLI" asc:accessibility lint "$fixture" >/dev/null 2>&1; code=$?
+  node "$CLI" asc accessibility lint "$fixture" >/dev/null 2>&1; code=$?
   [ $code -ne 0 ] && pass "$n" || fail "$n" "expected non-zero exit, got $code"
 else skip "$n" "filtered"; fi
 

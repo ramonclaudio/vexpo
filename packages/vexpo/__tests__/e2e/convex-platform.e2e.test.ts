@@ -13,12 +13,14 @@ import { join } from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-import { envMap, envRemove, envSet } from "../../src/lib/convex-env.ts";
+import { envMap, envSet } from "../../src/lib/convex-env.ts";
 import {
   checkToken,
   listProjectDeployments,
   resolveProdDeployment,
 } from "../../src/lib/convex-management.ts";
+import { dlx } from "../../src/lib/pkg-manager.ts";
+import { run } from "../../src/lib/proc.ts";
 
 function loggedIn(): boolean {
   try {
@@ -63,7 +65,7 @@ describe.skipIf(!RUN)("convex platform API (real)", () => {
       await envSet(name, value, target);
       expect((await envMap(target)).get(name)).toBe(value);
     } finally {
-      await envRemove(name, target);
+      await run([dlx(), "convex", "env", "remove", "--deployment", DEPLOYMENT, name]);
     }
     expect((await envMap(target)).has(name)).toBe(false);
   });

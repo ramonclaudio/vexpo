@@ -11,8 +11,8 @@ import { mintProdDeployKey } from "../../lib/convex-management.ts";
 import { envCreate, envList, envUpdate, type EasEnvironment } from "../../lib/eas-project.ts";
 import { readOne } from "../../lib/env-local.ts";
 import { BOLD, DIM, RESET, ask, bad, line, nop, note, ok, section, yep } from "../../lib/output.ts";
-import { expandTilde, stagedP8 } from "../../lib/path.ts";
-import { load as loadState, lookupCachedPath, lookupOutput } from "../../lib/state.ts";
+import { load as loadState, lookupOutput } from "../../lib/state.ts";
+import { resolveSiwaP8Path } from "./jwt.ts";
 
 const ENVS: readonly EasEnvironment[] = ["production"];
 
@@ -23,11 +23,9 @@ export type RotationSecretsOptions = {
 export async function runEasRotationSecrets(options: RotationSecretsOptions): Promise<number> {
   section("EAS rotation secrets (production)");
 
-  let existing: Map<string, string>;
-  try {
-    existing = await envList("production");
-  } catch (err) {
-    bad(`could not list EAS production env: ${err instanceof Error ? err.message : err}`);
+  const existing = await envList("production");
+  if (existing === null) {
+    bad("could not list EAS production env");
     note("run `npx eas-cli login` and `npx eas-cli init` first");
     return 1;
   }
@@ -54,16 +52,7 @@ export async function runEasRotationSecrets(options: RotationSecretsOptions): Pr
     return 1;
   }
 
-  const cachedP8 = (await lookupCachedPath(state, ["apple-sign-in"], "p8Path")) ?? stagedP8();
-  const rawP8 =
-    process.env.APPLE_P8_PATH ??
-    (process.stdin.isTTY
-      ? cachedP8
-        ? (await ask(`  Path to SIWA .p8 ${DIM}[cached: ${cachedP8}]${RESET} > `)).trim() ||
-          cachedP8
-        : (await ask(`  Path to SIWA .p8 ${DIM}(absolute or relative) >${RESET} `)).trim()
-      : (cachedP8 ?? ""));
-  const p8Path = rawP8 ? expandTilde(rawP8) : "";
+  const p8Path = await resolveSiwaP8Path(state);
   if (!p8Path) {
     bad("no .p8 path provided");
     note("re-run with APPLE_P8_PATH=/path/to/AuthKey.p8");

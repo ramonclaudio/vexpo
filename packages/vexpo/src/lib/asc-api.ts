@@ -16,6 +16,13 @@
  */
 
 import { signAscToken, type AscJwtArgs } from "./asc-jwt.ts";
+import {
+  REQUEST_TIMEOUT_MS,
+  TimeoutError,
+  fetchWithTimeout,
+  retryDelay,
+  sleep,
+} from "./http-retry.ts";
 
 const ASC_BASE = "https://api.appstoreconnect.apple.com";
 
@@ -90,9 +97,7 @@ export class AscApiError extends Error {
   }
 }
 
-const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 const RETRY_STATUSES = new Set([429, 502, 503, 504]);
-const REQUEST_TIMEOUT_MS = 15_000;
 
 function encodeFilters(query?: Record<string, string | string[]>): string {
   if (!query) return "";
@@ -120,45 +125,50 @@ export function makeAscClient(creds: AscCredentials) {
 
   async function fetchWithAuth(method: string, url: string, body?: unknown): Promise<Response> {
     let reSigned = false;
+    let lastStatus = 0;
+    let lastText = "";
     for (let attempt = 0; attempt < 5; attempt++) {
       const t = await token();
-      const ctl = new AbortController();
-      const timer = setTimeout(() => ctl.abort(), REQUEST_TIMEOUT_MS);
       let res: Response;
       try {
-        res = await fetch(url, {
-          method,
-          headers: {
-            Authorization: `Bearer ${t}`,
-            "Content-Type": "application/json",
-            Accept: "application/json",
+        res = await fetchWithTimeout(
+          url,
+          {
+            method,
+            headers: {
+              Authorization: `Bearer ${t}`,
+              "Content-Type": "application/json",
+              Accept: "application/json",
+            },
+            body: body !== undefined ? JSON.stringify(body) : undefined,
           },
-          body: body !== undefined ? JSON.stringify(body) : undefined,
-          signal: ctl.signal,
-        });
+          REQUEST_TIMEOUT_MS,
+        );
       } catch (err) {
-        clearTimeout(timer);
-        if (err instanceof Error && err.name === "AbortError") {
+        if (err instanceof TimeoutError) {
           throw new AscApiError(0, `${method} ${url} timed out after ${REQUEST_TIMEOUT_MS}ms`);
         }
         throw err;
       }
-      clearTimeout(timer);
       if (res.status === 401 && !reSigned) {
         cachedToken = null;
         reSigned = true;
         continue;
       }
       if (RETRY_STATUSES.has(res.status)) {
-        const ra = Number(res.headers.get("retry-after"));
-        const delay =
-          Number.isFinite(ra) && ra > 0 ? ra * 1000 : 250 * 2 ** attempt + Math.random() * 250;
+        lastStatus = res.status;
+        lastText = await res.text();
+        const delay = retryDelay(res, attempt);
+        // Bail with the real error when the Retry-After is over cap (would hang
+        // the CLI for minutes) or this was the last attempt (nothing left to
+        // wait for). Otherwise sleep and retry.
+        if (delay === null || attempt === 4) break;
         await sleep(delay);
         continue;
       }
       return res;
     }
-    throw new AscApiError(429, `${method} ${url} → exhausted retries`);
+    throw new AscApiError(lastStatus, lastText);
   }
 
   async function request<T>(
@@ -229,9 +239,11 @@ export function makeAscClient(creds: AscCredentials) {
 
     bundleIdCapabilities: {
       async list(bundleIdResourceId: string): Promise<AscBundleIdCapability[]> {
-        // Relationship endpoints don't accept a `limit` query param. Apple
-        // tightened this validation, so skip paginatedList and fetch direct.
-        // The capability list per bundle id is small enough that paging is moot.
+        // This relationship endpoint rejects a `limit` query param (Apple
+        // tightened the validation), so fetch direct instead of via
+        // paginatedList. The paginated top-level list endpoints
+        // (betaGroups/betaTesters, builds/betaBuildLocalizations, bundleIds,
+        // apps) still accept and want `limit`.
         const res = await request<{ data: AscBundleIdCapability[] }>(
           "GET",
           `/v1/bundleIds/${bundleIdResourceId}/bundleIdCapabilities`,

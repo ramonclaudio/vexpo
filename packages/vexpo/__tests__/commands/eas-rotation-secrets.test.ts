@@ -8,9 +8,6 @@ vi.mock("../../src/lib/eas-project.ts", () => ({
 vi.mock("../../src/lib/convex-management.ts", () => ({
   mintProdDeployKey: vi.fn(),
 }));
-vi.mock("../../src/lib/convex-env.ts", () => ({
-  deploymentSlug: (v?: string) => (v ? v.replace(/^(dev|prod|preview):/, "") : undefined),
-}));
 vi.mock("../../src/lib/env-local.ts", () => ({ readOne: vi.fn() }));
 vi.mock("../../src/lib/state.ts", () => ({
   load: vi.fn(),

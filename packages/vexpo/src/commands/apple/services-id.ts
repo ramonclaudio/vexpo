@@ -4,9 +4,9 @@ import {
   makeAscClient,
   validate as validateAsc,
   type AscBundleId,
-  type AscCredentials,
 } from "../../lib/asc-api.ts";
 import { loadAscCreds } from "../../lib/asc-state.ts";
+import { ascCredsFromEnv } from "./asc-key.ts";
 import { ensureLine, requireBundleId } from "../../lib/env-local.ts";
 import {
   BOLD,
@@ -25,15 +25,6 @@ import { recordStep } from "../../lib/state.ts";
 export type ServicesIdOptions = {
   servicesId?: string;
 };
-
-// Env override lets a CI run point at a key without writing setup state.
-function ascCredsFromEnv(): AscCredentials | null {
-  const issuerId = process.env.APPLE_ASC_ISSUER_ID;
-  const keyId = process.env.APPLE_ASC_KEY_ID;
-  const p8Path = process.env.APPLE_ASC_P8_PATH;
-  if (!issuerId || !keyId || !p8Path) return null;
-  return { issuerId, keyId, privateKey: { path: p8Path } };
-}
 
 async function findOrCreateBundleId(
   client: ReturnType<typeof makeAscClient>,
@@ -107,77 +98,72 @@ async function findServicesIdOrPromptManual(
 export async function runServicesId(options: ServicesIdOptions): Promise<number> {
   section("Apple Sign In Services ID");
 
-  try {
-    const bundleId = await requireBundleId();
-    if (!bundleId) return 1;
-    ok(`bundle id: ${bundleId}`);
+  const bundleId = await requireBundleId();
+  if (!bundleId) return 1;
+  ok(`bundle id: ${bundleId}`);
 
-    const creds = ascCredsFromEnv() ?? (await loadAscCreds());
-    if (!creds) {
-      bad("App Store Connect credentials not found");
-      note(
-        "run `vexpo apple asc-key` first, or set APPLE_ASC_ISSUER_ID + APPLE_ASC_KEY_ID + APPLE_ASC_P8_PATH",
-      );
-      return 1;
-    }
-
-    const validation = await validateAsc(creds);
-    if (!validation.ok) {
-      bad(`ASC API key invalid: ${validation.reason}`);
-      note("re-run `vexpo apple asc-key` to refresh");
-      return 1;
-    }
-    ok(
-      `ASC API authenticated (${validation.appCount} app${validation.appCount === 1 ? "" : "s"} on team)`,
+  const creds = ascCredsFromEnv() ?? (await loadAscCreds());
+  if (!creds) {
+    bad("App Store Connect credentials not found");
+    note(
+      "run `vexpo apple asc-key` first, or set APPLE_ASC_ISSUER_ID + APPLE_ASC_KEY_ID + APPLE_ASC_P8_PATH",
     );
-
-    const client = makeAscClient(creds);
-
-    const servicesId = options.servicesId ?? process.env.APPLE_SERVICES_ID ?? `${bundleId}.signin`;
-    const name = await appName();
-
-    const appBundle = await findOrCreateBundleId(client, {
-      identifier: bundleId,
-      name,
-      platform: "IOS",
-    });
-    ok(`app bundle id resource: ${appBundle.id} (${appBundle.attributes.identifier})`);
-
-    const sid = await findServicesIdOrPromptManual(client, servicesId);
-    if (!sid) return 1;
-    ok(`services id resource: ${sid.id} (${servicesId})`);
-
-    const caps = await client.bundleIdCapabilities.list(appBundle.id);
-    const siwaCap = caps.find((c) => c.attributes.capabilityType === SIGN_IN_WITH_APPLE_CAPABILITY);
-    let siwaCapId: string;
-    if (siwaCap) {
-      siwaCapId = siwaCap.id;
-      nop("Sign In with Apple capability already enabled on app bundle id");
-    } else {
-      const created = await client.bundleIdCapabilities.create({
-        bundleIdResourceId: appBundle.id,
-        capabilityType: SIGN_IN_WITH_APPLE_CAPABILITY,
-      });
-      siwaCapId = created.id;
-      ok("enabled Sign In with Apple capability on app bundle id");
-    }
-
-    await ensureLine("APPLE_SERVICES_ID", servicesId);
-    ok(`APPLE_SERVICES_ID=${servicesId} written to .env.local`);
-
-    await recordStep("apple-services-id", {
-      servicesId,
-      servicesIdResource: sid.id,
-      appBundleResource: appBundle.id,
-      siwaCapResource: siwaCapId,
-    });
-
-    line();
-    ok("Services ID provisioned");
-    yep("next: run `vexpo apple jwt` to sign the client secret JWT");
-    return 0;
-  } catch (err) {
-    bad(err instanceof Error ? err.message : String(err));
     return 1;
   }
+
+  const validation = await validateAsc(creds);
+  if (!validation.ok) {
+    bad(`ASC API key invalid: ${validation.reason}`);
+    note("re-run `vexpo apple asc-key` to refresh");
+    return 1;
+  }
+  ok(
+    `ASC API authenticated (${validation.appCount} app${validation.appCount === 1 ? "" : "s"} on team)`,
+  );
+
+  const client = makeAscClient(creds);
+
+  const servicesId = options.servicesId ?? process.env.APPLE_SERVICES_ID ?? `${bundleId}.signin`;
+  const name = await appName();
+
+  const appBundle = await findOrCreateBundleId(client, {
+    identifier: bundleId,
+    name,
+    platform: "IOS",
+  });
+  ok(`app bundle id resource: ${appBundle.id} (${appBundle.attributes.identifier})`);
+
+  const sid = await findServicesIdOrPromptManual(client, servicesId);
+  if (!sid) return 1;
+  ok(`services id resource: ${sid.id} (${servicesId})`);
+
+  const caps = await client.bundleIdCapabilities.list(appBundle.id);
+  const siwaCap = caps.find((c) => c.attributes.capabilityType === SIGN_IN_WITH_APPLE_CAPABILITY);
+  let siwaCapId: string;
+  if (siwaCap) {
+    siwaCapId = siwaCap.id;
+    nop("Sign In with Apple capability already enabled on app bundle id");
+  } else {
+    const created = await client.bundleIdCapabilities.create({
+      bundleIdResourceId: appBundle.id,
+      capabilityType: SIGN_IN_WITH_APPLE_CAPABILITY,
+    });
+    siwaCapId = created.id;
+    ok("enabled Sign In with Apple capability on app bundle id");
+  }
+
+  await ensureLine("APPLE_SERVICES_ID", servicesId);
+  ok(`APPLE_SERVICES_ID=${servicesId} written to .env.local`);
+
+  await recordStep("apple-services-id", {
+    servicesId,
+    servicesIdResource: sid.id,
+    appBundleResource: appBundle.id,
+    siwaCapResource: siwaCapId,
+  });
+
+  line();
+  ok("Services ID provisioned");
+  yep("next: run `vexpo apple jwt` to sign the client secret JWT");
+  return 0;
 }

@@ -1,3 +1,11 @@
+import {
+  REQUEST_TIMEOUT_MS,
+  TimeoutError,
+  fetchWithTimeout,
+  retryDelay,
+  sleep,
+} from "./http-retry.ts";
+
 const BASE = "https://api.resend.com";
 
 export type ResendDomain = { id: string; name: string; status: string };
@@ -27,40 +35,33 @@ export type ResendDomainDetail = {
   records: ResendDomainRecord[];
 };
 
-const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
-const REQUEST_TIMEOUT_MS = 15_000;
-
 async function call<T>(method: string, path: string, key: string, body?: unknown): Promise<T> {
   const headers = {
     Authorization: `Bearer ${key}`,
     "Content-Type": "application/json",
   };
   for (let attempt = 0; attempt < 6; attempt++) {
-    const ctl = new AbortController();
-    const timer = setTimeout(() => ctl.abort(), REQUEST_TIMEOUT_MS);
     let res: Response;
     try {
-      res = await fetch(`${BASE}${path}`, {
-        method,
-        headers,
-        body: body ? JSON.stringify(body) : undefined,
-        signal: ctl.signal,
-      });
+      res = await fetchWithTimeout(
+        `${BASE}${path}`,
+        { method, headers, body: body ? JSON.stringify(body) : undefined },
+        REQUEST_TIMEOUT_MS,
+      );
     } catch (err) {
-      clearTimeout(timer);
-      if (err instanceof Error && err.name === "AbortError") {
+      if (err instanceof TimeoutError) {
         throw new Error(`Resend ${method} ${path} timed out after ${REQUEST_TIMEOUT_MS}ms`, {
           cause: err,
         });
       }
       throw err;
     }
-    clearTimeout(timer);
     if (res.status === 429) {
-      const retryAfter = Number(res.headers.get("retry-after"));
-      const wait =
-        Number.isFinite(retryAfter) && retryAfter > 0 ? retryAfter * 1000 : 250 * 2 ** attempt;
-      await sleep(wait);
+      const delay = retryDelay(res, attempt);
+      // Over-cap Retry-After or the last attempt: stop sleeping and surface the
+      // 429 so an oversized Retry-After can't freeze the CLI for minutes.
+      if (delay === null || attempt === 5) break;
+      await sleep(delay);
       continue;
     }
     const text = await res.text();
@@ -73,24 +74,29 @@ async function call<T>(method: string, path: string, key: string, body?: unknown
 }
 
 export async function probeAccess(key: string): Promise<"full" | "sending" | "invalid"> {
-  // Bound the gating probe like every other Resend call (see `call`), so a
-  // silent network stall can't hang `vexpo resend` forever. Can't route through
-  // `call` because that throws on non-2xx; we need the 4xx body to tell a
-  // restricted key from an invalid one.
-  const ctl = new AbortController();
-  const timer = setTimeout(() => ctl.abort(), REQUEST_TIMEOUT_MS);
-  try {
-    const res = await fetch(`${BASE}/api-keys`, {
-      headers: { Authorization: `Bearer ${key}` },
-      signal: ctl.signal,
-    });
+  // Can't route through `call`: it throws on non-2xx, but we need the 4xx body
+  // to tell a restricted (sending-only) key from an invalid one. Only 401/403
+  // means invalid; 429 retries and 5xx throws so a transient blip never reads
+  // as a bad key.
+  for (let attempt = 0; attempt < 6; attempt++) {
+    const res = await fetchWithTimeout(
+      `${BASE}/api-keys`,
+      { headers: { Authorization: `Bearer ${key}` } },
+      REQUEST_TIMEOUT_MS,
+    );
     if (res.ok) return "full";
     const text = await res.text();
     if (text.includes("restricted_api_key")) return "sending";
-    return "invalid";
-  } finally {
-    clearTimeout(timer);
+    if (res.status === 401 || res.status === 403) return "invalid";
+    if (res.status === 429) {
+      const delay = retryDelay(res, attempt);
+      if (delay === null || attempt === 5) break;
+      await sleep(delay);
+      continue;
+    }
+    throw new Error(`Resend GET /api-keys → ${res.status}: ${text}`);
   }
+  throw new Error("Resend GET /api-keys → 429 after retries");
 }
 
 export async function listDomains(key: string): Promise<ResendDomain[]> {

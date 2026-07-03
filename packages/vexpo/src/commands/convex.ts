@@ -74,126 +74,119 @@ export function convexUrls(slug: string, local: boolean): { url: string; siteUrl
 export async function runConvex(options: ConvexOptions): Promise<number> {
   section("Convex deployment");
 
-  try {
-    const tokenStatus = await checkToken();
-    if (tokenStatus !== "valid") {
-      yep(
-        tokenStatus === "no-token" ? "not signed in to Convex" : "Convex token expired or revoked",
-      );
-      await helpAndWait({
-        body: "Sign in (or refresh) with `npx convex login` in another terminal:",
-        urls: [
-          { label: "Convex sign-up", url: "https://convex.dev" },
-          { label: "Convex dashboard", url: "https://dashboard.convex.dev" },
-        ],
-        allowSkip: true,
-        skipLabel: "skip",
-      });
-    }
-
-    const localEnv = await readAll();
-    const existing = localEnv.get("CONVEX_DEPLOYMENT");
-
-    if (options.fresh) {
-      await removeLines([
-        "CONVEX_DEPLOYMENT",
-        "EXPO_PUBLIC_CONVEX_URL",
-        "EXPO_PUBLIC_CONVEX_SITE_URL",
-      ]);
-    }
-
-    const needsProvisioning = options.fresh === true || !existing;
-    const projectName = options.name ?? (await pkgName());
-    // Skip the interactive team picker when CONVEX_TEAM is set (CI / scripts).
-    const team = (process.env.CONVEX_TEAM ?? localEnv.get("CONVEX_TEAM"))?.trim() || undefined;
-
-    const plan = planConvexDev(options, needsProvisioning, projectName, team);
-    if (plan.selectLocalFirst) {
-      const sel = spawn([dlx(), "convex", "deployment", "select", "local"], {
-        stdin: "inherit",
-        stdout: "inherit",
-        stderr: "inherit",
-      });
-      if ((await sel.exited) !== 0) {
-        bad("convex deployment select local failed");
-        return 1;
-      }
-    }
-    const cmd = [dlx(), ...plan.devArgs];
-
-    if (needsProvisioning) {
-      ok(`provisioning Convex project '${projectName}'`);
-    } else {
-      ok(`connecting to existing deployment ${existing}`);
-    }
-
-    const proc = spawn(cmd, { stdin: "inherit", stdout: "inherit", stderr: "inherit" });
-    if ((await proc.exited) !== 0) {
-      bad("convex dev exited with a non-zero code");
-      if (needsProvisioning && !team && !process.stdin.isTTY) {
-        note("provisioning a new Convex project picks a team interactively, which");
-        note("can't prompt here. Set CONVEX_TEAM=<slug> (Convex dashboard > team");
-        note("settings) or run `vexpo lite` in an interactive terminal.");
-      }
-      return 1;
-    }
-
-    const refreshed = await readAll();
-    const deployment = refreshed.get("CONVEX_DEPLOYMENT");
-    if (!deployment) {
-      bad("CONVEX_DEPLOYMENT missing after convex dev ran");
-      return 1;
-    }
-
-    const slug = deployment.split("#")[0].trim().split(":")[1];
-    if (!slug) {
-      bad(`invalid CONVEX_DEPLOYMENT: ${deployment}`);
-      return 1;
-    }
-
-    process.env.CONVEX_DEPLOYMENT = deployment;
-
-    const urls = convexUrls(slug, options.local === true);
-    if (refreshed.has("EXPO_PUBLIC_CONVEX_URL")) {
-      nop("EXPO_PUBLIC_CONVEX_URL already set");
-    } else {
-      await ensureLine("EXPO_PUBLIC_CONVEX_URL", urls.url);
-      ok("wrote EXPO_PUBLIC_CONVEX_URL");
-    }
-    if (refreshed.has("EXPO_PUBLIC_CONVEX_SITE_URL")) {
-      nop("EXPO_PUBLIC_CONVEX_SITE_URL already set");
-    } else {
-      await ensureLine("EXPO_PUBLIC_CONVEX_SITE_URL", urls.siteUrl);
-      ok("wrote EXPO_PUBLIC_CONVEX_SITE_URL");
-    }
-    if (refreshed.has("EXPO_PUBLIC_SITE_URL")) {
-      nop("EXPO_PUBLIC_SITE_URL already set");
-    } else {
-      const s = `${await scheme()}://`;
-      await ensureLine("EXPO_PUBLIC_SITE_URL", s);
-      ok(`wrote EXPO_PUBLIC_SITE_URL=${s}`);
-    }
-
-    await ensureIdentity(refreshed);
-
-    await recordStep("convex", {
-      deployment,
-      slug,
-      ...(options.local ? { local: true } : {}),
+  const tokenStatus = await checkToken();
+  if (tokenStatus !== "valid") {
+    yep(tokenStatus === "no-token" ? "not signed in to Convex" : "Convex token expired or revoked");
+    await helpAndWait({
+      body: "Sign in (or refresh) with `npx convex login` in another terminal:",
+      urls: [
+        { label: "Convex sign-up", url: "https://convex.dev" },
+        { label: "Convex dashboard", url: "https://dashboard.convex.dev" },
+      ],
+      allowSkip: true,
+      skipLabel: "skip",
     });
+  }
 
-    line();
-    ok(`Convex deployment ready: ${BOLD}${slug}${RESET}`);
-    if (options.local) {
-      note(`local backend: ${urls.url}`);
-    } else {
-      note(`dashboard: https://dashboard.convex.dev/d/${slug}`);
+  const localEnv = await readAll();
+  const existing = localEnv.get("CONVEX_DEPLOYMENT");
+
+  if (options.fresh) {
+    await removeLines([
+      "CONVEX_DEPLOYMENT",
+      "EXPO_PUBLIC_CONVEX_URL",
+      "EXPO_PUBLIC_CONVEX_SITE_URL",
+    ]);
+  }
+
+  const needsProvisioning = options.fresh === true || !existing;
+  const projectName = options.name ?? (await pkgName());
+  // Skip the interactive team picker when CONVEX_TEAM is set (CI / scripts).
+  const team = (process.env.CONVEX_TEAM ?? localEnv.get("CONVEX_TEAM"))?.trim() || undefined;
+
+  const plan = planConvexDev(options, needsProvisioning, projectName, team);
+  if (plan.selectLocalFirst) {
+    const sel = spawn([dlx(), "convex", "deployment", "select", "local"], {
+      stdin: "inherit",
+      stdout: "inherit",
+      stderr: "inherit",
+    });
+    if ((await sel.exited) !== 0) {
+      bad("convex deployment select local failed");
+      return 1;
     }
-    return 0;
-  } catch (err) {
-    bad(err instanceof Error ? err.message : String(err));
+  }
+  const cmd = [dlx(), ...plan.devArgs];
+
+  if (needsProvisioning) {
+    ok(`provisioning Convex project '${projectName}'`);
+  } else {
+    ok(`connecting to existing deployment ${existing}`);
+  }
+
+  const proc = spawn(cmd, { stdin: "inherit", stdout: "inherit", stderr: "inherit" });
+  if ((await proc.exited) !== 0) {
+    bad("convex dev exited with a non-zero code");
+    if (needsProvisioning && !team && !process.stdin.isTTY) {
+      note("provisioning a new Convex project picks a team interactively, which");
+      note("can't prompt here. Set CONVEX_TEAM=<slug> (Convex dashboard > team");
+      note("settings) or run `vexpo lite` in an interactive terminal.");
+    }
     return 1;
   }
+
+  const refreshed = await readAll();
+  const deployment = refreshed.get("CONVEX_DEPLOYMENT");
+  if (!deployment) {
+    bad("CONVEX_DEPLOYMENT missing after convex dev ran");
+    return 1;
+  }
+
+  const slug = deployment.split("#")[0].trim().split(":")[1];
+  if (!slug) {
+    bad(`invalid CONVEX_DEPLOYMENT: ${deployment}`);
+    return 1;
+  }
+
+  process.env.CONVEX_DEPLOYMENT = deployment;
+
+  const urls = convexUrls(slug, options.local === true);
+  if (refreshed.has("EXPO_PUBLIC_CONVEX_URL")) {
+    nop("EXPO_PUBLIC_CONVEX_URL already set");
+  } else {
+    await ensureLine("EXPO_PUBLIC_CONVEX_URL", urls.url);
+    ok("wrote EXPO_PUBLIC_CONVEX_URL");
+  }
+  if (refreshed.has("EXPO_PUBLIC_CONVEX_SITE_URL")) {
+    nop("EXPO_PUBLIC_CONVEX_SITE_URL already set");
+  } else {
+    await ensureLine("EXPO_PUBLIC_CONVEX_SITE_URL", urls.siteUrl);
+    ok("wrote EXPO_PUBLIC_CONVEX_SITE_URL");
+  }
+  if (refreshed.has("EXPO_PUBLIC_SITE_URL")) {
+    nop("EXPO_PUBLIC_SITE_URL already set");
+  } else {
+    const s = `${await scheme()}://`;
+    await ensureLine("EXPO_PUBLIC_SITE_URL", s);
+    ok(`wrote EXPO_PUBLIC_SITE_URL=${s}`);
+  }
+
+  await ensureIdentity(refreshed);
+
+  await recordStep("convex", {
+    deployment,
+    slug,
+    ...(options.local ? { local: true } : {}),
+  });
+
+  line();
+  ok(`Convex deployment ready: ${BOLD}${slug}${RESET}`);
+  if (options.local) {
+    note(`local backend: ${urls.url}`);
+  } else {
+    note(`dashboard: https://dashboard.convex.dev/d/${slug}`);
+  }
+  return 0;
 }
 
 export async function ensureIdentity(localEnv: Map<string, string>): Promise<void> {

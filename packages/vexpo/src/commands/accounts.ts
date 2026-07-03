@@ -250,72 +250,63 @@ async function walkResend(): Promise<void> {
 }
 
 export async function runAccounts(options: AccountsOptions): Promise<number> {
-  try {
-    section(options.lite ? "Accounts (lite mode. Convex only)" : "Accounts");
+  section(options.lite ? "Accounts (lite mode. Convex only)" : "Accounts");
 
-    if (options.lite) {
-      const convex = await statusConvex();
-      printTable([convex]);
-      if (options.check) return convex.status === "ok" ? 0 : 1;
-      await walkConvex();
-      await recordStep("accounts", {
-        lite: true,
-        convex: { signedIn: (await statusConvex()).status === "ok" },
-      });
-      line();
-      ok("accounts step complete (lite)");
-      return 0;
-    }
-
-    const [expo, convex, resend] = await Promise.all([
-      statusExpo(),
-      statusConvex(),
-      statusResend(),
-    ]);
-    const rows: AccountRow[] = [ROW_APPLE, ROW_DOMAIN, convex, expo, resend];
-
-    printTable(rows);
-
-    if (options.check) {
-      const allOk = [convex, expo, resend].every((r) => r.status === "ok");
-      return allOk ? 0 : 1;
-    }
-
-    const apple = await walkApple();
-    const domain = await walkDomain();
+  if (options.lite) {
+    const convex = await statusConvex();
+    printTable([convex]);
+    if (options.check) return convex.status === "ok" ? 0 : 1;
     await walkConvex();
-    await walkExpo();
-    await walkResend();
-
-    section("What you'll be prompted for later");
-    note(
-      `${BOLD}vexpo apple asc-key${RESET}        App Store Connect API key (issuer ID, key ID, .p8)`,
-    );
-    note(
-      `                           where: ${DIM}https://appstoreconnect.apple.com/access/integrations/api${RESET}`,
-    );
-    note(`${BOLD}vexpo apple jwt${RESET}            Sign In with Apple key (.p8 + key ID)`);
-    note(
-      `                           where: ${DIM}https://developer.apple.com/account/resources/authkeys/list${RESET}`,
-    );
-    note(
-      `${BOLD}DNS records${RESET}                added at your registrar after \`npx vexpo resend\``,
-    );
-    note(`                           Resend dashboard shows them + verifies them`);
-
     await recordStep("accounts", {
-      apple: { enrolled: apple.enrolled },
-      domain: { ready: domain.ready },
-      expo: { signedIn: (await statusExpo()).status === "ok" },
+      lite: true,
       convex: { signedIn: (await statusConvex()).status === "ok" },
-      resend: { fullAccessKeyInEnv: (await statusResend()).status === "ok" },
     });
-
     line();
-    ok("accounts step complete");
+    ok("accounts step complete (lite)");
     return 0;
-  } catch (err) {
-    bad(err instanceof Error ? err.message : String(err));
-    return 1;
   }
+
+  const [expo, convex, resend] = await Promise.all([statusExpo(), statusConvex(), statusResend()]);
+  const rows: AccountRow[] = [ROW_APPLE, ROW_DOMAIN, convex, expo, resend];
+
+  printTable(rows);
+
+  if (options.check) {
+    const allOk = [convex, expo, resend].every((r) => r.status === "ok");
+    return allOk ? 0 : 1;
+  }
+
+  const apple = await walkApple();
+  const domain = await walkDomain();
+  await walkConvex();
+  await walkExpo();
+  await walkResend();
+
+  section("What you'll be prompted for later");
+  note(
+    `${BOLD}vexpo apple asc-key${RESET}        App Store Connect API key (issuer ID, key ID, .p8)`,
+  );
+  note(
+    `                           where: ${DIM}https://appstoreconnect.apple.com/access/integrations/api${RESET}`,
+  );
+  note(`${BOLD}vexpo apple jwt${RESET}            Sign In with Apple key (.p8 + key ID)`);
+  note(
+    `                           where: ${DIM}https://developer.apple.com/account/resources/authkeys/list${RESET}`,
+  );
+  note(
+    `${BOLD}DNS records${RESET}                added at your registrar after \`npx vexpo resend\``,
+  );
+  note(`                           Resend dashboard shows them + verifies them`);
+
+  await recordStep("accounts", {
+    apple: { enrolled: apple.enrolled },
+    domain: { ready: domain.ready },
+    expo: { signedIn: (await statusExpo()).status === "ok" },
+    convex: { signedIn: (await statusConvex()).status === "ok" },
+    resend: { fullAccessKeyInEnv: (await statusResend()).status === "ok" },
+  });
+
+  line();
+  ok("accounts step complete");
+  return 0;
 }

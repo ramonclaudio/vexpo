@@ -171,7 +171,7 @@ async function describePhase(
     case "apple-asc-link":
       return {
         step,
-        label: "setup:asc:connect",
+        label: "setup:asc-connect",
         action: cached && !options.force ? "skip (already connected)" : "run (eas-cli interactive)",
         details: [
           "spawns `eas integrations:asc:connect --bundle-id <bundle>`",
@@ -442,7 +442,7 @@ export async function printSummary(useLocal: boolean, elapsedMs: number): Promis
   section("Summary");
   const [localEnv, convexEnvOrNull] = await Promise.all([readAll(), convexEnvMap()]);
   const convexEnv = convexEnvOrNull ?? new Map<string, string>();
-  const easEnv = await easEnvList("production").catch(() => new Map<string, string>());
+  const easEnv = (await easEnvList("production")) ?? new Map<string, string>();
   const projectId = await resolveProjectId();
   const state = await loadState();
 
