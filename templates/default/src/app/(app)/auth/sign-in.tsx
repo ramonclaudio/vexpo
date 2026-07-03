@@ -7,7 +7,6 @@ import {
   Host,
   ScrollView,
   VStack,
-  TextField,
   Button,
   Text,
   RNHostView,
@@ -18,15 +17,12 @@ import {
   autocorrectionDisabled,
   foregroundStyle,
   buttonStyle,
-  background,
-  clipShape,
   defaultScrollAnchorForRole,
   disabled,
   keyboardType,
   onSubmit as onSubmitModifier,
   submitLabel,
   textContentType,
-  textFieldStyle,
   textInputAutocapitalization,
   padding,
   frame,
@@ -38,7 +34,7 @@ import {
   tint,
 } from "@expo/ui/swift-ui/modifiers";
 import { useDynamicFont } from "@/lib/dynamic-font";
-import { Button as ButtonTokens, TouchTarget } from "@/constants/layout";
+import { TouchTarget } from "@/constants/layout";
 
 import { api } from "@/convex/_generated/api";
 import { authClient } from "@/lib/auth-client";
@@ -52,15 +48,17 @@ import {
   signInUsernameSchema,
 } from "@/lib/schemas";
 import { OtpVerification } from "@/components/auth/otp-verification";
+import { CapsuleTextField } from "@/components/ui/capsule-text-field";
+import { HelperText } from "@/components/ui/helper-text";
 import { PasswordField } from "@/components/auth/password-field";
-import { SegmentedToggle } from "@/components/auth/segmented-toggle";
+import { SegmentedToggle } from "@/components/ui/segmented-toggle";
 import { ProminentButton } from "@/components/ui/prominent-button";
 import { ErrorText } from "@/components/ui/status-text";
 import { announce } from "@/lib/a11y";
 import { useColors, useThemedAsset } from "@/hooks/use-theme";
 import { AppleButton } from "@/components/auth/apple-button";
 
-type SignInState = { error?: string; ok?: boolean };
+type SignInState = { error?: string };
 const initialState: SignInState = {};
 
 type SignInMethod = "email" | "username" | "otp";
@@ -110,7 +108,7 @@ export default function SignInScreen() {
         }
         haptics.success();
         announce("Signed in");
-        return { ok: true };
+        return {};
       } catch (e) {
         haptics.error();
         return {
@@ -140,7 +138,7 @@ export default function SignInScreen() {
         }
         haptics.success();
         announce("Signed in");
-        return { ok: true };
+        return {};
       } catch (e) {
         haptics.error();
         return {
@@ -171,7 +169,7 @@ export default function SignInScreen() {
         haptics.success();
         announce("Sign-in code sent");
         setShowOtpVerification(true);
-        return { ok: true };
+        return {};
       } catch (e) {
         haptics.error();
         return {
@@ -209,7 +207,7 @@ export default function SignInScreen() {
         }
         haptics.success();
         announce("Signed in with Apple");
-        return { ok: true };
+        return {};
       } catch (e) {
         if (e instanceof Error && "code" in e && e.code === "ERR_REQUEST_CANCELED") return {};
         haptics.error();
@@ -246,15 +244,6 @@ export default function SignInScreen() {
   })();
 
   const labelModifiers = [dfont({ size: 17, weight: "semibold" })];
-  const helperModifiers = [dfont({ size: 13 }), foregroundStyle(colors.mutedForeground as string)];
-  const inputModifiers = [
-    textFieldStyle("plain"),
-    padding({ horizontal: 16 }),
-    frame({ maxWidth: Infinity, minHeight: ButtonTokens.height }),
-    background(colors.muted as string),
-    clipShape("capsule"),
-    dfont({ size: 16 }),
-  ];
 
   return (
     <Host testID="sign-in-screen" style={{ flex: 1, backgroundColor: colors.background }}>
@@ -334,12 +323,11 @@ export default function SignInScreen() {
             <>
               <VStack spacing={6} alignment="leading" modifiers={[frame({ maxWidth: Infinity })]}>
                 <Text modifiers={labelModifiers}>Email</Text>
-                <TextField
+                <CapsuleTextField
                   testID="sign-in-email"
                   placeholder="you@example.com"
                   onTextChange={setEmailValue}
                   modifiers={[
-                    ...inputModifiers,
                     keyboardType("email-address"),
                     autocorrectionDisabled(),
                     // upstream expo/expo#44547 + #44548: keyboard shift + autofill semantics
@@ -387,7 +375,7 @@ export default function SignInScreen() {
             <>
               <VStack spacing={6} alignment="leading" modifiers={[frame({ maxWidth: Infinity })]}>
                 <Text modifiers={labelModifiers}>Username</Text>
-                <TextField
+                <CapsuleTextField
                   testID="sign-in-username"
                   text={usernameFieldState}
                   placeholder="johndoe"
@@ -398,7 +386,6 @@ export default function SignInScreen() {
                     runOnJS(setUsernameValue)(next);
                   }}
                   modifiers={[
-                    ...inputModifiers,
                     keyboardType("ascii-capable"),
                     autocorrectionDisabled(),
                     textInputAutocapitalization("never"),
@@ -444,12 +431,11 @@ export default function SignInScreen() {
           {signInMethod === "otp" && (
             <VStack spacing={6} alignment="leading" modifiers={[frame({ maxWidth: Infinity })]}>
               <Text modifiers={labelModifiers}>Email</Text>
-              <TextField
+              <CapsuleTextField
                 testID="sign-in-otp-email"
                 placeholder="you@example.com"
                 onTextChange={setOtpEmail}
                 modifiers={[
-                  ...inputModifiers,
                   keyboardType("email-address"),
                   autocorrectionDisabled(),
                   textInputAutocapitalization("never"),
@@ -461,9 +447,7 @@ export default function SignInScreen() {
                   accessibilityHint("Enter the email address for your account"),
                 ]}
               />
-              <Text modifiers={helperModifiers}>
-                We&apos;ll email you a 6-digit code. No password needed.
-              </Text>
+              <HelperText>We&apos;ll email you a 6-digit code. No password needed.</HelperText>
             </VStack>
           )}
 

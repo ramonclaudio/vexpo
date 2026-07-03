@@ -1,16 +1,3 @@
-export const Opacity = {
-  pressed: 0.7,
-  active: 0.8,
-  disabled: 0.5,
-  muted: 0.6,
-} as const;
-
-export const Shadow = {
-  sm: "0 1px 2px",
-  md: "0 2px 4px",
-  lg: "0 4px 8px",
-} as const;
-
 export const ZIndex = {
   base: 0,
   statusBar: 1,
@@ -40,36 +27,4 @@ export const DynamicType = {
   // The OTP field is tightest: six 24pt monospaced glyphs with kerning(8) in a
   // capsule that can't wrap, so it caps below the accessibility sizes.
   otp: "xxLarge",
-} as const;
-
-export const Size = {
-  checkbox: 24,
-  iconContainer: 40,
-  iconContainerSm: 32,
-  divider: 0.5,
-  dividerThick: 1,
-  dividerMargin: 50,
-  dragHandle: { width: 36, height: 5, radius: 3 },
-  badge: 32,
-} as const;
-
-export const Responsive = {
-  header: {
-    minHeight: 200,
-    maxHeight: 300,
-    screenRatio: 0.25,
-  },
-  avatar: {
-    phone: 100,
-    tablet: 110,
-    desktop: 120,
-  },
-} as const;
-
-export const Keyboard = {
-  verticalOffset: 100,
-} as const;
-
-export const EmptyState = {
-  paddingVertical: 60,
 } as const;

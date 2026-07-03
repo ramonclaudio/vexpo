@@ -1,20 +1,16 @@
 import { startTransition, useActionState, useCallback, useEffect, useRef, useState } from "react";
 import * as AppleAuthentication from "expo-apple-authentication";
 import { Image as ExpoImage } from "expo-image";
-import { router, useNavigation } from "expo-router";
+import { router } from "expo-router";
 import { useQuery } from "convex/react";
 import {
   Host,
   ScrollView,
   VStack,
   HStack,
-  TextField,
-  Button,
   Text,
   Image,
-  Spacer,
   RNHostView,
-  ConfirmationDialog,
   useNativeState,
 } from "@expo/ui/swift-ui";
 import {
@@ -25,7 +21,6 @@ import {
   keyboardType,
   submitLabel,
   textContentType,
-  textFieldStyle,
   textInputAutocapitalization,
   padding,
   frame,
@@ -34,14 +29,11 @@ import {
   accessibilityLabel,
   accessibilityHint,
   tint,
-  background,
-  clipShape,
   id,
   scrollPosition,
   scrollTargetLayout,
 } from "@expo/ui/swift-ui/modifiers";
 import { useDynamicFont } from "@/lib/dynamic-font";
-import { Button as ButtonTokens } from "@/constants/layout";
 
 import { api } from "@/convex/_generated/api";
 import { isReservedUsername, isValidUsernameFormat } from "@/convex/constants";
@@ -53,8 +45,12 @@ import { haptics } from "@/lib/haptics";
 import { maskUsername } from "@/lib/masks";
 import { setNativeValue } from "@/lib/native-state";
 import { OtpVerification } from "@/components/auth/otp-verification";
+import { CapsuleTextField } from "@/components/ui/capsule-text-field";
+import { DiscardChangesDialog } from "@/components/ui/discard-changes-dialog";
+import { HelperText } from "@/components/ui/helper-text";
+import { useUnsavedChanges } from "@/hooks/use-unsaved-changes";
 import { PasswordField } from "@/components/auth/password-field";
-import { SegmentedToggle } from "@/components/auth/segmented-toggle";
+import { SegmentedToggle } from "@/components/ui/segmented-toggle";
 import { ProminentButton } from "@/components/ui/prominent-button";
 import { firstError, firstErrorField, signUpSchema } from "@/lib/schemas";
 import { ErrorText } from "@/components/ui/status-text";
@@ -62,7 +58,7 @@ import { announce } from "@/lib/a11y";
 import { useColors, useThemedAsset } from "@/hooks/use-theme";
 import { AppleButton } from "@/components/auth/apple-button";
 
-type SignUpState = { error?: string; verify?: boolean };
+type SignUpState = { error?: string };
 const initialState: SignUpState = {};
 
 export default function SignUpScreen() {
@@ -91,16 +87,22 @@ export default function SignUpScreen() {
   const [usernameAvailable, setUsernameAvailable] = useState<boolean | null>(null);
   const [isCheckingUsername, setIsCheckingUsername] = useState(false);
   const usernameCheckRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // The candidate the latest keystroke is waiting on. A slow response whose
+  // candidate no longer matches (newer keystroke, or unmount clears it to null)
+  // is dropped so it can't overwrite fresher state or set state after unmount.
+  const pendingCandidateRef = useRef<string | null>(null);
 
   const checkUsernameAvailability = useCallback(async (candidate: string) => {
     setIsCheckingUsername(true);
     try {
       const result = await authClient.isUsernameAvailable({ username: candidate });
+      if (candidate !== pendingCandidateRef.current) return;
       if (result.data) setUsernameAvailable(result.data.available);
     } catch {
+      if (candidate !== pendingCandidateRef.current) return;
       setUsernameAvailable(null);
     } finally {
-      setIsCheckingUsername(false);
+      if (candidate === pendingCandidateRef.current) setIsCheckingUsername(false);
     }
   }, []);
 
@@ -113,11 +115,13 @@ export default function SignUpScreen() {
       setUsernameAvailable(null);
       if (usernameCheckRef.current) clearTimeout(usernameCheckRef.current);
       const trimmed = value.trim();
+      pendingCandidateRef.current = null;
       if (!trimmed || !isValidUsernameFormat(trimmed)) return;
       if (isReservedUsername(trimmed)) {
         setUsernameAvailable(false);
         return;
       }
+      pendingCandidateRef.current = trimmed;
       usernameCheckRef.current = setTimeout(() => {
         void checkUsernameAvailability(trimmed);
       }, 500);
@@ -128,6 +132,7 @@ export default function SignUpScreen() {
   useEffect(
     () => () => {
       if (usernameCheckRef.current) clearTimeout(usernameCheckRef.current);
+      pendingCandidateRef.current = null;
     },
     [],
   );
@@ -143,19 +148,9 @@ export default function SignUpScreen() {
     AppleAuthentication.isAvailableAsync().then(setAppleAvailable);
   }, []);
 
-  const navigation = useNavigation();
   const hasInput =
     name.length > 0 || username.length > 0 || email.length > 0 || password.length > 0;
-  const [pendingNavAction, setPendingNavAction] = useState<
-    Parameters<typeof navigation.dispatch>[0] | null
-  >(null);
-  useEffect(() => {
-    if (!hasInput || showVerification) return;
-    return navigation.addListener("beforeRemove", (e) => {
-      e.preventDefault();
-      setPendingNavAction(e.data.action);
-    });
-  }, [navigation, hasInput, showVerification]);
+  const { pendingNavAction, discard, dismiss } = useUnsavedChanges(hasInput && !showVerification);
 
   const [state, signUp, isPending] = useActionState<SignUpState, void>(async () => {
     haptics.light();
@@ -190,10 +185,10 @@ export default function SignUpScreen() {
       if (emailFeatures) {
         announce("Account created. Check your email for the verification code.");
         setShowVerification(true);
-        return { verify: true };
+        return {};
       }
       announce("Account created. You're signed in.");
-      return { ok: true };
+      return {};
     } catch {
       haptics.error();
       return { error: "An unexpected error occurred. Please try again." };
@@ -227,7 +222,7 @@ export default function SignUpScreen() {
         }
         haptics.success();
         announce("Signed up with Apple");
-        return { verify: false };
+        return {};
       } catch (e) {
         if (e instanceof Error && "code" in e && e.code === "ERR_REQUEST_CANCELED") return {};
         haptics.error();
@@ -276,15 +271,6 @@ export default function SignUpScreen() {
   }
 
   const labelModifiers = [dfont({ size: 17, weight: "semibold" })];
-  const helperModifiers = [dfont({ size: 13 }), foregroundStyle(colors.mutedForeground as string)];
-  const inputModifiers = [
-    textFieldStyle("plain"),
-    padding({ horizontal: 16 }),
-    frame({ maxWidth: Infinity, minHeight: ButtonTokens.height }),
-    background(colors.muted as string),
-    clipShape("capsule"),
-    dfont({ size: 16 }),
-  ];
 
   return (
     <Host testID="sign-up-screen" style={{ flex: 1, backgroundColor: colors.background }}>
@@ -347,12 +333,11 @@ export default function SignUpScreen() {
             modifiers={[frame({ maxWidth: Infinity }), id("field-name")]}
           >
             <Text modifiers={labelModifiers}>Name</Text>
-            <TextField
+            <CapsuleTextField
               testID="sign-up-name"
               placeholder="Your name"
               onTextChange={setName}
               modifiers={[
-                ...inputModifiers,
                 textInputAutocapitalization("words"),
                 textContentType("name"),
                 disabled(isLoading),
@@ -369,7 +354,7 @@ export default function SignUpScreen() {
             modifiers={[frame({ maxWidth: Infinity }), id("field-username")]}
           >
             <Text modifiers={labelModifiers}>Username (optional)</Text>
-            <TextField
+            <CapsuleTextField
               testID="sign-up-username"
               text={usernameState}
               placeholder="johndoe"
@@ -380,7 +365,6 @@ export default function SignUpScreen() {
                 runOnJS(handleUsernameChange)(next);
               }}
               modifiers={[
-                ...inputModifiers,
                 keyboardType("ascii-capable"),
                 autocorrectionDisabled(),
                 textInputAutocapitalization("never"),
@@ -406,7 +390,7 @@ export default function SignUpScreen() {
                 </Text>
               </HStack>
             ) : (
-              <Text modifiers={helperModifiers}>A unique handle others can use to find you.</Text>
+              <HelperText>A unique handle others can use to find you.</HelperText>
             )}
           </VStack>
 
@@ -416,12 +400,11 @@ export default function SignUpScreen() {
             modifiers={[frame({ maxWidth: Infinity }), id("field-email")]}
           >
             <Text modifiers={labelModifiers}>Email</Text>
-            <TextField
+            <CapsuleTextField
               testID="sign-up-email"
               placeholder="you@example.com"
               onTextChange={setEmail}
               modifiers={[
-                ...inputModifiers,
                 keyboardType("email-address"),
                 autocorrectionDisabled(),
                 textInputAutocapitalization("never"),
@@ -449,7 +432,7 @@ export default function SignUpScreen() {
               accessibilityLabel="Password"
               accessibilityHint="Enter a password with at least 10 characters"
             />
-            <Text modifiers={helperModifiers}>At least 10 characters.</Text>
+            <HelperText>At least 10 characters.</HelperText>
           </VStack>
 
           <ProminentButton
@@ -470,35 +453,13 @@ export default function SignUpScreen() {
         </VStack>
       </ScrollView>
 
-      <ConfirmationDialog
-        title="Discard changes?"
-        isPresented={pendingNavAction !== null}
-        onIsPresentedChange={(v) => {
-          if (!v) setPendingNavAction(null);
-        }}
-        titleVisibility="visible"
-      >
-        <ConfirmationDialog.Trigger>
-          <Spacer modifiers={[frame({ width: 0, height: 0 })]} />
-        </ConfirmationDialog.Trigger>
-        <ConfirmationDialog.Actions>
-          <Button
-            testID="sign-up-discard"
-            label="Discard"
-            role="destructive"
-            onPress={() => {
-              haptics.warning();
-              const action = pendingNavAction;
-              setPendingNavAction(null);
-              if (action) navigation.dispatch(action);
-            }}
-          />
-          <Button testID="sign-up-keep-editing" label="Keep Editing" role="cancel" />
-        </ConfirmationDialog.Actions>
-        <ConfirmationDialog.Message>
-          <Text modifiers={[dfont({ size: 16 })]}>You have unsaved input that will be lost.</Text>
-        </ConfirmationDialog.Message>
-      </ConfirmationDialog>
+      <DiscardChangesDialog
+        testIDPrefix="sign-up"
+        message="You have unsaved input that will be lost."
+        pendingNavAction={pendingNavAction}
+        onDiscard={discard}
+        onDismiss={dismiss}
+      />
     </Host>
   );
 }

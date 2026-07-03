@@ -1,22 +1,10 @@
 import { startTransition, useActionState, useEffect, useState } from "react";
-import { router, useNavigation } from "expo-router";
+import { router } from "expo-router";
 import { useQuery } from "convex/react";
-import {
-  Host,
-  ScrollView,
-  VStack,
-  TextField,
-  Button,
-  Text,
-  Spacer,
-  ConfirmationDialog,
-  useNativeState,
-} from "@expo/ui/swift-ui";
+import { Host, ScrollView, VStack, Button, Text, useNativeState } from "@expo/ui/swift-ui";
 import {
   accessibilityLabel,
-  background,
   buttonStyle,
-  clipShape,
   defaultScrollAnchorForRole,
   disabled,
   foregroundStyle,
@@ -24,7 +12,6 @@ import {
   padding,
   scrollDismissesKeyboard,
   textContentType,
-  textFieldStyle,
   tint,
 } from "@expo/ui/swift-ui/modifiers";
 
@@ -32,12 +19,16 @@ import { api } from "@/convex/_generated/api";
 import { authClient } from "@/lib/auth-client";
 import { announce } from "@/lib/a11y";
 import { haptics } from "@/lib/haptics";
-import { Button as ButtonTokens, TouchTarget } from "@/constants/layout";
+import { TouchTarget } from "@/constants/layout";
 import { PasswordField } from "@/components/auth/password-field";
+import { CapsuleTextField } from "@/components/ui/capsule-text-field";
+import { DiscardChangesDialog } from "@/components/ui/discard-changes-dialog";
+import { HelperText } from "@/components/ui/helper-text";
 import { ProminentButton } from "@/components/ui/prominent-button";
 import { ErrorText } from "@/components/ui/status-text";
 import { LoadingScreen } from "@/components/ui/loading-screen";
 import { useColors } from "@/hooks/use-theme";
+import { useUnsavedChanges } from "@/hooks/use-unsaved-changes";
 import { useDynamicFont } from "@/lib/dynamic-font";
 
 type ChangePasswordState = { error?: string; ok?: boolean; attempt?: number };
@@ -95,25 +86,14 @@ function ChangePasswordForm({ email }: { email: string }) {
     }
   }, initialState);
 
-  const navigation = useNavigation();
   const hasInput = current.length > 0 || next.length > 0 || confirm.length > 0;
-  const [pendingNavAction, setPendingNavAction] = useState<
-    Parameters<typeof navigation.dispatch>[0] | null
-  >(null);
-  useEffect(() => {
-    if (!hasInput || state.ok) return;
-    return navigation.addListener("beforeRemove", (e) => {
-      e.preventDefault();
-      setPendingNavAction(e.data.action);
-    });
-  }, [navigation, hasInput, state.ok]);
+  const { pendingNavAction, discard, dismiss } = useUnsavedChanges(hasInput && !state.ok);
 
   useEffect(() => {
     if (state.ok) router.back();
   }, [state.ok]);
 
   const labelModifiers = [dfont({ size: 17, weight: "semibold" })];
-  const helperModifiers = [dfont({ size: 13 }), foregroundStyle(colors.mutedForeground as string)];
 
   return (
     <Host testID="change-password-screen" style={{ flex: 1, backgroundColor: colors.background }}>
@@ -145,16 +125,10 @@ function ChangePasswordForm({ email }: { email: string }) {
 
           <VStack spacing={6} alignment="leading" modifiers={[frame({ maxWidth: Infinity })]}>
             <Text modifiers={labelModifiers}>Account</Text>
-            <TextField
+            <CapsuleTextField
               testID="change-password-account"
               text={emailState}
               modifiers={[
-                textFieldStyle("plain"),
-                padding({ horizontal: 16 }),
-                frame({ maxWidth: Infinity, minHeight: ButtonTokens.height }),
-                background(colors.muted as string),
-                clipShape("capsule"),
-                dfont({ size: 16 }),
                 foregroundStyle(colors.mutedForeground as string),
                 textContentType("username"),
                 disabled(true),
@@ -186,7 +160,7 @@ function ChangePasswordForm({ email }: { email: string }) {
               accessibilityLabel="New password"
               accessibilityHint="Choose a new password with at least 10 characters"
             />
-            <Text modifiers={helperModifiers}>At least 10 characters.</Text>
+            <HelperText>At least 10 characters.</HelperText>
           </VStack>
 
           <VStack spacing={6} alignment="leading" modifiers={[frame({ maxWidth: Infinity })]}>
@@ -235,35 +209,13 @@ function ChangePasswordForm({ email }: { email: string }) {
         </VStack>
       </ScrollView>
 
-      <ConfirmationDialog
-        title="Discard changes?"
-        isPresented={pendingNavAction !== null}
-        onIsPresentedChange={(v) => {
-          if (!v) setPendingNavAction(null);
-        }}
-        titleVisibility="visible"
-      >
-        <ConfirmationDialog.Trigger>
-          <Spacer modifiers={[frame({ width: 0, height: 0 })]} />
-        </ConfirmationDialog.Trigger>
-        <ConfirmationDialog.Actions>
-          <Button
-            testID="change-password-discard"
-            label="Discard"
-            role="destructive"
-            onPress={() => {
-              haptics.warning();
-              const action = pendingNavAction;
-              setPendingNavAction(null);
-              if (action) navigation.dispatch(action);
-            }}
-          />
-          <Button testID="change-password-keep-editing" label="Keep Editing" role="cancel" />
-        </ConfirmationDialog.Actions>
-        <ConfirmationDialog.Message>
-          <Text modifiers={[dfont({ size: 16 })]}>Your password entries will be lost.</Text>
-        </ConfirmationDialog.Message>
-      </ConfirmationDialog>
+      <DiscardChangesDialog
+        testIDPrefix="change-password"
+        message="Your password entries will be lost."
+        pendingNavAction={pendingNavAction}
+        onDiscard={discard}
+        onDismiss={dismiss}
+      />
     </Host>
   );
 }

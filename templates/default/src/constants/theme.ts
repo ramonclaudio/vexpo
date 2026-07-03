@@ -87,24 +87,6 @@ const t = {
     highContrastLight: NEUTRAL.white,
     highContrastDark: NEUTRAL.n850,
   }),
-  cardForeground: tone({
-    light: NEUTRAL.n950,
-    dark: NEUTRAL.n50,
-    highContrastLight: NEUTRAL.black,
-    highContrastDark: NEUTRAL.white,
-  }),
-  popover: tone({
-    light: NEUTRAL.white,
-    dark: NEUTRAL.n900,
-    highContrastLight: NEUTRAL.white,
-    highContrastDark: NEUTRAL.n850,
-  }),
-  popoverForeground: tone({
-    light: NEUTRAL.n950,
-    dark: NEUTRAL.n50,
-    highContrastLight: NEUTRAL.black,
-    highContrastDark: NEUTRAL.white,
-  }),
   primary: tone({
     light: NEUTRAL.n900,
     dark: NEUTRAL.n200,
@@ -173,122 +155,17 @@ const t = {
     highContrastLight: NEUTRAL.n400,
     highContrastDark: ALPHA_DARK.inputHC,
   }),
-  ring: tone({
-    light: NEUTRAL.n400,
-    dark: NEUTRAL.n500,
-    highContrastLight: NEUTRAL.n500,
-    highContrastDark: NEUTRAL.n400,
-  }),
-
-  chart1: tone({
-    light: NEUTRAL.n300,
-    dark: NEUTRAL.n300,
-    highContrastLight: NEUTRAL.n400,
-    highContrastDark: NEUTRAL.n200,
-  }),
-  chart2: tone({
-    light: NEUTRAL.n500,
-    dark: NEUTRAL.n500,
-    highContrastLight: NEUTRAL.n600,
-    highContrastDark: NEUTRAL.n400,
-  }),
-  chart3: tone({
-    light: NEUTRAL.n600,
-    dark: NEUTRAL.n600,
-    highContrastLight: NEUTRAL.n700,
-    highContrastDark: NEUTRAL.n500,
-  }),
-  chart4: tone({
-    light: NEUTRAL.n700,
-    dark: NEUTRAL.n700,
-    highContrastLight: NEUTRAL.n800,
-    highContrastDark: NEUTRAL.n600,
-  }),
-  chart5: tone({
-    light: NEUTRAL.n800,
-    dark: NEUTRAL.n800,
-    highContrastLight: NEUTRAL.n900,
-    highContrastDark: NEUTRAL.n700,
-  }),
-
-  sidebar: tone({
-    light: NEUTRAL.n50,
-    dark: NEUTRAL.n900,
-    highContrastLight: NEUTRAL.white,
-    highContrastDark: NEUTRAL.n850,
-  }),
-  sidebarForeground: tone({
-    light: NEUTRAL.n950,
-    dark: NEUTRAL.n50,
-    highContrastLight: NEUTRAL.black,
-    highContrastDark: NEUTRAL.white,
-  }),
-  sidebarPrimary: tone({
-    light: NEUTRAL.n900,
-    dark: "#1447E6",
-    highContrastLight: NEUTRAL.black,
-    highContrastDark: "#3D6FFA",
-  }),
-  sidebarPrimaryForeground: tone({
-    light: NEUTRAL.n50,
-    dark: NEUTRAL.n50,
-    highContrastLight: NEUTRAL.white,
-    highContrastDark: NEUTRAL.white,
-  }),
-  sidebarAccent: tone({
-    light: NEUTRAL.n100,
-    dark: NEUTRAL.n800,
-    highContrastLight: NEUTRAL.n150,
-    highContrastDark: NEUTRAL.n850,
-  }),
-  sidebarAccentForeground: tone({
-    light: NEUTRAL.n900,
-    dark: NEUTRAL.n50,
-    highContrastLight: NEUTRAL.black,
-    highContrastDark: NEUTRAL.white,
-  }),
-  sidebarBorder: tone({
-    light: NEUTRAL.n200,
-    dark: ALPHA_DARK.border,
-    highContrastLight: NEUTRAL.n400,
-    highContrastDark: ALPHA_DARK.borderHC,
-  }),
-  sidebarRing: tone({
-    light: NEUTRAL.n400,
-    dark: NEUTRAL.n500,
-    highContrastLight: NEUTRAL.n500,
-    highContrastDark: NEUTRAL.n400,
-  }),
-
   primaryFill: tone({
     light: "rgba(23,23,23,0.06)",
     dark: "rgba(229,229,229,0.10)",
     highContrastLight: "rgba(0,0,0,0.10)",
     highContrastDark: "rgba(255,255,255,0.18)",
   }),
-  primaryFillEmphasized: tone({
-    light: "rgba(23,23,23,0.12)",
-    dark: "rgba(229,229,229,0.18)",
-    highContrastLight: "rgba(0,0,0,0.20)",
-    highContrastDark: "rgba(255,255,255,0.30)",
-  }),
   destructiveFill: tone({
     light: "rgba(231,0,11,0.10)",
     dark: "rgba(255,100,103,0.15)",
     highContrastLight: "rgba(179,0,9,0.18)",
     highContrastDark: "rgba(255,160,162,0.25)",
-  }),
-  destructiveBorder: tone({
-    light: "rgba(231,0,11,0.30)",
-    dark: "rgba(255,100,103,0.35)",
-    highContrastLight: "rgba(179,0,9,0.55)",
-    highContrastDark: "rgba(255,160,162,0.55)",
-  }),
-  shadow: tone({
-    light: "rgba(0,0,0,0.06)",
-    dark: "rgba(0,0,0,0.40)",
-    highContrastLight: "rgba(0,0,0,0.14)",
-    highContrastDark: "rgba(0,0,0,0.60)",
   }),
   overlay: tone({
     light: "rgba(0,0,0,0.40)",
@@ -371,16 +248,6 @@ export const NavigationDark: RNTheme = {
   fonts: RNDefaultTheme.fonts,
 };
 
-const RADIUS_BASE = 10;
 export const Radius = {
-  none: 0,
-  sm: Math.round(RADIUS_BASE * 0.6),
-  md: Math.round(RADIUS_BASE * 0.8),
-  DEFAULT: RADIUS_BASE,
-  lg: RADIUS_BASE,
-  xl: Math.round(RADIUS_BASE * 1.4),
-  "2xl": Math.round(RADIUS_BASE * 1.8),
-  "3xl": Math.round(RADIUS_BASE * 2.2),
-  "4xl": Math.round(RADIUS_BASE * 2.6),
   full: 9999,
 } as const;

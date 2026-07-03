@@ -1,7 +1,5 @@
 import { reloadAppAsync as _reloadAppAsync } from "expo";
 
-export { executionEnvironment } from "./device";
-
 /**
  * Force-reload the app using the current JS bundle.
  *

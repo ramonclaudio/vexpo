@@ -5,7 +5,6 @@ import {
   VStack,
   HStack,
   Text,
-  TextField,
   Button,
   Image,
   useNativeState,
@@ -14,8 +13,6 @@ import { runOnJS } from "react-native-worklets";
 import {
   foregroundStyle,
   buttonStyle,
-  background,
-  clipShape,
   contentShape,
   disabled,
   keyboardType,
@@ -36,7 +33,6 @@ import {
   scrollDismissesKeyboard,
   tint,
   textContentType,
-  textFieldStyle,
 } from "@expo/ui/swift-ui/modifiers";
 import { useDynamicFont } from "@/lib/dynamic-font";
 import { Button as ButtonTokens, TouchTarget } from "@/constants/layout";
@@ -46,6 +42,7 @@ import { authClient } from "@/lib/auth-client";
 import { haptics } from "@/lib/haptics";
 import { useColors } from "@/hooks/use-theme";
 import { maskOtp } from "@/lib/masks";
+import { CapsuleTextField } from "@/components/ui/capsule-text-field";
 import { ProminentButton } from "@/components/ui/prominent-button";
 import { ErrorText } from "@/components/ui/status-text";
 import { announce } from "@/lib/a11y";
@@ -65,7 +62,7 @@ type OtpVerificationProps = {
   flow?: OtpFlow;
 };
 
-type OtpState = { error?: string; ok?: boolean };
+type OtpState = { error?: string; ok?: boolean; attempt?: number };
 const initialState: OtpState = {};
 
 export function OtpVerification({ email, onBack, flow = "verify-email" }: OtpVerificationProps) {
@@ -76,22 +73,27 @@ export function OtpVerification({ email, onBack, flow = "verify-email" }: OtpVer
   const [lastAction, setLastAction] = useState<"verify" | "resend">("verify");
   const isSignIn = flow === "sign-in";
 
-  const [verifyState, verify, isVerifying] = useActionState<OtpState, void>(async () => {
+  const [verifyState, verify, isVerifying] = useActionState<OtpState, void>(async (prev) => {
     haptics.light();
+    const attempt = (prev.attempt ?? 0) + 1;
 
-    if (otp.length !== 6) {
+    // Read the native field value, not the JS `otp` mirror: submitting via the
+    // keyboard "done" key on the same frame the sixth digit lands can see a
+    // stale five-char `otp` because `runOnJS(setOtp)` trails a frame behind.
+    const code = otpState.value;
+    if (code.length !== 6) {
       haptics.error();
-      return { error: "Please enter the 6-digit code" };
+      return { error: "Please enter the 6-digit code", attempt };
     }
 
     try {
       const response = isSignIn
-        ? await authClient.signIn.emailOtp({ email: email.trim(), otp })
-        : await authClient.emailOtp.verifyEmail({ email: email.trim(), otp });
+        ? await authClient.signIn.emailOtp({ email: email.trim(), otp: code })
+        : await authClient.emailOtp.verifyEmail({ email: email.trim(), otp: code });
 
       if (response.error) {
         haptics.error();
-        return { error: "Invalid or expired code. Please try again." };
+        return { error: "Invalid or expired code. Please try again.", attempt };
       }
 
       haptics.success();
@@ -103,12 +105,14 @@ export function OtpVerification({ email, onBack, flow = "verify-email" }: OtpVer
         error: isSignIn
           ? "Sign in failed. Please try again."
           : "Verification failed. Please try again.",
+        attempt,
       };
     }
   }, initialState);
 
-  const [resendState, resend, isResending] = useActionState<OtpState, void>(async () => {
+  const [resendState, resend, isResending] = useActionState<OtpState, void>(async (prev) => {
     haptics.light();
+    const attempt = (prev.attempt ?? 0) + 1;
     try {
       const response = await authClient.emailOtp.sendVerificationOtp({
         email: email.trim(),
@@ -119,14 +123,14 @@ export function OtpVerification({ email, onBack, flow = "verify-email" }: OtpVer
       // would tell the user a code was sent when none was.
       if (response.error) {
         haptics.error();
-        return { error: "Failed to send code. Please try again." };
+        return { error: "Failed to send code. Please try again.", attempt };
       }
       haptics.success();
       announce("New verification code sent");
       return { ok: true };
     } catch {
       haptics.error();
-      return { error: "Failed to send code. Please try again." };
+      return { error: "Failed to send code. Please try again.", attempt };
     }
   }, initialState);
 
@@ -143,6 +147,7 @@ export function OtpVerification({ email, onBack, flow = "verify-email" }: OtpVer
   // `verifyState.error ?? resendState.error` keeps a stale verify error on
   // screen after a successful resend, since resend never clears verifyState.
   const error = lastAction === "resend" ? resendState.error : verifyState.error;
+  const attempt = lastAction === "resend" ? resendState.attempt : verifyState.attempt;
 
   return (
     <Host testID="otp-screen" style={{ flex: 1, backgroundColor: colors.background }}>
@@ -198,10 +203,14 @@ export function OtpVerification({ email, onBack, flow = "verify-email" }: OtpVer
             <Text modifiers={[dfont({ size: 15, weight: "semibold" })]}>{email}</Text>
           </VStack>
 
-          {error && <ErrorText testID="otp-error">{error}</ErrorText>}
+          {error && (
+            <ErrorText testID="otp-error" attempt={attempt}>
+              {error}
+            </ErrorText>
+          )}
 
           <VStack spacing={12} modifiers={[frame({ maxWidth: Infinity })]}>
-            <TextField
+            <CapsuleTextField
               testID="otp-field"
               text={otpState}
               placeholder="000000"
@@ -213,11 +222,6 @@ export function OtpVerification({ email, onBack, flow = "verify-email" }: OtpVer
               }}
               autoFocus
               modifiers={[
-                textFieldStyle("plain"),
-                padding({ horizontal: 16 }),
-                frame({ maxWidth: Infinity, minHeight: ButtonTokens.height }),
-                background(colors.muted as string),
-                clipShape("capsule"),
                 dfont({ size: 24, design: "monospaced" }),
                 monospacedDigit(),
                 kerning(8),

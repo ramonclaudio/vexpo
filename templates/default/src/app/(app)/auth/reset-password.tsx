@@ -1,29 +1,24 @@
 import { startTransition, useActionState, useEffect, useState } from "react";
 import { Image as ExpoImage } from "expo-image";
-import { router, useLocalSearchParams, useNavigation } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import {
   Host,
   ScrollView,
   VStack,
-  TextField,
   Button,
   Text,
   Image,
   Spacer,
   RNHostView,
-  ConfirmationDialog,
   useNativeState,
 } from "@expo/ui/swift-ui";
 import {
   foregroundStyle,
   buttonStyle,
-  background,
-  clipShape,
   defaultScrollAnchorForRole,
   disabled,
   dynamicTypeSize,
   keyboardType,
-  textFieldStyle,
   padding,
   frame,
   contentShape,
@@ -40,7 +35,7 @@ import {
   tint,
 } from "@expo/ui/swift-ui/modifiers";
 import { useDynamicFont } from "@/lib/dynamic-font";
-import { Button as ButtonTokens, TouchTarget } from "@/constants/layout";
+import { TouchTarget } from "@/constants/layout";
 import { DynamicType } from "@/constants/ui";
 
 import { runOnJS } from "react-native-worklets";
@@ -51,8 +46,12 @@ import { haptics } from "@/lib/haptics";
 import { maskOtp } from "@/lib/masks";
 import { firstError, resetPasswordSchema } from "@/lib/schemas";
 import { PasswordField } from "@/components/auth/password-field";
+import { CapsuleTextField } from "@/components/ui/capsule-text-field";
+import { DiscardChangesDialog } from "@/components/ui/discard-changes-dialog";
+import { HelperText } from "@/components/ui/helper-text";
 import { ProminentButton } from "@/components/ui/prominent-button";
 import { ErrorText } from "@/components/ui/status-text";
+import { useUnsavedChanges } from "@/hooks/use-unsaved-changes";
 import { announce } from "@/lib/a11y";
 import { useColors, useThemedAsset } from "@/hooks/use-theme";
 import { useQuery } from "convex/react";
@@ -126,29 +125,11 @@ export default function ResetPasswordScreen() {
     }
   }, initialState);
 
-  const navigation = useNavigation();
   const hasInput = otp.length > 0 || password.length > 0 || confirmPassword.length > 0;
-  const [pendingNavAction, setPendingNavAction] = useState<
-    Parameters<typeof navigation.dispatch>[0] | null
-  >(null);
-  useEffect(() => {
-    if (!hasInput || state.ok) return;
-    return navigation.addListener("beforeRemove", (e) => {
-      e.preventDefault();
-      setPendingNavAction(e.data.action);
-    });
-  }, [navigation, hasInput, state.ok]);
+  const { pendingNavAction, discard, dismiss } = useUnsavedChanges(hasInput && !state.ok);
 
   const error = state.error;
   const isExpiredError = error && (error.includes("expired") || error.includes("Missing email"));
-  const inputModifiers = [
-    textFieldStyle("plain"),
-    padding({ horizontal: 16 }),
-    frame({ maxWidth: Infinity, minHeight: ButtonTokens.height }),
-    background(colors.muted as string),
-    clipShape("capsule"),
-    dfont({ size: 16 }),
-  ];
 
   if (state.ok) {
     return (
@@ -242,11 +223,10 @@ export default function ResetPasswordScreen() {
 
           <VStack spacing={6} alignment="leading" modifiers={[frame({ maxWidth: Infinity })]}>
             <Text modifiers={labelModifiers}>Account</Text>
-            <TextField
+            <CapsuleTextField
               testID="reset-password-account"
               text={emailIdentityState}
               modifiers={[
-                ...inputModifiers,
                 foregroundStyle(colors.mutedForeground as string),
                 textContentType("username"),
                 disabled(true),
@@ -279,7 +259,7 @@ export default function ResetPasswordScreen() {
 
           <VStack spacing={6} alignment="leading" modifiers={[frame({ maxWidth: Infinity })]}>
             <Text modifiers={labelModifiers}>Verification code</Text>
-            <TextField
+            <CapsuleTextField
               testID="reset-password-code"
               text={otpState}
               placeholder="000000"
@@ -291,7 +271,6 @@ export default function ResetPasswordScreen() {
               }}
               autoFocus
               modifiers={[
-                ...inputModifiers,
                 keyboardType("numeric"),
                 textContentType("oneTimeCode"),
                 dfont({ size: 24, design: "monospaced" }),
@@ -320,11 +299,7 @@ export default function ResetPasswordScreen() {
               accessibilityLabel="New password"
               accessibilityHint="Choose a password with at least 10 characters"
             />
-            <Text
-              modifiers={[dfont({ size: 13 }), foregroundStyle(colors.mutedForeground as string)]}
-            >
-              At least 10 characters.
-            </Text>
+            <HelperText>At least 10 characters.</HelperText>
           </VStack>
 
           <VStack spacing={6} alignment="leading" modifiers={[frame({ maxWidth: Infinity })]}>
@@ -367,35 +342,13 @@ export default function ResetPasswordScreen() {
         </VStack>
       </ScrollView>
 
-      <ConfirmationDialog
-        title="Discard changes?"
-        isPresented={pendingNavAction !== null}
-        onIsPresentedChange={(v) => {
-          if (!v) setPendingNavAction(null);
-        }}
-        titleVisibility="visible"
-      >
-        <ConfirmationDialog.Trigger>
-          <Spacer modifiers={[frame({ width: 0, height: 0 })]} />
-        </ConfirmationDialog.Trigger>
-        <ConfirmationDialog.Actions>
-          <Button
-            testID="reset-password-discard"
-            label="Discard"
-            role="destructive"
-            onPress={() => {
-              haptics.warning();
-              const action = pendingNavAction;
-              setPendingNavAction(null);
-              if (action) navigation.dispatch(action);
-            }}
-          />
-          <Button testID="reset-password-keep-editing" label="Keep Editing" role="cancel" />
-        </ConfirmationDialog.Actions>
-        <ConfirmationDialog.Message>
-          <Text modifiers={[dfont({ size: 16 })]}>Your password entries will be lost.</Text>
-        </ConfirmationDialog.Message>
-      </ConfirmationDialog>
+      <DiscardChangesDialog
+        testIDPrefix="reset-password"
+        message="Your password entries will be lost."
+        pendingNavAction={pendingNavAction}
+        onDiscard={discard}
+        onDismiss={dismiss}
+      />
     </Host>
   );
 }

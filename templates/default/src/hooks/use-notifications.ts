@@ -36,6 +36,11 @@ export function useNotifications(options?: UseNotificationsOptions) {
   const registered = useRef(false);
   const [expoPushToken, setExpoPushToken] = useState<string | null>(null);
 
+  // Read callbacks through a ref so inline `options` literals don't re-subscribe
+  // the listeners (or re-run the cold-start handler) on every render.
+  const optionsRef = useRef(options);
+  optionsRef.current = options;
+
   useEffect(() => {
     if (!isAuthenticated) {
       registered.current = false;
@@ -69,28 +74,32 @@ export function useNotifications(options?: UseNotificationsOptions) {
     // Cold-start deep link: the launch tap arrives via the last-response
     // getter, not the runtime listener below, so handle it once here.
     // (useLastNotificationResponse would fire for BOTH cold-start and runtime,
-    // double-navigating every runtime tap.)
+    // double-navigating every runtime tap.) Mount-only so it can't re-fire
+    // before the async clear settles and navigate twice.
     Notifications.getLastNotificationResponseAsync().then((initial) => {
       if (!initial) return;
       handleNotificationResponse(initial);
-      options?.onNotificationResponse?.(initial);
+      optionsRef.current?.onNotificationResponse?.(initial);
       clearLastNotificationResponse();
     });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
+  useEffect(() => {
     const receivedSub = Notifications.addNotificationReceivedListener((notification) => {
       if (__DEV__) console.log("[Notification] Received:", notification.request.identifier);
-      options?.onNotificationReceived?.(notification);
+      optionsRef.current?.onNotificationReceived?.(notification);
     });
 
     const responseSub = Notifications.addNotificationResponseReceivedListener((response) => {
       if (__DEV__) console.log("[Notification] Response:", response.actionIdentifier);
       handleNotificationResponse(response);
-      options?.onNotificationResponse?.(response);
+      optionsRef.current?.onNotificationResponse?.(response);
     });
 
     const droppedSub = Notifications.addNotificationsDroppedListener(() => {
       if (__DEV__) console.log("[Notification] Notifications dropped");
-      options?.onNotificationsDropped?.();
+      optionsRef.current?.onNotificationsDropped?.();
     });
 
     const tokenSub = Notifications.addPushTokenListener(async (token) => {
@@ -110,7 +119,7 @@ export function useNotifications(options?: UseNotificationsOptions) {
       droppedSub.remove();
       tokenSub.remove();
     };
-  }, [isAuthenticated, options, upsertToken]);
+  }, [isAuthenticated, upsertToken]);
 
   return { expoPushToken };
 }

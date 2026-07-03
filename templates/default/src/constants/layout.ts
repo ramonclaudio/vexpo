@@ -14,12 +14,6 @@ export const TouchTarget = {
   min: 44,
 } as const;
 
-export const HitSlop = {
-  sm: 8,
-  md: 10,
-  lg: 12,
-} as const;
-
 export const FontSize = {
   xs: 11,
   sm: 12,
@@ -34,31 +28,6 @@ export const FontSize = {
   "6xl": 28,
   "7xl": 30,
 } as const;
-
-export const LineHeight = {
-  tight: 18,
-  base: 20,
-  relaxed: 22,
-  loose: 24,
-  "2xl": 26,
-  "3xl": 34,
-  "4xl": 38,
-} as const;
-
-export const MaxWidth = {
-  form: 440,
-  content: 600,
-  wide: 800,
-} as const;
-
-export const Breakpoint = {
-  phone: 428,
-  tablet: 768,
-  desktop: 1024,
-} as const;
-
-export const TAB_BAR_HEIGHT = 80;
-export const TAB_BAR_CLEARANCE = TAB_BAR_HEIGHT + Spacing.lg;
 
 export const Button = {
   height: 50,

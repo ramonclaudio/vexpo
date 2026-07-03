@@ -1,68 +1,19 @@
 import { startTransition, useActionState, useEffect, useState } from "react";
-import { Image as ExpoImage, useImage } from "expo-image";
 import * as ImagePicker from "expo-image-picker";
 import { useDeleteAccount } from "@/hooks/use-delete-account";
-import { router, Stack } from "expo-router";
+import { Stack } from "expo-router";
 import { useMutation, useQuery } from "convex/react";
+import { Host, ScrollView, VStack, useNativeState } from "@expo/ui/swift-ui";
 import {
-  Host,
-  ScrollView,
-  Text,
-  TextField,
-  Button,
-  HStack,
-  VStack,
-  Spacer,
-  Image,
-  RNHostView,
-  Alert,
-  ConfirmationDialog,
-  ProgressView,
-  useNativeState,
-} from "@expo/ui/swift-ui";
-import {
-  autocorrectionDisabled,
-  background,
-  buttonStyle,
-  clipShape,
-  cornerRadius,
   defaultScrollAnchorForRole,
-  dynamicTypeSize,
-  foregroundStyle,
-  disabled,
-  keyboardType,
-  lineLimit,
-  onSubmit,
-  submitLabel,
-  textContentType,
-  textFieldStyle,
-  textInputAutocapitalization,
-  monospacedDigit,
-  kerning,
-  multilineTextAlignment,
   padding,
-  privacySensitive,
-  frame,
-  contentShape,
-  shapes,
-  progressViewStyle,
   scrollDismissesKeyboard,
-  accessibilityElement,
-  accessibilityHidden,
-  accessibilityLabel,
-  accessibilityHint,
   tint,
 } from "@expo/ui/swift-ui/modifiers";
-import { useDynamicFont } from "@/lib/dynamic-font";
-import { Button as ButtonTokens, TouchTarget } from "@/constants/layout";
-import { DynamicType } from "@/constants/ui";
-
-import { runOnJS } from "react-native-worklets";
 
 import { api } from "@/convex/_generated/api";
 import { authClient } from "@/lib/auth-client";
 import { haptics } from "@/lib/haptics";
-import { maskOtp, maskUsername } from "@/lib/masks";
 import { setNativeValue } from "@/lib/native-state";
 import {
   firstError,
@@ -72,19 +23,20 @@ import {
 import { validateBio } from "@/convex/validators";
 import { useColors } from "@/hooks/use-theme";
 import { useScenePrivacy } from "@/hooks/use-scene-privacy";
-import { ProminentButton } from "@/components/ui/prominent-button";
+import { useSignOut } from "@/hooks/use-sign-out";
 import { ErrorText, SuccessText } from "@/components/ui/status-text";
-import { formatError } from "@/components/ui/convex-error";
+import { formatError } from "@/lib/convex-error";
 import { SkeletonProfile } from "@/components/ui/skeleton";
+import { AvatarPickerRow } from "@/components/profile/avatar-picker-row";
+import { DangerZone } from "@/components/profile/danger-zone";
+import { EmailOtpVerify } from "@/components/profile/email-otp-verify";
+import { ProfileFields } from "@/components/profile/profile-fields";
 import { announce } from "@/lib/a11y";
 
-const AVATAR_SIZE = 96;
-
-type SaveState = { error?: string; success?: string; pendingEmail?: string };
-type OtpState = { error?: string; success?: string };
+type SaveState = { error?: string; success?: string; pendingEmail?: string; attempt?: number };
+type OtpState = { error?: string; success?: string; attempt?: number };
 
 export default function ProfileScreen() {
-  const dfont = useDynamicFont();
   const colors = useColors();
   const scenePrivacy = useScenePrivacy();
   const me = useQuery(api.users.getMe);
@@ -98,12 +50,12 @@ export default function ProfileScreen() {
   const generateAvatarUploadUrl = useMutation(api.users.generateAvatarUploadUrl);
   const updateAvatar = useMutation(api.users.updateAvatar);
   const deleteAvatar = useMutation(api.users.deleteAvatar);
-  const removeAllTokens = useMutation(api.pushTokens.removeAll);
   const { deleteAccount, deleteError } = useDeleteAccount();
+  const handleSignOut = useSignOut();
 
   // SwiftUI source of truth via useNativeState; mirrored to React state via
   // onTextChange so derived values like `hasChanges` stay reactive. Username
-  // and the email-OTP field below add a "worklet" onTextChange so the mask
+  // and the email-OTP field add a "worklet" onTextChange so the mask
   // (lowercase / digits-only) rewrites the field synchronously on the UI
   // thread; name, email, and bio need no masking so they keep a plain mirror.
   const nameState = useNativeState(me?.name ?? "");
@@ -145,10 +97,11 @@ export default function ProfileScreen() {
     (name.trim() !== me.name ||
       username.trim().toLowerCase() !== (me.username ?? "") ||
       email.trim().toLowerCase() !== me.email.toLowerCase() ||
-      bio !== (me.bio ?? ""));
+      bio.trim() !== (me.bio ?? ""));
 
-  const [saveState, save, isSaving] = useActionState<SaveState, void>(async () => {
-    if (!me) return { error: "Not loaded" };
+  const [saveState, save, isSaving] = useActionState<SaveState, void>(async (prev) => {
+    const attempt = (prev.attempt ?? 0) + 1;
+    if (!me) return { error: "Not loaded", attempt };
     haptics.light();
 
     // Accounts without a username must still save name/email/bio; the strict
@@ -157,14 +110,14 @@ export default function ProfileScreen() {
     const parsed = schema.safeParse({ name, username, email });
     if (!parsed.success) {
       haptics.error();
-      return { error: firstError(parsed)! };
+      return { error: firstError(parsed)!, attempt };
     }
 
     const trimmedBio = bio.trim();
     const bioCheck = validateBio(trimmedBio);
     if (!bioCheck.valid) {
       haptics.error();
-      return { error: bioCheck.error! };
+      return { error: bioCheck.error!, attempt };
     }
 
     const { name: nextName, username: nextUsername, email: nextEmail } = parsed.data;
@@ -181,7 +134,7 @@ export default function ProfileScreen() {
         const res = await authClient.updateUser(updates);
         if (res.error) {
           haptics.error();
-          return { error: res.error.message ?? "Failed to update profile" };
+          return { error: res.error.message ?? "Failed to update profile", attempt };
         }
       }
 
@@ -193,7 +146,7 @@ export default function ProfileScreen() {
         const res = await authClient.changeEmail({ newEmail: nextEmail });
         if (res.error) {
           haptics.error();
-          return { error: res.error.message ?? "Failed to update email" };
+          return { error: res.error.message ?? "Failed to update email", attempt };
         }
         haptics.light();
         setPendingEmail(nextEmail);
@@ -206,21 +159,26 @@ export default function ProfileScreen() {
       return { success: "Saved" };
     } catch (err) {
       haptics.error();
-      return { error: formatError(err) };
+      return { error: formatError(err), attempt };
     }
   }, {} as SaveState);
 
-  const [otpState, verifyOtp, isVerifying] = useActionState<OtpState, void>(async () => {
+  const [otpState, verifyOtp, isVerifying] = useActionState<OtpState, void>(async (prev) => {
+    const attempt = (prev.attempt ?? 0) + 1;
     haptics.light();
-    if (!pendingEmail || otp.length !== 6) {
+    // Read the native field, not the JS `otp` mirror: submitting via the
+    // keyboard "done" key on the same frame the sixth digit lands can see a
+    // stale five-char `otp` because `runOnJS(setOtp)` trails a frame behind.
+    const code = otpCodeState.value;
+    if (!pendingEmail || code.length !== 6) {
       haptics.error();
-      return { error: "Enter the 6-digit code" };
+      return { error: "Enter the 6-digit code", attempt };
     }
     try {
-      const res = await authClient.emailOtp.verifyEmail({ email: pendingEmail, otp });
+      const res = await authClient.emailOtp.verifyEmail({ email: pendingEmail, otp: code });
       if (res.error) {
         haptics.error();
-        return { error: "Invalid or expired code" };
+        return { error: "Invalid or expired code", attempt };
       }
       haptics.success();
       announce("Email updated");
@@ -229,7 +187,7 @@ export default function ProfileScreen() {
       return { success: "Email updated" };
     } catch {
       haptics.error();
-      return { error: "Verification failed" };
+      return { error: "Verification failed", attempt };
     }
   }, {} as OtpState);
 
@@ -304,18 +262,6 @@ export default function ProfileScreen() {
     }
   };
 
-  const handleSignOut = async () => {
-    haptics.medium();
-    // Push-token cleanup is best-effort. A stale token gets garbage-collected
-    // by `pushTokens.cleanupStale` after 30 days, so don't gate sign-out on it.
-    try {
-      await removeAllTokens();
-    } catch (err) {
-      if (__DEV__) console.warn("[signOut] removeAllTokens failed:", err);
-    }
-    await authClient.signOut();
-  };
-
   const error = saveState.error ?? otpState.error ?? avatarError ?? deleteError;
   const success = saveState.success ?? otpState.success;
 
@@ -326,17 +272,6 @@ export default function ProfileScreen() {
       </Host>
     );
   }
-
-  const labelModifiers = [dfont({ size: 17, weight: "semibold" })];
-  const helperModifiers = [dfont({ size: 13 }), foregroundStyle(colors.mutedForeground as string)];
-  const inputModifiers = [
-    textFieldStyle("plain"),
-    padding({ horizontal: 16 }),
-    frame({ maxWidth: Infinity, minHeight: ButtonTokens.height }),
-    background(colors.muted as string),
-    clipShape("capsule"),
-    dfont({ size: 16 }),
-  ];
 
   return (
     <>
@@ -372,422 +307,68 @@ export default function ProfileScreen() {
             alignment="leading"
             modifiers={[padding({ horizontal: 24, top: 24, bottom: 40 })]}
           >
-            <ConfirmationDialog
-              title="Profile photo"
-              isPresented={avatarPicker}
-              onIsPresentedChange={setAvatarPicker}
-              titleVisibility="visible"
-            >
-              <ConfirmationDialog.Trigger>
-                <Button
-                  testID="profile-avatar"
-                  modifiers={[
-                    buttonStyle("plain"),
-                    frame({ maxWidth: Infinity, minHeight: TouchTarget.min }),
-                    contentShape(shapes.rectangle()),
-                    accessibilityLabel("Change profile photo"),
-                  ]}
-                  onPress={() => {
-                    haptics.light();
-                    setAvatarPicker(true);
-                  }}
-                >
-                  <HStack
-                    spacing={16}
-                    alignment="center"
-                    modifiers={[frame({ maxWidth: Infinity })]}
-                  >
-                    <AvatarView avatarUrl={me.avatarUrl} loading={avatarUpdating} />
-                    <VStack alignment="leading" spacing={4}>
-                      <Text
-                        testID="profile-name-value"
-                        modifiers={[dfont({ size: 17, weight: "semibold" })]}
-                      >
-                        {me.name}
-                      </Text>
-                      <Text
-                        testID="profile-email-value"
-                        modifiers={[
-                          dfont({ size: 14 }),
-                          foregroundStyle(colors.mutedForeground as string),
-                          privacySensitive(),
-                        ]}
-                      >
-                        {me.email}
-                      </Text>
-                    </VStack>
-                    <Spacer />
-                    <Image
-                      systemName="camera.circle.fill"
-                      color={colors.primary as string}
-                      modifiers={[
-                        dfont({ size: 28 }),
-                        dynamicTypeSize({ max: DynamicType.control }),
-                        accessibilityHidden(true),
-                      ]}
-                    />
-                  </HStack>
-                </Button>
-              </ConfirmationDialog.Trigger>
-              <ConfirmationDialog.Actions>
-                <Button
-                  testID="profile-avatar-choose"
-                  label="Choose Photo"
-                  systemImage="photo.on.rectangle"
-                  onPress={() => pickAvatar("library")}
-                />
-                <Button
-                  testID="profile-avatar-take"
-                  label="Take Photo"
-                  systemImage="camera"
-                  onPress={() => pickAvatar("camera")}
-                />
-                {me.hasUploadedAvatar && (
-                  <Button
-                    testID="profile-avatar-remove"
-                    label="Remove Photo"
-                    role="destructive"
-                    onPress={removeAvatar}
-                  />
-                )}
-                <Button testID="profile-avatar-cancel" label="Cancel" role="cancel" />
-              </ConfirmationDialog.Actions>
-            </ConfirmationDialog>
+            <AvatarPickerRow
+              me={me}
+              avatarPicker={avatarPicker}
+              setAvatarPicker={setAvatarPicker}
+              avatarUpdating={avatarUpdating}
+              onPick={pickAvatar}
+              onRemove={removeAvatar}
+            />
 
-            {error ? <ErrorText testID="profile-error">{error}</ErrorText> : null}
+            {error ? (
+              <ErrorText
+                testID="profile-error"
+                attempt={(saveState.attempt ?? 0) + (otpState.attempt ?? 0)}
+              >
+                {error}
+              </ErrorText>
+            ) : null}
             {success && !pendingEmail ? (
               <SuccessText testID="profile-success">{success}</SuccessText>
             ) : null}
 
             {pendingEmail ? (
-              <>
-                <VStack spacing={6} alignment="leading" modifiers={[frame({ maxWidth: Infinity })]}>
-                  <Text modifiers={labelModifiers}>Verify new email</Text>
-                  <TextField
-                    testID="profile-email-otp"
-                    text={otpCodeState}
-                    placeholder="000000"
-                    onTextChange={(text) => {
-                      "worklet";
-                      const digits = maskOtp(text);
-                      otpCodeState.value = digits;
-                      runOnJS(setOtp)(digits);
-                    }}
-                    autoFocus
-                    modifiers={[
-                      ...inputModifiers,
-                      keyboardType("numeric"),
-                      textContentType("oneTimeCode"),
-                      onSubmit(() => startTransition(() => verifyOtp())),
-                      dfont({ size: 24, design: "monospaced" }),
-                      monospacedDigit(),
-                      kerning(8),
-                      multilineTextAlignment("center"),
-                      // upstream expo/expo#46540: six monospaced glyphs in a
-                      // capsule that can't wrap, cap Dynamic Type so they fit.
-                      dynamicTypeSize({ max: DynamicType.otp }),
-                      submitLabel("done"),
-                      disabled(isVerifying),
-                      accessibilityLabel("Verification code"),
-                      accessibilityHint("Enter the 6 digit code sent to your new email"),
-                    ]}
-                  />
-                  <Text testID="profile-email-otp-sent" modifiers={helperModifiers}>
-                    A 6-digit code was sent to {pendingEmail}.
-                  </Text>
-                </VStack>
-
-                <ProminentButton
-                  testID="profile-email-verify"
-                  label={isVerifying ? "Verifying..." : "Verify"}
-                  onPress={() => startTransition(() => verifyOtp())}
-                  disabled={isVerifying || otp.length !== 6}
-                />
-
-                <VStack alignment="center" modifiers={[frame({ maxWidth: Infinity })]}>
-                  <Button
-                    testID="profile-email-verify-cancel"
-                    label="Cancel"
-                    modifiers={[
-                      buttonStyle("plain"),
-                      foregroundStyle(colors.mutedForeground as string),
-                      dfont({ size: 14, weight: "semibold" }),
-                      frame({ minHeight: TouchTarget.min }),
-                      contentShape(shapes.rectangle()),
-                      disabled(isVerifying),
-                    ]}
-                    onPress={() => {
-                      haptics.light();
-                      setPendingEmail(null);
-                      setOtp("");
-                    }}
-                  />
-                </VStack>
-              </>
+              <EmailOtpVerify
+                pendingEmail={pendingEmail}
+                code={otp}
+                codeState={otpCodeState}
+                onCodeChange={setOtp}
+                onVerify={() => startTransition(() => verifyOtp())}
+                onCancel={() => {
+                  haptics.light();
+                  setPendingEmail(null);
+                  setOtp("");
+                }}
+                isVerifying={isVerifying}
+              />
             ) : (
               <>
-                <VStack spacing={6} alignment="leading" modifiers={[frame({ maxWidth: Infinity })]}>
-                  <Text modifiers={labelModifiers}>Name</Text>
-                  <TextField
-                    testID="profile-name"
-                    text={nameState}
-                    placeholder="Name"
-                    onTextChange={setName}
-                    modifiers={[
-                      ...inputModifiers,
-                      textInputAutocapitalization("words"),
-                      textContentType("name"),
-                      disabled(isSaving),
-                      submitLabel("next"),
-                      accessibilityLabel("Name"),
-                      accessibilityHint("Edit the display name on your account"),
-                    ]}
-                  />
-                </VStack>
+                <ProfileFields
+                  nameState={nameState}
+                  usernameState={usernameState}
+                  emailState={emailState}
+                  bioState={bioState}
+                  onNameChange={setName}
+                  onUsernameChange={setUsername}
+                  onEmailChange={setEmail}
+                  onBioChange={setBio}
+                  isSaving={isSaving}
+                  emailFeatures={emailFeatures}
+                  createdAt={me.createdAt}
+                  hasChanges={hasChanges}
+                  onSave={() => startTransition(() => save())}
+                />
 
-                <VStack spacing={6} alignment="leading" modifiers={[frame({ maxWidth: Infinity })]}>
-                  <Text modifiers={labelModifiers}>Username</Text>
-                  <TextField
-                    testID="profile-username"
-                    text={usernameState}
-                    placeholder="johndoe"
-                    onTextChange={(text) => {
-                      "worklet";
-                      const next = maskUsername(text);
-                      usernameState.value = next;
-                      runOnJS(setUsername)(next);
-                    }}
-                    modifiers={[
-                      ...inputModifiers,
-                      keyboardType("ascii-capable"),
-                      autocorrectionDisabled(),
-                      textInputAutocapitalization("never"),
-                      textContentType("username"),
-                      disabled(isSaving),
-                      submitLabel("next"),
-                      accessibilityLabel("Username"),
-                      accessibilityHint("Edit the username for your profile"),
-                    ]}
-                  />
-                  <Text modifiers={helperModifiers}>
-                    Name and username are visible to other users.
-                  </Text>
-                </VStack>
-
-                <VStack spacing={6} alignment="leading" modifiers={[frame({ maxWidth: Infinity })]}>
-                  <Text modifiers={labelModifiers}>Email</Text>
-                  <TextField
-                    testID="profile-email"
-                    text={emailState}
-                    placeholder="you@example.com"
-                    onTextChange={setEmail}
-                    modifiers={[
-                      ...inputModifiers,
-                      keyboardType("email-address"),
-                      autocorrectionDisabled(),
-                      textInputAutocapitalization("never"),
-                      textContentType("emailAddress"),
-                      privacySensitive(),
-                      disabled(isSaving || !emailFeatures),
-                      submitLabel("next"),
-                      accessibilityLabel("Email address"),
-                      accessibilityHint(
-                        emailFeatures
-                          ? "Edit the email address for your account"
-                          : "Email change is disabled until email verification is configured",
-                      ),
-                    ]}
-                  />
-                  <Text modifiers={helperModifiers}>
-                    {emailFeatures
-                      ? "Changing your email requires verifying the new address with a 6-digit code."
-                      : "Email change requires Resend setup. Run `npx vexpo full` to enable."}
-                  </Text>
-                </VStack>
-
-                <VStack spacing={6} alignment="leading" modifiers={[frame({ maxWidth: Infinity })]}>
-                  <Text modifiers={labelModifiers}>Bio</Text>
-                  <TextField
-                    testID="profile-bio"
-                    text={bioState}
-                    placeholder="Tell others about yourself"
-                    onTextChange={setBio}
-                    axis="vertical"
-                    modifiers={[
-                      textFieldStyle("plain"),
-                      padding({ horizontal: 16, vertical: 12 }),
-                      frame({ maxWidth: Infinity }),
-                      background(colors.muted as string),
-                      cornerRadius(20),
-                      dfont({ size: 16 }),
-                      lineLimit({ min: 1, max: 4 }),
-                      disabled(isSaving),
-                      submitLabel("done"),
-                      accessibilityLabel("Bio"),
-                      accessibilityHint("Up to 500 characters describing yourself"),
-                    ]}
-                  />
-                  <Text modifiers={helperModifiers}>
-                    Up to 500 characters. Visible on your public profile.
-                  </Text>
-                </VStack>
-
-                <VStack
-                  testID="profile-member-since"
-                  spacing={6}
-                  alignment="leading"
-                  modifiers={[frame({ maxWidth: Infinity }), accessibilityElement("combine")]}
-                >
-                  <Text modifiers={labelModifiers}>Member since</Text>
-                  <Text
-                    modifiers={[
-                      dfont({ size: 16 }),
-                      foregroundStyle(colors.mutedForeground as string),
-                    ]}
-                  >
-                    {formatDate(me.createdAt)}
-                  </Text>
-                </VStack>
-
-                {hasChanges ? (
-                  <ProminentButton
-                    testID="profile-save"
-                    label={isSaving ? "Saving..." : "Save changes"}
-                    onPress={() => startTransition(() => save())}
-                    disabled={isSaving}
-                  />
-                ) : null}
-
-                {hasPasswordResult ? (
-                  <Button
-                    testID="profile-change-password"
-                    modifiers={[
-                      buttonStyle("plain"),
-                      frame({ maxWidth: Infinity }),
-                      background(colors.muted as string),
-                      clipShape("capsule"),
-                    ]}
-                    onPress={() => {
-                      haptics.light();
-                      router.push("/profile/change-password");
-                    }}
-                  >
-                    <Text
-                      modifiers={[
-                        frame({ maxWidth: Infinity, minHeight: ButtonTokens.height }),
-                        multilineTextAlignment("center"),
-                        dfont({
-                          size: ButtonTokens.fontSize,
-                          weight: ButtonTokens.secondaryFontWeight,
-                        }),
-                        foregroundStyle(colors.foreground as string),
-                      ]}
-                    >
-                      Change password
-                    </Text>
-                  </Button>
-                ) : null}
-
-                <ConfirmationDialog
-                  title="Sign out?"
-                  isPresented={signOutConfirm}
-                  onIsPresentedChange={setSignOutConfirm}
-                  titleVisibility="visible"
-                >
-                  <ConfirmationDialog.Trigger>
-                    <Button
-                      testID="profile-sign-out"
-                      modifiers={[
-                        buttonStyle("plain"),
-                        frame({ maxWidth: Infinity }),
-                        background(colors.muted as string),
-                        clipShape("capsule"),
-                      ]}
-                      onPress={() => {
-                        haptics.medium();
-                        setSignOutConfirm(true);
-                      }}
-                    >
-                      <Text
-                        modifiers={[
-                          frame({ maxWidth: Infinity, minHeight: ButtonTokens.height }),
-                          multilineTextAlignment("center"),
-                          dfont({
-                            size: ButtonTokens.fontSize,
-                            weight: ButtonTokens.secondaryFontWeight,
-                          }),
-                          foregroundStyle(colors.destructive as string),
-                        ]}
-                      >
-                        Sign out
-                      </Text>
-                    </Button>
-                  </ConfirmationDialog.Trigger>
-                  <ConfirmationDialog.Actions>
-                    <Button
-                      testID="profile-sign-out-confirm"
-                      label="Sign Out"
-                      role="destructive"
-                      onPress={handleSignOut}
-                    />
-                    <Button testID="profile-sign-out-cancel" label="Cancel" role="cancel" />
-                  </ConfirmationDialog.Actions>
-                  <ConfirmationDialog.Message>
-                    <Text modifiers={[dfont({ size: 16 })]}>
-                      You will need to sign in again to access your account.
-                    </Text>
-                  </ConfirmationDialog.Message>
-                </ConfirmationDialog>
-
-                <Alert
-                  title="Delete account?"
-                  isPresented={deleteAccountConfirm}
-                  onIsPresentedChange={setDeleteAccountConfirm}
-                >
-                  <Alert.Trigger>
-                    <Button
-                      testID="profile-delete-account"
-                      modifiers={[
-                        buttonStyle("plain"),
-                        frame({ maxWidth: Infinity }),
-                        clipShape("capsule"),
-                      ]}
-                      onPress={() => {
-                        haptics.warning();
-                        setDeleteAccountConfirm(true);
-                      }}
-                    >
-                      <Text
-                        modifiers={[
-                          frame({ maxWidth: Infinity, minHeight: ButtonTokens.height }),
-                          multilineTextAlignment("center"),
-                          dfont({
-                            size: ButtonTokens.fontSize,
-                            weight: ButtonTokens.secondaryFontWeight,
-                          }),
-                          foregroundStyle(colors.destructive as string),
-                        ]}
-                      >
-                        Delete account
-                      </Text>
-                    </Button>
-                  </Alert.Trigger>
-                  <Alert.Actions>
-                    <Button
-                      testID="profile-delete-account-confirm"
-                      label="Delete Account"
-                      role="destructive"
-                      onPress={deleteAccount}
-                    />
-                    <Button testID="profile-delete-account-cancel" label="Cancel" role="cancel" />
-                  </Alert.Actions>
-                  <Alert.Message>
-                    <Text modifiers={[dfont({ size: 16 })]}>
-                      Your account is scheduled for permanent deletion in 30 days. Sign in within
-                      that window to restore it.
-                    </Text>
-                  </Alert.Message>
-                </Alert>
+                <DangerZone
+                  hasPassword={hasPasswordResult}
+                  signOutConfirm={signOutConfirm}
+                  setSignOutConfirm={setSignOutConfirm}
+                  deleteAccountConfirm={deleteAccountConfirm}
+                  setDeleteAccountConfirm={setDeleteAccountConfirm}
+                  onSignOut={handleSignOut}
+                  onDeleteAccount={deleteAccount}
+                />
               </>
             )}
           </VStack>
@@ -795,64 +376,4 @@ export default function ProfileScreen() {
       </Host>
     </>
   );
-}
-
-function AvatarView({ avatarUrl, loading }: { avatarUrl: string | null; loading: boolean }) {
-  const colors = useColors();
-  if (loading) {
-    return (
-      <VStack
-        alignment="center"
-        modifiers={[frame({ width: AVATAR_SIZE, height: AVATAR_SIZE }), clipShape("circle")]}
-      >
-        <ProgressView
-          modifiers={[progressViewStyle("circular"), accessibilityLabel("Updating profile photo")]}
-        />
-      </VStack>
-    );
-  }
-  if (avatarUrl) {
-    return <RemoteAvatar key={avatarUrl} url={avatarUrl} size={AVATAR_SIZE} />;
-  }
-  return (
-    <Image
-      systemName="person.crop.circle.fill"
-      size={AVATAR_SIZE}
-      color={colors.mutedForeground as string}
-      modifiers={[frame({ width: AVATAR_SIZE, height: AVATAR_SIZE }), accessibilityHidden(true)]}
-    />
-  );
-}
-
-function RemoteAvatar({ url, size }: { url: string; size: number }) {
-  const colors = useColors();
-  const image = useImage(url, { maxWidth: size * 4 });
-  if (!image) {
-    return (
-      <Image
-        systemName="person.crop.circle.fill"
-        size={size}
-        color={colors.mutedForeground as string}
-        modifiers={[frame({ width: size, height: size }), accessibilityHidden(true)]}
-      />
-    );
-  }
-  return (
-    <RNHostView matchContents>
-      <ExpoImage
-        source={image}
-        style={{ width: size, height: size, borderRadius: size / 2 }}
-        contentFit="cover"
-        accessibilityLabel="Profile photo"
-      />
-    </RNHostView>
-  );
-}
-
-function formatDate(ms: number): string {
-  return new Date(ms).toLocaleDateString(undefined, {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  });
 }

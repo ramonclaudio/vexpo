@@ -20,13 +20,9 @@
 import { router } from "expo-router";
 import { startTransition, useActionState, useState } from "react";
 import { Image as ExpoImage } from "expo-image";
-import { Button, Host, ScrollView, Spacer, Text, VStack } from "@expo/ui/swift-ui";
+import { Host, ScrollView, Spacer, Text, VStack } from "@expo/ui/swift-ui";
 import {
-  background,
-  buttonStyle,
-  clipShape,
   defaultScrollAnchor,
-  disabled,
   foregroundStyle,
   frame,
   multilineTextAlignment,
@@ -35,9 +31,9 @@ import {
 import { useMutation, useQuery } from "convex/react";
 
 import { ProminentButton } from "@/components/ui/prominent-button";
+import { SecondaryButton } from "@/components/ui/secondary-button";
 import { ErrorText } from "@/components/ui/status-text";
 import { api } from "@/convex/_generated/api";
-import { Button as ButtonTokens } from "@/constants/layout";
 import { useColors, useThemedAsset } from "@/hooks/use-theme";
 import { announce } from "@/lib/a11y";
 import { assets } from "@/lib/assets";
@@ -167,26 +163,13 @@ export default function RestoreAccountScreen() {
               onPress={() => startTransition(() => restore())}
               disabled={restorePending || signingOut}
             />
-            <Button
+            <SecondaryButton
               testID="restore-account-sign-out"
-              modifiers={[
-                buttonStyle("plain"),
-                frame({ maxWidth: Infinity, minHeight: ButtonTokens.height }),
-                background(colors.muted as string),
-                clipShape("capsule"),
-                disabled(restorePending || signingOut),
-              ]}
+              label={signingOut ? "Signing Out…" : "Sign Out"}
+              destructive
+              disabled={restorePending || signingOut}
               onPress={handleSignOut}
-            >
-              <Text
-                modifiers={[
-                  dfont({ size: 16, weight: "medium" }),
-                  foregroundStyle(colors.destructive as string),
-                ]}
-              >
-                {signingOut ? "Signing Out…" : "Sign Out"}
-              </Text>
-            </Button>
+            />
           </VStack>
 
           {restoreState.error ? (

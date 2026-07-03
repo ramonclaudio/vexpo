@@ -5,7 +5,7 @@ import { useMutation } from "convex/react";
 
 import { api } from "@/convex/_generated/api";
 import { authClient } from "@/lib/auth-client";
-import { formatError } from "@/components/ui/convex-error";
+import { formatError } from "@/lib/convex-error";
 import { haptics } from "@/lib/haptics";
 
 // Terminal failures: the device has no biometrics and no passcode, so the
@@ -31,6 +31,7 @@ export function useDeleteAccount() {
   const [deleteError, setDeleteError] = useState<string | null>(null);
 
   const deleteAccount = useCallback(async () => {
+    setDeleteError(null);
     haptics.error();
     const result = await LocalAuthentication.authenticateAsync({
       promptMessage: "Confirm with Face ID",
@@ -40,7 +41,6 @@ export function useDeleteAccount() {
       return;
     }
     try {
-      setDeleteError(null);
       await deleteAccountMutation();
       await authClient.signOut();
     } catch (err) {

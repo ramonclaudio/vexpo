@@ -4,19 +4,16 @@ import { Image as ExpoImage } from "expo-image";
 import { router } from "expo-router";
 
 import { api } from "@/convex/_generated/api";
-import { Host, ScrollView, VStack, TextField, Button, Text, RNHostView } from "@expo/ui/swift-ui";
+import { Host, ScrollView, VStack, Button, Text, RNHostView } from "@expo/ui/swift-ui";
 import {
   autocorrectionDisabled,
   foregroundStyle,
   buttonStyle,
-  background,
-  clipShape,
   disabled,
   keyboardType,
   onSubmit,
   submitLabel,
   textContentType,
-  textFieldStyle,
   textInputAutocapitalization,
   padding,
   frame,
@@ -26,12 +23,13 @@ import {
   tint,
 } from "@expo/ui/swift-ui/modifiers";
 import { useDynamicFont } from "@/lib/dynamic-font";
-import { Button as ButtonTokens, TouchTarget } from "@/constants/layout";
+import { TouchTarget } from "@/constants/layout";
 
 import { authClient } from "@/lib/auth-client";
 import { assets } from "@/lib/assets";
 import { haptics } from "@/lib/haptics";
 import { firstError, forgotPasswordSchema } from "@/lib/schemas";
+import { CapsuleTextField } from "@/components/ui/capsule-text-field";
 import { ProminentButton } from "@/components/ui/prominent-button";
 import { ErrorText } from "@/components/ui/status-text";
 import { announce } from "@/lib/a11y";
@@ -123,17 +121,11 @@ export default function ForgotPasswordScreen() {
 
           <VStack spacing={6} alignment="leading" modifiers={[frame({ maxWidth: Infinity })]}>
             <Text modifiers={[dfont({ size: 17, weight: "semibold" })]}>Email</Text>
-            <TextField
+            <CapsuleTextField
               testID="forgot-password-email"
               placeholder="you@example.com"
               onTextChange={setEmail}
               modifiers={[
-                textFieldStyle("plain"),
-                padding({ horizontal: 16 }),
-                frame({ maxWidth: Infinity, minHeight: ButtonTokens.height }),
-                background(colors.muted as string),
-                clipShape("capsule"),
-                dfont({ size: 16 }),
                 keyboardType("email-address"),
                 autocorrectionDisabled(),
                 textInputAutocapitalization("never"),

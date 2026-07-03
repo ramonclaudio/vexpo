@@ -1,13 +1,12 @@
-import { useState, type ComponentProps } from "react";
+import { useState } from "react";
 import Constants from "expo-constants";
 import * as Clipboard from "expo-clipboard";
 import { useDeleteAccount } from "@/hooks/use-delete-account";
-import { Image as ExpoImage, useImage } from "expo-image";
 import { router, type Href } from "expo-router";
 
 const PROFILE_HREF = "/profile" as Href;
 const DEBUG_HREF = "/debug" as Href;
-import { useMutation, useQuery } from "convex/react";
+import { useQuery } from "convex/react";
 import {
   Host,
   ScrollView,
@@ -17,7 +16,6 @@ import {
   VStack,
   Spacer,
   Image,
-  RNHostView,
   Alert,
   ConfirmationDialog,
 } from "@expo/ui/swift-ui";
@@ -31,7 +29,6 @@ import {
   padding,
   accessibilityHidden,
   accessibilityHint,
-  accessibilityInputLabels,
   lineLimit,
   privacySensitive,
   truncationMode,
@@ -40,15 +37,16 @@ import {
   tint,
 } from "@expo/ui/swift-ui/modifiers";
 import { useDynamicFont } from "@/lib/dynamic-font";
-import { Button as ButtonTokens } from "@/constants/layout";
 
 import { api } from "@/convex/_generated/api";
-import { authClient } from "@/lib/auth-client";
 import { haptics } from "@/lib/haptics";
 import { announce } from "@/lib/a11y";
+import { CapsuleRowButton } from "@/components/ui/capsule-row-button";
+import { RemoteAvatar } from "@/components/ui/remote-avatar";
 import { ErrorText } from "@/components/ui/status-text";
 import { useColors } from "@/hooks/use-theme";
 import { useScenePrivacy } from "@/hooks/use-scene-privacy";
+import { useSignOut } from "@/hooks/use-sign-out";
 import { useDebugEnabled } from "@/lib/preferences";
 
 const HEADER_AVATAR_SIZE = 56;
@@ -58,8 +56,8 @@ export default function SettingsScreen() {
   const colors = useColors();
   const scenePrivacy = useScenePrivacy();
   const me = useQuery(api.users.getMe);
-  const removeAllTokens = useMutation(api.pushTokens.removeAll);
   const { deleteAccount, deleteError } = useDeleteAccount();
+  const handleSignOut = useSignOut();
 
   const [showSignOut, setShowSignOut] = useState(false);
   const [showDeleteAccount, setShowDeleteAccount] = useState(false);
@@ -70,16 +68,6 @@ export default function SettingsScreen() {
     router.push(path);
   };
 
-  const handleSignOut = async () => {
-    haptics.medium();
-    try {
-      await removeAllTokens();
-    } catch (err) {
-      if (__DEV__) console.warn("[signOut] removeAllTokens failed:", err);
-    }
-    await authClient.signOut();
-  };
-
   const version = Constants.expoConfig?.version ?? "1.0.0";
 
   const handleCopyVersion = async () => {
@@ -87,69 +75,6 @@ export default function SettingsScreen() {
     await Clipboard.setStringAsync(`v${version}`);
     haptics.success();
     announce("Version copied");
-  };
-
-  type SFSymbol = NonNullable<ComponentProps<typeof Image>["systemName"]>;
-  const rowButton = ({
-    testID,
-    label,
-    inputLabels,
-    systemImage,
-    onPress,
-    role,
-    fg,
-  }: {
-    testID: string;
-    label: string;
-    inputLabels?: string[];
-    systemImage: SFSymbol;
-    onPress: () => void;
-    role?: "destructive";
-    fg?: string;
-  }) => {
-    const labelColor =
-      fg ??
-      (role === "destructive" ? (colors.destructive as string) : (colors.foreground as string));
-    return (
-      <Button
-        testID={testID}
-        modifiers={[
-          buttonStyle("plain"),
-          frame({ maxWidth: Infinity }),
-          background(colors.muted as string),
-          clipShape("capsule"),
-          ...(inputLabels ? [accessibilityInputLabels(inputLabels)] : []),
-        ]}
-        onPress={onPress}
-      >
-        <HStack
-          spacing={12}
-          alignment="center"
-          modifiers={[
-            frame({ maxWidth: Infinity, minHeight: ButtonTokens.height }),
-            padding({ horizontal: 16 }),
-          ]}
-        >
-          <Image
-            systemName={systemImage}
-            color={labelColor}
-            modifiers={[dfont({ size: 18 }), accessibilityHidden(true)]}
-          />
-          <Text modifiers={[dfont({ size: 16, weight: "medium" }), foregroundStyle(labelColor)]}>
-            {label}
-          </Text>
-          <Spacer />
-          {role !== "destructive" ? (
-            // upstream expo/expo#46774: imageScale ties the chevron to the row label's Dynamic Type curve
-            <Image
-              systemName="chevron.right"
-              color={colors.mutedForeground as string}
-              modifiers={[dfont({ size: 16 }), imageScale("small"), accessibilityHidden(true)]}
-            />
-          ) : null}
-        </HStack>
-      </Button>
-    );
   };
 
   return (
@@ -229,48 +154,48 @@ export default function SettingsScreen() {
           </Button>
 
           <VStack spacing={8} modifiers={[frame({ maxWidth: Infinity })]}>
-            {rowButton({
-              testID: "settings-sessions",
-              label: "Sessions",
-              systemImage: "list.bullet.rectangle.portrait",
-              onPress: () => navigate("/sessions"),
-            })}
-            {rowButton({
-              testID: "settings-preferences",
-              label: "Preferences",
-              systemImage: "slider.horizontal.3",
-              onPress: () => navigate("/settings/preferences"),
-            })}
+            <CapsuleRowButton
+              testID="settings-sessions"
+              label="Sessions"
+              systemImage="list.bullet.rectangle.portrait"
+              onPress={() => navigate("/sessions")}
+            />
+            <CapsuleRowButton
+              testID="settings-preferences"
+              label="Preferences"
+              systemImage="slider.horizontal.3"
+              onPress={() => navigate("/settings/preferences")}
+            />
           </VStack>
 
           <VStack spacing={8} modifiers={[frame({ maxWidth: Infinity })]}>
-            {rowButton({
-              testID: "settings-help",
-              label: "Help & Feedback",
-              inputLabels: ["Help and Feedback", "Help", "Feedback"],
-              systemImage: "questionmark.bubble.fill",
-              onPress: () => navigate("/help"),
-            })}
-            {rowButton({
-              testID: "settings-privacy",
-              label: "Privacy",
-              systemImage: "lock.shield.fill",
-              onPress: () => navigate("/privacy"),
-            })}
-            {rowButton({
-              testID: "settings-copy-version",
-              label: "Copy version",
-              systemImage: "doc.on.doc",
-              onPress: handleCopyVersion,
-            })}
-            {debugOn
-              ? rowButton({
-                  testID: "settings-debug",
-                  label: "Debug",
-                  systemImage: "ant.circle",
-                  onPress: () => navigate(DEBUG_HREF),
-                })
-              : null}
+            <CapsuleRowButton
+              testID="settings-help"
+              label="Help & Feedback"
+              inputLabels={["Help and Feedback", "Help", "Feedback"]}
+              systemImage="questionmark.bubble.fill"
+              onPress={() => navigate("/help")}
+            />
+            <CapsuleRowButton
+              testID="settings-privacy"
+              label="Privacy"
+              systemImage="lock.shield.fill"
+              onPress={() => navigate("/privacy")}
+            />
+            <CapsuleRowButton
+              testID="settings-copy-version"
+              label="Copy version"
+              systemImage="doc.on.doc"
+              onPress={handleCopyVersion}
+            />
+            {debugOn ? (
+              <CapsuleRowButton
+                testID="settings-debug"
+                label="Debug"
+                systemImage="ant.circle"
+                onPress={() => navigate(DEBUG_HREF)}
+              />
+            ) : null}
           </VStack>
 
           <VStack spacing={8} modifiers={[frame({ maxWidth: Infinity })]}>
@@ -281,13 +206,13 @@ export default function SettingsScreen() {
               titleVisibility="visible"
             >
               <ConfirmationDialog.Trigger>
-                {rowButton({
-                  testID: "settings-sign-out",
-                  label: "Sign out",
-                  systemImage: "rectangle.portrait.and.arrow.right",
-                  onPress: () => setShowSignOut(true),
-                  role: "destructive",
-                })}
+                <CapsuleRowButton
+                  testID="settings-sign-out"
+                  label="Sign out"
+                  systemImage="rectangle.portrait.and.arrow.right"
+                  onPress={() => setShowSignOut(true)}
+                  role="destructive"
+                />
               </ConfirmationDialog.Trigger>
               <ConfirmationDialog.Actions>
                 <Button
@@ -312,13 +237,13 @@ export default function SettingsScreen() {
               onIsPresentedChange={setShowDeleteAccount}
             >
               <Alert.Trigger>
-                {rowButton({
-                  testID: "settings-delete-account",
-                  label: "Delete account",
-                  systemImage: "trash",
-                  onPress: () => setShowDeleteAccount(true),
-                  role: "destructive",
-                })}
+                <CapsuleRowButton
+                  testID="settings-delete-account"
+                  label="Delete account"
+                  systemImage="trash"
+                  onPress={() => setShowDeleteAccount(true)}
+                  role="destructive"
+                />
               </Alert.Trigger>
               <Alert.Actions>
                 <Button
@@ -371,34 +296,5 @@ function ProfileHeaderAvatar({ avatarUrl }: { avatarUrl: string | null }) {
         accessibilityHidden(true),
       ]}
     />
-  );
-}
-
-function RemoteAvatar({ url, size }: { url: string; size: number }) {
-  const colors = useColors();
-  const image = useImage(url, { maxWidth: size * 4 });
-  if (!image) {
-    return (
-      <Image
-        systemName="person.crop.circle.fill"
-        size={size}
-        color={colors.mutedForeground as string}
-        modifiers={[frame({ width: size, height: size }), accessibilityHidden(true)]}
-      />
-    );
-  }
-  return (
-    <RNHostView matchContents>
-      <ExpoImage
-        source={image}
-        style={{
-          width: size,
-          height: size,
-          borderRadius: size / 2,
-        }}
-        contentFit="cover"
-        accessibilityLabel="Profile photo"
-      />
-    </RNHostView>
   );
 }

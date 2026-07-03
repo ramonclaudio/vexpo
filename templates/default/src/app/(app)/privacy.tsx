@@ -1,38 +1,15 @@
-import { type ComponentProps } from "react";
 import { openSettings } from "expo-linking";
-import {
-  Host,
-  ScrollView,
-  Button,
-  HStack,
-  VStack,
-  Spacer,
-  Image,
-  Text,
-  Toggle,
-} from "@expo/ui/swift-ui";
-import {
-  accessibilityHidden,
-  accessibilityInputLabels,
-  accessibilityLabel,
-  background,
-  buttonStyle,
-  clipShape,
-  foregroundStyle,
-  frame,
-  imageScale,
-  padding,
-  tint,
-} from "@expo/ui/swift-ui/modifiers";
-import { useDynamicFont } from "@/lib/dynamic-font";
-import { Button as ButtonTokens } from "@/constants/layout";
+import { Host, ScrollView, VStack } from "@expo/ui/swift-ui";
+import { frame, padding, tint } from "@expo/ui/swift-ui/modifiers";
 
+import { CapsuleRowButton } from "@/components/ui/capsule-row-button";
+import { CapsuleToggleRow } from "@/components/ui/capsule-toggle-row";
+import { HelperText } from "@/components/ui/helper-text";
 import { haptics } from "@/lib/haptics";
 import { useShareAnalytics } from "@/lib/preferences";
 import { useColors } from "@/hooks/use-theme";
 
 export default function PrivacyScreen() {
-  const dfont = useDynamicFont();
   const colors = useColors();
   const [analyticsEnabled, setAnalyticsEnabled] = useShareAnalytics();
 
@@ -40,70 +17,6 @@ export default function PrivacyScreen() {
     haptics.light();
     openSettings();
   };
-
-  type SFSymbol = NonNullable<ComponentProps<typeof Image>["systemName"]>;
-
-  const rowButton = ({
-    testID,
-    label,
-    inputLabels,
-    systemImage,
-    onPress,
-    chevron = true,
-    trailing,
-  }: {
-    testID: string;
-    label: string;
-    inputLabels?: string[];
-    systemImage: SFSymbol;
-    onPress: () => void;
-    chevron?: boolean;
-    trailing?: React.ReactNode;
-  }) => (
-    <Button
-      testID={testID}
-      modifiers={[
-        buttonStyle("plain"),
-        frame({ maxWidth: Infinity }),
-        background(colors.muted as string),
-        clipShape("capsule"),
-        ...(inputLabels ? [accessibilityInputLabels(inputLabels)] : []),
-      ]}
-      onPress={onPress}
-    >
-      <HStack
-        spacing={12}
-        alignment="center"
-        modifiers={[
-          frame({ maxWidth: Infinity, minHeight: ButtonTokens.height }),
-          padding({ horizontal: 16 }),
-        ]}
-      >
-        <Image
-          systemName={systemImage}
-          color={colors.foreground as string}
-          modifiers={[dfont({ size: 18 }), accessibilityHidden(true)]}
-        />
-        <Text
-          modifiers={[
-            dfont({ size: 16, weight: "medium" }),
-            foregroundStyle(colors.foreground as string),
-          ]}
-        >
-          {label}
-        </Text>
-        <Spacer />
-        {trailing ??
-          (chevron ? (
-            <Image
-              systemName="chevron.right"
-              color={colors.mutedForeground as string}
-              modifiers={[dfont({ size: 16 }), imageScale("small"), accessibilityHidden(true)]}
-            />
-          ) : null)}
-      </HStack>
-    </Button>
-  );
 
   return (
     <Host testID="privacy-screen" style={{ flex: 1, backgroundColor: colors.background }}>
@@ -114,76 +27,45 @@ export default function PrivacyScreen() {
           modifiers={[padding({ horizontal: 24, top: 24, bottom: 40 })]}
         >
           <VStack spacing={8} modifiers={[frame({ maxWidth: Infinity })]}>
-            {rowButton({
-              testID: "privacy-camera-photos",
-              label: "Camera & Photos",
-              inputLabels: ["camera and photos", "camera"],
-              systemImage: "camera.fill",
-              onPress: handleOpenSettings,
-            })}
-            {rowButton({
-              testID: "privacy-notifications",
-              label: "Notifications",
-              systemImage: "bell.fill",
-              onPress: handleOpenSettings,
-            })}
-            {rowButton({
-              testID: "privacy-system-settings",
-              label: "System Settings",
-              systemImage: "gear",
-              onPress: handleOpenSettings,
-            })}
+            <CapsuleRowButton
+              testID="privacy-camera-photos"
+              label="Camera & Photos"
+              inputLabels={["camera and photos", "camera"]}
+              systemImage="camera.fill"
+              onPress={handleOpenSettings}
+            />
+            <CapsuleRowButton
+              testID="privacy-notifications"
+              label="Notifications"
+              systemImage="bell.fill"
+              onPress={handleOpenSettings}
+            />
+            <CapsuleRowButton
+              testID="privacy-system-settings"
+              label="System Settings"
+              systemImage="gear"
+              onPress={handleOpenSettings}
+            />
           </VStack>
 
-          {/* Analytics toggle as a capsule row using native iOS Toggle. */}
-          <HStack
-            spacing={12}
-            alignment="center"
-            modifiers={[
-              frame({ maxWidth: Infinity, minHeight: ButtonTokens.height }),
-              padding({ horizontal: 16 }),
-              background(colors.muted as string),
-              clipShape("capsule"),
-            ]}
-          >
-            <Image
-              systemName="chart.bar.fill"
-              color={colors.foreground as string}
-              modifiers={[dfont({ size: 18 }), accessibilityHidden(true)]}
-            />
-            <Text
-              modifiers={[
-                dfont({ size: 16, weight: "medium" }),
-                foregroundStyle(colors.foreground as string),
-                // The labeled Toggle already announces "Share analytics"; hiding
-                // the visual label drops the duplicate VoiceOver stop.
-                accessibilityHidden(true),
-              ]}
-            >
-              Share Analytics
-            </Text>
-            <Spacer />
-            <Toggle
-              testID="privacy-share-analytics"
-              isOn={analyticsEnabled}
-              onIsOnChange={(v) => {
-                haptics.selection();
-                setAnalyticsEnabled(v);
-              }}
-              modifiers={[tint(colors.primary as string), accessibilityLabel("Share analytics")]}
-            />
-          </HStack>
+          <CapsuleToggleRow
+            testID="privacy-share-analytics"
+            icon="chart.bar.fill"
+            label="Share Analytics"
+            a11yLabel="Share analytics"
+            value={analyticsEnabled}
+            onChange={(v) => {
+              haptics.selection();
+              setAnalyticsEnabled(v);
+            }}
+          />
 
-          <Text
+          <HelperText
             testID="privacy-data-disclaimer"
-            modifiers={[
-              dfont({ size: 13 }),
-              foregroundStyle(colors.mutedForeground as string),
-              padding({ horizontal: 8, top: 4 }),
-            ]}
+            modifiers={[padding({ horizontal: 8, top: 4 })]}
           >
             You can request a copy of your data or delete your account at any time from Settings.
-          </Text>
+          </HelperText>
         </VStack>
       </ScrollView>
     </Host>

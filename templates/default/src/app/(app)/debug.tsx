@@ -6,7 +6,6 @@ import * as Device from "expo-device";
 import {
   Host,
   ScrollView,
-  Button,
   Text,
   VStack,
   HStack,
@@ -17,10 +16,8 @@ import {
 } from "@expo/ui/swift-ui";
 import {
   accessibilityHidden,
-  accessibilityInputLabels,
   accessibilityLabel,
   background,
-  buttonStyle,
   clipShape,
   cornerRadius,
   defaultScrollAnchor,
@@ -44,6 +41,8 @@ import { useColors } from "@/hooks/use-theme";
 import { useScenePrivacy } from "@/hooks/use-scene-privacy";
 import { useDynamicFont } from "@/lib/dynamic-font";
 import { Button as ButtonTokens } from "@/constants/layout";
+import { SecondaryButton } from "@/components/ui/secondary-button";
+import { SectionLabel } from "@/components/ui/section-label";
 
 const RELEASE_TYPE_LABELS: Record<number, string> = {
   [ApplicationReleaseType.UNKNOWN]: "Unknown",
@@ -179,12 +178,6 @@ export default function DebugScreen() {
     : "iOS";
   const osVersion = Device.osVersion ? `iOS ${Device.osVersion}` : "iOS";
 
-  const sectionLabelModifiers = [
-    dfont({ size: 13, weight: "semibold" }),
-    foregroundStyle(colors.mutedForeground as string),
-    padding({ horizontal: 8, top: 4 }),
-  ];
-
   return (
     <Host
       testID="debug-screen"
@@ -202,7 +195,7 @@ export default function DebugScreen() {
           modifiers={[padding({ horizontal: 24, top: 24, bottom: 40 })]}
         >
           <VStack spacing={8} alignment="leading" modifiers={[frame({ maxWidth: Infinity })]}>
-            <Text modifiers={sectionLabelModifiers}>BUILD</Text>
+            <SectionLabel>BUILD</SectionLabel>
             <InfoCard>
               <InfoRow
                 testID="debug-version-value"
@@ -251,7 +244,7 @@ export default function DebugScreen() {
                 ...(updates.isChecking ? [redacted("invalidated")] : []),
               ]}
             >
-              <Text modifiers={sectionLabelModifiers}>OTA UPDATES</Text>
+              <SectionLabel>OTA UPDATES</SectionLabel>
               <InfoCard>
                 <InfoRow
                   testID="debug-ota-status-value"
@@ -335,21 +328,17 @@ export default function DebugScreen() {
                 ) : null}
               </InfoCard>
               {updates.isUpdateAvailable && !updates.isDownloading ? (
-                <UpdateActionButton
+                <SecondaryButton
                   testID="debug-update-download"
                   label="Download & install"
                   inputLabels={["download and install", "install update"]}
                   onPress={updates.downloadAndApply}
-                  colors={colors}
-                  dfont={dfont}
                 />
               ) : !updates.isChecking && !updates.isDownloading ? (
-                <UpdateActionButton
+                <SecondaryButton
                   testID="debug-update-check"
                   label="Check for updates"
                   onPress={updates.checkForUpdate}
-                  colors={colors}
-                  dfont={dfont}
                 />
               ) : null}
               {updateLog.length > 0 ? (
@@ -373,7 +362,7 @@ export default function DebugScreen() {
 
           {appInfo.iosReleaseType || appInfo.iosPushEnv || appInfo.iosVendorId ? (
             <VStack spacing={8} alignment="leading" modifiers={[frame({ maxWidth: Infinity })]}>
-              <Text modifiers={sectionLabelModifiers}>iOS</Text>
+              <SectionLabel>iOS</SectionLabel>
               <InfoCard>
                 {appInfo.iosReleaseType ? (
                   <InfoRow
@@ -402,7 +391,7 @@ export default function DebugScreen() {
           ) : null}
 
           <VStack spacing={8} alignment="leading" modifiers={[frame({ maxWidth: Infinity })]}>
-            <Text modifiers={sectionLabelModifiers}>RUNTIME</Text>
+            <SectionLabel>RUNTIME</SectionLabel>
             <InfoCard>
               <InfoRow
                 testID="debug-session-id-value"
@@ -419,7 +408,7 @@ export default function DebugScreen() {
           </VStack>
 
           <VStack spacing={8} alignment="leading" modifiers={[frame({ maxWidth: Infinity })]}>
-            <Text modifiers={sectionLabelModifiers}>DEVICE</Text>
+            <SectionLabel>DEVICE</SectionLabel>
             <InfoCard>
               <InfoRow testID="debug-device-model-value" label="Model" value={deviceInfo} />
               <InfoRow testID="debug-device-os-value" label="OS" value={osVersion} />
@@ -474,48 +463,5 @@ export default function DebugScreen() {
         </VStack>
       </ScrollView>
     </Host>
-  );
-}
-
-function UpdateActionButton({
-  testID,
-  label,
-  inputLabels,
-  onPress,
-  colors,
-  dfont,
-}: {
-  testID: string;
-  label: string;
-  inputLabels?: string[];
-  onPress: () => void;
-  colors: ReturnType<typeof useColors>;
-  dfont: ReturnType<typeof useDynamicFont>;
-}) {
-  return (
-    <Button
-      testID={testID}
-      modifiers={[
-        buttonStyle("plain"),
-        frame({ maxWidth: Infinity }),
-        background(colors.muted as string),
-        // upstream expo/expo#43158: capsule (and ellipse) were silently rendering
-        // as a rectangle before. The fix wires the ShapeType enum through both
-        // ClipShapeModifier and MaskModifier.
-        clipShape("capsule"),
-        ...(inputLabels ? [accessibilityInputLabels(inputLabels)] : []),
-      ]}
-      onPress={onPress}
-    >
-      <Text
-        modifiers={[
-          frame({ maxWidth: Infinity, minHeight: ButtonTokens.height }),
-          dfont({ size: 16, weight: "medium" }),
-          foregroundStyle(colors.foreground as string),
-        ]}
-      >
-        {label}
-      </Text>
-    </Button>
   );
 }

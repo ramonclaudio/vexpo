@@ -1,33 +1,20 @@
-import { useState, type ComponentProps } from "react";
+import { useState } from "react";
 import Constants from "expo-constants";
 import { Stack } from "expo-router";
 import { openURL, canOpenURL } from "expo-linking";
+import { Host, ScrollView, VStack, Text, DisclosureGroup } from "@expo/ui/swift-ui";
 import {
-  Host,
-  ScrollView,
-  Button,
-  HStack,
-  VStack,
-  Spacer,
-  Image,
-  Text,
-  DisclosureGroup,
-} from "@expo/ui/swift-ui";
-import {
-  accessibilityHidden,
   background,
-  buttonStyle,
-  clipShape,
   cornerRadius,
   foregroundStyle,
   frame,
-  imageScale,
   padding,
   tint,
 } from "@expo/ui/swift-ui/modifiers";
 import { useDynamicFont } from "@/lib/dynamic-font";
 import { ContentUnavailable } from "@/components/ui/content-unavailable";
-import { Button as ButtonTokens, TouchTarget } from "@/constants/layout";
+import { CapsuleRowButton } from "@/components/ui/capsule-row-button";
+import { TouchTarget } from "@/constants/layout";
 
 import { ErrorText } from "@/components/ui/status-text";
 import { haptics } from "@/lib/haptics";
@@ -103,60 +90,6 @@ export default function HelpScreen() {
     }
   };
 
-  type SFSymbol = NonNullable<ComponentProps<typeof Image>["systemName"]>;
-
-  const rowButton = ({
-    testID,
-    label,
-    systemImage,
-    onPress,
-  }: {
-    testID: string;
-    label: string;
-    systemImage: SFSymbol;
-    onPress: () => void;
-  }) => (
-    <Button
-      testID={testID}
-      modifiers={[
-        buttonStyle("plain"),
-        frame({ maxWidth: Infinity }),
-        background(colors.muted as string),
-        clipShape("capsule"),
-      ]}
-      onPress={onPress}
-    >
-      <HStack
-        spacing={12}
-        alignment="center"
-        modifiers={[
-          frame({ maxWidth: Infinity, minHeight: ButtonTokens.height }),
-          padding({ horizontal: 16 }),
-        ]}
-      >
-        <Image
-          systemName={systemImage}
-          color={colors.foreground as string}
-          modifiers={[dfont({ size: 18 }), accessibilityHidden(true)]}
-        />
-        <Text
-          modifiers={[
-            dfont({ size: 16, weight: "medium" }),
-            foregroundStyle(colors.foreground as string),
-          ]}
-        >
-          {label}
-        </Text>
-        <Spacer />
-        <Image
-          systemName="chevron.right"
-          color={colors.mutedForeground as string}
-          modifiers={[dfont({ size: 16 }), imageScale("small"), accessibilityHidden(true)]}
-        />
-      </HStack>
-    </Button>
-  );
-
   return (
     <>
       <Stack.SearchBar
@@ -185,22 +118,22 @@ export default function HelpScreen() {
 
             {(support.email || issuesUrl) && (
               <VStack spacing={8} modifiers={[frame({ maxWidth: Infinity })]}>
-                {support.email
-                  ? rowButton({
-                      testID: "help-email-support",
-                      label: "Email Support",
-                      systemImage: "envelope.fill",
-                      onPress: handleOpenEmail,
-                    })
-                  : null}
-                {issuesUrl
-                  ? rowButton({
-                      testID: "help-report-issue",
-                      label: "Report an Issue",
-                      systemImage: "exclamationmark.bubble.fill",
-                      onPress: handleOpenIssues,
-                    })
-                  : null}
+                {support.email ? (
+                  <CapsuleRowButton
+                    testID="help-email-support"
+                    label="Email Support"
+                    systemImage="envelope.fill"
+                    onPress={handleOpenEmail}
+                  />
+                ) : null}
+                {issuesUrl ? (
+                  <CapsuleRowButton
+                    testID="help-report-issue"
+                    label="Report an Issue"
+                    systemImage="exclamationmark.bubble.fill"
+                    onPress={handleOpenIssues}
+                  />
+                ) : null}
               </VStack>
             )}
 

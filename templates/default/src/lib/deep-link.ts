@@ -1,5 +1,5 @@
 import type { Href } from "expo-router";
-import { parse, createURL } from "expo-linking";
+import { parse } from "expo-linking";
 
 export const DeepLinkRoutes = {
   "/": "/",
@@ -78,5 +78,3 @@ export function resolveDeepLink(url: string): ResolvedDeepLink {
 
   return { path, href: DeepLinkRoutes[path], params };
 }
-
-export { createURL };

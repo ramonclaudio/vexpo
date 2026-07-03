@@ -23,6 +23,7 @@ import { useDebounce } from "@/hooks/use-debounce";
 import { useDebugEnabled } from "@/lib/preferences";
 import { haptics } from "@/lib/haptics";
 import { ContentUnavailable } from "@/components/ui/content-unavailable";
+import { SectionLabel } from "@/components/ui/section-label";
 
 type Destination = {
   title: string;
@@ -140,12 +141,6 @@ export default function SearchScreen() {
     router.push(href);
   };
 
-  const sectionLabelModifiers = [
-    dfont({ size: 13, weight: "semibold" }),
-    foregroundStyle(colors.mutedForeground as string),
-    padding({ horizontal: 8, top: 4 }),
-  ];
-
   return (
     <>
       <Stack.SearchBar
@@ -178,9 +173,7 @@ export default function SearchScreen() {
               />
             ) : (
               <VStack spacing={8} alignment="leading" modifiers={[frame({ maxWidth: Infinity })]}>
-                <Text modifiers={sectionLabelModifiers}>
-                  {query.trim() ? "RESULTS" : "JUMP TO"}
-                </Text>
+                <SectionLabel>{query.trim() ? "RESULTS" : "JUMP TO"}</SectionLabel>
                 {results.map((d) => (
                   <Button
                     key={d.href as string}
