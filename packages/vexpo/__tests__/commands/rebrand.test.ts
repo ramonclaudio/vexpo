@@ -205,6 +205,30 @@ describe("runRebrand rewrite correctness", () => {
     expect(cfg).not.toContain("Smoke");
   });
 
+  it("--force re-run reads a single-quoted name left by a formatter", async () => {
+    Object.defineProperty(process.stdin, "isTTY", { value: false, configurable: true });
+
+    expect(await runRebrand({ ...FLAGS, appName: 'E2E "Smoke" App', yes: true })).toBe(0);
+    // A fewest-escapes format pass flips the escaped double-quoted literal to
+    // single quotes; markers must still read it.
+    const cfg = await readFile("app.config.ts", "utf8");
+    await writeFile(
+      "app.config.ts",
+      cfg.replace(
+        `name: IS_DEV ? "E2E \\"Smoke\\" App (Dev)" : "E2E \\"Smoke\\" App",`,
+        `name: IS_DEV ? 'E2E "Smoke" App (Dev)' : 'E2E "Smoke" App',`,
+      ),
+    );
+    expect((await readFile("app.config.ts", "utf8")).includes("'E2E")).toBe(true);
+
+    expect(
+      await runRebrand({ ...FLAGS, appName: "Third App", scheme: "third", force: true, yes: true }),
+    ).toBe(0);
+    expect(await readFile("app.config.ts", "utf8")).toContain(
+      `name: IS_DEV ? "Third App (Dev)" : "Third App",`,
+    );
+  });
+
   it("inserts values containing $& verbatim instead of expanding replacement patterns", async () => {
     Object.defineProperty(process.stdin, "isTTY", { value: false, configurable: true });
 

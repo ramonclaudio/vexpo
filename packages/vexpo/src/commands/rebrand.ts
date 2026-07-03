@@ -182,11 +182,12 @@ async function backup(files: string[], stamp: string): Promise<void> {
   ok(`backups → ${dir}`);
 }
 
-// A double-quoted TS string literal, escape-aware. Rebrand writes names via
-// JSON.stringify, so a quoted app name lands as `"E2E \"Smoke\" App"`; a plain
-// `"[^"]+"` marker can't read that back, which made a --force re-run silently
-// no-op the name rewrite and fail validation.
-const QUOTED = String.raw`"(?:[^"\\]|\\.)*"`;
+// A TS string literal in either quote form, escape-aware. Rebrand writes
+// names via JSON.stringify (`"E2E \"Smoke\" App"`), and a later format pass
+// may flip that to fewest-escapes single quotes (`'E2E "Smoke" App'`). A plain
+// `"[^"]+"` marker reads neither, which made a --force re-run silently no-op
+// the name rewrite and fail validation.
+const QUOTED = String.raw`(?:"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*')`;
 
 async function rewriteAppConfig(inputs: RebrandInputs): Promise<void> {
   const file = "app.config.ts";
