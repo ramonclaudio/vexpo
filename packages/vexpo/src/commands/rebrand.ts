@@ -182,6 +182,12 @@ async function backup(files: string[], stamp: string): Promise<void> {
   ok(`backups → ${dir}`);
 }
 
+// A double-quoted TS string literal, escape-aware. Rebrand writes names via
+// JSON.stringify, so a quoted app name lands as `"E2E \"Smoke\" App"`; a plain
+// `"[^"]+"` marker can't read that back, which made a --force re-run silently
+// no-op the name rewrite and fail validation.
+const QUOTED = String.raw`"(?:[^"\\]|\\.)*"`;
+
 async function rewriteAppConfig(inputs: RebrandInputs): Promise<void> {
   const file = "app.config.ts";
   let text = await readFile(file, "utf8");
@@ -193,20 +199,28 @@ async function rewriteAppConfig(inputs: RebrandInputs): Promise<void> {
   // rebrand rewrites it to a double-quoted string. Match either so a --force
   // re-run still moves the id.
   text = text.replace(
-    /const BUNDLE_ID = process\.env\.EXPO_PUBLIC_APP_BUNDLE_ID \?\? (?:`[^`]*`|"[^"]*");/,
+    new RegExp(
+      String.raw`const BUNDLE_ID = process\.env\.EXPO_PUBLIC_APP_BUNDLE_ID \?\? (?:\x60[^\x60]*\x60|${QUOTED});`,
+    ),
     () =>
       `const BUNDLE_ID = process.env.EXPO_PUBLIC_APP_BUNDLE_ID ?? ${JSON.stringify(inputs.bundleId)};`,
   );
 
   text = text.replace(
-    /name: IS_DEV \? "[^"]+" : "[^"]+",/,
+    new RegExp(String.raw`name: IS_DEV \? ${QUOTED} : ${QUOTED},`),
     () =>
       `name: IS_DEV ? ${JSON.stringify(`${inputs.appName} (Dev)`)} : ${JSON.stringify(inputs.appName)},`,
   );
 
-  text = text.replace(/slug: "[^"]+",/, () => `slug: ${JSON.stringify(inputs.packageName)},`);
+  text = text.replace(
+    new RegExp(String.raw`slug: ${QUOTED},`),
+    () => `slug: ${JSON.stringify(inputs.packageName)},`,
+  );
 
-  text = text.replace(/scheme: "[^"]+",/, () => `scheme: ${JSON.stringify(inputs.scheme)},`);
+  text = text.replace(
+    new RegExp(String.raw`scheme: ${QUOTED},`),
+    () => `scheme: ${JSON.stringify(inputs.scheme)},`,
+  );
 
   await writeFile(file, text);
   ok(`updated ${file}`);
@@ -295,12 +309,14 @@ async function validateTargets(): Promise<void> {
   }
   const markers: Array<[RegExp, string]> = [
     [
-      /const BUNDLE_ID = process\.env\.EXPO_PUBLIC_APP_BUNDLE_ID \?\? (?:`[^`]*`|"[^"]*");/,
+      new RegExp(
+        String.raw`const BUNDLE_ID = process\.env\.EXPO_PUBLIC_APP_BUNDLE_ID \?\? (?:\x60[^\x60]*\x60|${QUOTED});`,
+      ),
       "BUNDLE_ID assignment",
     ],
-    [/name: IS_DEV \? "[^"]+" : "[^"]+",/, "name"],
-    [/slug: "[^"]+",/, "slug"],
-    [/scheme: "[^"]+",/, "scheme"],
+    [new RegExp(String.raw`name: IS_DEV \? ${QUOTED} : ${QUOTED},`), "name"],
+    [new RegExp(String.raw`slug: ${QUOTED},`), "slug"],
+    [new RegExp(String.raw`scheme: ${QUOTED},`), "scheme"],
   ];
   for (const [re, label] of markers) {
     if (!re.test(cfg)) {

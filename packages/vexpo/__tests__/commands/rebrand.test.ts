@@ -183,6 +183,28 @@ describe("runRebrand rewrite correctness", () => {
     expect(cfg).not.toContain("com.acme.foobar");
   });
 
+  it("--force re-run still rewrites after a quoted app name (escape-aware markers)", async () => {
+    Object.defineProperty(process.stdin, "isTTY", { value: false, configurable: true });
+    const first = 'E2E "Smoke" App';
+
+    expect(await runRebrand({ ...FLAGS, appName: first, yes: true })).toBe(0);
+    // The escaped literal must still satisfy validation and get rewritten.
+    expect(
+      await runRebrand({
+        ...FLAGS,
+        appName: "Second App",
+        scheme: "second",
+        force: true,
+        yes: true,
+      }),
+    ).toBe(0);
+
+    const cfg = await readFile("app.config.ts", "utf8");
+    expect(cfg).toContain(`name: IS_DEV ? "Second App (Dev)" : "Second App",`);
+    expect(cfg).toContain(`scheme: "second",`);
+    expect(cfg).not.toContain("Smoke");
+  });
+
   it("inserts values containing $& verbatim instead of expanding replacement patterns", async () => {
     Object.defineProperty(process.stdin, "isTTY", { value: false, configurable: true });
 
