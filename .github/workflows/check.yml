@@ -28,6 +28,11 @@ jobs:
         with:
           node-version: ${{ matrix.node-version }}
           cache: npm
+      # Node 20.10 bundles npm 10.2.3, whose optional-deps resolution skips
+      # platform binaries (oxlint's native binding) on `npm ci`. The leg tests
+      # the node engines floor, not stock npm, so lift npm to the last 10.x.
+      - run: npm install -g npm@10
+        if: matrix.node-version == '20.10'
       - run: npm ci
       - run: npm run typecheck
       - run: npm run lint
