@@ -35,7 +35,7 @@ import { useReduceTransparency } from "@/hooks/use-reduce-transparency";
  * blur (semi-transparent so the blur still reads); on iOS 26+ it goes to
  * `GlassView`'s native `tintColor` instead.
  */
-export type MaterialVariant = "ultraThin" | "thin" | "regular" | "thick" | "chrome";
+type MaterialVariant = "ultraThin" | "thin" | "regular" | "thick" | "chrome";
 
 const BLUR_INTENSITY: Record<MaterialVariant, number> = {
   ultraThin: 30,
@@ -63,7 +63,7 @@ const GLASS_STYLE: Record<MaterialVariant, GlassStyle> = {
 
 const TINT_OVERLAY_OPACITY = 0.35;
 
-export type MaterialProps = ViewProps & {
+type MaterialProps = ViewProps & {
   children?: ReactNode;
   variant?: MaterialVariant;
   tintColor?: string;

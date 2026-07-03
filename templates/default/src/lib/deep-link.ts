@@ -19,18 +19,18 @@ export const DeepLinkRoutes = {
   "/linked": "/linked",
 } as const satisfies Record<string, Href>;
 
-export type DeepLinkPath = keyof typeof DeepLinkRoutes;
+type DeepLinkPath = keyof typeof DeepLinkRoutes;
 
 function normalizePath(raw: string | null | undefined): string {
   const trimmed = "/" + (raw ?? "").replace(/^\//, "").replace(/\/+$/, "");
   return trimmed === "/" ? "/" : trimmed;
 }
 
-export function isDeepLinkPath(path: string): path is DeepLinkPath {
+function isDeepLinkPath(path: string): path is DeepLinkPath {
   return path in DeepLinkRoutes;
 }
 
-export function isValidDeepLink(url: string): boolean {
+function isValidDeepLink(url: string): boolean {
   if (!url || typeof url !== "string") return false;
   if (url.includes("..")) return false;
 
@@ -47,7 +47,7 @@ export function isValidDeepLink(url: string): boolean {
   return isDeepLinkPath(normalizePath(parsed.path));
 }
 
-export type ResolvedDeepLink = {
+type ResolvedDeepLink = {
   path: DeepLinkPath | null;
   href: Href | null;
   params: Record<string, string>;

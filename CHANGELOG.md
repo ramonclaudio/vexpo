@@ -8,6 +8,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Pre-1.0
 - `vexpo review-account` refuses the template's placeholder demo password instead of seeding a guessable login.
 - Point accounts whose Convex team is managed by the EAS integration at the working path (`eas integrations:convex:connect` + `vexpo adopt`) when provisioning fails, in the CLI hint and the troubleshooting guide.
 - Drop `doctor --redact`. It was an internal screenshot helper, not a product feature.
+- Slim the template: drop the unused `react-dom` and `expo-symbols` dependencies (and the now-dead `react-dom` override) plus a handful of dead exports.
 
 ## [0.2.0] - 2026-07-03
 

@@ -108,14 +108,6 @@ export const profileUpdateOptionalUsernameSchema = z.object({
   email: emailSchema,
 });
 
-export type SignInValues = z.infer<typeof signInSchema>;
-export type SignInEmailValues = z.infer<typeof signInEmailSchema>;
-export type SignInUsernameValues = z.infer<typeof signInUsernameSchema>;
-export type SignUpValues = z.infer<typeof signUpSchema>;
-export type ForgotPasswordValues = z.infer<typeof forgotPasswordSchema>;
-export type ResetPasswordValues = z.infer<typeof resetPasswordSchema>;
-export type ProfileUpdateValues = z.infer<typeof profileUpdateSchema>;
-
 export function firstError(
   result: { success: false; error: z.ZodError } | { success: true; data: unknown },
 ): string | null {
