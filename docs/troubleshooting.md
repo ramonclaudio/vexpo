@@ -78,6 +78,23 @@ This is a dev-client project, not an Expo Go project. Expo Go can't load custom 
 npm run dev   # expo start --dev-client
 ```
 
+## Maestro
+
+### `Unable to locate a Java Runtime`
+
+Maestro's launcher needs a JVM and Homebrew's `openjdk` is keg-only, so it never lands on the system Java path. Point `JAVA_HOME` at the keg:
+
+```bash
+brew install openjdk
+JAVA_HOME=/opt/homebrew/opt/openjdk PATH="$JAVA_HOME/bin:$PATH" maestro test .maestro/tour.yaml
+```
+
+Export both in your shell profile if you run flows often.
+
+### `tour.yaml` fails on `"This device" is visible`
+
+The Sessions screen gates session management behind a recent sign-in. An old simulator session renders the "Sign in again to manage sessions" fallback instead of the device list. Run `auth.yaml` first to seed a fresh session, which is what the EAS workflow does.
+
 ## "doctor says X"
 
 `npx vexpo doctor` maps most warnings straight to their fix:
