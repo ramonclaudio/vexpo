@@ -48,6 +48,15 @@ CONVEX_TEAM=<slug> npx vexpo lite
 
 The slug is in the Convex dashboard under team settings. `vexpo convex` also reads `CONVEX_TEAM` from `.env.local`.
 
+### Provisioning fails: team `is managed by oauth:...`
+
+Accounts created through the EAS-Convex integration have their team managed by that OAuth app, and `convex dev --configure new` can't create projects there directly, with or without `CONVEX_TEAM`. Create the project through the integration, then adopt it:
+
+```bash
+npx eas-cli integrations:convex:connect
+npx vexpo adopt
+```
+
 ## Expo
 
 ### Push notifications don't fire

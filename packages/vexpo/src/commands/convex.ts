@@ -131,6 +131,10 @@ export async function runConvex(options: ConvexOptions): Promise<number> {
       note("provisioning a new Convex project picks a team interactively, which");
       note("can't prompt here. Set CONVEX_TEAM=<slug> (Convex dashboard > team");
       note("settings) or run `vexpo lite` in an interactive terminal.");
+    } else if (needsProvisioning) {
+      note('if the error above says the team "is managed by oauth:...", the');
+      note("account creates projects only through the EAS integration: run");
+      note("`npx eas-cli integrations:convex:connect`, then `npx vexpo adopt`.");
     }
     return 1;
   }
