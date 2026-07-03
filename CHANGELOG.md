@@ -7,6 +7,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Pre-1.0
 - Fix `rebrand --force` re-runs after a rebrand whose app name carried quotes or backslashes: the config markers are now escape-aware, so validation passes and the name rewrite no longer silently no-ops.
 - `vexpo review-account` refuses the template's placeholder demo password instead of seeding a guessable login.
 - Point accounts whose Convex team is managed by the EAS integration at the working path (`eas integrations:convex:connect` + `vexpo adopt`) when provisioning fails, in the CLI hint and the troubleshooting guide.
+- Drop `doctor --redact`. It was an internal screenshot helper, not a product feature.
 
 ## [0.2.0] - 2026-07-03
 

@@ -19,11 +19,7 @@ function glyph(severity: Severity): string {
 // doctor prints each category under its own section rule and pads names per
 // category; env push nests a lighter bold label under one Verify section and
 // pads across every check. Same glyphs, colors, and order either way.
-export function renderVerifyResults(
-  checks: Check[],
-  style: "section" | "compact",
-  redact: (text: string) => string = (t) => t,
-): void {
+export function renderVerifyResults(checks: Check[], style: "section" | "compact"): void {
   const byCategory = new Map<Category, Check[]>();
   for (const c of checks) {
     if (!byCategory.has(c.category)) byCategory.set(c.category, []);
@@ -37,18 +33,16 @@ export function renderVerifyResults(
     else line(`  ${BOLD}${cat}${RESET}`);
     const w = style === "section" ? Math.max(...items.map((c) => c.name.length)) : globalWidth;
     for (const c of items) {
-      const message = redact(c.message);
       line(
         style === "section"
-          ? `  ${glyph(c.severity)} ${BOLD}${c.name.padEnd(w)}${RESET}  ${message}`
-          : `    ${glyph(c.severity)} ${c.name.padEnd(w)}  ${message}`,
+          ? `  ${glyph(c.severity)} ${BOLD}${c.name.padEnd(w)}${RESET}  ${c.message}`
+          : `    ${glyph(c.severity)} ${c.name.padEnd(w)}  ${c.message}`,
       );
       if (c.details) {
-        const details = redact(c.details);
         line(
           style === "section"
-            ? `       ${DIM}${details}${RESET}`
-            : `        ${DIM}${details}${RESET}`,
+            ? `       ${DIM}${c.details}${RESET}`
+            : `        ${DIM}${c.details}${RESET}`,
         );
       }
     }

@@ -2,7 +2,7 @@ import { access } from "node:fs/promises";
 
 import { DIM, GREEN, RED, RESET, YELLOW, bad, line, note, section } from "../lib/output.ts";
 import { renderVerifyResults } from "../lib/verify-render.ts";
-import { readContext, summarize, verifyAll, type Channel, type Check } from "../lib/verify.ts";
+import { readContext, summarize, verifyAll, type Channel } from "../lib/verify.ts";
 
 const PROJECT_SENTINELS = ["app.config.ts", "convex", "eas.json"];
 
@@ -22,45 +22,7 @@ export type DoctorOptions = {
   channel?: string;
   json?: boolean;
   strict?: boolean;
-  redact?: boolean;
 };
-
-// Mask identifying values for screenshots, demos, and pasted issue reports.
-// Statuses and check names stay readable, the values become placeholders.
-// Order matters: URLs before bare slugs, emails before domains.
-const REDACTIONS: [RegExp, string][] = [
-  [/https?:\/\/[a-z0-9-]+\.convex\.(cloud|site)[^\s]*/g, "https://<deployment>.convex.$1"],
-  [/\b[a-z]+-[a-z]+-\d{3}\b/g, "<deployment>"],
-  [/\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b/gi, "<project-id>"],
-  [/\b[\w.+-]+@[\w-]+\.[\w.]+\b/g, "<email>"],
-  [/\b(?:[a-z0-9-]+\.){1,}[a-z]{2,}\b(?= verified)/g, "<domain>"],
-  [/\b(?:com|io|dev|app|net|org)(?:\.[a-z0-9-]+){2,}\b/gi, "<bundle-id>"],
-  [/\b[A-Z0-9]{10}\b/g, "<id>"],
-  [/(@)[\w-]+(\/)/g, "$1<owner>$2"],
-];
-
-export function redactValue(text: string): string {
-  let out = text;
-  for (const [re, sub] of REDACTIONS) out = out.replace(re, sub);
-  return out;
-}
-
-function redactCheck(c: Check): Check {
-  return c.details === undefined
-    ? { ...c, message: redactValue(c.message) }
-    : { ...c, message: redactValue(c.message), details: redactValue(c.details) };
-}
-
-// JSON consumers (issue reports, screenshots) need the same masking the human
-// renderer applies, so --redact has to scrub check values before serializing.
-export function buildDoctorReport(
-  channel: Channel,
-  summary: ReturnType<typeof summarize>,
-  checks: Check[],
-  redact: boolean,
-): { channel: Channel; summary: ReturnType<typeof summarize>; checks: Check[] } {
-  return { channel, summary, checks: redact ? checks.map(redactCheck) : checks };
-}
 
 export async function runDoctor(options: DoctorOptions): Promise<number> {
   try {
@@ -92,11 +54,10 @@ export async function runDoctor(options: DoctorOptions): Promise<number> {
     const summary = summarize(checks);
 
     if (options.json) {
-      const report = buildDoctorReport(channel, summary, checks, options.redact === true);
-      process.stdout.write(JSON.stringify(report, null, 2) + "\n");
+      process.stdout.write(JSON.stringify({ channel, summary, checks }, null, 2) + "\n");
     } else {
       section(`Verify (${channel})`);
-      renderVerifyResults(checks, "section", options.redact === true ? redactValue : undefined);
+      renderVerifyResults(checks, "section");
       line();
       const parts = [
         `${GREEN}${summary.ok} ok${RESET}`,
