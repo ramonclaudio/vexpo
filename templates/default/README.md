@@ -200,7 +200,7 @@ The template used to ship an Apple App Attest stack (a Convex verifier plus a cl
 Every `expo-*` package tracks the same SDK 57 release. `npm run upgrade:stable` rolls them forward together. `npm run upgrade` tracks the next SDK preview.
 
 > [!CAUTION]
-> Don't downgrade `@convex-dev/better-auth` below `0.12.4` (pinned with `better-auth@1.6.20`). Older `@convex-dev/better-auth` breaks signup.
+> Don't downgrade `@convex-dev/better-auth` below `0.12.4` (pinned with `better-auth@1.6.22`). Older `@convex-dev/better-auth` breaks signup.
 
 ## License
 
