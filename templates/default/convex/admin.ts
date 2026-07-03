@@ -75,6 +75,14 @@ export const createReviewAccount = internalAction({
   },
 });
 
+/**
+ * Manual ops tool, deliberately unwired (no cron, no client caller). Clears a
+ * rate-limit bucket so a caller the limiter locked out can act again right
+ * away, the support escape-hatch for a user stuck behind `userAction`,
+ * `criticalAction`, or `avatarUpload`. Pass `key` (the user id the limit was
+ * keyed on) to reset one caller; omit it to clear the whole named limit. Run by
+ * hand: `npx convex run admin:resetRateLimit '{"name":"userAction","key":"<userId>"}'`.
+ */
 export const resetRateLimit = internalMutation({
   args: { name: v.string(), key: v.optional(v.string()) },
   returns: v.object({
