@@ -4,6 +4,13 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Pre-1.0
 
 ## [Unreleased]
 
+## [0.2.2] - 2026-07-08
+
+- Put every section label and plain-text screen title in the VoiceOver Headings rotor with `accessibilityAddTraits(["isHeader"])`, and mark the update banner `updatesFrequently` while a download runs ([expo/expo#47387](https://github.com/expo/expo/pull/47387), shipped in `@expo/ui` 57.0.3).
+- Flag an invalid OTP code with a destructive capsule ring on the auth and email-change fields via `strokeBorder`, each gated on its own verify error, and keep the avatar slot's footprint during upload with a dashed circle stroke ([expo/expo#47426](https://github.com/expo/expo/pull/47426), shipped in `@expo/ui` 57.0.3). Both had waited on a release since 0.1.11.
+- Bump the template to Expo SDK 57.0.4: `expo install --fix` aligns 14 drifted packages, `expo install --check` and `expo-doctor` (20/20) pass clean.
+- Bump template `better-auth` and `@better-auth/expo` to 1.6.23, `@convex-dev/better-auth` to 0.12.5, and `convex` to `~1.42.1`.
+
 ## [0.2.1] - 2026-07-03
 
 - Fix `rebrand --force` re-runs after a rebrand whose app name carried quotes or backslashes: the config markers are now escape-aware, so validation passes and the name rewrite no longer silently no-ops.
@@ -185,7 +192,8 @@ First public release.
 
 See [`README.md`](./README.md) for the feature list and [`SECURITY.md`](./SECURITY.md) for the threat model.
 
-[Unreleased]: https://github.com/ramonclaudio/vexpo/compare/v0.2.1...HEAD
+[Unreleased]: https://github.com/ramonclaudio/vexpo/compare/v0.2.2...HEAD
+[0.2.2]: https://github.com/ramonclaudio/vexpo/releases/tag/v0.2.2
 [0.2.1]: https://github.com/ramonclaudio/vexpo/releases/tag/v0.2.1
 [0.2.0]: https://github.com/ramonclaudio/vexpo/releases/tag/v0.2.0
 [0.1.11]: https://github.com/ramonclaudio/vexpo/releases/tag/v0.1.11
