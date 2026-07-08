@@ -20,6 +20,7 @@ import {
   privacySensitive,
   progressViewStyle,
   shapes,
+  strokeBorder,
 } from "@expo/ui/swift-ui/modifiers";
 
 import { RemoteAvatar } from "@/components/ui/remote-avatar";
@@ -137,7 +138,17 @@ function AvatarView({ avatarUrl, loading }: { avatarUrl: string | null; loading:
     return (
       <VStack
         alignment="center"
-        modifiers={[frame({ width: AVATAR_SIZE, height: AVATAR_SIZE }), clipShape("circle")]}
+        modifiers={[
+          frame({ width: AVATAR_SIZE, height: AVATAR_SIZE }),
+          clipShape("circle"),
+          // upstream expo/expo#47426: a dashed round-cap circle stroke keeps
+          // the slot's footprint while the photo gives way to a bare spinner.
+          strokeBorder({
+            color: colors.mutedForeground as string,
+            shape: "circle",
+            style: { lineWidth: 2, lineCap: "round", dash: [4, 6] },
+          }),
+        ]}
       >
         <ProgressView
           modifiers={[progressViewStyle("circular"), accessibilityLabel("Updating profile photo")]}

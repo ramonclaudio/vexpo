@@ -32,6 +32,7 @@ import {
   defaultScrollAnchorForRole,
   dynamicTypeSize,
   scrollDismissesKeyboard,
+  strokeBorder,
   tint,
   textContentType,
 } from "@expo/ui/swift-ui/modifiers";
@@ -149,6 +150,9 @@ export function OtpVerification({ email, onBack, flow = "verify-email" }: OtpVer
   // screen after a successful resend, since resend never clears verifyState.
   const error = lastAction === "resend" ? resendState.error : verifyState.error;
   const attempt = lastAction === "resend" ? resendState.attempt : verifyState.attempt;
+  // The ring gates on the verify action's own error, so a resend failure
+  // never flags the field.
+  const invalidCode = lastAction === "verify" && !!verifyState.error;
 
   const verifyLabel = (() => {
     if (isVerifying) return isSignIn ? "Signing in..." : "Verifying...";
@@ -245,6 +249,18 @@ export function OtpVerification({ email, onBack, flow = "verify-email" }: OtpVer
                 submitLabel("done"),
                 accessibilityLabel("Verification code"),
                 accessibilityHint("Enter the 6 digit code sent to your email"),
+                // upstream expo/expo#47426: the invalid-code ring. strokeBorder
+                // hugs the capsule, where the border modifier only draws a
+                // rectangle.
+                ...(invalidCode
+                  ? [
+                      strokeBorder({
+                        color: colors.destructive as string,
+                        shape: "capsule",
+                        style: { lineWidth: 2 },
+                      }),
+                    ]
+                  : []),
               ]}
             />
 

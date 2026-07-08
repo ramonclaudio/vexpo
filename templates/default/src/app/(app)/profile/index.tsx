@@ -343,6 +343,7 @@ export default function ProfileScreen() {
                   setOtp("");
                 }}
                 isVerifying={isVerifying}
+                invalidCode={!!otpState.error}
               />
             ) : (
               <>

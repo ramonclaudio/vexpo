@@ -15,6 +15,7 @@ import {
   multilineTextAlignment,
   onSubmit,
   shapes,
+  strokeBorder,
   submitLabel,
   textContentType,
 } from "@expo/ui/swift-ui/modifiers";
@@ -39,6 +40,7 @@ export function EmailOtpVerify({
   onVerify,
   onCancel,
   isVerifying,
+  invalidCode,
 }: {
   pendingEmail: string;
   code: string;
@@ -47,6 +49,7 @@ export function EmailOtpVerify({
   onVerify: () => void;
   onCancel: () => void;
   isVerifying: boolean;
+  invalidCode: boolean;
 }) {
   const dfont = useDynamicFont();
   const colors = useColors();
@@ -80,6 +83,17 @@ export function EmailOtpVerify({
             disabled(isVerifying),
             accessibilityLabel("Verification code"),
             accessibilityHint("Enter the 6 digit code sent to your new email"),
+            // upstream expo/expo#47426: the invalid-code ring, same treatment
+            // as the auth OTP field.
+            ...(invalidCode
+              ? [
+                  strokeBorder({
+                    color: colors.destructive as string,
+                    shape: "capsule",
+                    style: { lineWidth: 2 },
+                  }),
+                ]
+              : []),
           ]}
         />
         <HelperText testID="profile-email-otp-sent">
