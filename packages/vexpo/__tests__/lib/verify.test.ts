@@ -157,7 +157,9 @@ describe("Apple JWT verification", () => {
       teamId: "ABCDE12345",
       keyId: "FGHIJ67890",
       servicesId: "com.x.app.signin",
-      expirationDays: 14,
+      // Half a day past the boundary: an exact 14 floors to 13d whenever a
+      // second ticks between signing and the check.
+      expirationDays: 14.5,
     });
     const ctx = emptyContext({
       convexEnv: new Map([
