@@ -43,7 +43,7 @@ npx vexpo doctor        # auth-checks every credential against the real service
 
 - Expo SDK 57, RN 0.86, React 19. Strict TypeScript, no NativeWind.
 - Every screen is SwiftUI via `@expo/ui/swift-ui`, Liquid Glass on iOS 26+, blur fallback below.
-- VoiceOver, Voice Control, and Dynamic Type across every screen: spoken async state, combined VoiceOver stops, native symbol scaling, redaction-built skeletons, and an app-switcher privacy shield. Built on our 27 merged `expo/expo` PRs, wired against released `@expo/ui` only.
+- VoiceOver, Voice Control, and Dynamic Type across every screen: spoken async state, combined VoiceOver stops, native symbol scaling, redaction-built skeletons, and an app-switcher privacy shield. Built on our 28 merged `expo/expo` PRs, wired against released `@expo/ui` only.
 - Email, password, OTP, and Apple Sign In, with per-device session revocation and account soft-delete.
 - Convex reactive queries and storage, Resend delivery webhooks.
 - APNs push and Apple Universal Links.
