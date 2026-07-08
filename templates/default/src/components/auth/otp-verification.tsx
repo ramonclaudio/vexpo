@@ -24,6 +24,7 @@ import {
   padding,
   frame,
   shapes,
+  accessibilityAddTraits,
   accessibilityElement,
   accessibilityHidden,
   accessibilityLabel,
@@ -184,7 +185,11 @@ export function OtpVerification({ email, onBack, flow = "verify-email" }: OtpVer
 
           <Text
             testID="otp-title"
-            modifiers={[dfont({ size: 28, weight: "bold" }), multilineTextAlignment("center")]}
+            modifiers={[
+              dfont({ size: 28, weight: "bold" }),
+              multilineTextAlignment("center"),
+              accessibilityAddTraits(["isHeader"]),
+            ]}
           >
             {isSignIn ? "Sign in with code" : "Verify your email"}
           </Text>

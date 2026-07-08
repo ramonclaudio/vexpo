@@ -29,6 +29,7 @@ import {
   contentShape,
   shapes,
   scrollDismissesKeyboard,
+  accessibilityAddTraits,
   accessibilityLabel,
   accessibilityHint,
   tint,
@@ -232,7 +233,13 @@ export default function SignInScreen() {
           </RNHostView>
 
           <VStack spacing={6} alignment="leading">
-            <Text testID="sign-in-title" modifiers={[dfont({ size: 28, weight: "bold" })]}>
+            <Text
+              testID="sign-in-title"
+              modifiers={[
+                dfont({ size: 28, weight: "bold" }),
+                accessibilityAddTraits(["isHeader"]),
+              ]}
+            >
               Sign in
             </Text>
             <Text

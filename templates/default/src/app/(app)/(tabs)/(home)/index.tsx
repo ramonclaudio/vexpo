@@ -1,5 +1,6 @@
 import { Host, ScrollView, VStack, Text } from "@expo/ui/swift-ui";
 import {
+  accessibilityAddTraits,
   foregroundStyle,
   kerning,
   padding,
@@ -47,7 +48,11 @@ export default function HomeScreen() {
             {/* upstream expo/expo#46509: the nested bold run resolves its font on the Text concatenation path */}
             <Text
               testID="home-greeting"
-              modifiers={[dfont({ size: 32, design: "rounded" }), kerning(-0.5)]}
+              modifiers={[
+                dfont({ size: 32, design: "rounded" }),
+                kerning(-0.5),
+                accessibilityAddTraits(["isHeader"]),
+              ]}
             >
               Hey,{" "}
               <Text modifiers={[dfont({ size: 32, weight: "bold", design: "rounded" })]}>

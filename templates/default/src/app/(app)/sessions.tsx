@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Host, ScrollView, Button, Text, VStack, HStack, Spacer, Alert } from "@expo/ui/swift-ui";
 import {
+  accessibilityAddTraits,
   accessibilityElement,
   accessibilityInputLabels,
   accessibilityLabel,
@@ -180,6 +181,7 @@ export default function SessionsScreen() {
               modifiers={[
                 dfont({ size: 13, weight: "semibold" }),
                 foregroundStyle(colors.mutedForeground as string),
+                accessibilityAddTraits(["isHeader"]),
               ]}
             >
               ACTIVE SESSIONS

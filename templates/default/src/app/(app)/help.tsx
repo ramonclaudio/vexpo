@@ -4,6 +4,7 @@ import { Stack } from "expo-router";
 import { openURL, canOpenURL } from "expo-linking";
 import { Host, ScrollView, VStack, Text, DisclosureGroup } from "@expo/ui/swift-ui";
 import {
+  accessibilityAddTraits,
   background,
   cornerRadius,
   foregroundStyle,
@@ -152,6 +153,7 @@ export default function HelpScreen() {
                     dfont({ size: 13, weight: "semibold" }),
                     foregroundStyle(colors.mutedForeground as string),
                     padding({ horizontal: 8, top: 4 }),
+                    accessibilityAddTraits(["isHeader"]),
                   ]}
                 >
                   FREQUENTLY ASKED

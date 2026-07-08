@@ -29,6 +29,7 @@ import {
   kerning,
   submitLabel,
   textContentType,
+  accessibilityAddTraits,
   accessibilityHidden,
   accessibilityLabel,
   accessibilityHint,
@@ -155,7 +156,7 @@ export default function ResetPasswordScreen() {
           />
           <Text
             testID="reset-password-success-title"
-            modifiers={[dfont({ size: 28, weight: "bold" })]}
+            modifiers={[dfont({ size: 28, weight: "bold" }), accessibilityAddTraits(["isHeader"])]}
           >
             Password reset!
           </Text>
@@ -211,7 +212,13 @@ export default function ResetPasswordScreen() {
           </RNHostView>
 
           <VStack spacing={6} alignment="leading">
-            <Text testID="reset-password-title" modifiers={[dfont({ size: 28, weight: "bold" })]}>
+            <Text
+              testID="reset-password-title"
+              modifiers={[
+                dfont({ size: 28, weight: "bold" }),
+                accessibilityAddTraits(["isHeader"]),
+              ]}
+            >
               Reset password
             </Text>
             <Text

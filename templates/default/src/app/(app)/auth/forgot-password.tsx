@@ -18,6 +18,7 @@ import {
   padding,
   frame,
   scrollDismissesKeyboard,
+  accessibilityAddTraits,
   accessibilityLabel,
   accessibilityHint,
   tint,
@@ -107,7 +108,13 @@ export default function ForgotPasswordScreen() {
           </RNHostView>
 
           <VStack spacing={6} alignment="leading">
-            <Text testID="forgot-password-title" modifiers={[dfont({ size: 28, weight: "bold" })]}>
+            <Text
+              testID="forgot-password-title"
+              modifiers={[
+                dfont({ size: 28, weight: "bold" }),
+                accessibilityAddTraits(["isHeader"]),
+              ]}
+            >
               Reset your password
             </Text>
             <Text

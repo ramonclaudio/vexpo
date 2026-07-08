@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Button, Host, Text } from "@expo/ui/swift-ui";
 import {
+  accessibilityAddTraits,
   accessibilityHint,
   accessibilityLabel,
   buttonStyle,
@@ -76,6 +77,9 @@ export function UpdateBanner({ testID }: { testID?: string } = {}) {
             contentShape(shapes.rectangle()),
             disabledModifier(!showError),
             accessibilityLabel(label),
+            // upstream expo/expo#47387: the label re-announces each progress
+            // tick; the static error label shouldn't carry the trait.
+            ...(showProgress ? [accessibilityAddTraits(["updatesFrequently"])] : []),
             ...(showError ? [accessibilityHint("Re-attempts the update download")] : []),
           ]}
           onPress={showError ? () => updates.downloadAndApply() : () => {}}

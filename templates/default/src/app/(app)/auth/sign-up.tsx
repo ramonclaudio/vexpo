@@ -25,6 +25,7 @@ import {
   padding,
   frame,
   scrollDismissesKeyboard,
+  accessibilityAddTraits,
   accessibilityHidden,
   accessibilityLabel,
   accessibilityHint,
@@ -260,7 +261,13 @@ export default function SignUpScreen() {
           </RNHostView>
 
           <VStack spacing={6} alignment="leading">
-            <Text testID="sign-up-title" modifiers={[dfont({ size: 28, weight: "bold" })]}>
+            <Text
+              testID="sign-up-title"
+              modifiers={[
+                dfont({ size: 28, weight: "bold" }),
+                accessibilityAddTraits(["isHeader"]),
+              ]}
+            >
               Create your account
             </Text>
             <Text

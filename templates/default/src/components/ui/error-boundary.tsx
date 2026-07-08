@@ -4,6 +4,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { router, type ErrorBoundaryProps } from "expo-router";
 import { Host, ScrollView, VStack, Text, Button, Image } from "@expo/ui/swift-ui";
 import {
+  accessibilityAddTraits,
   accessibilityHidden,
   foregroundStyle,
   buttonStyle,
@@ -60,7 +61,13 @@ export function AppErrorBoundary({
               accessibilityHidden(true),
             ]}
           />
-          <Text modifiers={[dfont({ size: 28, weight: "bold" }), multilineTextAlignment("center")]}>
+          <Text
+            modifiers={[
+              dfont({ size: 28, weight: "bold" }),
+              multilineTextAlignment("center"),
+              accessibilityAddTraits(["isHeader"]),
+            ]}
+          >
             Something went wrong
           </Text>
           <Text

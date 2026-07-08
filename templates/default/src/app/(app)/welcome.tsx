@@ -24,6 +24,7 @@ import {
   kerning,
   scaleEffect,
   tint,
+  accessibilityAddTraits,
   accessibilityHidden,
   accessibilityLabel,
   accessibilityValue,
@@ -175,7 +176,11 @@ export default function WelcomeScreen() {
                 )}
                 <Text
                   testID={`welcome-step-${s.id}-title`}
-                  modifiers={[dfont({ size: 34, weight: "bold" }), kerning(-0.5)]}
+                  modifiers={[
+                    dfont({ size: 34, weight: "bold" }),
+                    kerning(-0.5),
+                    accessibilityAddTraits(["isHeader"]),
+                  ]}
                 >
                   {s.title}
                 </Text>

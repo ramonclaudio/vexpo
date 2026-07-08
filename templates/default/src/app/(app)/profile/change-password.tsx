@@ -3,6 +3,7 @@ import { router } from "expo-router";
 import { useQuery } from "convex/react";
 import { Host, ScrollView, VStack, Button, Text, useNativeState } from "@expo/ui/swift-ui";
 import {
+  accessibilityAddTraits,
   accessibilityLabel,
   buttonStyle,
   defaultScrollAnchorForRole,
@@ -113,7 +114,13 @@ function ChangePasswordForm({ email }: { email: string }) {
           modifiers={[padding({ horizontal: 24, top: 24, bottom: 40 })]}
         >
           <VStack spacing={6} alignment="leading">
-            <Text testID="change-password-title" modifiers={[dfont({ size: 28, weight: "bold" })]}>
+            <Text
+              testID="change-password-title"
+              modifiers={[
+                dfont({ size: 28, weight: "bold" }),
+                accessibilityAddTraits(["isHeader"]),
+              ]}
+            >
               Change password
             </Text>
             <Text

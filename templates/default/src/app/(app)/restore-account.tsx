@@ -22,6 +22,7 @@ import { startTransition, useActionState, useState } from "react";
 import { Image as ExpoImage } from "expo-image";
 import { Host, ScrollView, Spacer, Text, VStack } from "@expo/ui/swift-ui";
 import {
+  accessibilityAddTraits,
   defaultScrollAnchor,
   foregroundStyle,
   frame,
@@ -140,6 +141,7 @@ export default function RestoreAccountScreen() {
                 dfont({ size: 24, weight: "bold" }),
                 foregroundStyle(colors.foreground as string),
                 multilineTextAlignment("center"),
+                accessibilityAddTraits(["isHeader"]),
               ]}
             >
               Account Scheduled for Deletion
