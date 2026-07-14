@@ -731,7 +731,7 @@ async function verifyEas(ctx: VerifyContext): Promise<Check[]> {
           "eas",
           "asc-integration",
           `not connected (${status.status})`,
-          "run `vexpo asc connect` so `eas submit` resolves the app from the bundle id",
+          "run `vexpo asc connect` in a terminal; if the key picker shows only stale keys, its create-or-upload entry mints the EAS-managed key (a second key alongside eas.json's is by design)",
         ),
       );
     }

@@ -19,10 +19,14 @@
  * fill the wizard's manual paste prompts (path / keyId / issuerId) -
  * those are only reached if the user declines the auto-generate offer.
  *
- * Common path (zero uploaded EAS keys, accept defaults):
- *   1. "Generate a new App Store Connect API Key?" -> Y (default)
- *   2. "Select role: ADMIN / APP_MANAGER" -> ADMIN (default)
- *   3. Maybe "Select app" if multiple match --bundle-id (rare)
+ * The wizard branches on EAS's credential store:
+ *   - Zero uploaded keys: "Generate a new App Store Connect API Key?" -> Y
+ *     (default), then ADMIN role (default), maybe "Select app" (rare).
+ *   - Stored keys exist: a PICKER of the stored keys, ending with a
+ *     create-or-upload entry. A stored key that was deleted at Apple fails
+ *     the wizard's discover-apps call with a 401 ("rejected this API key
+ *     with status 401") and exits 1 — the escape is the create-or-upload
+ *     entry, which mints a fresh EAS-managed key or takes an existing .p8.
  *
  * Side effect: creates a SECOND ASC API key on Apple, separate from the
  * "master" key cached in vexpo state. This is intentional separation: the
@@ -254,15 +258,24 @@ export async function runAscConnect(opts: { force?: boolean } = {}): Promise<num
   };
 
   line();
-  note("spawning `eas integrations:asc:connect`. Most likely flow:");
-  note("  1. Press Y to generate a new ASC API key (default)");
-  note("  2. Press Enter to accept ADMIN role (default)");
+  note("spawning `eas integrations:asc:connect`. The wizard branches on what");
+  note("EAS's credential store already holds:");
+  note("  • no stored ASC keys: press Y to generate one (default), Enter for ADMIN");
+  note("  • stored keys exist: a picker, ending with a create-or-upload entry");
+  yep("a stored key that was deleted at Apple fails with `rejected this API key");
+  yep("with status 401` — don't pick it, take the create-or-upload entry instead");
+  note("(it mints a fresh EAS-managed key or accepts your existing .p8 path).");
   note("EXPO_ASC_API_KEY_* env vars are set so eas-cli uses our cached key");
   note("for the Apple auth step, no Apple ID + password prompt.");
 
   const code = await easSpawn(["integrations:asc:connect", "--bundle-id", bundleId], { env });
   if (code !== 0) {
     bad(`eas integrations:asc:connect exited with code ${code}`);
+    note("a 401 on a stored key means it was deleted at Apple. Re-run");
+    note(`${BOLD}npx vexpo asc connect${RESET} and pick the key picker's create-or-upload`);
+    note("entry: the EAS-managed key it mints is the expected SECOND key. Your");
+    note("local key keeps serving eas.json/CLI submits, the EAS-managed one");
+    note("serves the integration and cloud auto-submits. Both stay live.");
     return code;
   }
 
