@@ -203,7 +203,11 @@ async function rewritePackage(target: string, requestedName: string): Promise<vo
   // and caret ranges never cross the minor while the major is 0.
   const devDeps = (parsed.devDependencies ?? {}) as Record<string, string>;
   devDeps["@ramonclaudio/vexpo"] = `^${pkg.version}`;
-  parsed.devDependencies = devDeps;
+  // Sorted insert, not append: oxfmt sorts dependency keys, so an appended
+  // entry makes a fresh scaffold fail its own `format:check`.
+  parsed.devDependencies = Object.fromEntries(
+    Object.entries(devDeps).toSorted(([a], [b]) => (a < b ? -1 : 1)),
+  );
   delete parsed.author;
   delete parsed.repository;
   delete parsed.bugs;
