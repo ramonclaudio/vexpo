@@ -47,7 +47,13 @@ export function buildFinishRunbook(s: RunbookState): Array<{ cmd: string; desc: 
     steps.push({ cmd: "vexpo asc connect", desc: "link EAS to App Store Connect for submit" });
   }
   if (!s.hasProd) {
-    steps.push({ cmd: "npx convex deploy", desc: "provision + push to the prod deployment" });
+    // The cleared key matters: .env.local carries a dev-scoped
+    // CONVEX_DEPLOY_KEY after the EAS integration, and a bare `convex deploy`
+    // would silently land on the key's dev deployment (--prod doesn't beat it).
+    steps.push({
+      cmd: "CONVEX_DEPLOY_KEY= npx convex deploy",
+      desc: "provision + push to the prod deployment (cleared key: user auth targets prod)",
+    });
   }
   steps.push({
     cmd: `vexpo convex migrate --from ${s.devSlug} --prod`,

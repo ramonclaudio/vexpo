@@ -7,7 +7,7 @@
     "dev": "node scripts/dev.mjs",
     "start": "node scripts/dev.mjs --clear",
     "convex:dev": "convex dev",
-    "convex:deploy": "convex deploy",
+    "convex:deploy": "convex deploy --env-file .env.prod",
     "convex:logs": "convex logs",
     "convex:logs:prod": "convex logs --prod",
     "convex:env": "convex env list",
