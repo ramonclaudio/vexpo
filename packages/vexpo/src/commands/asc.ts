@@ -42,12 +42,13 @@
 
 import { existsSync } from "node:fs";
 import { readFile, writeFile } from "node:fs/promises";
+import { relative } from "node:path";
 
 import { makeAscClient } from "../lib/asc-api.ts";
 import { loadAscCreds } from "../lib/asc-state.ts";
 import { easSpawn } from "../lib/eas-cli.ts";
 import { ascStatus } from "../lib/eas-integrations.ts";
-import { withAscAppId } from "../lib/eas-submit.ts";
+import { withAscApiKey, withAscAppId } from "../lib/eas-submit.ts";
 import { requireBundleId } from "../lib/env-local.ts";
 import { BOLD, RESET, bad, line, nop, note, ok, section, yep } from "../lib/output.ts";
 import { recordStep } from "../lib/state.ts";
@@ -113,8 +114,44 @@ export async function ensureAscAppId(bundleId: string): Promise<AscAppResolution
 }
 
 /**
- * The `EXPO_ASC_*` env eas-cli reads to authenticate submits with our cached
- * ASC key (no EAS credential store needed), or null when no key is cached.
+ * Write the cached ASC key's path/id/issuer into eas.json's submit profiles.
+ * `eas submit` resolves its key ONLY from these fields, a prompt, or the EAS
+ * credential store — never from `EXPO_ASC_*` env — so a stale stored key wins
+ * silently without them (a deleted key failed a live submit with altool
+ * -26000). Only written when the .p8 lives inside the repo: eas.json is
+ * committed, and a machine-specific absolute path (or a path CI can't have)
+ * would break every other environment's submit.
+ */
+export async function ensureAscApiKeyInEasJson(): Promise<void> {
+  if (!existsSync("eas.json")) return;
+  const asc = await loadAscCreds();
+  if (!asc || !("path" in asc.privateKey)) return;
+  const rel = relative(process.cwd(), asc.privateKey.path);
+  if (rel.startsWith("..")) {
+    nop("ASC .p8 lives outside the repo; leaving eas.json submit-key fields unset");
+    return;
+  }
+  const key = { path: `./${rel}`, keyId: asc.keyId, issuerId: asc.issuerId };
+  try {
+    const before = await readFile("eas.json", "utf8");
+    const after = withAscApiKey(before, key);
+    if (after !== before) {
+      await writeFile("eas.json", after);
+      ok(`wrote ASC key ${BOLD}${asc.keyId}${RESET} into eas.json submit profiles`);
+      note("commit this; the .p8 stays gitignored, so CI submits need the file restored");
+    } else {
+      nop("eas.json submit profiles already carry the ASC key");
+    }
+  } catch (err) {
+    yep(`couldn't write ASC key fields to eas.json: ${err instanceof Error ? err.message : err}`);
+  }
+}
+
+/**
+ * The `EXPO_ASC_*` env eas-cli reads for build-credentials and `eas metadata`
+ * auth, or null when no key is cached. NOT consulted by `eas submit`'s key
+ * resolver — that reads only eas.json's ascApiKey* fields, a prompt, or the
+ * EAS credential store (see ensureAscApiKeyInEasJson).
  */
 export async function ascKeyEnv(): Promise<Record<string, string> | null> {
   const asc = await loadAscCreds();
@@ -145,6 +182,7 @@ export async function runAscConnect(opts: { force?: boolean } = {}): Promise<num
         // Already-connected still needs the eas.json fill: doctor's
         // asc-submit-id warn points here, so skipping it would loop the user.
         await syncAscAppIdToEasJson(status.appStoreConnectApp.ascAppIdentifier);
+        await ensureAscApiKeyInEasJson();
         return 0;
       }
     } catch {}
@@ -191,6 +229,7 @@ export async function runAscConnect(opts: { force?: boolean } = {}): Promise<num
     if (resolved.kind === "found") {
       ok(`resolved ascAppId ${BOLD}${resolved.ascAppId}${RESET} from App Store Connect`);
       await syncAscAppIdToEasJson(resolved.ascAppId);
+      await ensureAscApiKeyInEasJson();
       await recordStep("apple-asc-link", {
         bundleId,
         ascAppId: resolved.ascAppId,
@@ -243,6 +282,7 @@ export async function runAscConnect(opts: { force?: boolean } = {}): Promise<num
       postStatus = null;
     }
     await syncAscAppIdToEasJson(postStatus?.appStoreConnectApp?.ascAppIdentifier);
+    await ensureAscApiKeyInEasJson();
   }
   return 0;
 }

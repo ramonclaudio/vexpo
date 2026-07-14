@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 vi.mock("../../src/commands/asc.ts", () => ({
   ascKeyEnv: vi.fn(),
   ensureAscAppId: vi.fn(),
+  ensureAscApiKeyInEasJson: vi.fn(),
 }));
 
 vi.mock("../../src/lib/eas-cli.ts", () => ({
@@ -19,7 +20,7 @@ vi.mock("node:fs", async () => {
   return { ...actual, existsSync: vi.fn(() => true) };
 });
 
-import { ascKeyEnv, ensureAscAppId } from "../../src/commands/asc.ts";
+import { ascKeyEnv, ensureAscApiKeyInEasJson, ensureAscAppId } from "../../src/commands/asc.ts";
 import { runSubmit } from "../../src/commands/submit.ts";
 import { easSpawn } from "../../src/lib/eas-cli.ts";
 import { readAll, requireBundleId } from "../../src/lib/env-local.ts";
@@ -79,6 +80,24 @@ describe("runSubmit", () => {
     expect(opts.env.BETTER_AUTH_SECRET).toBeUndefined();
     // process.env is forwarded too (PATH etc.), not replaced
     expect(opts.env.PATH ?? opts.env.Path).toBeDefined();
+  });
+
+  it("lands the ASC key in eas.json submit profiles before spawning eas submit", async () => {
+    // `eas submit` has no env-var key source; only the eas.json fields beat a
+    // stale EAS-stored key. The write must happen before the spawn.
+    const order: string[] = [];
+    (ensureAscApiKeyInEasJson as unknown as ReturnType<typeof vi.fn>).mockImplementation(
+      async () => {
+        order.push("key-fields");
+      },
+    );
+    easSpawnSpy.mockImplementation(async () => {
+      order.push("spawn");
+      return 0;
+    });
+
+    expect(await runSubmit({})).toBe(0);
+    expect(order).toEqual(["key-fields", "spawn"]);
   });
 
   it("honors --profile and --id (specific build, no --latest)", async () => {
