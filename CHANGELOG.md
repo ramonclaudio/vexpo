@@ -4,6 +4,39 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Pre-1.0
 
 ## [Unreleased]
 
+## [0.2.3] - 2026-07-14
+
+- Fix `vexpo asc connect` guidance for a non-empty EAS key store: the wizard shows a picker there (not the generate prompt), a stored key deleted at Apple 401s at discover-apps, and the create-or-upload entry is the escape. The command now says so up front and prints the recovery on failure, and doctor's `asc-integration` hint matches.
+- Document the two-key end state so nobody collapses it: the local `credentials/` key serves `eas.json` and CLI submits, the EAS-managed key the wizard generates serves cloud auto-submits and the integration.
+- Catalog the ASC dashboard's manual half in a new template `app-store/README.md`: privacy nutrition labels, pricing, content rights, age rating, accessibility declarations, and TestFlight Test Information, split by what `metadata:push` re-pushes later versus what stays manual forever.
+- Write the cached ASC key's `ascApiKeyPath`/`ascApiKeyId`/`ascApiKeyIssuerId` into eas.json submit profiles from `vexpo submit` and `vexpo asc connect`: `eas submit` has no env-var key source, so without the fields a stale EAS-stored key wins silently (a deleted key failed a live submit with altool -26000). Only written when the `.p8` lives inside the repo.
+- Fix `vexpo testflight invite`: drop the `apps` relationship App Store Connect forbids on tester creation (409), attach through `betaGroups`, and resolve the app's internal group when `--group` is omitted.
+- Fix `vexpo testflight whats-new`: the build localizations endpoint rejects `filter[locale]` (400), so list and match the locale client-side.
+- Keep the dev loop working after `updates:gen-cert`: new template `scripts/dev.mjs` passes `--private-key-path` to Metro automatically once the OTA cert is wired (the dev client demands signed manifests), and `dev`/`start`/`ios` route through it. Expect a one-time fingerprint bump from the script changes.
+- Make prod Convex deploys immune to the dev deploy key in `.env.local`: template `convex:deploy` reads `.env.prod`, and the adopt runbook clears `CONVEX_DEPLOY_KEY` for the first prod deploy (a bare `convex deploy` silently landed on dev).
+- Overhaul `vexpo review-account`: generates a real password when the placeholder is still in `store.config.json` (and writes it back so `metadata:push` matches the deployment), seeds prod through a prod-scoped `.env.prod` in the same run, and the template action now rotates an existing account's password via `reset`.
+- Check `eas login` in setup Prerequisites and as a doctor `eas`/`signed-in` check, so a logged-out eas-cli surfaces at the start instead of failing phases mid-run.
+- Document the Maestro limits found live: the auth flow is lite-mode-only once email verification is on, and synthetic taps on the SwiftUI submit button can complete without firing on local dev clients (test on EAS release builds).
+- Document the real 0→1 road: the template README's Ship path walks scaffold to TestFlight in order, marking the four human moments (EAS login, the one-time ASC `.p8` download, the Resend key paste, the first build's credentials wizard with reuse-the-cert answers), and `AGENTS.md` gains a Ship path playbook with the human/agent split per step.
+- Wire `vexpo resend` to both channels: the full flow now provisions the prod deployment too (same scoped sending key, its own webhook and env copy) whenever a prod site URL exists, instead of silently ignoring `--prod`.
+- Stop `vexpo resend --repoint` retiring the sibling channel's live webhook: a prod repoint no longer deletes the dev hook, and vice versa.
+- Report an unreadable Convex env as a doctor warn instead of failing every var as "not set" (the prod deploy-key read path false-negatived a set `BETTER_AUTH_SECRET`).
+- Move template store metadata to the shape `eas metadata:lint` accepts: `releaseNotes` and `promoText` under `info.<locale>`, dropping the rejected top-level blocks.
+- Drop the placeholder App Review notes key on rebrand instead of blanking it, since an empty string fails `eas metadata:lint`.
+- Un-ignore `certs/certificate.pem` in the template `.gitignore` so a global `*.pem` rule can't block committing the OTA public cert.
+- Document the Resend key gotcha in troubleshooting: editing a key's permission rotates its token, so the bootstrapper key must be born full-access and left untouched.
+- Fix `vexpo adopt` and `vexpo lite` after `eas integrations:convex:connect`: eas-cli 21 writes only `CONVEX_DEPLOY_KEY` to `.env.local`, so both now derive `CONVEX_DEPLOYMENT` from the key's prefix and connect to the existing deployment instead of bailing (`adopt`) or trying to create a project the EAS-managed team rejects (`lite`).
+- Stop passing `--deployment` to the Convex CLI for the ambient deployment: the flag resolves through the platform API and needs a user login, which broke `convex env set` under deploy-key auth on integration-created deployments. Cross-deployment reads (`convex migrate --from`, `apple jwt --copy-from`) keep the explicit flag.
+- Extend `vexpo rebrand` to the whole scaffold: rewrite the `convex/env.ts` `SITE_URL` and `APP_NAME` fallbacks, retitle `README.md` and strip the template hero images (a hand-written README is never touched), update the `.env.example` doc lines, and sync `package-lock.json` name and version with `package.json`.
+- Write the bare app name as the App Store title instead of `App | Convex on Expo`, and blank the placeholder App Review notes while preserving notes a user wrote.
+- Hand every file rebrand rewrites to the project formatter so a fresh rebrand passes its own `format:check`.
+- Fix `create-vexpo` inserting the `@ramonclaudio/vexpo` devDependency unsorted, which failed a fresh scaffold's `format:check`.
+- Derive the template `clean.ts` DerivedData match from the package name, case-insensitive, so rebranded projects and dev-variant builds (`FoobarDev-*`) get their Xcode caches cleaned.
+- Swap the template deep-link test fixtures to a brand-neutral `test://` scheme.
+- Point the template README's App Attest recovery steps at the vexpo repo's removal commit, since scaffolds start with fresh git history.
+- Add an agent setup path: a fresh-scaffold playbook in the template `AGENTS.md`, a paste-in prompt in both READMEs, and a pointer in the scaffold's next-steps output.
+- Bump the toolchain and template deps: convex 1.42.2, oxlint 1.74, oxfmt 0.58, vitest 4.1.10, knip 6.26, tsx 4.23.1, and the codeql action pins. `expo install --check` aligned, `expo-doctor` 20/20.
+
 ## [0.2.2] - 2026-07-08
 
 - Put every section label and plain-text screen title in the VoiceOver Headings rotor with `accessibilityAddTraits(["isHeader"])`, and mark the update banner `updatesFrequently` while a download runs ([expo/expo#47387](https://github.com/expo/expo/pull/47387), shipped in `@expo/ui` 57.0.3).
