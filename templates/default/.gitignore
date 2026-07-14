@@ -34,6 +34,9 @@ credentials/*
 keys/
 private-key.pem
 *.private-key.pem
+# Repo-level negation so a global `*.pem` ignore can't block the public cert
+# (a repo .gitignore outranks core.excludesFile, so plain `git add` works).
+!certs/certificate.pem
 
 # EAS (CLI state; keep workflows tracked)
 .eas/*
