@@ -1,11 +1,23 @@
 # Auth journey: sign up (auto-verify lite path) -> land authed -> sign out -> sign back in.
 #
-# This deployment has REQUIRE_EMAIL_VERIFICATION unset, so `getEnabledProviders`
-# returns emailFeatures: false. Sign-up creates a verified account and Better
-# Auth's autoSignIn returns a session in the same call, so there is no OTP step:
-# the user lands signed in. A fresh signed-in user trips the first-launch gate
-# in (app)/_layout.tsx and gets redirected to /welcome; this flow completes that
-# onboarding before asserting the tabs.
+# LITE MODE ONLY: this flow requires REQUIRE_EMAIL_VERIFICATION to be UNSET on
+# the deployment. Once Resend is provisioned (verification on), sign-up needs a
+# real OTP email and the land-authed assertion cannot pass headlessly. On a
+# verification-on deployment, seed a pre-verified account (`npx vexpo
+# review-account`) and drive a sign-IN-only variant, or run this suite on EAS
+# release builds via `.eas/workflows/e2e-tests.yml`.
+#
+# Run locally with a JDK that may not be on PATH (Homebrew keg):
+#   JAVA_HOME=/opt/homebrew/opt/openjdk PATH="$JAVA_HOME/bin:$PATH" \
+#     maestro test .maestro/auth.yaml
+# (openjdk@17 is a known-good fallback if the latest keg misbehaves.)
+#
+# With verification unset, `getEnabledProviders` returns emailFeatures: false.
+# Sign-up creates a verified account and Better Auth's autoSignIn returns a
+# session in the same call, so there is no OTP step: the user lands signed in.
+# A fresh signed-in user trips the first-launch gate in (app)/_layout.tsx and
+# gets redirected to /welcome; this flow completes that onboarding before
+# asserting the tabs.
 #
 # Same @expo/ui SwiftUI conventions as launch.yaml: `testID` maps to the native
 # accessibilityIdentifier and surfaces to Maestro as `resource-id`, so id-based
