@@ -106,12 +106,14 @@ export function testflight(client: AscClient) {
         if (filter?.appId) query["filter[apps]"] = filter.appId;
         return client.paginatedList<BetaTester>("/v1/betaTesters", query);
       },
+      // ASC rejects an `apps` relationship on tester CREATE (409
+      // ENTITY_ERROR.RELATIONSHIP.NOT_ALLOWED); testers reach an app only
+      // through betaGroups, so a group is required.
       async create(args: {
         email: string;
         firstName?: string;
         lastName?: string;
-        appIds?: readonly string[];
-        groupIds?: readonly string[];
+        groupIds: readonly string[];
       }): Promise<BetaTester> {
         const body = {
           data: {
@@ -122,20 +124,9 @@ export function testflight(client: AscClient) {
               ...(args.lastName ? { lastName: args.lastName } : {}),
             },
             relationships: {
-              ...(args.appIds && args.appIds.length > 0
-                ? {
-                    apps: {
-                      data: args.appIds.map((id) => ({ type: "apps", id })),
-                    },
-                  }
-                : {}),
-              ...(args.groupIds && args.groupIds.length > 0
-                ? {
-                    betaGroups: {
-                      data: args.groupIds.map((id) => ({ type: "betaGroups", id })),
-                    },
-                  }
-                : {}),
+              betaGroups: {
+                data: args.groupIds.map((id) => ({ type: "betaGroups", id })),
+              },
             },
           },
         };
@@ -170,21 +161,23 @@ export function testflight(client: AscClient) {
         locale: string;
         whatsNew: string;
       }): Promise<BetaBuildLocalization> {
-        const existing = await client.paginatedList<BetaBuildLocalization>(
+        // The endpoint rejects `filter[locale]` (400 PARAMETER_ERROR.ILLEGAL);
+        // list them all and match the locale here.
+        const all = await client.paginatedList<BetaBuildLocalization>(
           `/v1/builds/${args.buildId}/betaBuildLocalizations`,
-          { "filter[locale]": args.locale },
         );
-        if (existing[0]) {
+        const existing = all.find((l) => l.attributes.locale === args.locale);
+        if (existing) {
           const body = {
             data: {
               type: "betaBuildLocalizations",
-              id: existing[0].id,
+              id: existing.id,
               attributes: { whatsNew: args.whatsNew },
             },
           };
           const res = await client.request<{ data: BetaBuildLocalization }>(
             "PATCH",
-            `/v1/betaBuildLocalizations/${existing[0].id}`,
+            `/v1/betaBuildLocalizations/${existing.id}`,
             body,
           );
           return res.data;

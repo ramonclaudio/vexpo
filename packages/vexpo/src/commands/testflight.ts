@@ -113,6 +113,22 @@ export async function runTestflightInvite(opts: {
 }): Promise<number> {
   const { tf, ascAppId } = await bootstrap();
 
+  // A tester only reaches an app through a beta group (ASC forbids an `apps`
+  // relationship on tester creation), so resolve one up front: the flag, or
+  // the app's single internal group.
+  let groupId = opts.groupId;
+  if (!groupId) {
+    const groups = await tf.betaGroups.list({ appId: ascAppId });
+    const internal = groups.find((g) => g.attributes.isInternalGroup);
+    groupId = (internal ?? groups[0])?.id;
+    if (!groupId) {
+      throw new Error(
+        'no beta group to invite into; create one first: `vexpo testflight groups create "Internal"`',
+      );
+    }
+    nop(`no --group given; using ${internal ? "internal group" : "group"} ${groupId}`);
+  }
+
   const existing = await tf.betaTesters.list({ email: opts.email, appId: ascAppId });
   let testerId = existing[0]?.id;
   if (!testerId) {
@@ -120,14 +136,13 @@ export async function runTestflightInvite(opts: {
       email: opts.email,
       firstName: opts.firstName,
       lastName: opts.lastName,
-      appIds: [ascAppId],
-      groupIds: opts.groupId ? [opts.groupId] : [],
+      groupIds: [groupId],
     });
     testerId = created.id;
     ok(`tester ${opts.email} added`);
   } else {
     ok(`tester ${opts.email} already exists (${testerId})`);
-    if (opts.groupId) await tf.betaGroups.addTesters(opts.groupId, [testerId]);
+    await tf.betaGroups.addTesters(groupId, [testerId]);
   }
 
   const inv = await tf.betaTesterInvitations.create({ appId: ascAppId, testerId });
