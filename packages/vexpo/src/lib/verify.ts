@@ -45,8 +45,11 @@ export type VerifyContext = {
   channel: Channel;
   envLocal: Map<string, string>;
   envProd: Map<string, string>;
-  convexEnv: Map<string, string>;
-  convexProdEnv: Map<string, string>;
+  // null means the read itself failed (auth/CLI), which is not "every var
+  // unset": doctor must warn "unreadable" instead of failing checks that are
+  // merely unverifiable (the prod deploy-key path hit exactly this).
+  convexEnv: Map<string, string> | null;
+  convexProdEnv: Map<string, string> | null;
   appConfig: AppConfigFacts;
   storeConfig?: StoreConfigFacts;
   ascCreds: AscCredentials | null;
@@ -133,9 +136,13 @@ async function fetchOk(url: string, timeoutMs = 5000): Promise<{ ok: boolean; st
   }
 }
 
+function convexEnvFor(ctx: VerifyContext): Map<string, string> | null {
+  return ctx.channel === "prod" ? ctx.convexProdEnv : ctx.convexEnv;
+}
+
 async function verifyConvex(ctx: VerifyContext): Promise<Check[]> {
   const checks: Check[] = [];
-  const env = ctx.channel === "prod" ? ctx.convexProdEnv : ctx.convexEnv;
+  const env = convexEnvFor(ctx);
   const local = ctx.channel === "prod" ? ctx.envProd : ctx.envLocal;
 
   // Login freshness, gated on a configured deployment so lite/offline stays fast.
@@ -186,24 +193,37 @@ async function verifyConvex(ctx: VerifyContext): Promise<Check[]> {
     }
   }
 
-  const secret = env.get("BETTER_AUTH_SECRET");
-  if (secret) {
-    try {
-      const bytes = Buffer.from(secret, "base64");
-      if (bytes.length >= 32) checks.push(ok("convex", "better-auth-secret", `${bytes.length}b`));
-      else
-        checks.push(
-          warn(
-            "convex",
-            "better-auth-secret",
-            `BETTER_AUTH_SECRET is only ${bytes.length}b (32+ recommended)`,
-          ),
-        );
-    } catch {
-      checks.push(fail("convex", "better-auth-secret", "BETTER_AUTH_SECRET not valid base64"));
-    }
+  if (env === null) {
+    checks.push(
+      warn(
+        "convex",
+        "env-read",
+        `Convex env unreadable on ${ctx.channel}; per-var checks skipped`,
+        ctx.channel === "prod"
+          ? "check CONVEX_DEPLOY_KEY in .env.prod, or run `npx convex login`"
+          : "run `npx convex login`",
+      ),
+    );
   } else {
-    checks.push(fail("convex", "better-auth-secret", `not set on Convex (${ctx.channel})`));
+    const secret = env.get("BETTER_AUTH_SECRET");
+    if (secret) {
+      try {
+        const bytes = Buffer.from(secret, "base64");
+        if (bytes.length >= 32) checks.push(ok("convex", "better-auth-secret", `${bytes.length}b`));
+        else
+          checks.push(
+            warn(
+              "convex",
+              "better-auth-secret",
+              `BETTER_AUTH_SECRET is only ${bytes.length}b (32+ recommended)`,
+            ),
+          );
+      } catch {
+        checks.push(fail("convex", "better-auth-secret", "BETTER_AUTH_SECRET not valid base64"));
+      }
+    } else {
+      checks.push(fail("convex", "better-auth-secret", `not set on Convex (${ctx.channel})`));
+    }
   }
 
   // Enumerate the project's deployments via the Platform API to catch a
@@ -235,7 +255,13 @@ async function verifyConvex(ctx: VerifyContext): Promise<Check[]> {
 
 async function verifyResend(ctx: VerifyContext): Promise<Check[]> {
   const checks: Check[] = [];
-  const env = ctx.channel === "prod" ? ctx.convexProdEnv : ctx.convexEnv;
+  const env = convexEnvFor(ctx);
+  if (env === null) {
+    checks.push(
+      skip("resend", "api-key-set", `Convex env unreadable on ${ctx.channel}; checks skipped`),
+    );
+    return checks;
+  }
   const apiKey = env.get("RESEND_API_KEY");
   const emailFrom = env.get("EMAIL_FROM");
   const local = ctx.channel === "prod" ? ctx.envProd : ctx.envLocal;
@@ -390,15 +416,21 @@ async function verifyResend(ctx: VerifyContext): Promise<Check[]> {
 
 async function verifyApple(ctx: VerifyContext): Promise<Check[]> {
   const checks: Check[] = [];
-  const env = ctx.channel === "prod" ? ctx.convexProdEnv : ctx.convexEnv;
+  const env = convexEnvFor(ctx);
   const local = ctx.channel === "prod" ? ctx.envProd : ctx.envLocal;
 
-  const teamId = env.get("APPLE_TEAM_ID") ?? local.get("EXPO_PUBLIC_APPLE_TEAM_ID");
-  const keyId = env.get("APPLE_KEY_ID");
-  const servicesId = env.get("APPLE_CLIENT_ID") ?? local.get("APPLE_SERVICES_ID");
-  const jwt = env.get("APPLE_CLIENT_SECRET");
+  const servicesId = env?.get("APPLE_CLIENT_ID") ?? local.get("APPLE_SERVICES_ID");
+  const teamId = env?.get("APPLE_TEAM_ID") ?? local.get("EXPO_PUBLIC_APPLE_TEAM_ID");
+  const keyId = env?.get("APPLE_KEY_ID");
+  const jwt = env?.get("APPLE_CLIENT_SECRET");
 
-  if (!teamId) checks.push(warn("apple", "team-id-set", "APPLE_TEAM_ID not set"));
+  if (env === null) {
+    // The ASC-key checks below run on local creds, so only the env-derived
+    // checks go quiet.
+    checks.push(
+      skip("apple", "convex-env", `Convex env unreadable on ${ctx.channel}; env checks skipped`),
+    );
+  } else if (!teamId) checks.push(warn("apple", "team-id-set", "APPLE_TEAM_ID not set"));
   else if (!/^[A-Z0-9]{10}$/.test(teamId))
     checks.push(warn("apple", "team-id-format", `APPLE_TEAM_ID='${teamId}' not 10 alphanumeric`));
 
@@ -408,7 +440,10 @@ async function verifyApple(ctx: VerifyContext): Promise<Check[]> {
   if (servicesId && !/^[a-z0-9.-]+$/i.test(servicesId))
     checks.push(warn("apple", "services-id-format", `APPLE_SERVICES_ID looks malformed`));
 
-  if (jwt) {
+  if (env === null) {
+    // jwt is unknowable with the env unreadable; the convex-env skip above
+    // already says why, so don't mislabel it "Apple Sign In disabled".
+  } else if (jwt) {
     const decoded = decodeJwt(jwt);
     if (!decoded) {
       checks.push(fail("apple", "jwt-decode", "APPLE_CLIENT_SECRET is not a valid JWT"));
@@ -522,8 +557,7 @@ async function verifyEas(ctx: VerifyContext): Promise<Check[]> {
   // shell-out, so the read path stays fast and offline-safe. REQUIRE_EMAIL_VERIFICATION
   // unset on Convex is the lite-setup marker.
   if (!projectId) {
-    const env = ctx.channel === "prod" ? ctx.convexProdEnv : ctx.convexEnv;
-    const rev = env.get("REQUIRE_EMAIL_VERIFICATION");
+    const rev = convexEnvFor(ctx)?.get("REQUIRE_EMAIL_VERIFICATION");
     if (!rev || rev === "false") {
       checks.push(skip("eas", "project-id", "lite mode (run `npx vexpo full` to init EAS)"));
       return checks;
@@ -707,7 +741,9 @@ async function verifyEas(ctx: VerifyContext): Promise<Check[]> {
 
 function verifyCoherence(ctx: VerifyContext): Check[] {
   const checks: Check[] = [];
-  const env = ctx.channel === "prod" ? ctx.convexProdEnv : ctx.convexEnv;
+  // Every coherence check needs both sides present before it emits anything,
+  // so an unreadable env (null) degrades to "no cross-checks", never a fail.
+  const env = convexEnvFor(ctx) ?? new Map<string, string>();
   const local = ctx.channel === "prod" ? ctx.envProd : ctx.envLocal;
 
   const expoBundle = local.get("EXPO_PUBLIC_APP_BUNDLE_ID");
@@ -853,14 +889,14 @@ export async function readContext(channel: Channel): Promise<VerifyContext> {
     [
       readEnvFile(".env.local"),
       readEnvFile(".env.prod").then(async (m) => (m.size > 0 ? m : readEnvFile(".env.production"))),
-      convexEnvMap()
-        .then((m) => m ?? new Map<string, string>())
-        .catch(() => new Map<string, string>()),
+      // A null from envMap means the read failed; keep it null so checks
+      // report "unreadable" instead of failing every var as unset.
+      convexEnvMap().catch(() => null),
       prodEnvFile
-        ? convexEnvMap({ prod: true, envFile: prodEnvFile } satisfies ConvexTarget)
-            .then((m) => m ?? new Map<string, string>())
-            .catch(() => new Map<string, string>())
-        : Promise.resolve(new Map<string, string>()),
+        ? convexEnvMap({ prod: true, envFile: prodEnvFile } satisfies ConvexTarget).catch(
+            () => null,
+          )
+        : Promise.resolve(null),
       readAppConfigFacts(),
       loadAscCreds(),
     ],
