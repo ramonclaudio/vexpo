@@ -6,9 +6,10 @@ import { createAuth } from "./auth";
 import { rateLimiter, type RateLimitName } from "./rateLimit";
 
 /**
- * Idempotent: if the user already exists, just re-asserts emailVerified=true.
- * Does NOT rotate the password on re-run, delete the user from the dashboard
- * first if you need a fresh password.
+ * Idempotent: if the user already exists, re-asserts emailVerified=true.
+ * Pass `reset: true` to also rotate the existing account's password to the
+ * given value (hashed through Better Auth's own hasher, so verification
+ * matches); without it a re-run keeps the old password.
  *
  * Side effect: triggers a verification OTP email on first run via the normal
  * sign-up flow. The OTP is unused (we flip emailVerified directly via the
@@ -20,15 +21,17 @@ export const createReviewAccount = internalAction({
     password: v.string(),
     name: v.string(),
     username: v.optional(v.string()),
+    reset: v.optional(v.boolean()),
   },
   returns: v.object({
     userId: v.string(),
     email: v.string(),
     created: v.boolean(),
     verified: v.boolean(),
+    passwordReset: v.boolean(),
     name: v.string(),
   }),
-  handler: async (ctx, { email, password, name, username }) => {
+  handler: async (ctx, { email, password, name, username, reset }) => {
     const auth = createAuth(ctx);
 
     type User = { _id?: string; id?: string; email: string; emailVerified: boolean };
@@ -65,11 +68,30 @@ export const createReviewAccount = internalAction({
       },
     });
 
+    // Rotate the credential-provider password through Better Auth's own
+    // hasher so sign-in verification matches the stored hash.
+    let passwordReset = false;
+    if (!created && reset) {
+      const hash = await (await auth.$context).password.hash(password);
+      await ctx.runMutation(components.betterAuth.adapter.updateOne, {
+        input: {
+          model: "account",
+          where: [
+            { field: "userId", value: docId },
+            { field: "providerId", value: "credential" },
+          ],
+          update: { password: hash },
+        },
+      });
+      passwordReset = true;
+    }
+
     return {
       userId: docId,
       email,
       created,
       verified: true,
+      passwordReset,
       name,
     };
   },
