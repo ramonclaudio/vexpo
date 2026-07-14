@@ -16,6 +16,8 @@ import {
 } from "../lib/output.ts";
 import { envSet as convexEnvSet } from "../lib/convex-env.ts";
 import { ensureLine, readAll, removeLines } from "../lib/env-local.ts";
+import { dlx } from "../lib/pkg-manager.ts";
+import { run } from "../lib/proc.ts";
 import { load, recordStep } from "../lib/state.ts";
 
 export type RebrandOptions = {
@@ -237,13 +239,42 @@ async function rewriteAppJson(): Promise<void> {
   ok(`reset ${file} (eas init will regenerate projectId)`);
 }
 
+const REBRAND_VERSION = "0.1.0";
+
 async function rewritePackageJson(inputs: RebrandInputs): Promise<void> {
   const file = "package.json";
   const json = JSON.parse(await readFile(file, "utf8")) as Record<string, unknown>;
   json.name = inputs.packageName;
-  json.version = "0.1.0";
+  json.version = REBRAND_VERSION;
   await writeFile(file, JSON.stringify(json, null, 2) + "\n");
-  ok(`updated ${file} (name=${inputs.packageName}, version=0.1.0)`);
+  ok(`updated ${file} (name=${inputs.packageName}, version=${REBRAND_VERSION})`);
+}
+
+// npm only reconciles the lockfile header on the next install, so without this
+// a fresh rebrand ships a lockfile whose name/version disagree with
+// package.json. Patch the two mirrored fields; npm's own 2-space format holds.
+async function syncPackageLock(inputs: RebrandInputs): Promise<void> {
+  const file = "package-lock.json";
+  let json: {
+    name?: string;
+    version?: string;
+    packages?: Record<string, { name?: string; version?: string }>;
+  };
+  try {
+    json = JSON.parse(await readFile(file, "utf8")) as typeof json;
+  } catch {
+    nop(`${file} not found; skipped`);
+    return;
+  }
+  json.name = inputs.packageName;
+  json.version = REBRAND_VERSION;
+  const root = json.packages?.[""];
+  if (root) {
+    root.name = inputs.packageName;
+    root.version = REBRAND_VERSION;
+  }
+  await writeFile(file, JSON.stringify(json, null, 2) + "\n");
+  ok(`updated ${file} (synced name + version)`);
 }
 
 async function rewriteStoreConfig(inputs: RebrandInputs): Promise<void> {
@@ -256,7 +287,9 @@ async function rewriteStoreConfig(inputs: RebrandInputs): Promise<void> {
     throw new Error(`${file} missing or unparseable; restore it from the vexpo template first`);
   }
   const en = json.apple.info["en-US"];
-  en.title = `${inputs.appName} | Convex on Expo`;
+  // The bare app name: the old `| Convex on Expo` suffix pushed template
+  // branding into the App Store title, which caps at 30 chars anyway.
+  en.title = inputs.appName;
   en.marketingUrl = inputs.marketingUrl;
   en.supportUrl = inputs.supportUrl;
   en.privacyPolicyUrl = inputs.privacyUrl;
@@ -265,6 +298,14 @@ async function rewriteStoreConfig(inputs: RebrandInputs): Promise<void> {
   json.apple.review.lastName = inputs.reviewLastName;
   json.apple.review.email = inputs.reviewEmail;
   json.apple.review.phone = inputs.reviewPhone;
+  // The template's notes tell the USER to run this wizard, text that would
+  // otherwise ship to Apple's review team. Drop the key only while it's still
+  // the placeholder (an empty string fails `eas metadata:lint`'s minimum
+  // length; absent passes); real notes a user wrote survive a --force re-run.
+  const notes = json.apple.review.notes;
+  if (typeof notes === "string" && notes.includes("vexpo rebrand")) {
+    delete json.apple.review.notes;
+  }
   await writeFile(file, JSON.stringify(json, null, 2) + "\n");
   ok(`updated ${file}`);
 }
@@ -278,8 +319,6 @@ type StoreConfigShape = {
     advisory: Record<string, unknown>;
     review: Record<string, unknown>;
     release: Record<string, unknown>;
-    releaseNotes: Record<string, string>;
-    promotionalText: Record<string, string>;
   };
 };
 
@@ -350,6 +389,110 @@ async function validateTargets(): Promise<void> {
       'store.config.json: missing apple.info["en-US"]/apple.review; restore it from the vexpo template first',
     );
   }
+}
+
+/**
+ * Secondary rewrite targets. Unlike the four core files (hard-validated up
+ * front, all-or-nothing), these carry template branding in code comments,
+ * docs, and server fallbacks. Each rewrite is best-effort: a missing file or
+ * an already-customized one is skipped with a note, never a failure, so a
+ * project that diverged from the template still rebrands cleanly.
+ */
+
+async function readOrSkip(file: string): Promise<string | null> {
+  try {
+    return await readFile(file, "utf8");
+  } catch {
+    nop(`${file} not found; skipped`);
+    return null;
+  }
+}
+
+// convex/env.ts runs server-side where app.config.ts is unreadable, so its
+// SITE_URL / APP_NAME fallbacks carry hardcoded literals ("vexpo://", "Vexpo").
+// The CLI pushes real values to Convex env during setup, but the fresh-checkout
+// fallbacks must still say the right app: SITE_URL's fallback feeds
+// trustedOrigins and APP_NAME's feeds email copy.
+async function rewriteConvexEnv(inputs: RebrandInputs): Promise<void> {
+  const file = "convex/env.ts";
+  const text = await readOrSkip(file);
+  if (text === null) return;
+
+  const siteRe = new RegExp(String.raw`optional\("SITE_URL", ${QUOTED}\)`);
+  const nameRe = new RegExp(String.raw`optional\("APP_NAME", ${QUOTED}\)`);
+  if (!siteRe.test(text) && !nameRe.test(text)) {
+    nop(`${file} has no SITE_URL/APP_NAME fallbacks; skipped`);
+    return;
+  }
+
+  const updated = text
+    .replace(siteRe, () => `optional("SITE_URL", ${JSON.stringify(`${inputs.scheme}://`)})`)
+    .replace(nameRe, () => `optional("APP_NAME", ${JSON.stringify(inputs.appName)})`);
+  await writeFile(file, updated);
+  ok(`updated ${file}`);
+}
+
+async function rewriteEnvExample(inputs: RebrandInputs): Promise<void> {
+  const file = ".env.example";
+  const text = await readOrSkip(file);
+  if (text === null) return;
+
+  const updated = text
+    .replace(
+      /# Reverse-DNS bundle id, e\.g\. \S+\./,
+      () => `# Reverse-DNS bundle id, e.g. ${inputs.bundleId}.`,
+    )
+    .replace(
+      /# Toggles `name` to "[^"]*" so dev and prod/,
+      () => `# Toggles \`name\` to ${JSON.stringify(`${inputs.appName} (Dev)`)} so dev and prod`,
+    );
+  if (updated === text) {
+    nop(`${file} already customized; skipped`);
+    return;
+  }
+  await writeFile(file, updated);
+  ok(`updated ${file}`);
+}
+
+// The scaffold ships the template's README: a "# vexpo" title and hero shots
+// hotlinked from the template repo. Retitle to the app and drop the template
+// imagery. Anything else in the file is prose the user owns, so a README that
+// no longer opens with the template title is left entirely alone.
+async function rewriteReadme(inputs: RebrandInputs): Promise<void> {
+  const file = "README.md";
+  const text = await readOrSkip(file);
+  if (text === null) return;
+
+  if (!text.startsWith("# vexpo\n")) {
+    nop(`${file} already customized; skipped`);
+    return;
+  }
+  const updated = text
+    .replace("# vexpo", `# ${inputs.appName}`)
+    .replace(/<p align="center">[\s\S]*?<\/p>\n*/g, (block) =>
+      block.includes("ramonclaudio/vexpo") ? "" : block,
+    );
+  await writeFile(file, updated);
+  ok(`updated ${file}`);
+}
+
+// JSON.stringify never inlines arrays, but the template's oxfmt does, so a
+// rewritten store.config.json fails the project's own `format:check`. Hand the
+// touched files back to the project formatter; a missing oxfmt is a note, not
+// a failure, since the rebrand itself succeeded. Secondary targets may not
+// exist, so only files actually present are passed.
+async function formatTargets(files: string[]): Promise<void> {
+  const present: string[] = [];
+  for (const f of files) {
+    try {
+      await access(f);
+      present.push(f);
+    } catch {}
+  }
+  if (present.length === 0) return;
+  const { code } = await run([dlx(), "oxfmt", ...present]);
+  if (code === 0) ok(`formatted ${present.join(", ")}`);
+  else note("oxfmt unavailable; run your formatter over the rewritten files");
 }
 
 async function alreadyRebranded(): Promise<boolean> {
@@ -442,12 +585,36 @@ export async function runRebrand(options: RebrandOptions): Promise<number> {
     }
 
     const stamp = new Date().toISOString().replace(/[:.]/g, "-");
-    await backup(["app.config.ts", "app.json", "package.json", "store.config.json"], stamp);
+    // package-lock.json is regenerable from a plain install, so it skips backup.
+    await backup(
+      [
+        "app.config.ts",
+        "app.json",
+        "package.json",
+        "store.config.json",
+        "convex/env.ts",
+        ".env.example",
+        "README.md",
+      ],
+      stamp,
+    );
 
     await rewriteAppConfig(inputs);
     await rewriteAppJson();
     await rewritePackageJson(inputs);
+    await syncPackageLock(inputs);
     await rewriteStoreConfig(inputs);
+    await rewriteConvexEnv(inputs);
+    await rewriteEnvExample(inputs);
+    await rewriteReadme(inputs);
+    await formatTargets([
+      "app.config.ts",
+      "app.json",
+      "package.json",
+      "store.config.json",
+      "convex/env.ts",
+      "README.md",
+    ]);
     await syncBundleId(inputs.bundleId);
 
     // app.config.ts reads `owner` from EXPO_PUBLIC_EXPO_OWNER; persist the slug
