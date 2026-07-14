@@ -17,7 +17,7 @@
 import { spawn as nodeSpawn } from "node:child_process";
 import { readdir, readFile, rm, stat } from "node:fs/promises";
 import { homedir } from "node:os";
-import { dirname, resolve } from "node:path";
+import { basename, dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { parseArgs } from "node:util";
 
@@ -237,7 +237,7 @@ async function readPkgName(): Promise<string> {
       if (typeof name === "string") return name;
     }
   } catch {}
-  return "vexpo";
+  return basename(REPO);
 }
 
 const PROJECT_TARGETS = [
@@ -418,13 +418,14 @@ async function stepXcodeDerivedData(pkgName: string): Promise<void> {
     nop("DerivedData not present");
     return;
   }
-  // Match folders that start with the project's pkg name OR the iOS
-  // bundle's display name. We filter by leading prefix so we never touch
-  // other projects' caches.
-  const matches = [
-    ...(await expandGlob(root, `${pkgName}-*`)),
-    ...(await expandGlob(root, "Vexpo-*")),
-  ];
+  // Match folders whose name starts with the project's pkg name, case-
+  // insensitively: prebuild derives the Xcode project from the display name
+  // ("Foobar", "FoobarDev"), while pkg.name is lowercase ("foobar"). The
+  // prefix filter still never touches other projects' caches.
+  const prefix = pkgName.toLowerCase();
+  const matches = (await readdir(root))
+    .filter((e) => e.toLowerCase().startsWith(prefix))
+    .map((e) => `${root}/${e}`);
   if (matches.length === 0) {
     nop("no matching DerivedData entries");
     return;
