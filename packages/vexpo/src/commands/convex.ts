@@ -1,5 +1,5 @@
 import { appleTeamIdFallback, bundleIdFallback, pkgName, scheme } from "../lib/app.ts";
-import { envSet as convexEnvSet } from "../lib/convex-env.ts";
+import { deploymentRefFromDeployKey, envSet as convexEnvSet } from "../lib/convex-env.ts";
 import { checkToken } from "../lib/convex-management.ts";
 import { ensureLine, readAll, removeLines } from "../lib/env-local.ts";
 import {
@@ -89,7 +89,7 @@ export async function runConvex(options: ConvexOptions): Promise<number> {
   }
 
   const localEnv = await readAll();
-  const existing = localEnv.get("CONVEX_DEPLOYMENT");
+  let existing = localEnv.get("CONVEX_DEPLOYMENT");
 
   if (options.fresh) {
     await removeLines([
@@ -97,9 +97,21 @@ export async function runConvex(options: ConvexOptions): Promise<number> {
       "EXPO_PUBLIC_CONVEX_URL",
       "EXPO_PUBLIC_CONVEX_SITE_URL",
     ]);
+    existing = undefined;
+  } else if (!existing) {
+    // eas-cli 21's `integrations:convex:connect` leaves only CONVEX_DEPLOY_KEY
+    // behind. The key names its deployment, so connect to it instead of
+    // provisioning a fresh project, which an EAS-managed team rejects with
+    // "is managed by oauth:..." (or a login prompt in non-TTY runs).
+    const derived = deploymentRefFromDeployKey(localEnv.get("CONVEX_DEPLOY_KEY"));
+    if (derived?.startsWith("dev:")) {
+      await ensureLine("CONVEX_DEPLOYMENT", derived);
+      existing = derived;
+      ok(`derived CONVEX_DEPLOYMENT=${derived} from CONVEX_DEPLOY_KEY`);
+    }
   }
 
-  const needsProvisioning = options.fresh === true || !existing;
+  const needsProvisioning = !existing;
   const projectName = options.name ?? (await pkgName());
   // Skip the interactive team picker when CONVEX_TEAM is set (CI / scripts).
   const team = (process.env.CONVEX_TEAM ?? localEnv.get("CONVEX_TEAM"))?.trim() || undefined;

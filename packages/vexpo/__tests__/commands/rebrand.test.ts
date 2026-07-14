@@ -176,10 +176,10 @@ describe("runRebrand bundle id sync", () => {
       return argv.includes("set") && argv.includes("--from-file");
     });
     expect(setCall).toBeDefined();
-    const argv = setCall![0] as string[];
-    const depFlag = argv.indexOf("--deployment");
-    expect(depFlag).toBeGreaterThan(-1);
-    expect(argv[depFlag + 1]).toBe("happy-frog-12");
+    // Flagless on purpose: the convex CLI reads CONVEX_DEPLOYMENT /
+    // CONVEX_DEPLOY_KEY from .env.local itself, and --deployment would break
+    // deploy-key auth on integration-created deployments.
+    expect(setCall![0] as string[]).not.toContain("--deployment");
     expect(fromFileWrites.some((c) => c.includes("APP_BUNDLE_ID=com.acme.foobar"))).toBe(true);
     expect(fromFileWrites.every((c) => !c.includes("com.old.stale"))).toBe(true);
   });

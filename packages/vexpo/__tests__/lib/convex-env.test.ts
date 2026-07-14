@@ -1,6 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { envMap, envSet, envSetFromFile } from "../../src/lib/convex-env.ts";
+import {
+  deploymentRefFromDeployKey,
+  envMap,
+  envSet,
+  envSetFromFile,
+} from "../../src/lib/convex-env.ts";
 
 vi.mock("../../src/lib/proc.ts", () => ({
   run: vi.fn().mockResolvedValue({ code: 0, stdout: "", stderr: "" }),
@@ -52,13 +57,15 @@ describe("envSetFromFile", () => {
     expect(argv).toContain("happy-frog-12");
   });
 
-  it("strips dev:/prod: prefix from CONVEX_DEPLOYMENT env var", async () => {
+  // The flag resolves through the platform API, which needs the user's login,
+  // so passing it for the ambient deployment breaks deploy-key auth on
+  // integration-created deployments. Flagless, the convex CLI reads
+  // CONVEX_DEPLOYMENT / CONVEX_DEPLOY_KEY from .env.local itself.
+  it("never passes --deployment for the ambient CONVEX_DEPLOYMENT", async () => {
     process.env.CONVEX_DEPLOYMENT = "dev:happy-frog-12";
     await envSetFromFile("/tmp/env.txt");
     const argv = runSpy.mock.calls[0]?.[0] as string[];
-    const idx = argv.indexOf("--deployment");
-    expect(idx).toBeGreaterThan(-1);
-    expect(argv[idx + 1]).toBe("happy-frog-12");
+    expect(argv).not.toContain("--deployment");
   });
 
   it("throws with stderr tail when convex CLI fails", async () => {
@@ -70,6 +77,28 @@ describe("envSetFromFile", () => {
     await expect(envSetFromFile("/tmp/env.txt")).rejects.toThrow(
       /Use --force to overwrite existing values/,
     );
+  });
+});
+
+describe("deploymentRefFromDeployKey", () => {
+  it("recovers the deployment ref from a dev deploy key", () => {
+    expect(deploymentRefFromDeployKey("dev:quick-fox-123|eyJ2MiI6IjAxIn0=")).toBe(
+      "dev:quick-fox-123",
+    );
+  });
+
+  it("recovers a prod ref", () => {
+    expect(deploymentRefFromDeployKey("prod:brave-otter-42|token")).toBe("prod:brave-otter-42");
+  });
+
+  it("returns undefined for project-scoped keys, which name no deployment", () => {
+    expect(deploymentRefFromDeployKey("project:acme:my-app|token")).toBeUndefined();
+  });
+
+  it("returns undefined for malformed or missing values", () => {
+    expect(deploymentRefFromDeployKey("dev:no-token-part")).toBeUndefined();
+    expect(deploymentRefFromDeployKey("eyJ2MiI6IjAxIn0=")).toBeUndefined();
+    expect(deploymentRefFromDeployKey(undefined)).toBeUndefined();
   });
 });
 
