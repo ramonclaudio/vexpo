@@ -183,7 +183,9 @@ program
 
 program
   .command("review-account")
-  .description("Seed the App Review demo account on Convex.")
+  .description(
+    "Seed the App Review demo account on dev + prod Convex. Generates a password when store.config.json still has the placeholder (and writes it back), and rotates an existing account's password so the file and the deployments never drift.",
+  )
   .option("--email <email>", "override demo email")
   .option("--password <password>", "override demo password")
   .option("--name <name>", "override demo display name", "App Review")
