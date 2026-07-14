@@ -9,6 +9,8 @@
         "subtitle": "Replace before submission",
         "description": "Replace this with your app's full description before submitting to App Store. Apple allows up to 4,000 characters.",
         "keywords": ["expo", "convex", "ios"],
+        "releaseNotes": "Initial release.",
+        "promoText": "Replace with your app's promotional text before submission.",
         "marketingUrl": "https://example.com",
         "supportUrl": "https://example.com",
         "privacyPolicyUrl": "https://example.com/privacy",
@@ -47,12 +49,6 @@
     "release": {
       "automaticRelease": true,
       "phasedRelease": true
-    },
-    "releaseNotes": {
-      "en-US": "Initial release."
-    },
-    "promotionalText": {
-      "en-US": "Replace with your app's promotional text before submission."
     }
   }
 }
