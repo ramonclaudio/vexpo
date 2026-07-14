@@ -564,6 +564,20 @@ async function verifyEas(ctx: VerifyContext): Promise<Check[]> {
     }
   }
 
+  // Account-level, needs no projectId: a logged-out eas-cli fails every later
+  // EAS phase non-interactively, so say it first. Runs after the lite-mode
+  // return so lite doctor stays free of EAS shell-outs.
+  try {
+    const who = await easWhoami();
+    checks.push(
+      who
+        ? ok("eas", "signed-in", who)
+        : warn("eas", "signed-in", "not signed in (run `npx eas-cli login`)"),
+    );
+  } catch {
+    checks.push(skip("eas", "signed-in", "eas CLI not available"));
+  }
+
   // Fetch all three EAS env maps once. eas-cli resolves the project itself, so
   // this can succeed even when vexpo's projectId resolution returns null (a
   // stubbed app.json with EAS_PROJECT_ID only in the shell).
@@ -593,20 +607,9 @@ async function verifyEas(ctx: VerifyContext): Promise<Check[]> {
     return checks;
   }
 
-  // whoami + project-info need a resolved projectId; best-effort,
+  // project-info needs a resolved projectId; best-effort,
   // never short-circuit the env + integration checks below.
   if (projectId) {
-    try {
-      const who = await easWhoami();
-      checks.push(
-        who
-          ? ok("eas", "signed-in", who)
-          : warn("eas", "signed-in", "not signed in (run `npx eas-cli login`)"),
-      );
-    } catch {
-      checks.push(skip("eas", "signed-in", "eas CLI not available"));
-    }
-
     try {
       const info = await easProjectInfo();
       if (info && info.id === projectId) checks.push(ok("eas", "project-info", info.fullName));

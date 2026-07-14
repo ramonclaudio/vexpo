@@ -10,6 +10,7 @@ import {
   envList as easEnvList,
   resolveProjectId,
   version as easCliVersion,
+  whoami as easWhoami,
 } from "../lib/eas-project.ts";
 import { ENV_FILE, readAll } from "../lib/env-local.ts";
 import { fileExists } from "../lib/fs.ts";
@@ -294,6 +295,12 @@ async function stepPrerequisites(): Promise<void> {
 
   if (await convexIsLoggedIn()) ok("Convex auth detected");
   else yep("not signed in to Convex (`npx vexpo accounts` will prompt)");
+
+  // Surface a logged-out eas-cli at the very first section: the EAS phases
+  // bail non-interactively much later, which cost a live 0→1 run a detour.
+  const who = await easWhoami();
+  if (who) ok(`Expo auth: signed in as ${who}`);
+  else yep("not signed in to Expo (run `npx eas-cli login` before `vexpo full`)");
 }
 
 const STEP_LABELS: Record<string, string> = {
