@@ -57,6 +57,18 @@ npx eas-cli integrations:convex:connect
 npx vexpo adopt
 ```
 
+## Resend
+
+### Key that worked minutes ago now returns `API key is invalid`
+
+Editing a key's permission in the Resend dashboard rotates its token: the
+string you pasted is dead the moment you flip Full access to Sending or back.
+Reads can keep passing for a couple of minutes (cached auth) while writes fail
+instantly, which looks like a half-broken key. Create the bootstrapper key with
+Full access from the start, leave it untouched until `vexpo resend` reports
+done, then revoke it. The scoped sending key the CLI mints is the only one that
+stays live.
+
 ## Expo
 
 ### Push notifications don't fire

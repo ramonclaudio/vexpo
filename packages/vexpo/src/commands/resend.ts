@@ -46,15 +46,34 @@ async function resolveFullKey(): Promise<string | null> {
   line();
   note("Need a Resend full-access API key. Create one at:");
   note(`  ${BOLD}https://resend.com/api-keys${RESET} → Create API Key → Permission: Full Access`);
-  note("Used once, never persisted.");
+  note("Used once, never persisted. Don't edit its permission in the dashboard");
+  note("mid-run: editing a key's permission rotates its token.");
   const pasted = await ask(`  RESEND_FULL_ACCESS_KEY > `);
   return pasted || null;
+}
+
+/**
+ * The prod deployment is its own Resend channel: same scoped sending key, but
+ * its own webhook (per-endpoint signing secret) and its own copy of the env.
+ */
+async function prodChannel(): Promise<{ envFile: string; siteUrl: string } | null> {
+  const envFile = (await fileExists(".env.prod"))
+    ? ".env.prod"
+    : (await fileExists(".env.production"))
+      ? ".env.production"
+      : null;
+  if (!envFile) return null;
+  const siteUrl = (await readEnvFile(envFile)).get("EXPO_PUBLIC_CONVEX_SITE_URL");
+  return siteUrl ? { envFile, siteUrl } : null;
 }
 
 export async function runResend(options: ResendOptions): Promise<number> {
   if (options.repoint) return runResendRepoint(options);
 
   section("Resend provisioning");
+  if (options.prod) {
+    nop("--prod pairs with --repoint; the full flow wires dev and prod itself");
+  }
 
   const siteUrl = await readOne("EXPO_PUBLIC_CONVEX_SITE_URL");
   if (!siteUrl) {
@@ -180,6 +199,31 @@ export async function runResend(options: ResendOptions): Promise<number> {
   await envSet("REQUIRE_EMAIL_VERIFICATION", "true");
   ok("REQUIRE_EMAIL_VERIFICATION=true (sign-up now requires OTP)");
 
+  // Prod channel, wired in the same run so the two deployments never drift:
+  // the sending key is shared (its token only exists right now), the webhook
+  // and its signing secret are per-deployment.
+  const prod = await prodChannel();
+  let prodWebhook: { id: string; endpoint: string } | undefined;
+  if (!prod) {
+    nop(
+      "no prod site URL yet; prod channel skipped (re-run after `CONVEX_DEPLOY_KEY= npx convex deploy`)",
+    );
+  } else if (prod.siteUrl === siteUrl) {
+    nop("prod site URL matches dev; prod channel skipped");
+  } else {
+    const target: ConvexTarget = { prod: true, envFile: prod.envFile };
+    const prodEndpoint = `${prod.siteUrl.replace(/\/$/, "")}/resend-webhook`;
+    const created = await provisionWebhook(fullKey, prodEndpoint);
+    prodWebhook = { id: created.id, endpoint: prodEndpoint };
+    ok(`webhook → ${prodEndpoint}`);
+    await envSet("RESEND_API_KEY", token, target);
+    await envSet("RESEND_WEBHOOK_SECRET", created.secret, target);
+    await envSet("EMAIL_FROM", fromAddr, target);
+    await envSet("RESEND_TEST_MODE", "false", target);
+    await envSet("REQUIRE_EMAIL_VERIFICATION", "true", target);
+    ok("prod deployment env aligned (same sending key, its own webhook secret)");
+  }
+
   await recordStep("resend", {
     domainId: domain.id,
     domainName: domain.name,
@@ -187,6 +231,9 @@ export async function runResend(options: ResendOptions): Promise<number> {
     fromAddress: fromAddr,
     webhookEndpoint: endpoint,
     webhookId,
+    ...(prodWebhook
+      ? { prodWebhookEndpoint: prodWebhook.endpoint, prodWebhookId: prodWebhook.id }
+      : {}),
   });
 
   line();
@@ -237,10 +284,23 @@ async function runResendRepoint(options: ResendOptions): Promise<number> {
     return 1;
   }
 
+  // The sibling channel's live webhook is not stale: dev and prod each keep
+  // their own endpoint, so a prod repoint must never retire the dev hook (and
+  // vice versa).
+  const siblingSite = options.prod
+    ? await readOne("EXPO_PUBLIC_CONVEX_SITE_URL")
+    : (await prodChannel())?.siteUrl;
+  const siblingEndpoint = siblingSite
+    ? `${siblingSite.replace(/\/$/, "")}/resend-webhook`
+    : undefined;
+
   const hooks = await listWebhooks(fullKey);
   const atNew = hooks.find((w) => w.endpoint === endpoint);
   const stale = hooks.filter(
-    (w) => w.endpoint !== endpoint && w.endpoint.endsWith("/resend-webhook"),
+    (w) =>
+      w.endpoint !== endpoint &&
+      w.endpoint !== siblingEndpoint &&
+      w.endpoint.endsWith("/resend-webhook"),
   );
 
   let webhookId: string | undefined;

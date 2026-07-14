@@ -251,7 +251,10 @@ program
     "--repoint",
     "move the webhook to the current convex.site + realign the secret, without rotating the sending key or changing auth policy",
   )
-  .option("--prod", "with --repoint, target the prod deployment + .env.prod site URL")
+  .option(
+    "--prod",
+    "with --repoint, target the prod deployment + .env.prod site URL (the full flow wires both channels itself)",
+  )
   .option(
     "--force",
     "with --repoint, recreate the webhook even if it already points at the endpoint",
