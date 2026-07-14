@@ -203,7 +203,11 @@ async function rewritePackage(target: string, requestedName: string): Promise<vo
   // and caret ranges never cross the minor while the major is 0.
   const devDeps = (parsed.devDependencies ?? {}) as Record<string, string>;
   devDeps["@ramonclaudio/vexpo"] = `^${pkg.version}`;
-  parsed.devDependencies = devDeps;
+  // Sorted insert, not append: oxfmt sorts dependency keys, so an appended
+  // entry makes a fresh scaffold fail its own `format:check`.
+  parsed.devDependencies = Object.fromEntries(
+    Object.entries(devDeps).toSorted(([a], [b]) => (a < b ? -1 : 1)),
+  );
   delete parsed.author;
   delete parsed.repository;
   delete parsed.bugs;
@@ -268,6 +272,13 @@ function nextSteps(target: string, pm: PM, depsReady: boolean): void {
   console.log(kleur.gray(`  ${pm} run convex:dev   ${kleur.dim("# terminal 1")}`));
   console.log(kleur.gray(`  ${pm} run ios          ${kleur.dim("# terminal 2")}`));
   console.log();
+  console.log(
+    kleur.gray("Using an AI agent? The setup playbook is in ") +
+      kleur.cyan("AGENTS.md") +
+      kleur.gray(", the paste-in prompt in ") +
+      kleur.cyan("README.md") +
+      kleur.gray("."),
+  );
   console.log(kleur.gray("Docs: ") + kleur.cyan("https://github.com/ramonclaudio/vexpo"));
   console.log();
 }

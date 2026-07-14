@@ -1,14 +1,15 @@
 /**
  * `vexpo submit`. Non-interactive local TestFlight / App Store submit without
- * the EAS credential store: sets `EXPO_ASC_*` from the cached ASC key so eas-cli
- * authenticates with it, and ensures `ascAppId` is in eas.json (the only place
- * `eas submit` reads the app id, no flag, no env var). Submits the latest
- * finished build by default, or a specific `--id`.
+ * the EAS credential store: writes the cached ASC key's ascApiKeyPath/Id/
+ * IssuerId plus ascAppId into eas.json's submit profiles (the only places
+ * `eas submit` reads them — no flag, no env var), and sets `EXPO_ASC_*` for
+ * eas-cli's metadata auth. Submits the latest finished build by default, or a
+ * specific `--id`.
  */
 
 import { existsSync, readFileSync } from "node:fs";
 
-import { ascKeyEnv, ensureAscAppId } from "./asc.ts";
+import { ascKeyEnv, ensureAscApiKeyInEasJson, ensureAscAppId } from "./asc.ts";
 import { easSpawn } from "../lib/eas-cli.ts";
 import { submitProfileHasAscAppId } from "../lib/eas-submit.ts";
 import { readAll, requireBundleId } from "../lib/env-local.ts";
@@ -71,7 +72,13 @@ export async function runSubmit(opts: SubmitOptions = {}): Promise<number> {
     note(`ascAppId on the ${profile} submit profile in eas.json and re-run`);
     return 1;
   }
-  ok("ASC key wired for eas-cli (EXPO_ASC_*)");
+
+  // `eas submit` resolves its ASC key ONLY from eas.json's ascApiKey* fields,
+  // a prompt, or the EAS credential store. Without the fields, a stale stored
+  // key wins silently (a deleted key failed a live submit with altool -26000),
+  // so land the validated local key in the profiles before spawning. The
+  // EXPO_ASC_* env below still covers eas-cli's metadata auth.
+  await ensureAscApiKeyInEasJson();
 
   const args = ["submit", "-p", "ios", "--profile", profile, "--non-interactive"];
   if (opts.id) args.push("--id", opts.id);

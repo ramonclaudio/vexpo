@@ -82,6 +82,9 @@ console.log(
 console.log(
   `4. The next \`expo prebuild\` picks up the cert automatically. Run \`npm run prebuild\`.`,
 );
+console.log(
+  `5. Dev serving now signs manifests: \`npm run dev\`/\`start\`/\`ios\` pass the key automatically via scripts/dev.mjs.`,
+);
 
 async function resolveCommonName(provided) {
   if (provided && provided.trim().length > 0) return provided.trim();

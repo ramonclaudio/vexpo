@@ -15,14 +15,14 @@
 
 import { runBetterAuth } from "./better-auth.ts";
 import { runConvex } from "./convex.ts";
-import { deploymentSlug, envMap } from "../lib/convex-env.ts";
+import { deploymentRefFromDeployKey, deploymentSlug, envMap } from "../lib/convex-env.ts";
 import {
   deploymentsOfType,
   describeDeployment,
   listProjectDeployments,
 } from "../lib/convex-management.ts";
 import { envList, resolveProjectId } from "../lib/eas-project.ts";
-import { readOne } from "../lib/env-local.ts";
+import { ensureLine, readAll } from "../lib/env-local.ts";
 import { BOLD, DIM, RESET, bad, line, nop, note, ok, section, yep } from "../lib/output.ts";
 
 export type AdoptOptions = {
@@ -47,7 +47,13 @@ export function buildFinishRunbook(s: RunbookState): Array<{ cmd: string; desc: 
     steps.push({ cmd: "vexpo asc connect", desc: "link EAS to App Store Connect for submit" });
   }
   if (!s.hasProd) {
-    steps.push({ cmd: "npx convex deploy", desc: "provision + push to the prod deployment" });
+    // The cleared key matters: .env.local carries a dev-scoped
+    // CONVEX_DEPLOY_KEY after the EAS integration, and a bare `convex deploy`
+    // would silently land on the key's dev deployment (--prod doesn't beat it).
+    steps.push({
+      cmd: "CONVEX_DEPLOY_KEY= npx convex deploy",
+      desc: "provision + push to the prod deployment (cleared key: user auth targets prod)",
+    });
   }
   steps.push({
     cmd: `vexpo convex migrate --from ${s.devSlug} --prod`,
@@ -67,9 +73,21 @@ export function buildFinishRunbook(s: RunbookState): Array<{ cmd: string; desc: 
 export async function runAdopt(options: AdoptOptions): Promise<number> {
   section("Adopt");
 
-  const deploymentRef = await readOne("CONVEX_DEPLOYMENT");
+  const localEnv = await readAll();
+  let deploymentRef = localEnv.get("CONVEX_DEPLOYMENT");
   if (!deploymentRef) {
-    bad("no CONVEX_DEPLOYMENT in .env.local. nothing to adopt");
+    // eas-cli 21's `integrations:convex:connect` writes only CONVEX_DEPLOY_KEY.
+    // The key names its deployment, so recover the ref and persist it where
+    // `convex dev` and every later step expect it.
+    const derived = deploymentRefFromDeployKey(localEnv.get("CONVEX_DEPLOY_KEY"));
+    if (derived?.startsWith("dev:")) {
+      await ensureLine("CONVEX_DEPLOYMENT", derived);
+      deploymentRef = derived;
+      ok(`derived CONVEX_DEPLOYMENT=${derived} from CONVEX_DEPLOY_KEY`);
+    }
+  }
+  if (!deploymentRef) {
+    bad("no CONVEX_DEPLOYMENT in .env.local, and no dev deploy key to derive it from");
     note("run `eas integrations:convex:connect` first, or `vexpo full` to provision from scratch");
     return 1;
   }

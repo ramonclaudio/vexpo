@@ -34,6 +34,9 @@ credentials/*
 keys/
 private-key.pem
 *.private-key.pem
+# Repo-level negation so a global `*.pem` ignore can't block the public cert
+# (a repo .gitignore outranks core.excludesFile, so plain `git add` works).
+!certs/certificate.pem
 
 # EAS (CLI state; keep workflows tracked)
 .eas/*
@@ -57,7 +60,9 @@ plans/
 .dev/
 
 # App Store metadata. Ships with placeholder values so `eas submit` works
-# out-of-the-box. `vexpo rebrand` fills in your real review contact + demo creds.
+# out-of-the-box. `vexpo rebrand` fills in your real review contact. Fill the
+# demo creds yourself before submission (`vexpo review-account` seeds the
+# matching Convex account from them).
 # Decide whether to commit your filled-in version based on team policy (it
 # contains demo passwords for App Review).
 # store.config.json

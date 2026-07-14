@@ -1,13 +1,13 @@
 {
   "name": "vexpo",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "private": true,
   "main": "expo-router/entry",
   "scripts": {
-    "dev": "expo start --dev-client",
-    "start": "expo start --dev-client --clear",
+    "dev": "node scripts/dev.mjs",
+    "start": "node scripts/dev.mjs --clear",
     "convex:dev": "convex dev",
-    "convex:deploy": "convex deploy",
+    "convex:deploy": "convex deploy --env-file .env.prod",
     "convex:logs": "convex logs",
     "convex:logs:prod": "convex logs --prod",
     "convex:env": "convex env list",
@@ -16,9 +16,9 @@
     "convex:insights:prod": "convex insights --prod",
     "convex:dashboard": "convex dashboard",
     "convex:codegen": "convex codegen",
-    "ios": "node scripts/_run.mjs scripts/clean.ts --metro && expo prebuild --clean --platform ios && expo run:ios --no-build-cache",
-    "ios:dev": "expo run:ios",
-    "ios:device": "node scripts/_run.mjs scripts/clean.ts --metro && expo prebuild --clean --platform ios && expo run:ios --device --no-build-cache",
+    "ios": "node scripts/_run.mjs scripts/clean.ts --metro && expo prebuild --clean --platform ios && expo run:ios --no-build-cache --no-bundler && npm run dev",
+    "ios:dev": "expo run:ios --no-bundler && npm run dev",
+    "ios:device": "node scripts/_run.mjs scripts/clean.ts --metro && expo prebuild --clean --platform ios && expo run:ios --device --no-build-cache --no-bundler && npm run dev",
     "prebuild": "expo prebuild --clean --platform ios",
     "eas:dev": "npx eas-cli build -p ios --profile development:simulator",
     "eas:dev:device": "npx eas-cli build -p ios --profile development:device",
@@ -95,11 +95,11 @@
     "@types/node": "^22",
     "@types/react": "~19.2.16",
     "convex-test": "^0.0.54",
-    "oxfmt": "^0.57.0",
-    "oxlint": "^1.72.0",
-    "tsx": "^4.22.4",
+    "oxfmt": "^0.58.0",
+    "oxlint": "^1.73.0",
+    "tsx": "^4.23.0",
     "typescript": "^6.0.3",
-    "vitest": "^4.1.9"
+    "vitest": "^4.1.10"
   },
   "expo": {
     "doctor": {

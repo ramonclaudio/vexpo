@@ -36,27 +36,27 @@ beforeEach(() => {
 
 describe("resolveDeepLink", () => {
   it("parses a valid path with query params", () => {
-    const result = resolveDeepLink("vexpo://app/linked?foo=bar&n=1");
+    const result = resolveDeepLink("test://app/linked?foo=bar&n=1");
     expect(result.path).toBe("/linked");
     expect(result.href).toBe("/linked");
     expect(result.params).toEqual({ foo: "bar", n: "1" });
   });
 
   it("resolves a path alias to its canonical href", () => {
-    const result = resolveDeepLink("vexpo://app/about");
+    const result = resolveDeepLink("test://app/about");
     expect(result.path).toBe("/about");
     expect(result.href).toBe("/help");
   });
 
   it("returns null path for disallowed routes", () => {
-    const result = resolveDeepLink("vexpo://app/admin");
+    const result = resolveDeepLink("test://app/admin");
     expect(result.path).toBeNull();
     expect(result.href).toBeNull();
     expect(result.params).toEqual({});
   });
 
   it("returns null path for path traversal attempts", () => {
-    const result = resolveDeepLink("vexpo://app/../etc/passwd");
+    const result = resolveDeepLink("test://app/../etc/passwd");
     expect(result.path).toBeNull();
     expect(result.href).toBeNull();
   });
@@ -73,7 +73,7 @@ describe("resolveDeepLink", () => {
   });
 
   it("normalizes trailing slashes", () => {
-    const result = resolveDeepLink("vexpo://app/linked/");
+    const result = resolveDeepLink("test://app/linked/");
     expect(result.path).toBe("/linked");
     expect(result.href).toBe("/linked");
   });
@@ -83,30 +83,30 @@ describe("resolveDeepLink", () => {
     // skip and `Array.isArray` join branches are unreachable through a real URL.
     // Drive them directly via the parse mock.
     parseMock.mockReturnValueOnce({
-      scheme: "vexpo",
+      scheme: "test",
       hostname: "app",
       path: "/linked",
       queryParams: { a: "1", b: null, tags: ["x", "y"] },
     });
-    const result = resolveDeepLink("vexpo://app/linked");
+    const result = resolveDeepLink("test://app/linked");
     expect(result.params).toEqual({ a: "1", tags: "x,y" });
   });
 });
 
 describe("redirectSystemPath (native-intent)", () => {
   it("reattaches the query so params reach the route on the router's own navigation", () => {
-    expect(redirect("vexpo://app/linked?foo=bar&n=1")).toBe("/linked?foo=bar&n=1");
+    expect(redirect("test://app/linked?foo=bar&n=1")).toBe("/linked?foo=bar&n=1");
   });
 
   it("returns the bare href when there's no query", () => {
-    expect(redirect("vexpo://app/about")).toBe("/help");
+    expect(redirect("test://app/about")).toBe("/help");
   });
 
   it("carries the query across an alias rewrite", () => {
-    expect(redirect("vexpo://app/about?ref=email")).toBe("/help?ref=email");
+    expect(redirect("test://app/about?ref=email")).toBe("/help?ref=email");
   });
 
   it("blocks unknown paths to /", () => {
-    expect(redirect("vexpo://app/admin")).toBe("/");
+    expect(redirect("test://app/admin")).toBe("/");
   });
 });

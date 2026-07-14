@@ -378,6 +378,36 @@ describe("Convex deployment checks", () => {
   });
 });
 
+// A null env map means the read itself failed (deploy-key auth, offline).
+// Doctor must say "unreadable", never fail vars as unset: a live prod
+// channel showed `better-auth-secret not set` for a secret that was set.
+describe("unreadable Convex env", () => {
+  beforeEach(() => {
+    globalThis.fetch = vi
+      .fn()
+      .mockImplementation(
+        async () =>
+          new Response("[]", { status: 200, headers: { "content-type": "application/json" } }),
+      ) as unknown as typeof fetch;
+  });
+
+  it("warns env-read on prod instead of failing per-var checks", async () => {
+    const ctx = emptyContext({ channel: "prod", convexProdEnv: null });
+    const checks = await verifyAll(ctx);
+    expect(checks.find((c) => c.name === "env-read")?.severity).toBe("warn");
+    expect(checks.find((c) => c.name === "better-auth-secret")).toBeUndefined();
+    expect(checks.find((c) => c.name === "api-key-set")?.severity).toBe("skip");
+    expect(checks.find((c) => c.name === "convex-env")?.severity).toBe("skip");
+  });
+
+  it("treats a failed dev read the same way", async () => {
+    const ctx = emptyContext({ convexEnv: null });
+    const checks = await verifyAll(ctx);
+    expect(checks.find((c) => c.name === "env-read")?.severity).toBe("warn");
+    expect(checks.find((c) => c.name === "better-auth-secret")).toBeUndefined();
+  });
+});
+
 describe("Resend checks", () => {
   it("fails when API key returns invalid", async () => {
     globalThis.fetch = vi

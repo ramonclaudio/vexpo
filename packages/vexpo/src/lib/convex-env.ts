@@ -6,12 +6,6 @@ import { run } from "./proc.ts";
 
 export type ConvexTarget = { prod?: boolean; deployment?: string; envFile?: string };
 
-function deploymentName(value: string | undefined): string | undefined {
-  if (!value) return undefined;
-  const m = /^(?:dev|prod|preview):(.+)$/.exec(value);
-  return m ? m[1] : value;
-}
-
 function targetArgs(target?: ConvexTarget): string[] {
   if (target?.prod) {
     // A dev CONVEX_DEPLOY_KEY in .env.local shadows `--prod`: the Convex CLI
@@ -21,8 +15,13 @@ function targetArgs(target?: ConvexTarget): string[] {
     // CONVEX_DEPLOYMENT / CONVEX_DEPLOY_KEY from there instead of .env.local.
     return target.envFile ? ["--env-file", target.envFile] : ["--prod"];
   }
-  const explicit = target?.deployment ?? deploymentName(process.env.CONVEX_DEPLOYMENT);
-  return explicit ? ["--deployment", explicit] : [];
+  // Only cross-deployment reads (`convex migrate --from`, `apple jwt
+  // --copy-from`) pass an explicit deployment. The flag resolves through the
+  // platform API, which needs the user's login, so passing it for the ambient
+  // deployment would break deploy-key auth on integration-created deployments
+  // (EAS-managed teams). Flagless, the CLI reads CONVEX_DEPLOYMENT /
+  // CONVEX_DEPLOY_KEY from .env.local and the environment itself.
+  return target?.deployment ? ["--deployment", target.deployment] : [];
 }
 
 /**
@@ -136,5 +135,20 @@ export async function isLoggedIn(): Promise<boolean> {
 }
 
 export function deploymentSlug(value: string | undefined): string | undefined {
-  return deploymentName(value);
+  if (!value) return undefined;
+  const m = /^(?:dev|prod|preview):(.+)$/.exec(value);
+  return m ? m[1] : value;
+}
+
+/**
+ * A deploy key names its own deployment before the `|`:
+ * `dev:quick-fox-123|<token>`. eas-cli 21's `integrations:convex:connect`
+ * writes only CONVEX_DEPLOY_KEY to .env.local, no CONVEX_DEPLOYMENT line, so
+ * the ref has to be recovered from the key. Project-scoped keys
+ * (`project:<team>:<project>|...`) name no deployment and return undefined.
+ */
+export function deploymentRefFromDeployKey(key: string | undefined): string | undefined {
+  if (!key) return undefined;
+  const m = /^((?:dev|prod|preview):[^|:\s]+)\|/.exec(key);
+  return m?.[1];
 }

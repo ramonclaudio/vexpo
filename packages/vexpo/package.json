@@ -1,7 +1,7 @@
 {
   "name": "@ramonclaudio/vexpo",
-  "version": "0.2.2",
-  "description": "Operational CLI for vexpo projects: setup orchestration, drift detection, env sync, Apple JWT signing, ASC API integration.",
+  "version": "0.2.3",
+  "description": "Operational CLI for vexpo projects: setup orchestration, drift detection, env sync, Apple JWT signing, headless submits, and TestFlight management through the ASC API.",
   "keywords": [
     "apple-sign-in",
     "better-auth",
@@ -55,10 +55,10 @@
   },
   "devDependencies": {
     "@types/node": "^22",
-    "@vitest/coverage-v8": "^4.1.9",
+    "@vitest/coverage-v8": "^4.1.10",
     "tsup": "^8.5.1",
     "typescript": "^6.0.3",
-    "vitest": "^4.1.8"
+    "vitest": "^4.1.10"
   },
   "engines": {
     "node": ">=22.12"

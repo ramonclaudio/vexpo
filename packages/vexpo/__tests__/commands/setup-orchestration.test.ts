@@ -72,6 +72,7 @@ vi.mock("../../src/lib/eas-project.ts", () => ({
   envList: vi.fn(async () => new Map()),
   resolveProjectId: vi.fn(async () => null),
   version: vi.fn(async () => null),
+  whoami: vi.fn(async () => "tester"),
 }));
 vi.mock("../../src/lib/env-local.ts", () => ({
   ENV_FILE: ".env.local",

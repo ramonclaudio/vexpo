@@ -168,6 +168,8 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       // before publishing. A compromised CDN or EAS account cannot ship
       // arbitrary JS. Until the cert exists the block stays off and
       // updates ship unsigned (fine for prototyping; not for production).
+      // With the cert wired, dev builds demand signed manifests too:
+      // scripts/dev.mjs passes the private key to Metro automatically.
       // https://docs.expo.dev/eas-update/code-signing/
       ...(existsSync(resolve(process.cwd(), "certs", "certificate.pem"))
         ? {

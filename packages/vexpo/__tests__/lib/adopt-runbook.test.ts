@@ -35,7 +35,7 @@ describe("buildFinishRunbook", () => {
       "vexpo resend",
       "vexpo apple jwt",
       "vexpo asc connect",
-      "npx convex deploy",
+      "CONVEX_DEPLOY_KEY= npx convex deploy",
       "vexpo convex migrate --from abc-1 --prod",
       "vexpo env convex-key",
       "vexpo full",
@@ -44,8 +44,10 @@ describe("buildFinishRunbook", () => {
   });
 
   it("includes the convex deploy step only when no prod deployment exists", () => {
-    expect(cmds({ ...FULLY_PROVISIONED, hasProd: false })).toContain("npx convex deploy");
-    expect(cmds(FULLY_PROVISIONED)).not.toContain("npx convex deploy");
+    expect(cmds({ ...FULLY_PROVISIONED, hasProd: false })).toContain(
+      "CONVEX_DEPLOY_KEY= npx convex deploy",
+    );
+    expect(cmds(FULLY_PROVISIONED)).not.toContain("CONVEX_DEPLOY_KEY= npx convex deploy");
   });
 
   it("always threads the resolved dev slug into the migrate command", () => {

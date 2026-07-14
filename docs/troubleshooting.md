@@ -57,6 +57,18 @@ npx eas-cli integrations:convex:connect
 npx vexpo adopt
 ```
 
+## Resend
+
+### Key that worked minutes ago now returns `API key is invalid`
+
+Editing a key's permission in the Resend dashboard rotates its token: the
+string you pasted is dead the moment you flip Full access to Sending or back.
+Reads can keep passing for a couple of minutes (cached auth) while writes fail
+instantly, which looks like a half-broken key. Create the bootstrapper key with
+Full access from the start, leave it untouched until `vexpo resend` reports
+done, then revoke it. The scoped sending key the CLI mints is the only one that
+stays live.
+
 ## Expo
 
 ### Push notifications don't fire
@@ -87,6 +99,14 @@ Export both in your shell profile if you run flows often.
 ### `tour.yaml` fails on `"This device" is visible`
 
 The Sessions screen gates session management behind a recent sign-in. An old simulator session renders the "Sign in again to manage sessions" fallback instead of the device list. Run `auth.yaml` first to seed a fresh session, which is what the EAS workflow does.
+
+### `auth.yaml` fails after Resend is provisioned
+
+The flow's sign-up-lands-authed path only works while `REQUIRE_EMAIL_VERIFICATION` is unset (lite mode). Once Resend provisioning flips it on, sign-up needs a real OTP email, which a headless flow can't read. Seed a pre-verified account with `npx vexpo review-account` and drive a sign-in-only variant, or run the suite on EAS release builds via `.eas/workflows/e2e-tests.yml`.
+
+### Taps report `COMPLETED` but sign-in never fires
+
+On locally-built dev clients, Maestro's synthetic taps on the `@expo/ui` SwiftUI submit button can complete without the handler firing: the native field renders the text, but the change never reaches React state, so no network call leaves the app and Convex logs stay empty. This is XCTest/SwiftUI bridge flakiness, not an app bug. Prove the backend independently with a raw HTTP sign-in against `https://<deployment>.convex.site/api/auth/sign-in/email` (expect 200 and a session token). The supported e2e target is EAS release builds through `e2e-tests.yml`, and ad-hoc flows must keep the template's input workarounds (reveal password visibility to dodge iOS strong-password autofill, never `hideKeyboard`).
 
 ## "doctor says X"
 

@@ -183,7 +183,9 @@ program
 
 program
   .command("review-account")
-  .description("Seed the App Review demo account on Convex.")
+  .description(
+    "Seed the App Review demo account on dev + prod Convex. Generates a password when store.config.json still has the placeholder (and writes it back), and rotates an existing account's password so the file and the deployments never drift.",
+  )
   .option("--email <email>", "override demo email")
   .option("--password <password>", "override demo password")
   .option("--name <name>", "override demo display name", "App Review")
@@ -251,7 +253,10 @@ program
     "--repoint",
     "move the webhook to the current convex.site + realign the secret, without rotating the sending key or changing auth policy",
   )
-  .option("--prod", "with --repoint, target the prod deployment + .env.prod site URL")
+  .option(
+    "--prod",
+    "with --repoint, target the prod deployment + .env.prod site URL (the full flow wires both channels itself)",
+  )
   .option(
     "--force",
     "with --repoint, recreate the webhook even if it already points at the endpoint",

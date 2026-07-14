@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 
-import { submitProfilesMissingAscAppId, withAscAppId } from "../../src/lib/eas-submit.ts";
+import {
+  submitProfilesMissingAscAppId,
+  withAscApiKey,
+  withAscAppId,
+} from "../../src/lib/eas-submit.ts";
 
 const EAS = `{
   "build": {
@@ -120,5 +124,43 @@ describe("submitProfilesMissingAscAppId", () => {
 
   it("returns [] on unparseable input", () => {
     expect(submitProfilesMissingAscAppId("{not json")).toEqual([]);
+  });
+});
+
+describe("withAscApiKey", () => {
+  const KEY = {
+    path: "./credentials/asc-key.p8",
+    keyId: "ABCDE12345",
+    issuerId: "11111111-2222-3333-4444-555555555555",
+  };
+
+  it("sets all three key fields on every submit profile's ios block", () => {
+    const cfg = parse(withAscApiKey(EAS, KEY));
+    for (const p of ["testflight", "production"]) {
+      expect(cfg.submit[p].ios.ascApiKeyPath).toBe(KEY.path);
+      expect(cfg.submit[p].ios.ascApiKeyId).toBe(KEY.keyId);
+      expect(cfg.submit[p].ios.ascApiKeyIssuerId).toBe(KEY.issuerId);
+    }
+  });
+
+  it("leaves build profiles and sibling keys alone", () => {
+    const cfg = parse(withAscApiKey(EAS, KEY));
+    expect(cfg.build.production.ios).toEqual({ credentialsSource: "remote" });
+    expect(cfg.submit.testflight.ios.metadataPath).toBe("./store.config.json");
+  });
+
+  it("is idempotent, keyed on all three fields", () => {
+    const once = withAscApiKey(EAS, KEY);
+    expect(withAscApiKey(once, KEY)).toBe(once);
+    // A profile carrying only one of the three still gets the full set.
+    const partial = once.replace(`"ascApiKeyId": "${KEY.keyId}",\n`, "");
+    const healed = parse(withAscApiKey(partial, KEY));
+    expect(healed.submit.production.ios.ascApiKeyId).toBe(KEY.keyId);
+  });
+
+  it("composes with withAscAppId", () => {
+    const cfg = parse(withAscApiKey(withAscAppId(EAS, "1234567890"), KEY));
+    expect(cfg.submit.testflight.ios.ascAppId).toBe("1234567890");
+    expect(cfg.submit.testflight.ios.ascApiKeyPath).toBe(KEY.path);
   });
 });

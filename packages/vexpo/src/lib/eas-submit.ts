@@ -12,7 +12,13 @@
 
 import { isRecord } from "./json.ts";
 
-type EasJson = { submit?: Record<string, { ios?: { ascAppId?: string } }> };
+type SubmitIos = {
+  ascAppId?: string;
+  ascApiKeyPath?: string;
+  ascApiKeyId?: string;
+  ascApiKeyIssuerId?: string;
+};
+type EasJson = { submit?: Record<string, { ios?: SubmitIos }> };
 
 function parseEasJson(easJson: string): EasJson | null {
   try {
@@ -57,6 +63,38 @@ export function withAscAppId(easJson: string, ascAppId: string): string {
   if (!cfg || !needsAscAppId(cfg, ascAppId)) return easJson;
   for (const profile of Object.values(cfg.submit ?? {})) {
     if (isRecord(profile?.ios)) profile.ios.ascAppId = ascAppId;
+  }
+  return JSON.stringify(cfg, null, 2) + "\n";
+}
+
+export type AscApiKeyFields = { path: string; keyId: string; issuerId: string };
+
+function needsAscApiKey(cfg: EasJson, key: AscApiKeyFields): boolean {
+  return Object.values(cfg.submit ?? {}).some(
+    (p) =>
+      isRecord(p?.ios) &&
+      (p.ios.ascApiKeyPath !== key.path ||
+        p.ios.ascApiKeyId !== key.keyId ||
+        p.ios.ascApiKeyIssuerId !== key.issuerId),
+  );
+}
+
+/**
+ * Set the ASC API key fields on every submit profile's `ios` block. `eas
+ * submit` resolves its key from exactly one of these eas.json fields, an
+ * interactive prompt, or the EAS credential store — it has NO env-var source,
+ * so `EXPO_ASC_*` cannot override a stale stored key. Writing the fields makes
+ * every submit authenticate with the locally validated key. Same
+ * parse-and-reprint contract as withAscAppId; idempotent.
+ */
+export function withAscApiKey(easJson: string, key: AscApiKeyFields): string {
+  const cfg = parseEasJson(easJson);
+  if (!cfg || !needsAscApiKey(cfg, key)) return easJson;
+  for (const profile of Object.values(cfg.submit ?? {})) {
+    if (!isRecord(profile?.ios)) continue;
+    profile.ios.ascApiKeyPath = key.path;
+    profile.ios.ascApiKeyId = key.keyId;
+    profile.ios.ascApiKeyIssuerId = key.issuerId;
   }
   return JSON.stringify(cfg, null, 2) + "\n";
 }
