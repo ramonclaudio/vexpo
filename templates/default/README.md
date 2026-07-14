@@ -11,6 +11,55 @@ An iOS app on Expo SDK 57, wired with Convex, Better Auth, and Resend. Native Sw
   <img src="https://raw.githubusercontent.com/ramonclaudio/vexpo/main/.github/assets/screens.png" width="600" alt="Home, profile, and settings in light and dark">
 </p>
 
+## Setting up
+
+Two paths to a configured app:
+
+- **By hand**: follow [Quick start](#quick-start) below. Run `npx vexpo rebrand` when you're ready to make the identity yours (`vexpo full` includes it).
+- **With an AI agent**: the playbook lives in [`AGENTS.md`](./AGENTS.md), which most agents read on their own. Or paste this:
+
+```text
+Set up this fresh vexpo scaffold as my app. Collect from me first if I haven't
+given them: app display name, iOS bundle id, my full name, Expo account slug,
+App Review contact email, and marketing, support, and privacy URLs. Then:
+
+1. Rebrand non-interactively (derives slug, scheme, and copyright, rewrites
+   every branded file, formats what it touches):
+   npx vexpo rebrand -y --app-name "<name>" --bundle-id <id> \
+     --owner-name "<me>" --expo-owner <slug> --review-email <email> \
+     --marketing-url <url> --support-url <url> --privacy-url <url>
+   Don't hand-edit identity afterward or sweep for leftover template branding,
+   the command owns both. Re-run with --force to change identity later.
+2. Provision the dev backend: npx vexpo lite (hand any login prompt to me).
+3. Verify: npm run typecheck && npm run lint && npm run format:check && npm run test
+4. Commit the result as one commit.
+5. Read AGENTS.md before writing any feature code.
+
+Done means the gate is green, setup is committed, and you tell me to run
+`npm run convex:dev` and `npm run ios` in two terminals. When I say ship,
+follow the Ship path playbook in AGENTS.md: you run everything headless and
+hand me only the login, the ASC .p8 download, the Resend key paste, and the
+one interactive first build.
+```
+
+## Pre-reqs
+
+Tools, all local. `eas-cli` and the `convex` CLI come through the project (npx fetches them), no global installs:
+
+- macOS and Xcode (iOS-only)
+- Bun or Node 20+
+
+Accounts, by the stage that needs them. Only Convex is required before you ship:
+
+| Stage                   | Account                                     | Cost                  |
+| ----------------------- | ------------------------------------------- | --------------------- |
+| `vexpo lite` (dev app)  | Convex                                      | free                  |
+| `vexpo full` (shipping) | Expo (EAS builds, env, submit)              | free tier covers this |
+| `vexpo full` (shipping) | Apple Developer Program + App Store Connect | $99/yr                |
+| Email (OTP, reset)      | Resend + a domain you control DNS for       | free tier covers this |
+
+Both CLIs need a one-time login before provisioning: `npx convex login` and `npx eas-cli login`. Setup's Prerequisites section flags whichever is missing, and `--new` on `lite`/`full` walks each signup you don't have yet. The Apple leg also needs the one-time ASC API key download (`.p8`, App Manager role) from [Ship path](#ship-path) step 2.
+
 ## Quick start
 
 Requires macOS and Xcode (iOS-only). The `vexpo` CLI ships as a dependency, so `npm install` puts it on your path:
@@ -31,18 +80,50 @@ npm run ios             # terminal 2
 
 Lite skips Apple, EAS, and Resend. Sign-up auto-verifies and drops you in with one tap. The flows that need Resend (OTP, password reset, change email) stay hidden.
 
-## Ship path
-
-Swap `lite` for `full`:
+One team shape needs a different door: if your Convex team is EAS-managed (created through Expo's integration), direct project creation fails with `is managed by oauth:...`. Provision through the integration instead, then adopt the deployment it made:
 
 ```bash
-npx vexpo full         # provisions Resend, Apple Sign In, EAS, rebrand wizard
-npx vexpo full --new   # same, plus walks Apple, Convex, Expo, and Resend signups
+npx eas-cli integrations:convex:connect
+npx vexpo adopt
 ```
 
-`full` writes `.env.local`, sets Convex env vars, validates the ASC API key, signs the SIWA JWT, runs `eas init` + `eas env:push`, and prints the `eas build` command. It never runs the build for you.
+## Ship path
 
-- `npx vexpo doctor` auth-checks every credential and cross-references IDs across `.env.local`, Convex env, EAS env, and `app.config.ts`.
+The whole road from a dev app to TestFlight, in order. One step is interactive by Apple's design (the first build's credentials wizard). Everything else runs headless, and the sequence is resumable: `vexpo full` picks up from state, so re-running after any step is safe.
+
+1. **Log in once per machine.** `npx eas-cli login` and `npx convex login`. Setup's Prerequisites section flags both when missing.
+2. **Get the ASC API key.** App Store Connect → Users and Access → Integrations → generate a **Team** key with the **App Manager** role, download the `.p8` once into `credentials/`. This download is a human step, Apple offers it exactly once. Details in [App Store submission](#app-store-submission).
+3. **Run the provisioning.**
+
+   ```bash
+   npx vexpo full         # provisions Resend, Apple Sign In, EAS, rebrand wizard
+   npx vexpo full --new   # same, plus walks Apple, Convex, Expo, and Resend signups
+   ```
+
+   `full` writes `.env.local`, sets Convex env vars, validates the ASC key, registers the Services ID, signs the SIWA JWT, mirrors EAS env to all three environments, and seeds the App Review demo account on dev and prod (generating a real password into `store.config.json` if the placeholder is still there). One paste it asks of you: a Resend **Full access** API key. Create it fresh and don't touch it until the run reports done, editing a key's permission in the Resend dashboard rotates its token mid-run. Revoke it after, the scoped sending key vexpo mints is the only one that stays live.
+
+4. **Arm OTA code signing.** `npm run updates:gen-cert -- --name "Your Org"`, then upload the private key as the `EAS_UPDATE_PRIVATE_KEY` file secret (the script prints the command). The dev loop keeps working, `npm run dev` passes the signing key to Metro automatically.
+5. **The one interactive moment: first build.**
+
+   ```bash
+   npm run eas:tf         # credentials wizard + production build + TestFlight submit
+   ```
+
+   Wizard answers that matter: **reuse** the existing distribution certificate if offered (Apple caps a team at 3, generating a 4th fails), let it **generate** a fresh provisioning profile (they're disposable, EAS re-mints them), **reuse** the existing push key (capped at 2), and let it **generate** an EAS-managed submit key when it reaches App Store Connect. Two live ASC keys is the designed end state: your local `credentials/` key serves `eas.json` and CLI submits, the EAS-managed one serves cloud auto-submits and the integration. After this one run, credentials live in EAS and every future build and submit is non-interactive.
+
+6. **After the build, all headless:**
+
+   ```bash
+   npx vexpo asc connect                           # finishes the EAS↔ASC link, doctor goes green
+   npx vexpo testflight groups create "Internal"   # beta group, no Beta App Review
+   npx vexpo testflight invite you@example.com     # lands in the TestFlight app
+   npx vexpo testflight whats-new <buildId> "..."  # release notes on the build
+   npx vexpo submit                                # every re-submit, fully headless
+   ```
+
+   `vexpo submit` and `vexpo asc connect` write the ASC key into `eas.json`'s submit profiles, so submits authenticate with your validated key instead of whatever EAS has stored.
+
+- `npx vexpo doctor` auth-checks every credential and cross-references IDs across `.env.local`, Convex env, EAS env, and `app.config.ts`. Run `--strict` before every release.
 - `npx vexpo full --plan` previews the setup before you start.
 - `npx vexpo full --dry-run` shows what the next run would change.
 
@@ -71,16 +152,11 @@ TestFlight and App Store submission need two things: your App Store Connect agre
 4. `npx vexpo asc connect`, writes `ascAppId` into your `eas.json` and links the project to its ASC app. eas-cli takes the app id only from the submit profile (no flag, no env var), so this write is what makes a non-interactive submit work, and it lands the id even headless (CI) once the app record exists.
 5. `npm run eas:tf`, builds and submits to TestFlight.
 
-The ASC app record appears only after your first submit, so a brand-new app's first `eas:tf` runs interactively. After that, `npx vexpo submit` re-submits the latest build fully non-interactively: it sets `EXPO_ASC_*` from your cached key and writes `ascAppId` into `eas.json`, no EAS credential store needed. Pass `--profile production` to submit to the App Store, or `--id <buildId>` for a specific build.
+The ASC app record appears only after your first submit, so a brand-new app's first `eas:tf` runs interactively. After that, `npx vexpo submit` re-submits the latest build fully non-interactively: it writes your cached ASC key's `ascApiKeyPath`/`ascApiKeyId`/`ascApiKeyIssuerId` plus `ascAppId` into `eas.json`'s submit profiles, the only place `eas submit` reads them, so the EAS credential store never decides which key signs. Pass `--profile production` to submit to the App Store, or `--id <buildId>` for a specific build.
 
 `npx vexpo doctor` confirms the key, its role, the agreement, and the linkage. Full notes in [`credentials/README.md`](./credentials/README.md).
 
-## Pre-reqs
-
-- macOS and Xcode
-- Bun or Node 20+
-- Apple Developer Program ($99/yr), when you're ready to ship
-- A domain you control DNS for (Resend sending domain)
+The listing itself has a manual half: Apple exposes no API for privacy nutrition labels, pricing, content rights, age rating, accessibility declarations, or TestFlight Test Information. The one-time dashboard walk is cataloged in [`app-store/README.md`](./app-store/README.md), split by what `metadata:push` can re-push later versus what stays manual forever.
 
 ## Scripts
 
@@ -93,7 +169,7 @@ npm run ios:device             Clean prebuild + compile + run on physical device
 npm run prebuild               Generate iOS native project from config
 
 npm run convex:dev             Convex dev server (watch mode)
-npm run convex:deploy          Deploy Convex functions to production
+npm run convex:deploy          Deploy Convex functions to production (reads .env.prod so the dev deploy key in .env.local can't hijack the target)
 npm run convex:logs            Tail dev deployment logs
 npm run convex:logs:prod       Tail prod deployment logs
 npm run convex:env             List dev env vars
@@ -186,7 +262,7 @@ The template used to ship an Apple App Attest stack (a Convex verifier plus a cl
    },
    ```
 
-3. Bring back the verifier and client from git history (`git log --diff-filter=D --name-only -- convex/appAttest.ts`):
+3. Bring back the verifier and client from the vexpo repo's [removal commit](https://github.com/ramonclaudio/vexpo/commit/486f3f90e5b63ce89da219db86f91785833d8cbf). Scaffolded projects start with fresh git history, so the deleted files live in the template repo under `templates/default/`, not in this repo's log:
    - `convex/appAttest.ts`: the attestation + assertion verifier (needs `cbor-x`, `npm install cbor-x`).
    - `convex/appAttestStore.ts`: challenge and key storage mutations.
    - `src/lib/appAttest.ts`: the device-side `attestThisDevice` / `signRequest` client.
