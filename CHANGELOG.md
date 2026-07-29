@@ -4,6 +4,8 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Pre-1.0
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-07-29
+
 - `testflight invite` now handles three Apple rules the first live 0.2.3 run hit. An internal group only takes App Store Connect team members, so an outside email now falls through to the external group when the group was auto-resolved, and an explicit `--group` gets the explanation instead of a bare 409.
 - `testflight invite` checks group membership before adding a tester that already exists. Re-adding a member 409s.
 - `testflight invite` reports a pending Beta App Review as success. The tester is durably in the group, Apple just can't send the invite email until the group has an installable build.
