@@ -33,8 +33,6 @@ vexpo review-account              seed the App Review demo account on Convex
 vexpo convex                      provision or connect a Convex deployment
 vexpo better-auth                 set SITE_URL, BETTER_AUTH_SECRET, APP_NAME on Convex
 vexpo resend                      provision Resend sending key + webhook, write to Convex env
-vexpo eas                         EAS bootstrap: link project, ensure channels + branches, push env
-vexpo eas --with-prod             same + push .env.prod EXPO_PUBLIC_* vars to production + preview
 vexpo env push                    push .env.local + .env.prod to Convex + EAS env
 vexpo env convex-key              sync Convex deploy key + selector to EAS (post-migration fix)
 vexpo adopt                       finish a project created by `eas integrations:convex:connect`
@@ -63,7 +61,12 @@ vexpo testflight groups view <id>            view a beta group + its testers
 vexpo testflight groups delete <id>          delete a beta group
 vexpo testflight testers list                list beta testers
 vexpo testflight invite <email>              add a tester + send a TestFlight invite
-vexpo testflight whats-new <buildId> <text>  set the "What's new" notes
+vexpo testflight whats-new <buildId> <text>  set the "What's new" notes on a build already up
+                                             (at submit time use `eas submit --what-to-test`)
+
+vexpo submit                                 headless submit of the latest build (TestFlight)
+vexpo submit --id <buildId>                  submit a specific build
+vexpo submit --profile <name>                pick an eas.json submit profile
 
 vexpo asc privacy show [file]                show the declared privacy.config.json
 vexpo asc privacy lint <file>                validate privacy.config.json against Apple's enums
@@ -75,7 +78,7 @@ vexpo asc accessibility lint <file>          validate accessibility.config.json 
 
 vexpo only covers what `eas-cli` doesn't: setup orchestration, cross-source drift detection, Apple SIWA work, and App Store Connect setup. For the canonical platform surface, reach for `eas` directly.
 
-`vexpo full` drives `eas init`, `eas env:push`, `eas credentials`, and the ASC link internally using the cached ASC key. Only the ASC link is also standalone, as `vexpo asc connect`.
+`vexpo full` drives `eas init`, `eas env:push`, `eas credentials`, and the ASC link internally using the cached ASC key. Two of those are also standalone: `vexpo asc connect` for the link, `vexpo submit` for a headless `eas submit` that authenticates with your validated key instead of whatever EAS has stored.
 
 ## Repo
 

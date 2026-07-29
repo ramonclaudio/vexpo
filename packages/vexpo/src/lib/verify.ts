@@ -619,7 +619,7 @@ async function verifyEas(ctx: VerifyContext): Promise<Check[]> {
             "eas",
             "project-info",
             `local projectId (${projectId}) doesn't match resolved project (${info.id})`,
-            "run `vexpo eas` to re-link",
+            "run `eas init` to re-link (or `vexpo full`)",
           ),
         );
       else
