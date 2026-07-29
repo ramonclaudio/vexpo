@@ -9,7 +9,9 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Pre-1.0
 - `testflight invite` reports a pending Beta App Review as success. The tester is durably in the group, Apple just can't send the invite email until the group has an installable build.
 - **Breaking:** `vexpo eas` is no longer a command. Every part of it was eas-cli (`login`, `init`, `channel:create`, `branch:create`, `env:push`), so the EAS bootstrap stays as a phase of `vexpo full` and the standalone entry is gone. Run `eas init` yourself, or `vexpo full`, and `vexpo env push` for the env sync.
 - `vexpo testflight whats-new --help` now says when to reach for it. `eas submit --what-to-test` covers the submit-time case, so this is for a build that's already up or a locale other than en-US.
+- Template `ios`, `ios:dev` and `ios:device` no longer open the app before Metro exists. They chained `expo run:ios --no-bundler && npm run dev`, so the app launched against a dead port every time and landed on "There was a problem loading the project" until you hit Reload. `scripts/dev.mjs` takes a new `--build <cmd...>` that starts Metro, waits for `/status` to answer, then runs the build. A Metro already on that port gets reused instead of raced, which is the everyday `ios:dev` case. Metro also warms the bundler while Xcode compiles, so the first load after install is a cache hit.
 - Template deps caught up to the SDK 57 versions Expo expects, 34 packages in all, including `expo` 57.0.9, `expo-router` 57.0.9, `expo-updates` 57.0.11 and `react-native` 0.86.2. `npx expo-doctor` is 20/20 again.
+- Both template changes above move the `@expo/fingerprint` hash, since `packageJson:scripts` and the dependency versions are both sources. Expect a one-time runtime version bump and a cold EAS build cache after upgrading.
 
 ## [0.2.3] - 2026-07-14
 
