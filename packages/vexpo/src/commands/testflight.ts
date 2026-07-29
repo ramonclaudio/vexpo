@@ -28,7 +28,9 @@ export async function runTestflightGroupsList(opts: { json?: boolean } = {}): Pr
   for (const g of groups) {
     const internal = g.attributes.isInternalGroup ? "internal" : "external";
     const name = g.attributes.name ?? "(unnamed)";
-    line(`  ${BOLD}${g.id.slice(0, 8)}${RESET}  ${name}  ${DIM}${internal}${RESET}`);
+    // Full id, not a prefix. `groups view`, `groups delete` and `invite --group`
+    // all take this value straight from here, and Apple 404s a shortened one.
+    line(`  ${BOLD}${g.id}${RESET}  ${name}  ${DIM}${internal}${RESET}`);
   }
   return 0;
 }

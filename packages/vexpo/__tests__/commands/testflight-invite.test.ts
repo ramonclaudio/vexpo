@@ -29,7 +29,7 @@ vi.mock("../../src/lib/asc-state.ts", () => ({
 }));
 vi.mock("../../src/lib/asc-testflight.ts", () => ({ testflight: () => tf }));
 
-import { runTestflightInvite } from "../../src/commands/testflight.ts";
+import { runTestflightGroupsList, runTestflightInvite } from "../../src/commands/testflight.ts";
 
 function ascError(status: number, code: string, detail: string) {
   return new AscApiError(status, JSON.stringify({ errors: [{ status, code, detail }] }));
@@ -107,5 +107,25 @@ describe("runTestflightInvite", () => {
     ]);
     expect(await runTestflightInvite({ email: "ray@example.com", groupId: "g-ext" })).toBe(0);
     expect(tf.betaGroups.addTesters).not.toHaveBeenCalled();
+  });
+});
+
+describe("runTestflightGroupsList", () => {
+  // A live run printed 8-character prefixes, and every id in this CLI exists to
+  // be pasted into `groups view`, `groups delete` or `invite --group`. Apple 404s
+  // a prefix, so the listing has to print the whole thing.
+  it("prints the whole group id, not a prefix", async () => {
+    const stderr = vi.spyOn(process.stderr, "write").mockReturnValue(true);
+    tf.betaGroups.list.mockResolvedValue([
+      {
+        type: "betaGroups",
+        id: "64d15dda-8d0e-4a1f-9f5b-2c7e1a0b3d44",
+        attributes: { name: "Internal", isInternalGroup: true },
+      },
+    ]);
+    expect(await runTestflightGroupsList({})).toBe(0);
+    const out = stderr.mock.calls.map((c) => String(c[0])).join("");
+    stderr.mockRestore();
+    expect(out).toContain("64d15dda-8d0e-4a1f-9f5b-2c7e1a0b3d44");
   });
 });
