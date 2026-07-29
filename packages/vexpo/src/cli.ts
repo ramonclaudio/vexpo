@@ -51,7 +51,6 @@ import { runBetterAuth } from "./commands/better-auth.ts";
 import { runConvex } from "./commands/convex.ts";
 import { runConvexMigrate } from "./commands/convex-migrate.ts";
 import { runDoctor } from "./commands/doctor.ts";
-import { runEas } from "./commands/eas.ts";
 import { runConvexKey } from "./commands/env/convex-key.ts";
 import { runEnvPush } from "./commands/env/push.ts";
 import { runRebrand } from "./commands/rebrand.ts";
@@ -270,14 +269,6 @@ program
       force?: boolean;
     }) => exitWith(runResend(options)),
   );
-
-program
-  .command("eas")
-  .description(
-    "EAS bootstrap: sign-in check, project link (`eas init`), development/preview/production channels + branches, push EXPO_PUBLIC_* env. Everything past init stays on eas-cli.",
-  )
-  .option("--with-prod", "also push .env.prod EXPO_PUBLIC_* vars to production + preview", false)
-  .action((options: { withProd?: boolean }) => exitWith(runEas({ withProd: options.withProd })));
 
 const apple = program.command("apple").description("Apple-side provisioning.");
 
@@ -501,7 +492,9 @@ testflight
 
 testflight
   .command("whats-new <buildId> <text>")
-  .description('Set the "What\'s new" release notes for a TestFlight build.')
+  .description(
+    'Set the "What\'s new" release notes for a TestFlight build. At submit time `eas submit --what-to-test` does this for the build it submits; use this for a build that is already up, or for a locale other than en-US.',
+  )
   .option("--locale <locale>", "ISO locale", "en-US")
   .action((buildId: string, text: string, options: { locale?: string }) =>
     exitWith(runTestflightWhatsNew({ buildId, locale: options.locale ?? "en-US", text })),

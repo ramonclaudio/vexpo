@@ -81,18 +81,16 @@ n="vexpo --help lists all subcommands"
 if match_grep "$n"; then
   out=$(run_cli "" --help | strip_ansi)
   miss=""
-  for cmd in lite full accounts rebrand review-account doctor convex better-auth resend submit apple env eas; do
+  for cmd in lite full accounts rebrand review-account doctor convex better-auth resend submit apple env asc testflight; do
     echo "$out" | grep -q "^  $cmd" || miss="$miss $cmd"
   done
   if [ -z "$miss" ]; then pass "$n"; else fail "$n" "missing:$miss"; fi
 else skip "$n" "filtered"; fi
 
-n="vexpo eas --help documents --with-prod"
+n="vexpo eas is not a public command (EAS bootstrap is a phase of \`full\`)"
 if match_grep "$n"; then
-  out=$(run_cli "" eas --help | strip_ansi); code=$?
-  if [ $code -ne 0 ]; then fail "$n" "exit $code"
-  elif echo "$out" | grep -q -- "--with-prod"; then pass "$n"
-  else fail "$n" "no --with-prod in help"; fi
+  out=$(run_cli "" --help | strip_ansi)
+  if echo "$out" | grep -q "^  eas"; then fail "$n" "still listed in --help"; else pass "$n"; fi
 else skip "$n" "filtered"; fi
 
 section "Doctor"

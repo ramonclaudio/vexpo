@@ -63,7 +63,7 @@ export function buildFinishRunbook(s: RunbookState): Array<{ cmd: string; desc: 
   if (!s.hasEasProdUrl) {
     steps.push({
       cmd: "vexpo full",
-      desc: "push prod/preview EAS env (or `vexpo eas --with-prod`)",
+      desc: "push prod/preview EAS env",
     });
   }
   steps.push({ cmd: "vexpo doctor --channel prod", desc: "verify the whole chain" });

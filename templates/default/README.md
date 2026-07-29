@@ -121,7 +121,7 @@ The whole road from a dev app to TestFlight, in order. One step is interactive b
    npx vexpo submit                                # every re-submit, fully headless
    ```
 
-   `vexpo submit` and `vexpo asc connect` write the ASC key into `eas.json`'s submit profiles, so submits authenticate with your validated key instead of whatever EAS has stored.
+   `vexpo submit` and `vexpo asc connect` write the ASC key into `eas.json`'s submit profiles, so submits authenticate with your validated key instead of whatever EAS has stored. `whats-new` is for a build that's already up or a locale other than en-US. To set the notes as part of a submit, pass `eas submit --what-to-test "..."` instead.
 
 - `npx vexpo doctor` auth-checks every credential and cross-references IDs across `.env.local`, Convex env, EAS env, and `app.config.ts`. Run `--strict` before every release.
 - `npx vexpo full --plan` previews the setup before you start.
