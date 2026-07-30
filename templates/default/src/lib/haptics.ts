@@ -2,8 +2,6 @@ import * as Haptics from "expo-haptics";
 
 import { preferences } from "@/lib/preferences";
 
-export { Haptics };
-
 const gate = (fn: () => Promise<void>) => () => {
   if (!preferences.hapticsEnabled()) return Promise.resolve();
   return fn();

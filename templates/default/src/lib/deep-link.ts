@@ -1,7 +1,7 @@
 import type { Href } from "expo-router";
 import { parse } from "expo-linking";
 
-export const DeepLinkRoutes = {
+const DeepLinkRoutes = {
   "/": "/",
   "/welcome": "/welcome",
   "/settings": "/(app)/(tabs)/settings",
