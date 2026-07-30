@@ -3,15 +3,12 @@ import { Host, ScrollView, VStack } from "@expo/ui/swift-ui";
 import { frame, padding, tint } from "@expo/ui/swift-ui/modifiers";
 
 import { CapsuleRowButton } from "@/components/ui/capsule-row-button";
-import { CapsuleToggleRow } from "@/components/ui/capsule-toggle-row";
 import { HelperText } from "@/components/ui/helper-text";
 import { haptics } from "@/lib/haptics";
-import { useShareAnalytics } from "@/lib/preferences";
 import { useColors } from "@/hooks/use-theme";
 
 export default function PrivacyScreen() {
   const colors = useColors();
-  const [analyticsEnabled, setAnalyticsEnabled] = useShareAnalytics();
 
   const handleOpenSettings = () => {
     haptics.light();
@@ -47,18 +44,6 @@ export default function PrivacyScreen() {
               onPress={handleOpenSettings}
             />
           </VStack>
-
-          <CapsuleToggleRow
-            testID="privacy-share-analytics"
-            systemImage="chart.bar.fill"
-            label="Share Analytics"
-            a11yLabel="Share analytics"
-            value={analyticsEnabled}
-            onChange={(v) => {
-              haptics.selection();
-              setAnalyticsEnabled(v);
-            }}
-          />
 
           <HelperText
             testID="privacy-data-disclaimer"

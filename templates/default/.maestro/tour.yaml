@@ -28,11 +28,10 @@
 # Env vars:
 #   MAESTRO_APP_ID   bundle id (EAS injects from EXPO_PUBLIC_APP_BUNDLE_ID)
 #
-# Run locally (needs a JDK on PATH, and a signed-in simulator session):
-#   MAESTRO_APP_ID=$(grep '^EXPO_PUBLIC_APP_BUNDLE_ID=' .env.local | cut -d= -f2) \
-#     maestro test .maestro/tour.yaml
-#   Or run the whole suite in order (auth seeds the session for the tour):
-#   MAESTRO_APP_ID=... maestro test .maestro/
+# Run locally (needs a signed-in simulator session):
+#   npm run e2e -- .maestro/tour.yaml
+#   Or the whole suite in order, which seeds that session first:
+#   npm run e2e
 # Run on EAS: via `.eas/workflows/e2e-tests.yml` (workflow_dispatch only).
 appId: ${MAESTRO_APP_ID}
 ---
@@ -182,20 +181,11 @@ appId: ${MAESTRO_APP_ID}
       id: "privacy-screen"
     timeout: 15000
 
-# Share Analytics is a real Toggle in a capsule row, so tap by id. This is a
-# persisted preference (useShareAnalytics). Flip it off, assert the screen
-# holds, flip it back on so the tour leaves no state behind.
-- assertVisible: "Share Analytics"
-- tapOn:
-    id: "privacy-share-analytics"
-- waitForAnimationToEnd:
-    timeout: 2000
+# The privacy screen is disclosure plus a link out to System Settings. Nothing
+# on it is a toggle, so there is no state for the tour to leave behind.
 - assertVisible:
-    id: "privacy-screen"
-- tapOn:
-    id: "privacy-share-analytics"
-- waitForAnimationToEnd:
-    timeout: 2000
+    id: "privacy-data-disclaimer"
+- assertVisible: "System Settings"
 
 # Back to Settings.
 - swipe:
@@ -291,4 +281,4 @@ appId: ${MAESTRO_APP_ID}
       id: "settings-screen"
     timeout: 15000
 
-- takeScreenshot: app-tour-final
+- takeScreenshot: .maestro/screenshots/app-tour-final
