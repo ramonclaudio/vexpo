@@ -15,7 +15,7 @@
  *          _id == identity.subject                        (betterAuth db)
  *   Both findOne calls resolve `_id` via ctx.db.get(value), so the values
  *   MUST be the REAL component doc ids we seed. Then auth.ts looks up the app
- *   `users` row by index "authId" == authUser._id.
+ *   `users` row by index "by_authId" == authUser._id.
  *
  * So three rows + one identity:
  *   - betterAuth `user`    (real id -> identity.subject)

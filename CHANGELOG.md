@@ -4,6 +4,8 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Pre-1.0
 
 ## [Unreleased]
 
+- Every index follows one `by_<field>` shape, which is the convention Convex's own generated `guidelines.md` states. Five of eight broke it, so a fresh scaffold shipped a guidelines file contradicting the schema it came with.
+- `pushTokens.revoked` is a required boolean. `cleanupStale` covers the table with two exact index ranges, `eq(true)` and `eq(false)`, so a row written without the field matched neither and could never be cleaned up. Two of the template's own test fixtures were building exactly that row.
 - The sessions list names the device behind the app's own sessions. iOS reports them as `<AppName>/1 CFNetwork/... Darwin/...`, which fell through every platform check and printed raw. `deviceLabel` moved to `src/lib/device.ts` with a test.
 - `<Material>` falls back to the theme's `card` colour under Reduce Transparency instead of a hardcoded near-black, which painted an opaque dark panel under near-black text in light mode whenever the caller passed no tint.
 - The FAQ said deleting your account "will permanently remove all your data". `convex/users.ts` gives you a 30-day grace window and both delete screens say so, leaving the help screen as the one place contradicting the code.

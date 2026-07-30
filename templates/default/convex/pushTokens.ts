@@ -83,7 +83,7 @@ export const removeAll = authMutation({
     await rateLimitWithThrow(ctx, "userAction", ctx.user._id.toString());
     const tokens = await ctx.db
       .query("pushTokens")
-      .withIndex("by_user", (q) => q.eq("userId", ctx.user._id))
+      .withIndex("by_userId", (q) => q.eq("userId", ctx.user._id))
       .collect();
     await Promise.all(tokens.map((t) => ctx.db.delete(t._id)));
     return null;
@@ -101,7 +101,7 @@ export const listActiveByUser = internalQuery({
   handler: async (ctx, { userId }) => {
     const rows = await ctx.db
       .query("pushTokens")
-      .withIndex("by_user", (q) => q.eq("userId", userId))
+      .withIndex("by_userId", (q) => q.eq("userId", userId))
       .collect();
     return rows.filter((r) => !r.revoked).map((r) => ({ _id: r._id, token: r.token }));
   },
@@ -231,13 +231,15 @@ export const cleanupStale = internalMutation({
     // two ranges together cover every row.
     const revoked = await ctx.db
       .query("pushTokens")
-      .withIndex("by_revoked_updatedAt", (q) =>
+      .withIndex("by_revoked_and_updatedAt", (q) =>
         q.eq("revoked", true).lt("updatedAt", revokedCutoff),
       )
       .take(CLEANUP_BATCH);
     const stale = await ctx.db
       .query("pushTokens")
-      .withIndex("by_revoked_updatedAt", (q) => q.eq("revoked", false).lt("updatedAt", staleCutoff))
+      .withIndex("by_revoked_and_updatedAt", (q) =>
+        q.eq("revoked", false).lt("updatedAt", staleCutoff),
+      )
       .take(CLEANUP_BATCH);
 
     const removable = [...revoked, ...stale];

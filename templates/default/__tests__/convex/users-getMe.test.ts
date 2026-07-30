@@ -10,7 +10,7 @@
  *   2. component.adapter.findOne(session) where
  *        _id == identity.sessionId AND expiresAt > now          (betterAuth db)
  *   3. component.adapter.findOne(user) where _id == identity.subject
- *   4. auth.ts getUserByAuthId: app `users` row .withIndex("authId").
+ *   4. auth.ts getUserByAuthId: app `users` row .withIndex("by_authId").
  * The adapter resolves `_id` where-clauses via ctx.db.get, so the identity's
  * subject/sessionId MUST be the real seeded component doc ids.
  *

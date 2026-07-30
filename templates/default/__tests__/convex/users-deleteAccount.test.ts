@@ -45,6 +45,7 @@ describe("users.deleteAccount", () => {
         deviceType: "ios",
         createdAt: tokenNow,
         updatedAt: tokenNow,
+        revoked: false,
       }),
     );
 

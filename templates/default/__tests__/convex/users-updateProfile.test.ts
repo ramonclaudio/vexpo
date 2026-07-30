@@ -11,7 +11,7 @@
  * Auth resolves through Better Auth: ctx.auth.getUserIdentity() (root ctx) ->
  * betterAuth component session findOne (_id == identity.sessionId, expiresAt >
  * now) -> betterAuth user findOne (_id == identity.subject) -> app `users` row
- * by index "authId" == betterAuth user id. So we seed three rows and hand
+ * by index "by_authId" == betterAuth user id. So we seed three rows and hand
  * t.withIdentity an identity whose subject/sessionId are the REAL component
  * doc ids. (Same harness shape proven in `_auth-harness.test.ts`.)
  */

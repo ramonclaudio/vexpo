@@ -149,7 +149,7 @@ export const deleteAccount = authMutation({
 
     const pushTokens = await ctx.db
       .query("pushTokens")
-      .withIndex("by_user", (q) => q.eq("userId", userId))
+      .withIndex("by_userId", (q) => q.eq("userId", userId))
       .collect();
     await Promise.all(pushTokens.map((t) => ctx.db.delete(t._id)));
 

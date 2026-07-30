@@ -139,7 +139,7 @@ export async function auditRowsFor(t: AuthedTest, userId: Id<"users">) {
   return t.run(async (ctx) =>
     ctx.db
       .query("accountDeletionAudit")
-      .withIndex("by_user", (q) => q.eq("userId", userId))
+      .withIndex("by_userId", (q) => q.eq("userId", userId))
       .collect(),
   );
 }

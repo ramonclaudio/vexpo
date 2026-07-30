@@ -32,6 +32,7 @@ async function seedPushToken(t: AuthedTest, userId: Id<"users">, token: string) 
       createdAt: now,
       updatedAt: now,
       lastSeenAt: now,
+      revoked: false,
     }),
   );
 }

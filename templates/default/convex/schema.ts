@@ -11,7 +11,7 @@ export default defineSchema(
       updatedAt: v.number(),
       deletedAt: v.optional(v.number()),
     })
-      .index("authId", ["authId"])
+      .index("by_authId", ["authId"])
       .index("by_deletedAt", ["deletedAt"]),
 
     accountDeletionAudit: defineTable({
@@ -20,8 +20,8 @@ export default defineSchema(
       event: v.union(v.literal("requested"), v.literal("restored"), v.literal("permanent")),
       at: v.number(),
     })
-      .index("by_user", ["userId"])
-      .index("by_event_at", ["event", "at"]),
+      .index("by_userId", ["userId"])
+      .index("by_event_and_at", ["event", "at"]),
 
     // On a permanent Expo Push error we tombstone (set `revoked`) instead of
     // deleting, so a race-condition re-upsert doesn't resurrect a dead token.
@@ -32,13 +32,16 @@ export default defineSchema(
       createdAt: v.number(),
       updatedAt: v.number(),
       lastSeenAt: v.optional(v.number()),
-      revoked: v.optional(v.boolean()),
+      // Required, not optional. `cleanupStale` covers the table with two exact
+      // ranges, eq(true) and eq(false), so a row written without the field
+      // matches neither and can never be cleaned up.
+      revoked: v.boolean(),
       revokedAt: v.optional(v.number()),
       lastErrorCode: v.optional(v.string()),
     })
-      .index("by_user", ["userId"])
+      .index("by_userId", ["userId"])
       .index("by_token", ["token"])
-      .index("by_revoked_updatedAt", ["revoked", "updatedAt"]),
+      .index("by_revoked_and_updatedAt", ["revoked", "updatedAt"]),
 
     // Expo accepts a push at send time (an "ok" ticket) but only reports a
     // dead device later, in the RECEIPT. Each ok ticket id is parked here
