@@ -7,10 +7,9 @@
 # review-account`) and drive a sign-IN-only variant, or run this suite on EAS
 # release builds via `.eas/workflows/e2e-tests.yml`.
 #
-# Run locally with a JDK that may not be on PATH (Homebrew keg):
-#   JAVA_HOME=/opt/homebrew/opt/openjdk PATH="$JAVA_HOME/bin:$PATH" \
-#     maestro test .maestro/auth.yaml
-# (openjdk@17 is a known-good fallback if the latest keg misbehaves.)
+# Run locally: `npm run e2e -- .maestro/auth.yaml`. macOS ships no JDK and
+# Maestro is a JVM tool, so scripts/e2e.mjs finds a Homebrew keg itself rather
+# than needing JAVA_HOME set by hand.
 #
 # With verification unset, `getEnabledProviders` returns emailFeatures: false.
 # Sign-up creates a verified account and Better Auth's autoSignIn returns a
@@ -40,16 +39,21 @@
 # clearState does NOT wipe. Reset it first or the relaunch comes up signed in:
 #   xcrun simctl keychain booted reset
 #
-# Run locally (needs a JDK on PATH):
-#   MAESTRO_APP_ID=$(grep '^EXPO_PUBLIC_APP_BUNDLE_ID=' .env.local | cut -d= -f2) \
-#     MAESTRO_TEST_EMAIL="e2e+$(date +%s)@example.com" \
-#     MAESTRO_TEST_PASSWORD="maestro-test-pw" \
-#     maestro test .maestro/auth.yaml
+# Run locally: `npm run e2e -- .maestro/auth.yaml`. The script mints a unique
+# MAESTRO_TEST_EMAIL per run and resets the keychain first.
 # Run on EAS: via `.eas/workflows/e2e-tests.yml` (workflow_dispatch only).
 appId: ${MAESTRO_APP_ID}
 ---
 - launchApp:
     clearState: true
+    # Landing authed registers for push, and iOS puts its permission alert over
+    # the welcome screen. That alert is SpringBoard's, not the app's, so it is
+    # absent from the accessibility tree Maestro queries: it cannot see the text
+    # or tap the buttons, and every assert after it fails with the screen sitting
+    # right there behind it. Answering it up front is the only way through. Deny,
+    # because push needs a physical device anyway.
+    permissions:
+      notifications: deny
 - waitForAnimationToEnd:
     timeout: 15000
 
@@ -60,8 +64,21 @@ appId: ${MAESTRO_APP_ID}
     when:
       visible: "DEVELOPMENT SERVERS"
     commands:
-      - tapOn:
-          text: "http://.*:8081"
+      # Local dev-client runs only. On EAS this job builds `development:simulator`,
+      # which extends a `developmentClient: true` profile, so the picker appears
+      # there too but no Metro is reachable and neither this nor a tap can
+      # resolve. That path wants a release build, see .eas/workflows/e2e-tests.yml.
+      #
+      # Don't tap the picker's server row: it finds Metro by scanning the local
+      # network and on a simulator it sits on "Searching for development
+      # servers..." indefinitely, so the row never arrives and the flow dies on
+      # "Element not found: http://.*:8081" while Metro is perfectly healthy.
+      # Open the bundle by deep link instead, the same URL and mechanism
+      # `expo run:ios` uses. `scripts/e2e.mjs` builds MAESTRO_DEV_URL.
+      - openLink: ${MAESTRO_DEV_URL}
+      - extendedWaitUntil:
+          notVisible: "DEVELOPMENT SERVERS"
+          timeout: 30000
       - waitForAnimationToEnd:
           timeout: 15000
 
@@ -238,4 +255,4 @@ appId: ${MAESTRO_APP_ID}
       id: "home-screen"
     timeout: 30000
 
-- takeScreenshot: auth-final
+- takeScreenshot: .maestro/screenshots/auth-final

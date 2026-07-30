@@ -116,7 +116,9 @@ if (!buildCmd.length) {
   // cache wipe, so running it with Metro already up is the normal case: a
   // second `expo start` there prompts to move to 8082 while the build still
   // talks to 8081, and whichever one loses takes this wrapper down with it.
-  const own = (await answering(port)) ? null : spawn("npx", args, { cwd: PROJECT, stdio: "inherit" });
+  const own = (await answering(port))
+    ? null
+    : spawn("npx", args, { cwd: PROJECT, stdio: "inherit" });
 
   if (own) {
     own.on("exit", (code, signal) => process.exit(code ?? (signal ? 1 : 0)));

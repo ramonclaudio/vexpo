@@ -14,6 +14,12 @@ name: E2E tests
 #
 # The auth flow (.maestro/auth.yaml) signs a fresh account up against the
 # dev Convex deployment, so `test_creds` mints a unique email per run.
+#
+# KNOWN GAP: `development:simulator` extends a `developmentClient: true`
+# profile, so the build comes up on the dev client's server picker with no
+# Metro to reach. auth.yaml's picker block is written for a local run and
+# cannot resolve here. Point this job at a release-flavored profile before
+# relying on it, or accept that the auth flow is local-only for now.
 
 # Auto-run on PRs is OFF by default to conserve EAS build credits (each run
 # builds an iOS Simulator binary). Trigger manually, or restore the

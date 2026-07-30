@@ -39,6 +39,7 @@
     "format:check": "oxfmt --check",
     "test": "vitest run",
     "test:watch": "vitest",
+    "e2e": "node scripts/e2e.mjs",
     "upgrade": "npx expo install expo@next && npx expo install --fix",
     "upgrade:stable": "npx expo install expo@latest && npx expo install --fix",
     "updates:gen-cert": "node scripts/gen-update-cert.mjs"

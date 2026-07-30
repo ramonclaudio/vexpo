@@ -42,11 +42,10 @@
 # Requires a signed-in session: this runs AFTER auth.yaml/tour.yaml leave the
 # app authed, so it launches WITHOUT clearState. Runs LAST in folder order.
 #
-# Run locally (needs a JDK on PATH; run auth.yaml first to seed the session):
-#   MAESTRO_APP_ID=$(grep '^EXPO_PUBLIC_APP_BUNDLE_ID=' .env.local | cut -d= -f2) \
-#     MAESTRO_TEST_EMAIL="e2e+...@example.com" \
-#     MAESTRO_TEST_PASSWORD="maestro-test-pw" \
-#     maestro test .maestro/zz-delete-restore.yaml
+# Run locally (run auth.yaml first to seed the session, and pass the same
+# credentials it used so the delete can re-authenticate):
+#   MAESTRO_TEST_EMAIL=... MAESTRO_TEST_PASSWORD=... \
+#     npm run e2e -- .maestro/zz-delete-restore.yaml
 # Run on EAS: via `.eas/workflows/e2e-tests.yml` (folder run, sorts last).
 appId: ${MAESTRO_APP_ID}
 ---
@@ -171,4 +170,4 @@ appId: ${MAESTRO_APP_ID}
       id: "home-screen"
     timeout: 30000
 
-- takeScreenshot: delete-restore-final
+- takeScreenshot: .maestro/screenshots/delete-restore-final

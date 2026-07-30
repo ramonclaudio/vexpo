@@ -4,6 +4,11 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Pre-1.0
 
 ## [Unreleased]
 
+- `.env.example` warns that a `CONVEX_DEPLOY_KEY` there beats `--prod` on every convex command, so `convex env list --prod` reports dev and a prod-vs-dev diff compares dev to itself.
+- Maestro screenshots land in `.maestro/screenshots/` instead of the repo root, and the flows' run instructions point at `npm run e2e` rather than hand-rolled `JAVA_HOME=... maestro test` incantations.
+- The auth flow opens the dev bundle by deep link instead of tapping the launcher's server row. That row is found by scanning the local network, which never resolves on a simulator, so the flow died on "Element not found" with Metro perfectly healthy.
+- The auth flow denies the push permission alert at launch. iOS draws it over the app from SpringBoard, so it is absent from the accessibility tree and every assert after it failed on a simulator that had not already answered.
+- New `npm run e2e` runs the Maestro flows locally. The template shipped four flows and no way to run them: `scripts/e2e.mjs` finds a JDK (macOS ships none), reads the bundle id from `.env.local`, mints a unique test email, builds the dev-client deep link and resets the simulator keychain, which `clearState` does not.
 - Every index follows one `by_<field>` shape, which is the convention Convex's own generated `guidelines.md` states. Five of eight broke it, so a fresh scaffold shipped a guidelines file contradicting the schema it came with.
 - `pushTokens.revoked` is a required boolean. `cleanupStale` covers the table with two exact index ranges, `eq(true)` and `eq(false)`, so a row written without the field matched neither and could never be cleaned up. Two of the template's own test fixtures were building exactly that row.
 - The sessions list names the device behind the app's own sessions. iOS reports them as `<AppName>/1 CFNetwork/... Darwin/...`, which fell through every platform check and printed raw. `deviceLabel` moved to `src/lib/device.ts` with a test.
