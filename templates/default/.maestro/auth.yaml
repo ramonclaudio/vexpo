@@ -176,6 +176,16 @@ appId: ${MAESTRO_APP_ID}
 - tapOn:
     id: "sign-up-submit"
 
+# Fail on the cause, not the symptom. With REQUIRE_EMAIL_VERIFICATION set, this
+# is where sign-up lands on the OTP screen instead: the account and the session
+# are fine, there is just a code in an inbox that Maestro cannot read. Asserting
+# that first turns an opaque "welcome-screen is visible" timeout into the reason.
+#   npx convex env get REQUIRE_EMAIL_VERIFICATION
+#   npx convex env remove REQUIRE_EMAIL_VERIFICATION   # only on an e2e deployment
+# tour.yaml and zz-delete-restore.yaml both need the session this flow creates,
+# so all three fail together when it is set.
+- assertNotVisible: "Verify your email"
+
 # Auto-verify lite path: account is created verified and the session returns in
 # the same call, so the app signs in. A fresh authed user is redirected to the
 # first-launch welcome onboarding. Generous timeout: this is a live network call.
