@@ -1,3 +1,4 @@
+#!/usr/bin/env node
 /**
  * vexpo clean script.
  *
@@ -21,33 +22,21 @@ import { basename, dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { parseArgs } from "node:util";
 
-type StdioOption = "inherit" | "pipe" | "ignore";
-
-type SpawnOpts = {
-  stdio?: StdioOption[];
-  stdin?: StdioOption;
-  stdout?: StdioOption;
-  stderr?: StdioOption;
-};
-
-function spawn(
-  argv: readonly string[],
-  opts: SpawnOpts = {},
-): { exited: Promise<number>; stdout: Promise<string> } {
+function spawn(argv, opts = {}) {
   const stdio = opts.stdio ?? [
     opts.stdin ?? "inherit",
     opts.stdout ?? "inherit",
     opts.stderr ?? "inherit",
   ];
-  const proc = nodeSpawn(argv[0]!, argv.slice(1), { stdio });
+  const proc = nodeSpawn(argv[0], argv.slice(1), { stdio });
   let out = "";
   proc.stdout?.on("data", (c) => (out += c.toString()));
   return {
-    stdout: new Promise<string>((resolve) => {
+    stdout: new Promise((resolve) => {
       proc.on("close", () => resolve(out));
       proc.on("error", () => resolve(out));
     }),
-    exited: new Promise<number>((resolve) => {
+    exited: new Promise((resolve) => {
       proc.on("close", (code) => resolve(code ?? 1));
       // ENOENT (command not found) emits 'error' without 'close'. Treat as
       // the standard shell "not found" exit so callers can `if (code === 0)`.
@@ -56,14 +45,14 @@ function spawn(
   };
 }
 
-const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 /**
  * Find PIDs whose full command line matches `pattern` (extended regex, via
  * `pgrep -f`). Excludes our own PID and PPID so the script never kills its
  * own bash parent or itself.
  */
-async function pgrepF(pattern: string): Promise<number[]> {
+async function pgrepF(pattern) {
   const buf = await spawn(["pgrep", "-f", pattern], {
     stdin: "ignore",
     stdout: "pipe",
@@ -78,17 +67,15 @@ async function pgrepF(pattern: string): Promise<number[]> {
     .filter((n) => Number.isFinite(n) && n !== self && n !== parent);
 }
 
-async function trySignal(pids: readonly number[], signal: "TERM" | "KILL"): Promise<void> {
+async function trySignal(pids, signal) {
   if (pids.length === 0) return;
   await spawn(["kill", `-${signal}`, ...pids.map(String)], {
     stdio: ["ignore", "ignore", "ignore"],
   }).exited;
 }
 
-type PM = "bun" | "pnpm" | "yarn" | "npm";
-
 // Capture which PM ran this script BEFORE any wipes: --all wipes the lockfile.
-async function detectPackageManager(): Promise<PM> {
+async function detectPackageManager() {
   const execpath = (process.env.npm_execpath ?? "").toLowerCase();
   if (execpath.includes("bun")) return "bun";
   if (execpath.includes("pnpm")) return "pnpm";
@@ -100,7 +87,7 @@ async function detectPackageManager(): Promise<PM> {
   return "npm";
 }
 
-function installCmdFor(pm: PM, frozen: boolean): string {
+function installCmdFor(pm, frozen) {
   if (!frozen) return `${pm} install`;
   // npm uses `ci` for frozen installs, every other PM has `--frozen-lockfile`.
   if (pm === "npm") return "npm ci";
@@ -113,7 +100,7 @@ process.chdir(REPO);
 const RESET = "\x1b[0m";
 const BOLD = "\x1b[1m";
 const DIM = "\x1b[2m";
-function ansiHex(hex: string): string {
+function ansiHex(hex) {
   const m = /^#?([\da-f]{2})([\da-f]{2})([\da-f]{2})$/i.exec(hex);
   if (!m) return "";
   return `\x1b[38;2;${parseInt(m[1], 16)};${parseInt(m[2], 16)};${parseInt(m[3], 16)}m`;
@@ -124,16 +111,16 @@ const RED = ansiHex("#ef4444");
 const VIOLET = ansiHex("#a78bfa");
 
 const line = (s = "") => process.stderr.write(s + "\n");
-const ok = (msg: string) => line(`  ${GREEN}ok${RESET}   ${msg}`);
-const nop = (msg: string) => line(`  ${DIM}--   ${msg}${RESET}`);
-const yep = (msg: string) => line(`  ${YELLOW}!!${RESET}   ${msg}`);
-const bad = (msg: string) => line(`  ${RED}xx${RESET}   ${RED}${msg}${RESET}`);
+const ok = (msg) => line(`  ${GREEN}ok${RESET}   ${msg}`);
+const nop = (msg) => line(`  ${DIM}--   ${msg}${RESET}`);
+const yep = (msg) => line(`  ${YELLOW}!!${RESET}   ${msg}`);
+const bad = (msg) => line(`  ${RED}xx${RESET}   ${RED}${msg}${RESET}`);
 
-function stringWidth(s: string): number {
+function stringWidth(s) {
   return [...s].length;
 }
 
-function section(title: string): void {
+function section(title) {
   const w = process.stderr.columns ?? process.stdout.columns ?? 80;
   const fill = "─".repeat(Math.max(0, w - stringWidth(title) - 3));
   line(`\n${BOLD}${VIOLET}${title}${RESET} ${DIM}${fill}${RESET}`);
@@ -173,13 +160,7 @@ caches mid-delete. ${BOLD}convex dev${RESET} is left alone (it's your data layer
 bundler); restart it manually if it misbehaves after a full wipe.
 `;
 
-let args: {
-  metro?: boolean;
-  state?: boolean;
-  all?: boolean;
-  "no-install"?: boolean;
-  help?: boolean;
-};
+let args;
 try {
   args = parseArgs({
     args: process.argv.slice(2),
@@ -202,7 +183,7 @@ if (args.help) {
   process.exit(0);
 }
 
-async function pathExists(p: string): Promise<boolean> {
+async function pathExists(p) {
   try {
     await stat(p);
     return true;
@@ -211,13 +192,13 @@ async function pathExists(p: string): Promise<boolean> {
   }
 }
 
-async function removePaths(paths: string[]): Promise<void> {
+async function removePaths(paths) {
   for (const p of paths) {
     await rm(p, { recursive: true, force: true });
   }
 }
 
-async function expandGlob(dir: string, pattern: string): Promise<string[]> {
+async function expandGlob(dir, pattern) {
   if (!(await pathExists(dir))) return [];
   const re = new RegExp(
     "^" + pattern.replace(/[.+^${}()|[\]\\]/g, "\\$&").replace(/\*/g, ".*") + "$",
@@ -229,9 +210,9 @@ async function expandGlob(dir: string, pattern: string): Promise<string[]> {
 const TMPDIR = process.env.TMPDIR?.replace(/\/$/, "") ?? "/tmp";
 const HOME = homedir();
 
-async function readPkgName(): Promise<string> {
+async function readPkgName() {
   try {
-    const pkg: unknown = JSON.parse(await readFile(`${REPO}/package.json`, "utf8"));
+    const pkg = JSON.parse(await readFile(`${REPO}/package.json`, "utf8"));
     if (typeof pkg === "object" && pkg !== null && "name" in pkg) {
       const { name } = pkg;
       if (typeof name === "string") return name;
@@ -270,11 +251,11 @@ const TMP_GLOBS = ["metro-*", "haste-map-*", "react-*", "node-compile-cache", "e
  * Stop bundlers before wiping their caches, or a live Metro/expo process
  * repopulates them mid-delete and restarts onto stale state.
  */
-async function stepStopBundlers(): Promise<void> {
+async function stepStopBundlers() {
   section("Stop bundlers");
 
   // Order: kill the parent CLI first so it can tear down its child Metro.
-  const targets: { pattern: string; name: string }[] = [
+  const targets = [
     { pattern: "node .*\\.bin/expo (run:|start)", name: "expo CLI" },
     { pattern: "node .*@expo/cli/build/bin/cli", name: "expo CLI (forked)" },
     { pattern: "node .*metro/src/cli\\.js", name: "Metro" },
@@ -315,9 +296,9 @@ async function stepStopBundlers(): Promise<void> {
   }
 }
 
-async function stepMetroCachesOnly(): Promise<void> {
+async function stepMetroCachesOnly() {
   section("Metro caches");
-  const matches: string[] = [];
+  const matches = [];
   for (const pattern of ["metro-*", "haste-map-*", "node-compile-cache"]) {
     matches.push(...(await expandGlob(TMPDIR, pattern)));
   }
@@ -329,14 +310,14 @@ async function stepMetroCachesOnly(): Promise<void> {
   ok(`removed ${matches.length} cache director${matches.length === 1 ? "y" : "ies"}`);
 }
 
-async function stepProjectArtifacts(all: boolean): Promise<void> {
+async function stepProjectArtifacts(all) {
   section("Project artifacts");
   const names = all ? [...PROJECT_TARGETS, ...PROJECT_TARGETS_ALL] : PROJECT_TARGETS;
   const targets = names.map((t) => `${REPO}/${t}`);
   for (const pattern of PROJECT_GLOBS) {
     targets.push(...(await expandGlob(REPO, pattern)));
   }
-  const existing: string[] = [];
+  const existing = [];
   for (const t of targets) {
     if (await pathExists(t)) existing.push(t);
   }
@@ -352,7 +333,7 @@ async function stepProjectArtifacts(all: boolean): Promise<void> {
  * Wipe `.eas/` per-project CLI state but keep `.eas/workflows/` (tracked YAML).
  * EAS regenerates everything else on its next invocation.
  */
-async function stepEasState(): Promise<void> {
+async function stepEasState() {
   section(".eas state");
   const easDir = `${REPO}/.eas`;
   if (!(await pathExists(easDir))) {
@@ -371,7 +352,7 @@ async function stepEasState(): Promise<void> {
   );
 }
 
-async function stepDsStores(): Promise<void> {
+async function stepDsStores() {
   section("macOS .DS_Store");
   const stdout = await spawn(
     ["find", REPO, "-name", ".DS_Store", "-not", "-path", "*/node_modules/*"],
@@ -386,9 +367,9 @@ async function stepDsStores(): Promise<void> {
   ok(`removed ${matches.length} .DS_Store ${matches.length === 1 ? "file" : "files"}`);
 }
 
-async function stepTmpdirCaches(): Promise<void> {
+async function stepTmpdirCaches() {
   section("$TMPDIR caches");
-  const matches: string[] = [];
+  const matches = [];
   for (const pattern of TMP_GLOBS) {
     matches.push(...(await expandGlob(TMPDIR, pattern)));
   }
@@ -400,7 +381,7 @@ async function stepTmpdirCaches(): Promise<void> {
   ok(`removed ${matches.length} cache entr${matches.length === 1 ? "y" : "ies"} under $TMPDIR`);
 }
 
-async function stepCocoaPodsCache(): Promise<void> {
+async function stepCocoaPodsCache() {
   section("CocoaPods cache");
   const path = `${HOME}/Library/Caches/CocoaPods`;
   if (!(await pathExists(path))) {
@@ -411,7 +392,7 @@ async function stepCocoaPodsCache(): Promise<void> {
   ok("removed ~/Library/Caches/CocoaPods");
 }
 
-async function stepXcodeDerivedData(pkgName: string): Promise<void> {
+async function stepXcodeDerivedData(pkgName) {
   section("Xcode DerivedData");
   const root = `${HOME}/Library/Developer/Xcode/DerivedData`;
   if (!(await pathExists(root))) {
@@ -434,7 +415,7 @@ async function stepXcodeDerivedData(pkgName: string): Promise<void> {
   ok(`removed ${matches.length} DerivedData ${matches.length === 1 ? "entry" : "entries"}`);
 }
 
-async function stepExpoCache(): Promise<void> {
+async function stepExpoCache() {
   section("Expo CLI cache");
   const path = `${HOME}/.expo`;
   if (!(await pathExists(path))) {
@@ -445,7 +426,7 @@ async function stepExpoCache(): Promise<void> {
   ok("removed ~/.expo");
 }
 
-async function stepSetupState(): Promise<void> {
+async function stepSetupState() {
   section("Setup state");
   const path = `${REPO}/.setup-state.json`;
   if (!(await pathExists(path))) {
@@ -456,7 +437,7 @@ async function stepSetupState(): Promise<void> {
   ok("removed .setup-state.json (next `npx vexpo full` re-probes every phase)");
 }
 
-async function stepInstall(pm: PM): Promise<void> {
+async function stepInstall(pm) {
   section("Reinstall");
   // Frozen install when a lockfile is on disk: deterministic, no transitive drift.
   // After --all the lockfile is gone and bun resolves fresh.
@@ -468,14 +449,14 @@ async function stepInstall(pm: PM): Promise<void> {
   ok(cmd.join(" "));
 }
 
-function lockfileFor(pm: PM): string {
+function lockfileFor(pm) {
   if (pm === "bun") return "bun.lock";
   if (pm === "pnpm") return "pnpm-lock.yaml";
   if (pm === "yarn") return "yarn.lock";
   return "package-lock.json";
 }
 
-async function stepConvexCodegen(): Promise<void> {
+async function stepConvexCodegen() {
   section("Convex codegen");
   if (await pathExists(`${REPO}/convex/_generated`)) {
     nop("convex/_generated/ present (skipped)");
@@ -494,41 +475,37 @@ async function stepConvexCodegen(): Promise<void> {
   ok(cmd.join(" "));
 }
 
-// Wrapped in an async IIFE so the file works under both ESM (top-level await
-// supported) and CJS-via-tsx (no top-level await).
-void (async () => {
-  const startedAt = performance.now();
-  try {
-    if (args.metro) {
-      await stepStopBundlers();
-      await stepMetroCachesOnly();
+const startedAt = performance.now();
+try {
+  if (args.metro) {
+    await stepStopBundlers();
+    await stepMetroCachesOnly();
+  } else {
+    // Capture PM BEFORE any wipes; --all wipes the lockfile.
+    const pm = await detectPackageManager();
+    const pkgName = await readPkgName();
+    const all = args.all === true;
+    await stepStopBundlers();
+    await stepProjectArtifacts(all);
+    await stepEasState();
+    await stepDsStores();
+    await stepTmpdirCaches();
+    await stepCocoaPodsCache();
+    await stepXcodeDerivedData(pkgName);
+    await stepExpoCache();
+    if (args.state) await stepSetupState();
+    if (!args["no-install"]) {
+      await stepInstall(pm);
+      if (all) await stepConvexCodegen();
     } else {
-      // Capture PM BEFORE any wipes; --all wipes the lockfile.
-      const pm = await detectPackageManager();
-      const pkgName = await readPkgName();
-      const all = args.all === true;
-      await stepStopBundlers();
-      await stepProjectArtifacts(all);
-      await stepEasState();
-      await stepDsStores();
-      await stepTmpdirCaches();
-      await stepCocoaPodsCache();
-      await stepXcodeDerivedData(pkgName);
-      await stepExpoCache();
-      if (args.state) await stepSetupState();
-      if (!args["no-install"]) {
-        await stepInstall(pm);
-        if (all) await stepConvexCodegen();
-      } else {
-        yep(`--no-install passed; skipping ${pm} install`);
-      }
+      yep(`--no-install passed; skipping ${pm} install`);
     }
-    const elapsed = ((performance.now() - startedAt) / 1000).toFixed(2);
-    line(`\n  ${GREEN}ok${RESET}   clean complete in ${elapsed}s\n`);
-  } catch (err) {
-    line();
-    if (err instanceof Error) bad(err.message);
-    else bad(String(err));
-    process.exit(1);
   }
-})();
+  const elapsed = ((performance.now() - startedAt) / 1000).toFixed(2);
+  line(`\n  ${GREEN}ok${RESET}   clean complete in ${elapsed}s\n`);
+} catch (err) {
+  line();
+  if (err instanceof Error) bad(err.message);
+  else bad(String(err));
+  process.exit(1);
+}
