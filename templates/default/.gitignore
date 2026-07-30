@@ -60,12 +60,13 @@ plans/
 .dev/
 
 # App Store metadata. Ships with placeholder values so `eas submit` works
-# out-of-the-box. `vexpo rebrand` fills in your real review contact. Fill the
-# demo creds yourself before submission (`vexpo review-account` seeds the
-# matching Convex account from them).
-# Decide whether to commit your filled-in version based on team policy (it
-# contains demo passwords for App Review).
-# store.config.json
+# out-of-the-box, and `create-vexpo` copies the file before it runs `git init`,
+# so a fresh scaffold still has it on disk. `vexpo rebrand` fills in your real
+# review contact and `vexpo review-account` writes a generated App Review demo
+# password straight into it, which is why it is ignored rather than tracked:
+# following the setup as documented would otherwise commit that password.
+# Un-ignore it only if your team has decided to carry the creds in git.
+store.config.json
 
 # Setup state cache (resumable orchestrator; never holds secrets)
 .setup-state.json
