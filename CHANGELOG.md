@@ -4,6 +4,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Pre-1.0
 
 ## [Unreleased]
 
+- Native Sign in with Apple could not verify its identity token. Better Auth resolves the expected audience as `audience ?? appBundleIdentifier ?? clientId`, and `clientId` holds the Services ID (the web flow's audience) while a native token carries the bundle id, so every native sign-in failed audience verification. `convex/auth.ts` now passes `appBundleIdentifier`. `APP_BUNDLE_ID` was already on Convex, so nothing else moves.
 - `create-vexpo` strips the App Store Connect identity out of `eas.json` when it scaffolds. `vexpo asc connect` writes a real `ascAppId` and ASC key id into the submit profiles because `eas submit` reads them from nowhere else, and the template shares a directory with a real shipping project, so a scaffold was copying them straight into every new app. The `.p8` stays gitignored, so the existing key-leak check passed the whole time. Guarded in the scaffold e2e now.
 - `vexpo doctor` no longer guesses that your EAS project was deleted when you are simply logged out. `project-info` now defers to the `signed-in` check above it and skips.
 - Every eas-cli failure caused by being logged out now says so and names the fix. With stdin ignored, eas-cli puts "An Expo user account is required" on stdout and keeps only "<cmd> command failed." on stderr, so the tail vexpo printed threw away the useful half. A live `vexpo env push` reported nothing but the generic line.

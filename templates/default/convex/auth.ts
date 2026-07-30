@@ -37,7 +37,7 @@ export async function getUserByAuthId(
 ): Promise<Doc<"users"> | null> {
   return await ctx.db
     .query("users")
-    .withIndex("authId", (q) => q.eq("authId", authId))
+    .withIndex("by_authId", (q) => q.eq("authId", authId))
     .unique();
 }
 
@@ -127,6 +127,12 @@ export const createAuth = (ctx: GenericCtx<DataModel>) =>
             apple: {
               clientId: process.env.APPLE_CLIENT_ID,
               clientSecret: process.env.APPLE_CLIENT_SECRET,
+              // Native Sign in with Apple sends an identity token whose `aud` is
+              // the bundle id, while `clientId` holds the Services ID (the web
+              // flow's audience). Better Auth verifies against
+              // `audience ?? appBundleIdentifier ?? clientId`, so without this
+              // every native sign-in fails audience verification.
+              appBundleIdentifier: process.env.APP_BUNDLE_ID,
             },
           }
         : {},
