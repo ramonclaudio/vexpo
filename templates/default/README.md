@@ -170,22 +170,19 @@ npm run prebuild               Generate iOS native project from config
 
 npm run convex:dev             Convex dev server (watch mode)
 npm run convex:deploy          Deploy Convex functions to production (reads .env.prod so the dev deploy key in .env.local can't hijack the target)
-npm run convex:logs            Tail dev deployment logs
 npm run convex:logs:prod       Tail prod deployment logs
 npm run convex:env             List dev env vars
 npm run convex:env:prod        List prod env vars
-npm run convex:insights        OCC conflicts + resource limits (dev)
-npm run convex:insights:prod   Same for prod
-npm run convex:dashboard       Open the Convex dashboard
-npm run convex:codegen         Regenerate convex/_generated/
+npm run convex:insights:prod   OCC conflicts + resource limits (prod)
+
+The dev-side ones are `npx convex <cmd>` as-is, no alias needed:
+logs, insights, dashboard, codegen, data, env get/set.
 
 npm run eas:dev                eas build -p ios --profile development:simulator
 npm run eas:dev:device         eas build -p ios --profile development:device
 npm run eas:tf                 eas build -p ios --profile production --auto-submit-with-profile testflight
 npm run eas:prod               eas build -p ios --profile production
-npm run metadata:lint          eas metadata:lint
 npm run metadata:push          eas metadata:lint && eas metadata:push
-npm run metadata:pull          eas metadata:pull
 npm run env:pull               eas env:pull --environment development
 npm run env:pull:prod          eas env:pull --environment production
 
@@ -240,7 +237,7 @@ plugins/
 .eas/workflows/                   9 EAS Workflow YAML files
 .github/workflows/check.yml       Typecheck, lint, format, tests
 scripts/
-  clean.ts                        Trash + reinstall
+  clean.mjs                       Trash + reinstall
   rotate-apple-jwt.mjs            CI: re-sign JWT from env vars
 __tests__/                        Convex + lib unit tests (validators, HMAC, deep link, schemas)
 ```

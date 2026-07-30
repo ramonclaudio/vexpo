@@ -4,6 +4,10 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Pre-1.0
 
 ## [Unreleased]
 
+- `scripts/clean.ts` is now `scripts/clean.mjs`, and `scripts/_run.mjs` and the `tsx` devDependency are gone with it. `_run.mjs` existed to pick bun or tsx for the one TypeScript file in a directory of `.mjs`, so `node scripts/clean.mjs` replaces a runtime selector, a dependency, and a "needs bun or tsx" failure mode. The script's output and its wipe are unchanged, verified against the old one in a sandbox.
+- Six npm scripts that were one-to-one aliases are gone: `convex:logs`, `convex:insights`, `convex:dashboard`, `convex:codegen`, `metadata:lint` and `metadata:pull`. Run `npx convex logs` or `npx eas-cli metadata:lint` directly. The ones carrying a flag you would otherwise have to remember stay, including `convex:dev`, `convex:deploy` and `metadata:push`.
+- `sf-symbols-typescript` is a declared devDependency. Two files import `SFSymbol` from it and nothing declared it, so it only resolved because expo-router, expo-image, expo-symbols and `@expo/ui` all depend on it and npm hoists it.
+- Dropped two dead exports: `Haptics` from `src/lib/haptics.ts` (nothing imported it, `h` is the API) and the `export` on `DeepLinkRoutes`, which is only used inside its own module.
 - `.env.example` warns that a `CONVEX_DEPLOY_KEY` there beats `--prod` on every convex command, so `convex env list --prod` reports dev and a prod-vs-dev diff compares dev to itself.
 - Maestro screenshots land in `.maestro/screenshots/` instead of the repo root, and the flows' run instructions point at `npm run e2e` rather than hand-rolled `JAVA_HOME=... maestro test` incantations.
 - The auth flow opens the dev bundle by deep link instead of tapping the launcher's server row. That row is found by scanning the local network, which never resolves on a simulator, so the flow died on "Element not found" with Metro perfectly healthy.

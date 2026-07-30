@@ -44,6 +44,7 @@ Monorepo for vexpo, a one-shot Expo + Convex + Better Auth + Resend starter targ
 - Adding a backend service, Worker, or telemetry endpoint. Static config in the published package answers compatibility matrices and version checks.
 - Adding NativeWind, ESLint, Prettier, or Biome to the template. Oxlint + Oxfmt only.
 - Adding `@better-auth/stripe`. It pulls SolidJS deps that break Metro. Use `@convex-dev/stripe`.
-- Re-introducing `_run.mjs` to the published CLI, or `setup-*.ts` scripts to the template. The CLI is the source of truth.
+- Re-introducing `setup-*.ts` scripts to the template. The CLI is the source of truth.
+- Writing a template script in TypeScript. `scripts/` is plain `.mjs` so `node <script>` runs it with no runtime selector and no `tsx`.
 - Committing `node_modules/`, `dist/`, `.expo/`, `ios/`, `android/`, `.tanstack/`, or other generated artifacts.
 - Creating README / CHANGELOG / docs files the user did not ask for.
