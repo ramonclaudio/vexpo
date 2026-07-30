@@ -98,6 +98,7 @@
     "convex-test": "^0.0.54",
     "oxfmt": "^0.58.0",
     "oxlint": "^1.73.0",
+    "sf-symbols-typescript": "^2.2.0",
     "tsx": "^4.23.0",
     "typescript": "^6.0.3",
     "vitest": "^4.1.10"
