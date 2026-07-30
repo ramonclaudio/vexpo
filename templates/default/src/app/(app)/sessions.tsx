@@ -26,6 +26,7 @@ import { DynamicType } from "@/constants/ui";
 import { ContentUnavailable } from "@/components/ui/content-unavailable";
 import { SkeletonSessions } from "@/components/ui/skeleton";
 import { ErrorText } from "@/components/ui/status-text";
+import { deviceLabel } from "@/lib/device";
 import { useDynamicFont } from "@/lib/dynamic-font";
 
 import { authClient } from "@/lib/auth-client";
@@ -57,17 +58,6 @@ function formatRelative(date: Date): string {
   const months = Math.floor(days / 30);
   if (months < 12) return `${months}mo ago`;
   return `${Math.floor(months / 12)}y ago`;
-}
-
-function deviceLabel(userAgent?: string | null): string {
-  if (!userAgent) return "Unknown device";
-  if (/iPhone/i.test(userAgent)) return "iPhone";
-  if (/iPad/i.test(userAgent)) return "iPad";
-  if (/Mac/i.test(userAgent)) return "Mac";
-  if (/Android/i.test(userAgent)) return "Android";
-  if (/Windows/i.test(userAgent)) return "Windows";
-  if (/Linux/i.test(userAgent)) return "Linux";
-  return userAgent.slice(0, 40);
 }
 
 export default function SessionsScreen() {

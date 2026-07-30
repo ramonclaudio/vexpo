@@ -4,6 +4,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Pre-1.0
 
 ## [Unreleased]
 
+- The sessions list names the device behind the app's own sessions. iOS reports them as `<AppName>/1 CFNetwork/... Darwin/...`, which fell through every platform check and printed raw. `deviceLabel` moved to `src/lib/device.ts` with a test.
 - `<Material>` falls back to the theme's `card` colour under Reduce Transparency instead of a hardcoded near-black, which painted an opaque dark panel under near-black text in light mode whenever the caller passed no tint.
 - The FAQ said deleting your account "will permanently remove all your data". `convex/users.ts` gives you a 30-day grace window and both delete screens say so, leaving the help screen as the one place contradicting the code.
 - The privacy screen no longer offers a Share Analytics toggle. It wrote to a preference nothing read, so the app was telling users it shared data it never collected.
