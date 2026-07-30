@@ -61,6 +61,7 @@ async function main() {
     await cp(TEMPLATE_DIR, target, { recursive: true });
     await restoreStrippedDotfiles(target);
     await rewritePackage(target, name);
+    await rewriteEasJson(target);
     copySpin.succeed("Template copied");
   } catch (err) {
     copySpin.fail("Template copy failed");
@@ -215,6 +216,30 @@ async function rewritePackage(target: string, requestedName: string): Promise<vo
   delete parsed.license;
   delete parsed.publishConfig;
   await writeFile(pkgPath, `${JSON.stringify(parsed, null, 2)}\n`);
+}
+
+/**
+ * Strip the template author's App Store Connect identity out of eas.json.
+ *
+ * `vexpo asc connect` and `vexpo submit` write a real `ascAppId` and ASC key id
+ * into the submit profiles, by design: `eas submit` reads them from nowhere
+ * else. The template lives in the same directory as a real shipping project, so
+ * those values sit in the tracked file whenever that project has been set up,
+ * and a scaffold that copied them would point every new app at somebody else's
+ * App Store Connect record. `vexpo asc connect` writes the right ones back in.
+ */
+async function rewriteEasJson(target: string): Promise<void> {
+  const path = join(target, "eas.json");
+  if (!existsSync(path)) return;
+  const parsed = JSON.parse(await readFile(path, "utf8")) as {
+    submit?: Record<string, { ios?: Record<string, unknown> }>;
+  };
+  for (const profile of Object.values(parsed.submit ?? {})) {
+    for (const key of ["ascAppId", "ascApiKeyId", "ascApiKeyIssuerId", "ascApiKeyPath"]) {
+      delete profile.ios?.[key];
+    }
+  }
+  await writeFile(path, `${JSON.stringify(parsed, null, 2)}\n`);
 }
 
 function toPackageName(raw: string): string {

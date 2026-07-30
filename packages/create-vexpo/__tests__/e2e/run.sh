@@ -255,6 +255,26 @@ if match_grep "$n"; then
   [ -z "$bad" ] && pass "$n" || fail "$n" "leaked:$bad"
 else skip "$n" "filtered"; fi
 
+n="scaffolded eas.json carries nobody else's App Store Connect identity"
+if match_grep "$n"; then
+  # `vexpo asc connect` and `vexpo submit` write a real ascAppId and ASC key id
+  # into eas.json's submit profiles, and the live project shares a directory with
+  # the published template, so one `git add -A` in the wrong moment ships them.
+  # Nothing else here would catch it: the .p8 stays gitignored, so the keyleak
+  # check above passes while every scaffolded project quietly submits to the
+  # template author's app.
+  sb=$(scaffold clean-ids -y --no-install)
+  found=$(node -e '
+    const p = require("'"$sb"'/clean-ids/eas.json").submit ?? {};
+    const keys = ["ascAppId", "ascApiKeyId", "ascApiKeyIssuerId", "ascApiKeyPath"];
+    const bad = [];
+    for (const [name, profile] of Object.entries(p))
+      for (const k of keys) if (profile?.ios?.[k]) bad.push(name + "." + k);
+    process.stdout.write(bad.join(" "));
+  ' 2>&1)
+  [ -z "$found" ] && pass "$n" || fail "$n" "$found"
+else skip "$n" "filtered"; fi
+
 section "Full install (opt-in)"
 
 n="scaffold WITH install lands node_modules, lockfile, committed lock"
