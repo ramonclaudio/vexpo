@@ -4,6 +4,9 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Pre-1.0
 
 ## [Unreleased]
 
+- `vexpo doctor` no longer guesses that your EAS project was deleted when you are simply logged out. `project-info` now defers to the `signed-in` check above it and skips.
+- Every eas-cli failure caused by being logged out now says so and names the fix. With stdin ignored, eas-cli puts "An Expo user account is required" on stdout and keeps only "<cmd> command failed." on stderr, so the tail vexpo printed threw away the useful half. A live `vexpo env push` reported nothing but the generic line.
+
 ## [0.3.0] - 2026-07-29
 
 - `testflight invite` now handles three Apple rules the first live 0.2.3 run hit. An internal group only takes App Store Connect team members, so an outside email now falls through to the external group when the group was auto-resolved, and an explicit `--group` gets the explanation instead of a bare 409.

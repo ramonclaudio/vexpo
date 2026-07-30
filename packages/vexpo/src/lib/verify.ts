@@ -567,8 +567,10 @@ async function verifyEas(ctx: VerifyContext): Promise<Check[]> {
   // Account-level, needs no projectId: a logged-out eas-cli fails every later
   // EAS phase non-interactively, so say it first. Runs after the lite-mode
   // return so lite doctor stays free of EAS shell-outs.
+  let signedIn = false;
   try {
     const who = await easWhoami();
+    signedIn = !!who;
     checks.push(
       who
         ? ok("eas", "signed-in", who)
@@ -622,6 +624,11 @@ async function verifyEas(ctx: VerifyContext): Promise<Check[]> {
             "run `eas init` to re-link (or `vexpo full`)",
           ),
         );
+      else if (!signedIn)
+        // Every EAS call fails the same way when logged out. Guessing at a
+        // deleted project here sent a real run hunting for a project that was
+        // fine, so defer to the check above instead.
+        checks.push(skip("eas", "project-info", "not signed in"));
       else
         checks.push(
           warn("eas", "project-info", "eas project:info failed (project deleted or transferred?)"),

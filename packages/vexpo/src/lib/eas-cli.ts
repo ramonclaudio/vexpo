@@ -18,9 +18,22 @@ function compact(argv: EasArgs): string[] {
   return out;
 }
 
+// eas-cli says what went wrong on its first line and "<cmd> command failed." on
+// its last, so a bare tail throws away the only sentence that helps. Being
+// logged out is the case that costs the most: every env, project and
+// integration call fails at once, and the tail blames each command in turn.
+//
+// Both streams get searched, because logged out is the case that splits them:
+// with stdin ignored (which is how run() invokes everything) eas-cli puts the
+// login prompt on stdout and keeps only the generic failure on stderr.
+const NOT_SIGNED_IN = /An Expo user account is required|not logged in|Log in to EAS/i;
+
 // One error-tail behavior everywhere: prefer stderr, fall back to stdout (some
 // eas subcommands write their error there), then the bare exit code.
 function errorTail(code: number, stdout: string, stderr: string): string {
+  if (NOT_SIGNED_IN.test(`${stderr}\n${stdout}`)) {
+    return "not signed in to eas-cli. Run `npx eas-cli login`, or set EXPO_TOKEN to run headless";
+  }
   return (stderr || stdout).trim().split("\n").pop()?.trim() ?? `exit ${code}`;
 }
 

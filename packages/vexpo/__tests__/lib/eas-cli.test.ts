@@ -81,6 +81,31 @@ describe("easJson", () => {
   });
 });
 
+// Logged out is the failure everything else cascades from, and eas-cli reports
+// it in the shape a plain tail throws away: with stdin ignored, which is how
+// run() invokes it, the login prompt goes to stdout and stderr keeps only
+// "<cmd> command failed." A live `vexpo env push` printed exactly that and gave
+// no hint that the fix was `eas login`.
+const LOGGED_OUT = {
+  code: 1,
+  stdout:
+    "An Expo user account is required to proceed.\n\nLog in to EAS with email or username (exit and run eas login --help to see other login options)\nInput is required, but stdin is not readable. Failed to display prompt: Email or username\n",
+  stderr: "    Error: env:push command failed.\n",
+};
+
+describe("errorTail", () => {
+  it("names the login when eas-cli is logged out, whichever stream says so", async () => {
+    runSpy.mockResolvedValue(LOGGED_OUT);
+    await expect(easJson(["env:list"])).rejects.toThrow(/not signed in to eas-cli/);
+    await expect(easJson(["env:list"])).rejects.toThrow(/eas-cli login/);
+  });
+
+  it("still tails a real failure rather than blaming the login", async () => {
+    runSpy.mockResolvedValue({ code: 1, stdout: "", stderr: "boom\nGraphQL request failed" });
+    await expect(easJson(["env:list"])).rejects.toThrow(/GraphQL request failed/);
+  });
+});
+
 describe("easSpawn", () => {
   it("forwards argv to spawn with stdio inherit", async () => {
     spawnSpy.mockReturnValueOnce({
