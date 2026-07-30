@@ -9,6 +9,7 @@ import {
 } from "expo-glass-effect";
 
 import { useReduceTransparency } from "@/hooks/use-reduce-transparency";
+import { useColors } from "@/hooks/use-theme";
 
 /**
  * HIG-aware translucent surface. Picks the right backing per OS and
@@ -78,12 +79,16 @@ export function Material({
   ...viewProps
 }: MaterialProps) {
   const reduceTransparency = useReduceTransparency();
+  const colors = useColors();
 
   if (reduceTransparency) {
     return (
       <View
         {...viewProps}
-        style={[viewProps.style, { backgroundColor: tintColor ?? "rgba(0,0,0,0.85)" }]}
+        // `card`, not a literal. The old fallback was an opaque near-black that
+        // painted under near-black text in light mode the moment Reduce
+        // Transparency was on and the caller passed no tint.
+        style={[viewProps.style, { backgroundColor: tintColor ?? colors.card }]}
       >
         {children}
       </View>

@@ -4,6 +4,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Pre-1.0
 
 ## [Unreleased]
 
+- `<Material>` falls back to the theme's `card` colour under Reduce Transparency instead of a hardcoded near-black, which painted an opaque dark panel under near-black text in light mode whenever the caller passed no tint.
 - The FAQ said deleting your account "will permanently remove all your data". `convex/users.ts` gives you a 30-day grace window and both delete screens say so, leaving the help screen as the one place contradicting the code.
 - The privacy screen no longer offers a Share Analytics toggle. It wrote to a preference nothing read, so the app was telling users it shared data it never collected.
 - `store.config.json` is gitignored. It ships with placeholders and `create-vexpo` copies it before `git init`, so a scaffold still gets the file, but `vexpo review-account` writes a generated App Review demo password into it and following the setup as documented used to commit that password.
