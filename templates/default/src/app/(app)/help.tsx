@@ -33,7 +33,8 @@ const FAQ_ITEMS = [
   {
     id: "delete-account",
     question: "How do I delete my account?",
-    answer: "Go to Settings, then Delete Account. This will permanently remove all your data.",
+    answer:
+      "Go to Settings, then Delete Account. You have 30 days to sign back in and restore it. After that it's permanent.",
   },
   {
     id: "notifications",
