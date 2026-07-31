@@ -277,8 +277,15 @@ The template used to ship an Apple App Attest stack (a Convex verifier plus a cl
 
 Every `expo-*` package tracks the same SDK 57 release. `npm run upgrade:stable` rolls them forward together. `npm run upgrade` tracks the next SDK preview.
 
+`typescript` is part of that matrix, pinned at `~6.0.3`. Moving it to 7 is what `npx expo-doctor` flags as a major mismatch, so leave it until the SDK bumps.
+
+Three packages are held on purpose, and `npm outdated` will keep offering newer ones:
+
 > [!CAUTION]
 > Don't downgrade `@convex-dev/better-auth` below `0.12.4` (pinned here at `0.12.5` with `better-auth@1.6.23`). Older `@convex-dev/better-auth` breaks signup.
+
+> [!CAUTION]
+> Don't bump `better-auth` or `@better-auth/expo` past `1.6.23` while TypeScript is on 6. From 1.6.24 the client plugin type stops satisfying `BetterAuthClientPlugin`, so `createAuthClient` infers a client with no plugin actions on it and `emailOtp`, `username`, `isUsernameAvailable` and `convex` all vanish, twelve errors across the auth screens. TypeScript 7 resolves it and SDK 57 doesn't allow TypeScript 7, so the pair moves together or not at all. Both are exact versions, not carets, so an install can't drift onto it.
 
 ## License
 
