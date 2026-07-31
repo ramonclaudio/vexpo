@@ -46,7 +46,7 @@ jobs:
       - run: node .github/scripts/pack-guard.mjs packages/create-vexpo
 
   template:
-    name: template (typecheck, lint, format, test)
+    name: template (typecheck, lint, format, test, expo-doctor)
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -79,8 +79,12 @@ jobs:
       - run: npm run lint
       - run: npm run format:check
       - run: npm run test
-
-  knip:
+      # The SDK compatibility gate, and the only check that reads the Expo
+      # version matrix. Dependabot resolves from the registry and can't know a
+      # package is pinned by SDK 57, so a bump like typescript 7 typechecks,
+      # lints and tests clean while being wrong for the template. This is what
+      # turns that into a red PR instead of a green one.
+      - run: npx expo-doctor
     name: knip (unused exports, deps, files)
     runs-on: ubuntu-latest
     steps:
