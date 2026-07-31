@@ -93,7 +93,7 @@
     "oxfmt": "^0.61.0",
     "oxlint": "^1.76.0",
     "sf-symbols-typescript": "^2.2.0",
-    "typescript": "^6.0.3",
+    "typescript": "^7.0.2",
     "vitest": "^4.1.10"
   },
   "engines": {
