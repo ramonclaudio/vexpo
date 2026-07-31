@@ -87,22 +87,30 @@ npm run dev   # expo start --dev-client
 
 ### `Unable to locate a Java Runtime`
 
-Maestro's launcher needs a JVM and Homebrew's `openjdk` is keg-only, so it never lands on the system Java path. Point `JAVA_HOME` at the keg:
+You ran `maestro test` directly. Maestro is a JVM tool, macOS ships no JDK, and Homebrew's `openjdk` is keg-only so it never lands on the system Java path. Run the flows through the template's runner instead:
 
 ```bash
-brew install openjdk
-JAVA_HOME=/opt/homebrew/opt/openjdk PATH="$JAVA_HOME/bin:$PATH" maestro test .maestro/tour.yaml
+brew install openjdk        # once
+npm run e2e                 # whole folder
+npm run e2e -- .maestro/auth.yaml
 ```
 
-Export both in your shell profile if you run flows often.
+`scripts/e2e.mjs` finds the keg and sets `JAVA_HOME` itself. It also supplies the three things the flows can't: `MAESTRO_APP_ID` from `.env.local` (only EAS injects it in CI), a unique `MAESTRO_TEST_EMAIL` per run, and a simulator keychain reset, since `clearState` leaves Better Auth's session cookie behind and the next launch comes up already signed in.
 
 ### `tour.yaml` fails on `"This device" is visible`
 
 The Sessions screen gates session management behind a recent sign-in. An old simulator session renders the "Sign in again to manage sessions" fallback instead of the device list. Run `auth.yaml` first to seed a fresh session, which is what the EAS workflow does.
 
-### `auth.yaml` fails after Resend is provisioned
+### `auth.yaml` fails on `"Verify your email" is visible`
 
-The flow's sign-up-lands-authed path only works while `REQUIRE_EMAIL_VERIFICATION` is unset (lite mode). Once Resend provisioning flips it on, sign-up needs a real OTP email, which a headless flow can't read. Seed a pre-verified account with `npx vexpo review-account` and drive a sign-in-only variant, or run the suite on EAS release builds via `.eas/workflows/e2e-tests.yml`.
+That assert is the flow telling you `REQUIRE_EMAIL_VERIFICATION` is set on the deployment. The sign-up-lands-authed path only works while it's unset (lite mode). Once Resend provisioning flips it on, sign-up stops on the OTP screen and the code is in an inbox no headless flow can read. `tour.yaml` and `zz-delete-restore.yaml` both need the session `auth.yaml` creates, so all three go red together.
+
+```bash
+npx convex env get REQUIRE_EMAIL_VERIFICATION
+npx convex env remove REQUIRE_EMAIL_VERIFICATION   # only on a deployment you e2e against
+```
+
+Otherwise seed a pre-verified account with `npx vexpo review-account` and drive a sign-in-only variant, or run the suite on EAS release builds via `.eas/workflows/e2e-tests.yml`.
 
 ### Taps report `COMPLETED` but sign-in never fires
 

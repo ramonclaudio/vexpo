@@ -72,7 +72,7 @@ Apple App Store Review 5.1.1(v) requires in-app account deletion. vexpo ships a 
 
 - `.setup-state.json`: IDs and timestamps, no secrets. The Convex deployment name and Apple Team ID alone don't authenticate as the developer.
 - `.env.local`, `.env.prod`: these DO contain secrets. `.gitignored`. Manage like any local credentials.
-- `.p8` files (ASC API, SIWA): private keys. `.gitignored`. Stage one-time downloads in the `credentials/` dir. Their real home is EAS, uploaded and KMS-encrypted, so a stolen laptop yields at most a key to rotate, not the canonical copy. Delete the local `.p8` after upload if you like.
+- `.p8` files (ASC API, SIWA): private keys. `.gitignored`. Stage one-time downloads in the `credentials/` dir. Their real home is EAS, uploaded and KMS-encrypted, so a stolen laptop yields at most a key to rotate, not the canonical copy. Delete the local SIWA `.p8` once it's pushed. The ASC key stays, `eas.json`'s submit profiles point at its path and CLI submits read it from there.
 
 ## Secret rotation
 
@@ -86,4 +86,3 @@ Apple App Store Review 5.1.1(v) requires in-app account deletion. vexpo ships a 
 | `BETTER_AUTH_SECRET`           | When suspected compromise | Rotate with the versioned `BETTER_AUTH_SECRETS=2:new,1:old` form so live sessions survive. Never swap the singular secret mid OAuth flow |
 | `EAS_WEBHOOK_SECRET`           | When suspected compromise | `npx eas-cli webhook:update --id <id> --secret <new>` + `npx convex env set EAS_WEBHOOK_SECRET <new>`                                    |
 | `RESEND_WEBHOOK_SECRET`        | When suspected compromise | Resend dashboard → reissue + `npx convex env set RESEND_WEBHOOK_SECRET <new>`                                                            |
-

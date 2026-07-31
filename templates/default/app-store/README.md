@@ -41,4 +41,4 @@ One-time settings you configure in the ASC web UI, cataloged from a real 0→1 r
 - DSA trader status: non-trader is right for a free app, revisit if commerce ships
 - Vietnam game license, medical device declaration, subscription server notifications and shared secret: skip unless they apply
 
-Keep `store.config.json` the source of truth: when you set a `[metadata:push]` field by hand in ASC, sync it back so a later push can't regress it, and keep `npm run metadata:lint` green.
+Keep `store.config.json` the source of truth: when you set a `[metadata:push]` field by hand in ASC, sync it back so a later push can't regress it, and keep `npx eas-cli metadata:lint` green. The working file is gitignored (it holds the App Review demo password), so copy anything you want versioned into the tracked `store.config.example.json` as well.

@@ -88,13 +88,13 @@ testflight groups create` / `invite` / `whats-new`, `npx vexpo submit` for
    accessibility declarations, TestFlight Test Information). Walk
    `app-store/README.md` together, it marks what `metadata:push` re-pushes
    later versus what stays manual, and sync any hand-set `store.config.json`
-   field back into the repo.
+   field back into `store.config.example.json`, which is the tracked half.
 
 ## Stack at a glance
 
 - Backend. Convex. No raw DB calls. Everything goes through `convex/` (server)
   and `convex/react` (client).
-- Auth. Better Auth via `@convex-dev/better-auth@0.12.4`. Email
+- Auth. Better Auth via `@convex-dev/better-auth@0.12.5`. Email
   verification is gated on the `REQUIRE_EMAIL_VERIFICATION` Convex env var.
 - Mobile. Expo SDK 57, RN 0.86, React 19. **iOS only today.**
   Native UI exclusively via `@expo/ui/swift-ui`. No NativeWind, no Tailwind,
@@ -138,17 +138,20 @@ testflight groups create` / `invite` / `whats-new`, `npx vexpo submit` for
   `APPLE_KEY_ID`, `APPLE_SERVICES_ID`, `CONVEX_DEPLOY_KEY`).
 - Push notifications: only work on a physical device. iOS Simulator does
   not deliver APNs.
-- `store.config.json`: ships with placeholder values. `npx vexpo rebrand`
-  fills in the identity and review contact. The store copy (subtitle,
-  description, keywords) and demo credentials stay yours to write before
-  submission. App Review rejects placeholder values.
+- `store.config.json`: starts as a copy of the tracked
+  `store.config.example.json` and is itself gitignored, because
+  `vexpo review-account` writes a generated App Review demo password into it.
+  `npx vexpo rebrand` fills in the identity and review contact. The store copy
+  (subtitle, description, keywords) and demo credentials stay yours to write
+  before submission, and App Review rejects placeholder values. Put copy you
+  want versioned in the example too, that's what a fresh clone restores from.
 
 ## When in doubt
 
 - Run `npx vexpo doctor` to check that `.env.local`, Convex env, EAS env,
   and `app.config.ts` agree.
-- Use `npx eas <subcommand>` for canonical EAS operations. **Don't reinvent
-  EAS.**
+- Use `npx eas-cli <subcommand>` for canonical EAS operations, never bare
+  `npx eas`, which can't resolve the binary. **Don't reinvent EAS.**
 - Run `npx vexpo full --plan` for the full setup walkthrough.
 
 ## Agent setup

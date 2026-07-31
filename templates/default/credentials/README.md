@@ -24,6 +24,8 @@ npx eas-cli credentials --platform ios   # App Store Connect API Key -> set up
 npx vexpo asc connect
 ```
 
-After upload, delete the local `.p8`. EAS holds it.
+Keep the ASC key here after the upload. `vexpo submit` and `vexpo asc connect` write its path into `eas.json`'s submit profiles, and that only happens while the `.p8` lives inside the repo. It's what makes a CLI submit authenticate with your validated key instead of whatever EAS has stored. Two live ASC keys is the designed end state: this one for `eas.json` and CLI submits, the EAS-managed one for cloud auto-submits.
+
+The SIWA key is the one to delete once `vexpo apple eas-rotation-secrets` has pushed it. EAS holds it from then on.
 
 Run `npx vexpo doctor` to confirm the key, its role, and the linkage are all green.

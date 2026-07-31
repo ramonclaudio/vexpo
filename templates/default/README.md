@@ -47,7 +47,7 @@ one interactive first build.
 Tools, all local. `eas-cli` and the `convex` CLI come through the project (npx fetches them), no global installs:
 
 - macOS and Xcode (iOS-only)
-- Bun or Node 20+
+- Bun or Node 22.12+
 
 Accounts, by the stage that needs them. Only Convex is required before you ship:
 
@@ -132,6 +132,7 @@ The whole road from a dev app to TestFlight, in order. One step is interactive b
 - The app bundle is public. Never put a real secret in an `EXPO_PUBLIC_*` var, it ships in plaintext inside the binary. Only public identifiers (Convex URL, bundle id, team id) belong there.
 - Real secrets live at their destination, EAS or Convex (both encrypted at rest), never in git. `vexpo full` and `vexpo env push` move them there.
 - EAS cloud builders can't read your local `.env` or `.p8` files, so anything a build or submit needs has to be uploaded to EAS first.
+- `store.config.json` is gitignored, because `vexpo review-account` writes a generated App Review demo password into it. `store.config.example.json` is the tracked copy your working file starts from. Store copy you want versioned (subtitle, description, keywords) goes in the example, and a fresh clone restores from it: `cp store.config.example.json store.config.json`. Un-ignore the working file if your team would rather carry the creds in git.
 
 | Credential                                         | Home                                   | Local          | Bridge                             |
 | -------------------------------------------------- | -------------------------------------- | -------------- | ---------------------------------- |
@@ -195,7 +196,9 @@ npm run format                 oxfmt
 npm run format:check           oxfmt --check
 npm run test                   vitest run
 npm run test:watch             vitest
+npm run e2e                    Maestro flows on the simulator (one flow: npm run e2e -- .maestro/auth.yaml)
 npm run fp                     Print Expo fingerprint hash
+npm run updates:gen-cert       Generate the OTA code-signing keypair (one-shot)
 npm run upgrade                expo install expo@next && expo install --fix
 npm run upgrade:stable         expo install expo@latest && expo install --fix
 ```
@@ -236,8 +239,12 @@ plugins/
   with-pod-deployment-target.js   Forces every pod to iOS 16.4
 .eas/workflows/                   9 EAS Workflow YAML files
 .github/workflows/check.yml       Typecheck, lint, format, tests
+.maestro/                         Maestro e2e flows, run with `npm run e2e`
 scripts/
+  dev.mjs                         Metro launcher behind dev/start/ios
+  e2e.mjs                         Maestro runner behind `npm run e2e`
   clean.mjs                       Trash + reinstall
+  gen-update-cert.mjs             One-shot OTA code-signing keypair
   rotate-apple-jwt.mjs            CI: re-sign JWT from env vars
 __tests__/                        Convex + lib unit tests (validators, HMAC, deep link, schemas)
 ```
@@ -271,7 +278,7 @@ The template used to ship an Apple App Attest stack (a Convex verifier plus a cl
 Every `expo-*` package tracks the same SDK 57 release. `npm run upgrade:stable` rolls them forward together. `npm run upgrade` tracks the next SDK preview.
 
 > [!CAUTION]
-> Don't downgrade `@convex-dev/better-auth` below `0.12.4` (pinned with `better-auth@1.6.22`). Older `@convex-dev/better-auth` breaks signup.
+> Don't downgrade `@convex-dev/better-auth` below `0.12.4` (pinned here at `0.12.5` with `better-auth@1.6.23`). Older `@convex-dev/better-auth` breaks signup.
 
 ## License
 
