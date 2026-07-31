@@ -33,7 +33,12 @@ export default defineConfig({
     // `store.config.json` SHIPS with the template as a placeholder (with `YOUR_*`
     // tokens). `vexpo rebrand` overwrites it with real values. `eas submit`
     // needs the file to exist; placeholder version means `eas:tf` doesn't error
-    // before rebrand has run.
+    // before rebrand has run. The payload copy comes from the tracked
+    // `store.config.example.json`, never from the working tree's
+    // `store.config.json`: that one is gitignored (`vexpo review-account` writes
+    // a generated App Review password into it), so it holds this repo's real
+    // values locally and doesn't exist at all in a fresh CI checkout. Copying it
+    // would either leak the password or, on the release runner, ship no file.
     // CNG/build outputs are anchored to the template ROOT. A local expo module
     // ships its own ios/ sources under modules/*/ios, and an unanchored "ios"
     // match would gut them from the published tarball: same bug class as the
@@ -63,6 +68,7 @@ export default defineConfig({
       /^\.env\.prod$/,
       /^\.env\.production$/,
       /^\.env\.convex\.local$/,
+      /^store\.config\.json$/,
       /^\.setup-state\.json$/,
       /^\.setup-state\.json\..*\.tmp$/,
       /^\.DS_Store$/,
@@ -106,6 +112,10 @@ export default defineConfig({
         return true;
       },
     });
+    // Both ship. The example stays tracked in the scaffold's own repo so a
+    // second machine can restore the ignored working copy, and the working copy
+    // exists from the first minute so `eas:tf` doesn't error before rebrand.
+    await cp(join(dest, "store.config.example.json"), join(dest, "store.config.json"));
     for (const name of STRIPPED_DOTFILES) {
       try {
         await rename(join(dest, name), join(dest, strippedToUnderscore(name)));

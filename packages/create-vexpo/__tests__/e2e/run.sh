@@ -255,6 +255,25 @@ if match_grep "$n"; then
   [ -z "$bad" ] && pass "$n" || fail "$n" "leaked:$bad"
 else skip "$n" "filtered"; fi
 
+n="dist payload ships a placeholder store.config.json, not the author's"
+if match_grep "$n"; then
+  # `eas submit` needs the file to exist, and the working tree's copy is
+  # gitignored (it holds this repo's real review contact and the App Review demo
+  # password `vexpo review-account` generates). So the payload has to come from
+  # the tracked `store.config.example.json`, copied at build time. Nothing else
+  # catches this: a local build finds the real file on disk and looks fine, while
+  # the release runner's fresh checkout has no file at all.
+  dest="$PKG_ROOT/dist/templates/default"
+  bad=""
+  [ -f "$dest/store.config.json" ] || bad="$bad missing:store.config.json"
+  [ -f "$dest/store.config.example.json" ] || bad="$bad missing:store.config.example.json"
+  grep -q 'REPLACE_BEFORE_SUBMIT' "$dest/store.config.json" 2>/dev/null \
+    || bad="$bad demo-password-not-a-placeholder"
+  grep -q 'YOUR_FIRST_NAME' "$dest/store.config.json" 2>/dev/null \
+    || bad="$bad review-contact-not-a-placeholder"
+  [ -z "$bad" ] && pass "$n" || fail "$n" "$bad"
+else skip "$n" "filtered"; fi
+
 n="scaffolded eas.json carries nobody else's App Store Connect identity"
 if match_grep "$n"; then
   # `vexpo asc connect` and `vexpo submit` write a real ascAppId and ASC key id
