@@ -40,6 +40,17 @@ updates:
       - dependency-name: "react-dom"
       - dependency-name: "react-native"
       - dependency-name: "react-native-*"
+      # `typescript` is in the SDK matrix too, at `~6.0.3`. Dependabot reads the
+      # registry, not the matrix, so it offers 7 and `expo-doctor` rejects it.
+      # The root entry deliberately has no such rule: the CLI is on 7 already.
+      - dependency-name: "typescript"
+      # From 1.6.24 the client plugin type stops satisfying
+      # `BetterAuthClientPlugin`, so `createAuthClient` infers a client with no
+      # plugin actions and the auth screens lose `emailOtp`, `username` and
+      # `convex`. Only TypeScript 7 resolves it, which the pin above rules out,
+      # so this moves when the SDK moves.
+      - dependency-name: "better-auth"
+      - dependency-name: "@better-auth/expo"
 
   - package-ecosystem: github-actions
     directory: /
