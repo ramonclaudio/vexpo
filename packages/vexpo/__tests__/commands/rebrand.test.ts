@@ -402,6 +402,24 @@ describe("runRebrand secondary targets", () => {
     };
     expect(after.apple.review.notes).toBe("Demo: tap Skip on the paywall.");
   });
+
+  it("rebrands store.config.example.json too, since that's the tracked half", async () => {
+    Object.defineProperty(process.stdin, "isTTY", { value: false, configurable: true });
+    await writeFile("store.config.example.json", JSON.stringify(STORE_CONFIG));
+
+    expect(await runRebrand({ ...FLAGS, yes: true })).toBe(0);
+
+    const example = JSON.parse(await readFile("store.config.example.json", "utf8")) as {
+      apple: { info: Record<string, { title: string }>; copyright: string };
+    };
+    expect(example.apple.info["en-US"]!.title).toBe("Foobar");
+    expect(example.apple.copyright).toContain("Ada Lovelace");
+  });
+
+  it("exits 0 when store.config.example.json is absent", async () => {
+    Object.defineProperty(process.stdin, "isTTY", { value: false, configurable: true });
+    expect(await runRebrand({ ...FLAGS, yes: true })).toBe(0);
+  });
 });
 
 describe("runRebrand formatting", () => {

@@ -278,12 +278,25 @@ async function syncPackageLock(inputs: RebrandInputs): Promise<void> {
 }
 
 async function rewriteStoreConfig(inputs: RebrandInputs): Promise<void> {
-  const file = "store.config.json";
+  await rewriteStoreConfigFile("store.config.json", inputs, { required: true });
+  // The working file is gitignored (review-account writes the App Review demo
+  // password into it) and the example is the tracked half a fresh clone
+  // restores from, so both carry the identity or the next clone comes back
+  // branded as the template.
+  await rewriteStoreConfigFile("store.config.example.json", inputs, { required: false });
+}
+
+async function rewriteStoreConfigFile(
+  file: string,
+  inputs: RebrandInputs,
+  { required }: { required: boolean },
+): Promise<void> {
   let json: StoreConfigShape;
   try {
     await access(file);
     json = JSON.parse(await readFile(file, "utf8")) as StoreConfigShape;
   } catch {
+    if (!required) return;
     throw new Error(`${file} missing or unparseable; restore it from the vexpo template first`);
   }
   const en = json.apple.info["en-US"];
@@ -592,6 +605,7 @@ export async function runRebrand(options: RebrandOptions): Promise<number> {
         "app.json",
         "package.json",
         "store.config.json",
+        "store.config.example.json",
         "convex/env.ts",
         ".env.example",
         "README.md",
@@ -612,6 +626,7 @@ export async function runRebrand(options: RebrandOptions): Promise<number> {
       "app.json",
       "package.json",
       "store.config.json",
+      "store.config.example.json",
       "convex/env.ts",
       "README.md",
     ]);
