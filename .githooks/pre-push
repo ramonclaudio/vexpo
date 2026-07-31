@@ -1,4 +1,46 @@
 #!/bin/sh
 # Runs the local check suite before a push. See CONTRIBUTING.md.
 # To skip once: git push --no-verify
+set -e
+
+# Git feeds the refs being pushed on stdin, one line of
+# "<local ref> <local sha> <remote ref> <remote sha>" each. Read it before
+# anything else runs, since a child process would eat it.
+refs=$(mktemp)
+trap 'rm -f "$refs"' EXIT
+cat > "$refs"
+
+# Secret scan first: it takes under a second and it's the worse thing to miss.
+# Same config CI uses, and only the commits being pushed. A full-history scan
+# reports four old canary version strings that read like API keys, and the job
+# here is to not add a new one. --redact keeps a real finding out of the
+# terminal scrollback.
+if command -v gitleaks > /dev/null 2>&1; then
+  while read -r _local_ref local_sha _remote_ref remote_sha; do
+    case "$local_sha" in
+      *[!0]*) ;;
+      *) continue ;; # all zeros: the ref is being deleted, nothing to scan
+    esac
+    case "$remote_sha" in
+      *[!0]*) opts="$remote_sha..$local_sha" ;; # existing branch, scan the delta
+      *) opts="$local_sha --not --remotes" ;;   # new branch, scan what's not upstream
+    esac
+    if ! gitleaks git --config .gitleaks.toml --log-opts="$opts" --redact; then
+      echo
+      echo "Secret scan found something in the commits being pushed ($opts)."
+      echo
+      echo "Deleting the value in a new commit does not clear this. It stays in"
+      echo "the history the push would publish, so rewrite the commit that added"
+      echo "it: git commit --amend if it's the tip, git rebase -i otherwise."
+      echo
+      echo "False positive? Add an allowlist entry to .gitleaks.toml."
+      echo "Push anyway: git push --no-verify"
+      exit 1
+    fi
+  done < "$refs"
+else
+  echo "gitleaks not installed, skipping the secret scan (CI still runs it)"
+  echo "  brew install gitleaks"
+fi
+
 npm run validate

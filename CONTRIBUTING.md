@@ -62,6 +62,8 @@ npm run validate     # format, lint, typecheck, knip, package tests
 
 Run it before you push. The pre-push hook runs it for you, and `git push --no-verify` skips it if you need to.
 
+The hook also scans the commits you're pushing for secrets, using the same gitleaks config CI runs. `brew install gitleaks` to get it, and without it the hook says so and moves on, since CI scans either way. A finding blocks the push: deleting the value in a follow-up commit won't clear it, because it's still in the history the push would publish, so amend or rebase the commit that added it.
+
 If you touched the template, run its suite too (`npm run template:install` once, then `npm run template:test`). Before you open a PR, run the full end-to-end suite and an audit:
 
 ```bash
