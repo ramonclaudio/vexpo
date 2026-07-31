@@ -255,6 +255,23 @@ if match_grep "$n"; then
   [ -z "$bad" ] && pass "$n" || fail "$n" "leaked:$bad"
 else skip "$n" "filtered"; fi
 
+n="a fresh scaffold passes its own format:check"
+if match_grep "$n"; then
+  # Every file the scaffolder rewrites is a chance to hand the user a project
+  # that fails its own gate on the first command. JSON.stringify never inlines
+  # arrays and oxfmt does, which is how eas.json's `cache.paths` broke, and how
+  # the unsorted vexpo devDependency broke package.json in 0.2.3. The scaffold
+  # has no node_modules yet, so run the monorepo's own oxfmt over it.
+  sb=$(scaffold fmt-check -y --no-install --no-git)
+  fmt="$PKG_ROOT/../../node_modules/.bin/oxfmt"
+  if [ -x "$fmt" ]; then
+    out=$("$fmt" --check "$sb/fmt-check" 2>&1) && pass "$n" \
+      || fail "$n" "$(echo "$out" | grep -v '^$' | tail -3 | tr '\n' ' ')"
+  else
+    skip "$n" "oxfmt not installed at the monorepo root"
+  fi
+else skip "$n" "filtered"; fi
+
 n="dist payload ships a placeholder store.config.json, not the author's"
 if match_grep "$n"; then
   # `eas submit` needs the file to exist, and the working tree's copy is

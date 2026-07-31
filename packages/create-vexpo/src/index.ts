@@ -234,11 +234,21 @@ async function rewriteEasJson(target: string): Promise<void> {
   const parsed = JSON.parse(await readFile(path, "utf8")) as {
     submit?: Record<string, { ios?: Record<string, unknown> }>;
   };
+  let removed = false;
   for (const profile of Object.values(parsed.submit ?? {})) {
     for (const key of ["ascAppId", "ascApiKeyId", "ascApiKeyIssuerId", "ascApiKeyPath"]) {
-      delete profile.ios?.[key];
+      if (profile.ios && key in profile.ios) {
+        delete profile.ios[key];
+        removed = true;
+      }
     }
   }
+  // Only rewrite when there was something to strip. JSON.stringify never inlines
+  // arrays and the template's oxfmt does, so an unconditional write reflows
+  // `cache.paths` and hands every scaffold an eas.json that fails its own
+  // `npm run format:check`. The published payload is built from a clean
+  // checkout, so this is the path every real scaffold takes.
+  if (!removed) return;
   await writeFile(path, `${JSON.stringify(parsed, null, 2)}\n`);
 }
 
