@@ -4,6 +4,15 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Pre-1.0
 
 ## [Unreleased]
 
+## [0.3.1] - 2026-07-31
+
+- `create-vexpo` runs on execa 10. Same error shape, so the install-failure path still reads the captured stderr off the thrown `ExecaError`, verified against a real failing install alongside the happy path.
+- Template scaffolds get oxfmt 0.61. The old `^0.58.0` couldn't reach it, since a caret never crosses the minor while the major is 0, so this is the one template dependency a release had to carry.
+- Refreshed the ranges that already resolved on their own: convex 1.42.3, `@convex-dev/resend` 0.2.6, `@types/react` 19.2.18, oxlint 1.76. No lockfile ships, so a 0.3.0 scaffold was already installing these.
+- The CLI builds and typechecks on TypeScript 7.0.2, with knip 6.30, oxfmt 0.61 and oxlint 1.76 on the toolchain. The template stays on TypeScript 6.0.3, which is what SDK 57 pins.
+- `better-auth` and `@better-auth/expo` hold at 1.6.23 on purpose. 1.6.24 drops every plugin action off the client type under TypeScript 6 (`emailOtp`, `username`, `convex`, twelve errors in all) and only TypeScript 7 resolves it, which the SDK's typescript pin rules out. Both stay exact rather than caret so a fresh scaffold can't float onto the broken pair.
+- Re-pinned the five GitHub Actions: checkout v7.0.1, setup-node v7.0.0, the three codeql-action entry points to v4.37.2, and gh-release v3.0.2. Every SHA checked against the tag it claims, which caught a setup-node pin labelled v6 while pointing at v7.
+
 ## [0.3.0] - 2026-07-30
 
 - A fresh scaffold passes its own `npm run format:check` again. `create-vexpo` rewrote `eas.json` on every scaffold to strip the App Store Connect identity, and `JSON.stringify` never inlines arrays while the template's oxfmt does, so `cache.paths` came back reflowed and the first command a new project runs failed. It only rewrites when there was something to strip now, which is never on the published payload since that's built from a clean checkout. The scaffold e2e runs oxfmt over a whole scaffolded project now, so the next file the scaffolder touches can't repeat it.
@@ -262,7 +271,8 @@ First public release.
 
 See [`README.md`](./README.md) for the feature list and [`SECURITY.md`](./SECURITY.md) for the threat model.
 
-[Unreleased]: https://github.com/ramonclaudio/vexpo/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/ramonclaudio/vexpo/compare/v0.3.1...HEAD
+[0.3.1]: https://github.com/ramonclaudio/vexpo/releases/tag/v0.3.1
 [0.3.0]: https://github.com/ramonclaudio/vexpo/releases/tag/v0.3.0
 [0.2.3]: https://github.com/ramonclaudio/vexpo/releases/tag/v0.2.3
 [0.2.2]: https://github.com/ramonclaudio/vexpo/releases/tag/v0.2.2
