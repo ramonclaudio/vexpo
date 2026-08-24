@@ -3,14 +3,18 @@
   "version": "0.3.2",
   "description": "CLI for vexpo projects. Setup orchestration, drift detection, env sync, Apple JWT signing, headless submits, and TestFlight management through the ASC API.",
   "keywords": [
+    "app-store-connect",
     "apple-sign-in",
     "better-auth",
     "cli",
     "convex",
     "eas",
     "expo",
+    "ios",
+    "react-native",
     "resend",
     "setup",
+    "testflight",
     "vexpo"
   ],
   "homepage": "https://github.com/ramonclaudio/vexpo/tree/main/packages/vexpo#readme",
