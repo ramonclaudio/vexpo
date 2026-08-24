@@ -49,7 +49,7 @@ import { ProminentButton } from "@/components/ui/prominent-button";
 import { ErrorText } from "@/components/ui/status-text";
 import { announce } from "@/lib/a11y";
 
-type OtpFlow = "verify-email" | "sign-in";
+export type OtpFlow = "verify-email" | "sign-in";
 
 type OtpVerificationProps = {
   email: string;

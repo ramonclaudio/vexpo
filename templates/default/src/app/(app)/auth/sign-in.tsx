@@ -48,7 +48,7 @@ import {
   signInEmailSchema,
   signInUsernameSchema,
 } from "@/lib/schemas";
-import { OtpVerification } from "@/components/auth/otp-verification";
+import { OtpVerification, type OtpFlow } from "@/components/auth/otp-verification";
 import { CapsuleTextField } from "@/components/ui/capsule-text-field";
 import { HelperText } from "@/components/ui/helper-text";
 import { PasswordField } from "@/components/auth/password-field";
@@ -65,6 +65,14 @@ const initialState: SignInState = {};
 
 type SignInMethod = "email" | "username" | "otp";
 
+// Better Auth answers a password sign-in on an unverified account with a 403
+// and nothing else. Its resend path is the link-based `sendVerificationEmail`,
+// which this app doesn't configure because it verifies through the OTP plugin,
+// so no fresh code goes out. Someone who missed the sign-up email and left that
+// screen has no way back to it. Both password paths below watch for this and
+// hand the user a new code.
+const NOT_VERIFIED = "EMAIL_NOT_VERIFIED";
+
 export default function SignInScreen() {
   const dfont = useDynamicFont();
   const colors = useColors();
@@ -77,6 +85,7 @@ export default function SignInScreen() {
   const [password, setPassword] = useState("");
   const [otpEmail, setOtpEmail] = useState("");
   const [showOtpVerification, setShowOtpVerification] = useState(false);
+  const [otpFlow, setOtpFlow] = useState<OtpFlow>("sign-in");
   const apple = useAppleAuth({ successMessage: "Signed in with Apple" });
   const providers = useQuery(api.auth.getEnabledProviders);
   const showApple = apple.available && providers?.apple === true;
@@ -86,6 +95,31 @@ export default function SignInScreen() {
   // dead end. Email + password sign-up/sign-in remains available.
   const emailFeatures = providers?.emailFeatures === true;
   const isOtp = signInMethod === "otp";
+
+  /**
+   * Sends a fresh verification code and moves to the OTP screen. Called when a
+   * password sign-in bounces off an unverified account, so the dead end
+   * becomes the next step instead of an error message.
+   */
+  const startEmailVerification = async (email: string): Promise<SignInState> => {
+    const sent = await authClient.emailOtp.sendVerificationOtp({
+      email,
+      type: "email-verification",
+    });
+    if (sent.error) {
+      haptics.error();
+      return {
+        error:
+          "Your email still needs verifying, and the code wouldn't send. Wait a minute and try again.",
+      };
+    }
+    haptics.success();
+    announce("Verification code sent");
+    setOtpEmail(email);
+    setOtpFlow("verify-email");
+    setShowOtpVerification(true);
+    return {};
+  };
 
   const [emailState, signInWithEmail, isEmailPending] = useActionState<SignInState, void>(
     async () => {
@@ -101,17 +135,18 @@ export default function SignInScreen() {
           password: parsed.data.password,
         });
         if (response.error) {
+          if (response.error.code === NOT_VERIFIED) {
+            return await startEmailVerification(parsed.data.email);
+          }
           haptics.error();
           return { error: response.error.message ?? "Invalid email or password" };
         }
         haptics.success();
         announce("Signed in");
         return {};
-      } catch (e) {
+      } catch {
         haptics.error();
-        return {
-          error: e instanceof Error ? e.message : "An unexpected error occurred. Please try again.",
-        };
+        return { error: "An unexpected error occurred. Please try again." };
       }
     },
     initialState,
@@ -132,16 +167,22 @@ export default function SignInScreen() {
         });
         if (response.error) {
           haptics.error();
+          if (response.error.code === NOT_VERIFIED) {
+            // The username path never learns the address, so it can't send the
+            // code itself. Point at the tab that can.
+            return {
+              error:
+                "This account still needs its email verified. Sign in with your email address and we'll send a new code.",
+            };
+          }
           return { error: response.error.message ?? "Invalid username or password" };
         }
         haptics.success();
         announce("Signed in");
         return {};
-      } catch (e) {
+      } catch {
         haptics.error();
-        return {
-          error: e instanceof Error ? e.message : "An unexpected error occurred. Please try again.",
-        };
+        return { error: "An unexpected error occurred. Please try again." };
       }
     },
     initialState,
@@ -166,13 +207,12 @@ export default function SignInScreen() {
         }
         haptics.success();
         announce("Sign-in code sent");
+        setOtpFlow("sign-in");
         setShowOtpVerification(true);
         return {};
-      } catch (e) {
+      } catch {
         haptics.error();
-        return {
-          error: e instanceof Error ? e.message : "An unexpected error occurred. Please try again.",
-        };
+        return { error: "An unexpected error occurred. Please try again." };
       }
     },
     initialState,
@@ -185,7 +225,7 @@ export default function SignInScreen() {
     return (
       <OtpVerification
         email={otpEmail}
-        flow="sign-in"
+        flow={otpFlow}
         onBack={() => setShowOtpVerification(false)}
       />
     );
