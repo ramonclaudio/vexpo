@@ -1,6 +1,6 @@
 # App Store Connect dashboard checklist
 
-One-time settings you configure in the ASC web UI, cataloged from a real 0→1 run. Items tagged `[metadata:push]` are mirrored in `store.config.json` and re-pushable with `npm run metadata:push` once real copy exists. `[dashboard]` items have no CLI or API path and stay manual forever: `privacy.config.json` and `accessibility.config.json` in this directory are versioned mirrors with `vexpo asc privacy lint` / `vexpo asc accessibility lint` validators, Apple exposes no write API for them.
+These are the one-time settings you configure in the ASC web UI. Items tagged `[metadata:push]` are mirrored in `store.config.json` and can be re-pushed with `npm run metadata:push` once real copy exists, while `[dashboard]` items have no CLI or API path and stay manual. `privacy.config.json` and `accessibility.config.json` in this directory are versioned mirrors, checked by `vexpo asc privacy lint` and `vexpo asc accessibility lint`, since Apple has no write API for either one.
 
 ## App Information
 
@@ -11,13 +11,13 @@ One-time settings you configure in the ASC web UI, cataloged from a real 0→1 r
 
 ## App Privacy
 
-- `[dashboard]` Data-collection nutrition labels: data types, purposes, linked-to-identity, tracking. What the template ships collects contact info + identifiers (linked, app functionality) and diagnostics (not linked), nothing used for tracking. Mirror your answers in `privacy.config.json` and keep `vexpo asc privacy lint` green.
+- `[dashboard]` Data-collection nutrition labels: data types, purposes, linked-to-identity, tracking. What the template ships collects contact info and identifiers, linked to identity for app functionality, plus diagnostics that aren't linked. Nothing is used for tracking. Mirror your answers in `privacy.config.json` and keep `vexpo asc privacy lint` green.
 - `[metadata:push]` Privacy policy URL (the label data itself is dashboard-only)
 
 ## Pricing and Availability
 
 - `[dashboard]` Price and country availability
-- `[dashboard]` Apple Silicon Mac and Apple Vision Pro availability: switch both OFF unless you actually test those surfaces, an untested compatibility surface is review risk with zero upside
+- `[dashboard]` Apple Silicon Mac and Apple Vision Pro availability. Switch both OFF unless you actually test on them, since an untested surface is one more thing App Review can reject
 
 ## Version page
 
@@ -32,13 +32,13 @@ One-time settings you configure in the ASC web UI, cataloged from a real 0→1 r
 
 ## TestFlight
 
-- CLI: beta groups and testers via `vexpo testflight groups create` / `invite`
+- CLI: beta groups and testers via `vexpo testflight groups create` and `invite`
 - `[dashboard]` Test Information: beta description, feedback email, URLs, external-beta review contact and demo login. Required before any external tester can be added.
 
 ## Audited, usually not applicable
 
 - Encryption: answered per-build by `ITSAppUsesNonExemptEncryption: false` in `app.config.ts`, never a dashboard step
-- DSA trader status: non-trader is right for a free app, revisit if commerce ships
+- Digital Services Act (DSA) trader status: non-trader is right for a free app, revisit if commerce ships
 - Vietnam game license, medical device declaration, subscription server notifications and shared secret: skip unless they apply
 
-Keep `store.config.json` the source of truth: when you set a `[metadata:push]` field by hand in ASC, sync it back so a later push can't regress it, and keep `npx eas-cli metadata:lint` green. The working file is gitignored (it holds the App Review demo password), so copy anything you want versioned into the tracked `store.config.example.json` as well.
+Keep `store.config.json` as the source of truth. When you set a `[metadata:push]` field by hand in ASC, sync it back so a later push can't regress it, and keep `npx eas-cli metadata:lint` green. The working file is gitignored because it holds the App Review demo password, so copy anything you want versioned into the tracked `store.config.example.json` too.
