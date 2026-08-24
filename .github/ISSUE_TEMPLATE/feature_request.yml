@@ -21,6 +21,6 @@ body:
     id: scope
     attributes:
       label: Scope check
-      description: vexpo's thesis is 0 to 1. Does this help an empty dir reach a first shipped iOS app? If it is for an app already in production, say so. That work is welcome but lower priority.
+      description: Does this help an empty dir reach a first shipped iOS app? If it is for an app already in production, say so. That work is welcome but lower priority.
     validations:
       required: true

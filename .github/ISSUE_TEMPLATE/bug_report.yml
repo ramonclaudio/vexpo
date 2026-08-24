@@ -28,7 +28,7 @@ body:
     id: expo-sdk
     attributes:
       label: Expo SDK version
-      placeholder: "56.0.0"
+      placeholder: "57.0.0"
     validations:
       required: true
   - type: input

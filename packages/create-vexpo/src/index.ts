@@ -29,7 +29,7 @@ async function main() {
   const program = new Command()
     .name("create-vexpo")
     .description(
-      "Scaffold a new vexpo project. Expo SDK 57 + Convex + Better Auth + Resend, wired for iOS.",
+      "Scaffold a new vexpo project. An Expo SDK 57 iOS app with Convex, Better Auth, and Resend wired in.",
     )
     .argument("[directory]", "project directory name")
     .option("--no-install", "skip installing dependencies")
@@ -293,13 +293,16 @@ function nextSteps(target: string, pm: PM, depsReady: boolean): void {
   // skipped (`--no-install`) or it ran and failed.
   if (!depsReady) console.log(kleur.gray(`  ${pm} install`));
   console.log(
+    kleur.gray(`  npx vexpo lite         ${kleur.dim("# provisions Convex and Better Auth")}`),
+  );
+  console.log(
     kleur.gray(
-      `  npx vexpo lite     ${kleur.dim("# dev mode: Convex + Better Auth, provisioned in ~60s")}`,
+      `  npx vexpo full         ${kleur.dim("# adds Resend, Apple Sign In, the ASC key, eas init, and rebrand")}`,
     ),
   );
   console.log(
     kleur.gray(
-      `  npx vexpo full     ${kleur.dim("# real setup: TestFlight-ready (add --new if you're new)")}`,
+      `  npx vexpo full --new   ${kleur.dim("# same, plus walks Apple, Convex, Expo, and Resend signups")}`,
     ),
   );
   console.log();

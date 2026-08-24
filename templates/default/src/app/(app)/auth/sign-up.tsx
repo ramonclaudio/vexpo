@@ -63,6 +63,14 @@ import { AppleButton } from "@/components/auth/apple-button";
 type SignUpState = { error?: string };
 const initialState: SignUpState = {};
 
+// Signing up again with the same address is what someone does after missing
+// the first code, and "try a different email" is the wrong answer for it.
+const ALREADY_EXISTS = "USER_ALREADY_EXISTS_USE_ANOTHER_EMAIL";
+// The username plugin checks availability in a `before` hook on
+// /sign-up/email, so it throws ahead of the core email-exists check. Retyping
+// the whole form lands here, not on ALREADY_EXISTS.
+const USERNAME_TAKEN = "USERNAME_IS_ALREADY_TAKEN";
+
 export default function SignUpScreen() {
   const dfont = useDynamicFont();
   const colors = useColors();
@@ -175,7 +183,38 @@ export default function SignUpScreen() {
       });
 
       if (response.error) {
+        if (response.error.code === ALREADY_EXISTS && emailFeatures) {
+          // Better Auth's sendVerificationOtp returns success without sending
+          // for an address it doesn't know, so the OTP screen appears whatever
+          // was typed and only whoever reads that mailbox gets further. An
+          // error here is a rate limit or a dropped request, never a verdict on
+          // the address, so saying so leaks nothing and beats sending the user
+          // to a screen no code will reach.
+          const sent = await authClient.emailOtp.sendVerificationOtp({
+            email: parsed.data.email,
+            type: "email-verification",
+          });
+          if (sent.error) {
+            haptics.error();
+            return { error: "That code wouldn't send. Wait a minute and try again." };
+          }
+          haptics.success();
+          announce("Verification code sent");
+          setShowVerification(true);
+          return {};
+        }
         haptics.error();
+        if (response.error.code === USERNAME_TAKEN) {
+          // Don't route this one to the OTP screen. A username collision is
+          // usually someone else's handle on a fresh address, and the code
+          // would never arrive.
+          setNativeValue(activeField, "field-username");
+          return {
+            error: emailFeatures
+              ? "That username is taken. If the account is yours, sign in with your email and we'll send a new code."
+              : "That username is taken. Please choose another.",
+          };
+        }
         return { error: "Unable to create account. Please try a different email or username." };
       }
 

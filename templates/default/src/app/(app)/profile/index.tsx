@@ -3,6 +3,7 @@ import * as ImagePicker from "expo-image-picker";
 import { useDeleteAccount } from "@/hooks/use-delete-account";
 import { Stack } from "expo-router";
 import { useMutation, useQuery } from "convex/react";
+import { ConvexError } from "convex/values";
 import { Host, ScrollView, VStack, useNativeState } from "@expo/ui/swift-ui";
 import {
   defaultScrollAnchorForRole,
@@ -234,7 +235,12 @@ export default function ProfileScreen() {
         headers: { "Content-Type": asset.mimeType ?? "image/jpeg" },
         body: blob,
       });
-      if (!upload.ok) throw new Error(`Upload failed: ${upload.status}`);
+      // A ConvexError carries a message formatError will show. A plain Error
+      // would surface as the generic line, and "Upload failed: 413" is not
+      // something a user reads.
+      if (!upload.ok) {
+        throw new ConvexError({ message: "Couldn't upload that photo. Please try another one." });
+      }
       const { storageId } = (await upload.json()) as { storageId: string };
       await updateAvatar({ storageId: storageId as never });
       haptics.success();

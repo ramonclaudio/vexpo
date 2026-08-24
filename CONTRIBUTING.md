@@ -2,18 +2,18 @@
 
 vexpo is a small monorepo:
 
-- `packages/vexpo` is the operational CLI you run inside a scaffolded project.
+- `packages/vexpo` is the CLI you run inside a scaffolded project.
 - `packages/create-vexpo` is the `npm create @ramonclaudio/vexpo` scaffolder.
 - `templates/default` is the Expo + Convex app it generates.
 
 ## Contents
 
 - [Open an issue first](#open-an-issue-first)
-- [Reporting a bug](#reporting-a-bug)
-- [Proposing a change](#proposing-a-change)
+- [Report a bug](#report-a-bug)
+- [Propose a change](#propose-a-change)
 - [Development setup](#development-setup)
 - [Checks](#checks)
-- [Testing against a real eas build](#testing-against-a-real-eas-build)
+- [Test against a real EAS build](#test-against-a-real-eas-build)
 - [Code style](#code-style)
 - [Tests](#tests)
 - [Commits](#commits)
@@ -23,24 +23,24 @@ vexpo is a small monorepo:
 
 ## Open an issue first
 
-For anything past a typo, open an issue before you write code, so we can agree on the approach first. A pull request that isn't tied to an open issue may sit until one is filed.
+For anything past a typo, open an issue before you write code. I'd rather say the approach is wrong before you spend a weekend on it than after. I'll usually leave a pull request that has no issue behind it until one is filed.
 
 Security reports are the exception. Please don't open a public issue for those, see [Security](#security).
 
-## Reporting a bug
+## Report a bug
 
-Open a [bug report](https://github.com/ramonclaudio/vexpo/issues/new?template=bug_report.yml) and tell us:
+Open a [bug report](https://github.com/ramonclaudio/vexpo/issues/new?template=bug_report.yml) and tell me:
 
 - what's broken, in a sentence or two
 - how to reproduce it, the exact commands in order
 - what you expected versus what happened
 - your environment. `npx vexpo doctor` covers most of it
 
-## Proposing a change
+## Propose a change
 
 Open a [change proposal](https://github.com/ramonclaudio/vexpo/issues/new?template=feature_request.yml) with the problem you're hitting and the command, flag, or template change you have in mind.
 
-vexpo's scope is 0 to 1: getting an empty directory to a first shipped iOS app. Anything that helps with that is a good fit. Post-launch tooling is welcome but lower priority. The CLI orchestrates `eas` and `convex` rather than re-wrapping what they already do, so a proposal that leans on those tools is an easy yes.
+vexpo's scope is getting an empty directory to a first shipped iOS app. Anything that helps with that is a good fit. Post-launch tooling is welcome but lower priority. The CLI orchestrates `eas` and `convex` rather than re-wrapping what they already do, so a proposal that leans on those tools is an easy yes.
 
 ## Development setup
 
@@ -52,7 +52,7 @@ npm run validate     # confirm a clean baseline
 npm run link:dev     # build vexpo and link it into templates/default
 ```
 
-After `link:dev`, `cd templates/default && npx vexpo lite` runs the CLI you just built. `npm run dev -w @ramonclaudio/vexpo` keeps it rebuilding as you edit, and `npx vexpo full --dry-run` exercises the linked CLI without side effects.
+After `link:dev`, `cd templates/default && npx vexpo lite` runs the CLI you just built. `npm run dev -w @ramonclaudio/vexpo` keeps it rebuilding as you edit, and `npx vexpo full --dry-run` runs the linked CLI without side effects.
 
 ## Checks
 
@@ -62,7 +62,7 @@ npm run validate     # format, lint, typecheck, knip, package tests
 
 Run it before you push. The pre-push hook runs it for you, and `git push --no-verify` skips it if you need to.
 
-The hook also scans the commits you're pushing for secrets, using the same gitleaks config CI runs. `brew install gitleaks` to get it, and without it the hook says so and moves on, since CI scans either way. A finding blocks the push: deleting the value in a follow-up commit won't clear it, because it's still in the history the push would publish, so amend or rebase the commit that added it.
+The hook also scans the commits you're pushing for secrets, using the same gitleaks config CI runs. `brew install gitleaks` to get it, and without it the hook says so and moves on, since CI scans either way. A finding blocks the push. Deleting the value in a follow-up commit won't clear it, because it's still in the history the push would publish. Amend or rebase the commit that added it.
 
 If you touched the template, run its suite too (`npm run template:install` once, then `npm run template:test`). Before you open a PR, run the full end-to-end suite and an audit:
 
@@ -79,11 +79,11 @@ VEXPO_E2E_CONVEX=1 VEXPO_E2E_DEPLOYMENT=<dev-slug> npm run test:e2e:api -w @ramo
 
 CI runs these same checks.
 
-## Testing against a real eas build
+## Test against a real EAS build
 
-The committed `templates/default/app.json` is `{ "expo": {} }`, no `projectId`. Forks run `eas init` once and commit their own. To test inside this repo without committing your `projectId`, eas-cli needs it in the process env at invocation time. eas-cli sets `EXPO_NO_DOTENV=1` when it evaluates `app.config.ts` for projectId resolution, which is intentional for build determinism, so `.env.local` alone won't be loaded for that step.
+The committed `templates/default/app.json` is `{ "expo": {} }`, no `projectId`. Forks run `eas init` once and commit their own. To test inside this repo without committing your `projectId`, eas-cli needs it in the process env at invocation time. eas-cli sets `EXPO_NO_DOTENV=1` when it evaluates `app.config.ts` to resolve the projectId, which keeps builds deterministic, so `.env.local` alone won't be loaded for that step.
 
-A once-per-session shell export, no tools to install:
+A once-per-session shell export does it, with no tools to install:
 
 ```bash
 cd templates/default
@@ -91,7 +91,7 @@ export $(grep '^EAS_PROJECT_ID=' .env.local)
 npx eas-cli build -p ios --profile production --auto-submit-with-profile testflight
 ```
 
-That holds only for the shell. To auto-load on `cd`, [direnv](https://direnv.net) handles it:
+That holds only for the shell. To auto-load it on `cd`, use [direnv](https://direnv.net):
 
 ```bash
 brew install direnv                                # add `eval "$(direnv hook zsh)"` to your shell rc
@@ -105,12 +105,12 @@ direnv allow templates/default
 
 - Strict TypeScript. No `any`, no `@ts-ignore`.
 - The CLI orchestrates `eas` and `convex`. Don't re-wrap what those tools already do.
-- Small functions, early returns, no dead code. `npm run knip` keeps the export surface tight.
-- Comment only when the why isn't obvious. Let the names carry the what.
-- Oxlint and Oxfmt only. No ESLint, Prettier, or Biome.
+- Small functions, early returns, no dead code. `npm run knip` flags anything unused.
+- Comment only when the why isn't obvious. The names should say what the code does.
+- Oxlint and Oxfmt only.
 - No emojis in source, and no AI attribution or `Co-authored-by` trailers in commits or PRs.
 
-Use whatever tools you like, AI assistants included. We ask that you understand what you're submitting and can walk through it in review.
+Use whatever tools you like, AI assistants included. What I care about is that you understand what you're submitting and can walk through it in review.
 
 ## Tests
 
@@ -127,7 +127,7 @@ feat(apple): add asc connect for the eas to app store link
 
 ## Versioning
 
-Pre-1.0, the minor version bumps for breaking changes, the patch for everything else. A caret range like `^0.2.0` never pulls a breaking release. Breaking changes lead their changelog entry as **Breaking:** lines.
+Pre-1.0, the minor version bumps for breaking changes, the patch for everything else. A caret range like `^0.2.0` never pulls a breaking release. Breaking changes start their changelog entry with **Breaking:**.
 
 ## Before you open a PR
 

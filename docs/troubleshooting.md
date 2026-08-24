@@ -1,12 +1,12 @@
 # Troubleshooting
 
-Failure modes grouped by surface. Run `npx vexpo doctor` first, it names the broken check and points at the fix.
+The common failure modes, grouped by surface. Run `npx vexpo doctor` first, since it names the broken check and points at the fix.
 
-## Apple / App Store Connect
+## Apple and App Store Connect
 
 ### `Found 0 app(s)` from `eas integrations:asc:connect`
 
-A brand-new bundle id has no App Store Connect app record until the first `eas submit` creates it. The EAS<->ASC wizard reads the `apps` resource and dies on the raw `Found 0 app(s)`. `vexpo asc connect` pre-checks with your cached creds and defers loudly instead of spawning a wizard that can't win.
+A brand-new bundle id has no App Store Connect app record until the first `eas submit` creates it. The EAS<->ASC wizard reads the `apps` resource and dies on the raw `Found 0 app(s)`. `vexpo asc connect` checks for the app record with your cached credentials first. If there isn't one yet, it prints the command to run and exits without starting the wizard.
 
 Build and submit once to create the record:
 
@@ -18,15 +18,15 @@ Then re-run `npx vexpo asc connect` to finish the link.
 
 ### `vexpo asc connect` says it needs a TTY
 
-The EAS<->ASC integration wizard can't generate a key headless, and `--non-interactive` hard-requires `--api-key-id` plus `--asc-app-id`. So the server-side link wants a real terminal.
+The EAS<->ASC integration wizard can't generate a key headless, and `--non-interactive` hard-requires `--api-key-id` plus `--asc-app-id`.
 
-You don't need it for a non-interactive submit though. `eas submit` reads the app id only from `eas.json`'s submit profile. When `vexpo asc connect` runs without a TTY and can resolve the `ascAppId` from the ASC API, it writes it into `eas.json` and exits 0, enough for CI and `vexpo full`. Run `npx vexpo asc connect` in a terminal later to land the cloud-build link.
+You don't need it for a non-interactive submit though. `eas submit` reads the app id only from `eas.json`'s submit profile. When `vexpo asc connect` runs without a TTY and can resolve the `ascAppId` from the ASC API, it writes it into `eas.json` and exits 0. That's enough for CI and `vexpo full`. Run `npx vexpo asc connect` in a terminal later to set up the cloud-build link.
 
 ### Submit resolves the wrong app (`com.example.*`)
 
-eas-cli evaluates `app.config` with `EXPO_NO_DOTENV` set, so it never reads `.env.local`. Without the public identity forwarded, the bundle id falls back to the `com.example.*` placeholder and the submit targets the wrong app ([#133](https://github.com/ramonclaudio/vexpo/issues/133)). `vexpo submit` forwards every `EXPO_PUBLIC_*` var plus `EAS_PROJECT_ID` into the spawn so the config evaluates with your real identity. Use `npx vexpo submit`, not a bare `eas submit`.
+eas-cli evaluates `app.config` with `EXPO_NO_DOTENV` set, so it never reads `.env.local`. If nothing else passes those values in, the bundle id falls back to the `com.example.*` placeholder and the submit targets the wrong app ([#133](https://github.com/ramonclaudio/vexpo/issues/133)). `vexpo submit` passes every `EXPO_PUBLIC_*` var plus `EAS_PROJECT_ID` to the `eas submit` child process, so the config evaluates with your real identity. Use `npx vexpo submit`, not a bare `eas submit`.
 
-### `eas submit` can't find the app / missing `ascAppId`
+### `eas submit` can't find the app or `ascAppId` is missing
 
 `eas submit` reads `ascAppId` only from the named submit profile in `eas.json`. No flag, no env var. The ASC integration covers interactive mode only. Run `npx vexpo asc connect` to write the id into every submit profile, then commit `eas.json` so CI has it.
 
@@ -34,7 +34,7 @@ eas-cli evaluates `app.config` with `EXPO_NO_DOTENV` set, so it never reads `.en
 
 ### A second ASC API key showed up on Apple
 
-Expected. `vexpo asc connect` lets the EAS wizard generate its own key for build/submit/metadata, kept separate from the master key cached in vexpo state. The master key stays out of EAS's control for direct ASC API calls (`vexpo apple services-id`, `vexpo apple jwt`).
+That's expected. `vexpo asc connect` lets the EAS wizard generate its own key for builds, submits, and metadata. That key is separate from the master key cached in vexpo state. The master key stays out of EAS's control for direct ASC API calls (`vexpo apple services-id`, `vexpo apple jwt`).
 
 ## Convex
 
@@ -61,13 +61,13 @@ npx vexpo adopt
 
 ### Key that worked minutes ago now returns `API key is invalid`
 
-Editing a key's permission in the Resend dashboard rotates its token: the
+Editing a key's permission in the Resend dashboard rotates its token. The
 string you pasted is dead the moment you flip Full access to Sending or back.
-Reads can keep passing for a couple of minutes (cached auth) while writes fail
-instantly, which looks like a half-broken key. Create the bootstrapper key with
-Full access from the start, leave it untouched until `vexpo resend` reports
-done, then revoke it. The scoped sending key the CLI mints is the only one that
-stays live.
+Reads can keep passing for a couple of minutes because auth is cached, and
+writes fail instantly. It looks like a half-broken key. Create the
+bootstrapper key with Full access from the start, leave it untouched until
+`vexpo resend` reports done, then revoke it. The scoped sending key the CLI
+mints stays live.
 
 ## Expo
 
@@ -95,15 +95,15 @@ npm run e2e                 # whole folder
 npm run e2e -- .maestro/auth.yaml
 ```
 
-`scripts/e2e.mjs` finds the keg and sets `JAVA_HOME` itself. It also supplies the three things the flows can't: `MAESTRO_APP_ID` from `.env.local` (only EAS injects it in CI), a unique `MAESTRO_TEST_EMAIL` per run, and a simulator keychain reset, since `clearState` leaves Better Auth's session cookie behind and the next launch comes up already signed in.
+`scripts/e2e.mjs` finds the keg and sets `JAVA_HOME` itself. It also passes in three things the flows can't get on their own. `MAESTRO_APP_ID` from `.env.local`, since only EAS injects it in CI. A unique `MAESTRO_TEST_EMAIL` per run. And a simulator keychain reset, because `clearState` leaves Better Auth's session cookie behind and the next launch comes up already signed in.
 
 ### `tour.yaml` fails on `"This device" is visible`
 
-The Sessions screen gates session management behind a recent sign-in. An old simulator session renders the "Sign in again to manage sessions" fallback instead of the device list. Run `auth.yaml` first to seed a fresh session, which is what the EAS workflow does.
+You need a recent sign-in to manage sessions. On an old simulator session the Sessions screen renders the "Sign in again to manage sessions" fallback instead of the device list. Run `auth.yaml` first to seed a fresh session, which is what the EAS workflow does.
 
 ### `auth.yaml` fails on `"Verify your email" is visible`
 
-That assert is the flow telling you `REQUIRE_EMAIL_VERIFICATION` is set on the deployment. The sign-up-lands-authed path only works while it's unset (lite mode). Once Resend provisioning flips it on, sign-up stops on the OTP screen and the code is in an inbox no headless flow can read. `tour.yaml` and `zz-delete-restore.yaml` both need the session `auth.yaml` creates, so all three go red together.
+That assert fires when `REQUIRE_EMAIL_VERIFICATION` is set on the deployment. Signing up only leaves you signed in while it's unset (lite mode). Once Resend provisioning flips it on, sign-up stops on the OTP screen and the code is in an inbox no headless flow can read. `tour.yaml` and `zz-delete-restore.yaml` both need the session `auth.yaml` creates, so all three go red together.
 
 ```bash
 npx convex env get REQUIRE_EMAIL_VERIFICATION
@@ -112,9 +112,23 @@ npx convex env remove REQUIRE_EMAIL_VERIFICATION   # only on a deployment you e2
 
 Otherwise seed a pre-verified account with `npx vexpo review-account` and drive a sign-in-only variant, or run the suite on EAS release builds via `.eas/workflows/e2e-tests.yml`.
 
+### Every step after `clearState` SKIPs, and the failure lands somewhere unrelated
+
+`clearState: true` wipes the app's permission answers, so the next launch re-raises whatever alert the app asks for first. iOS draws those from SpringBoard, so they sit over the app and never appear in the accessibility tree. Maestro can't see the alert, can't tap it, and every `runFlow` guarded by a `visible` condition quietly SKIPs, so the run goes red on a step that has nothing to do with it. Terminating the app doesn't clear it either. `auth.yaml` denies the push alert at launch for this reason. For anything the template doesn't cover, answer it once at the simulator level and stop wiping it:
+
+```bash
+xcrun simctl privacy booted grant location <bundle-id>
+```
+
+If one is already stuck on screen, `xcrun simctl shutdown booted` and boot again. Nothing short of a reboot clears it.
+
+### `scrollUntilVisible` reports `COMPLETED` but the list never moved
+
+Maestro matches against the accessibility tree, which holds rows the screen isn't showing, so the scroll "succeeds" without moving and the tap that follows lands on whatever is actually under those coordinates. Same root cause as the tap failures in the next section. An `@expo/ui` `Host` renders a real SwiftUI list, and Maestro is driving pixels. Tapping a row that is genuinely on screen doesn't help, the tap still doesn't register. Before filing a navigation regression, tap the same row by hand on the simulator. If it opens, the app is fine and the flow is the thing to change.
+
 ### Taps report `COMPLETED` but sign-in never fires
 
-On locally-built dev clients, Maestro's synthetic taps on the `@expo/ui` SwiftUI submit button can complete without the handler firing: the native field renders the text, but the change never reaches React state, so no network call leaves the app and Convex logs stay empty. This is XCTest/SwiftUI bridge flakiness, not an app bug. Prove the backend independently with a raw HTTP sign-in against `https://<deployment>.convex.site/api/auth/sign-in/email` (expect 200 and a session token). The supported e2e target is EAS release builds through `e2e-tests.yml`, and ad-hoc flows must keep the template's input workarounds (reveal password visibility to dodge iOS strong-password autofill, never `hideKeyboard`).
+On locally-built dev clients, Maestro's synthetic taps on the `@expo/ui` SwiftUI submit button can complete without the handler firing. The native field renders the text, but the change never reaches React state. No network call leaves the app and Convex logs stay empty. This is XCTest/SwiftUI bridge flakiness, not an app bug. Check the backend on its own with a raw HTTP sign-in against `https://<deployment>.convex.site/api/auth/sign-in/email`, which should return 200 and a session token. The supported e2e target is EAS release builds through `e2e-tests.yml`. Ad-hoc flows have to keep the template's input workarounds. Reveal password visibility to dodge iOS strong-password autofill, and never use `hideKeyboard`.
 
 ## "doctor says X"
 
