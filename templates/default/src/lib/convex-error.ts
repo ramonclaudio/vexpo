@@ -9,6 +9,9 @@ export function formatError(err: unknown): string {
     }
     return err.message;
   }
-  if (err instanceof Error) return err.message;
-  return "An unexpected error occurred";
+  // Anything that is not a ConvexError came from the transport, not from us:
+  // "Network request failed", a JSON parse error, a raw stack. Those are
+  // internal strings, so none of them go on screen. Callers that can say
+  // something more useful should throw a ConvexError with a message.
+  return "Something went wrong. Please try again.";
 }

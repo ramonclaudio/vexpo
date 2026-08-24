@@ -39,6 +39,7 @@ import { useColors, useThemedAsset } from "@/hooks/use-theme";
 import { announce } from "@/lib/a11y";
 import { assets } from "@/lib/assets";
 import { authClient } from "@/lib/auth-client";
+import { formatError } from "@/lib/convex-error";
 import { useDynamicFont } from "@/lib/dynamic-font";
 import { haptics } from "@/lib/haptics";
 
@@ -70,7 +71,7 @@ export default function RestoreAccountScreen() {
       return {};
     } catch (err) {
       haptics.error();
-      return { error: err instanceof Error ? err.message : "Failed to restore account" };
+      return { error: formatError(err) };
     }
   }, initialState);
 
