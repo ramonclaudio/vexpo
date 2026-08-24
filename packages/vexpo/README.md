@@ -4,9 +4,9 @@
 [![Check](https://github.com/ramonclaudio/vexpo/actions/workflows/check.yml/badge.svg)](https://github.com/ramonclaudio/vexpo/actions/workflows/check.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-The setup CLI for [vexpo](https://github.com/ramonclaudio/vexpo) projects (Expo + Convex + Better Auth + Resend, iOS).
+The setup CLI for [vexpo](https://github.com/ramonclaudio/vexpo) projects, which are iOS apps built on Expo SDK 57 with Convex, Better Auth, and Resend wired in.
 
-Scaffolded by [`create-vexpo`](https://www.npmjs.com/package/@ramonclaudio/create-vexpo) into your devDependencies. Run it with `npx vexpo`.
+[`create-vexpo`](https://www.npmjs.com/package/@ramonclaudio/create-vexpo) puts it in your devDependencies, so you run it with `npx vexpo`.
 
 <p align="center">
   <img src="https://raw.githubusercontent.com/ramonclaudio/vexpo/main/.github/assets/demo-doctor.gif" width="720" alt="vexpo doctor auth-checking every credential against the live services">
@@ -17,17 +17,17 @@ Scaffolded by [`create-vexpo`](https://www.npmjs.com/package/@ramonclaudio/creat
 Run these inside a scaffolded vexpo project (macOS and Xcode, iOS-only):
 
 ```text
-vexpo lite                        Convex + Better Auth only, provisioned in ~60s
-vexpo lite --new                  same + Convex signup walkthrough for first-timers
-vexpo full                        full provisioning (Convex + Better Auth + Resend + Apple + EAS init + rebrand)
-vexpo full --new                  same + walks Apple/Convex/Expo/Resend signups
+vexpo lite                        provisions Convex and Better Auth
+vexpo lite --new                  same, plus a Convex signup walkthrough if you don't have one
+vexpo full                        adds Resend, Apple Sign In, the ASC key, eas init, and rebrand
+vexpo full --new                  same, plus walks Apple, Convex, Expo, and Resend signups
 vexpo full --skip-rebrand         full setup, skip the rebrand wizard
 
 vexpo doctor                      cross-source drift detection
 vexpo doctor --json               machine-readable output
 vexpo doctor --strict             exit non-zero on any warn
 
-vexpo accounts                    walk Apple/Expo/Convex/Resend signups (standalone)
+vexpo accounts                    walk the Apple, Expo, Convex, and Resend signups (standalone)
 vexpo rebrand                     replace template defaults with your identity
 vexpo review-account              seed the App Review demo account on Convex
 vexpo convex                      provision or connect a Convex deployment
@@ -74,13 +74,13 @@ vexpo asc accessibility show                 fetch the app's accessibility decla
 vexpo asc accessibility lint <file>          validate accessibility.config.json against Apple's enums
 ```
 
-## Don't reinvent EAS
+## What vexpo doesn't do
 
-vexpo only covers what `eas-cli` doesn't: setup orchestration, cross-source drift detection, Apple SIWA work, and App Store Connect setup. For the canonical platform surface, reach for `eas` directly.
+vexpo only covers what `eas-cli` doesn't. That's setup orchestration, cross-source drift detection, Sign in with Apple (SIWA) work, and App Store Connect setup. For anything else, run `eas` directly.
 
-`vexpo full` drives `eas init`, `eas env:push`, `eas credentials`, and the ASC link internally using the cached ASC key. Two of those are also standalone: `vexpo asc connect` for the link, `vexpo submit` for a headless `eas submit` that authenticates with your validated key instead of whatever EAS has stored.
+`vexpo full` drives `eas init`, `eas env:push`, `eas credentials`, and the ASC link internally using the cached ASC key. Two of those also run on their own. `vexpo asc connect` does the link, and `vexpo submit` runs a headless `eas submit` that authenticates with your validated key instead of whatever EAS has stored.
 
-## Repo
+## Repository
 
 [github.com/ramonclaudio/vexpo](https://github.com/ramonclaudio/vexpo)
 
