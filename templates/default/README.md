@@ -288,7 +288,7 @@ Four packages are held on purpose, and `npm outdated` will keep offering newer o
 > Don't downgrade `@convex-dev/better-auth` below `0.12.4` (pinned here at `0.12.5` with `better-auth@1.6.23`). Older `@convex-dev/better-auth` breaks signup.
 
 > [!CAUTION]
-> Don't bump `convex-helpers` past `0.1.120` while `convex` is on 1.42. From 0.1.121 it declares `peer convex@^1.43.0`, so the pair only moves together. This one is an exact version because no lockfile ships with a scaffold, and `legacy-peer-deps` in `.npmrc` means npm would install the mismatch quietly rather than failing.
+> `convex-helpers` stays an exact version (`0.1.123`, paired with `convex@~1.45.0`), and the pair only moves together. Its patch releases can raise the convex peer floor, no lockfile ships with a scaffold, and `legacy-peer-deps` in `.npmrc` means npm would install a mismatch quietly rather than failing.
 
 > [!CAUTION]
 > Don't bump `better-auth` or `@better-auth/expo` past `1.6.23` while TypeScript is on 6. From 1.6.24 the client plugin type stops satisfying `BetterAuthClientPlugin`, so `createAuthClient` infers a client with no plugin actions on it and `emailOtp`, `username`, `isUsernameAvailable` and `convex` all vanish, twelve errors across the auth screens. TypeScript 7 resolves it and SDK 57 doesn't allow TypeScript 7, so the pair moves together or not at all. Both are exact versions, not carets, so an install can't drift onto it.

@@ -42,11 +42,11 @@
     "@better-auth/expo": "1.6.23",
     "@convex-dev/better-auth": "0.12.5",
     "@convex-dev/rate-limiter": "^0.3.2",
-    "@convex-dev/resend": "^0.2.6",
+    "@convex-dev/resend": "^0.2.7",
     "@expo/ui": "~57.0.12",
     "better-auth": "1.6.23",
-    "convex": "~1.42.3",
-    "convex-helpers": "0.1.120",
+    "convex": "~1.45.0",
+    "convex-helpers": "0.1.123",
     "expo": "~57.0.15",
     "expo-apple-authentication": "~57.0.1",
     "expo-application": "~57.0.2",
@@ -89,13 +89,13 @@
   "devDependencies": {
     "@types/node": "^22",
     "@types/react": "~19.2.18",
-    "convex-test": "^0.0.54",
+    "convex-test": "^0.0.56",
     "jose": "^6.2.3",
-    "oxfmt": "^0.61.0",
-    "oxlint": "^1.76.0",
+    "oxfmt": "^0.64.0",
+    "oxlint": "^1.79.0",
     "sf-symbols-typescript": "^2.2.0",
     "typescript": "^6.0.3",
-    "vitest": "^4.1.10"
+    "vitest": "^4.1.11"
   },
   "engines": {
     "node": ">=22.12"
