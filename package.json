@@ -37,9 +37,9 @@
     "template:test": "cd templates/default && npm run test"
   },
   "devDependencies": {
-    "knip": "^6.30.0",
-    "oxfmt": "^0.61.0",
-    "oxlint": "^1.76.0",
+    "knip": "^6.32.2",
+    "oxfmt": "^0.64.0",
+    "oxlint": "^1.79.0",
     "typescript": "^7.0.2"
   }
 }
