@@ -62,7 +62,7 @@ import { bad } from "./lib/output.ts";
 
 const program = new Command()
   .name("vexpo")
-  .description("Operational CLI for vexpo projects (Expo + Convex + Better Auth + Resend).")
+  .description("CLI for vexpo projects (Expo + Convex + Better Auth + Resend).")
   .version(pkg.version, "-v, --version");
 
 const exitWith = (p: Promise<number>): void => {
@@ -75,10 +75,10 @@ const exitWith = (p: Promise<number>): void => {
 program
   .command("lite")
   .description(
-    "Dev-mode setup: Convex + Better Auth only, provisioned in ~60 seconds (the first `npm run ios` native build takes a few minutes on top). No Apple Developer account, no domain, no EAS, no Resend. Sign-up auto-verifies (no OTP). Re-run `vexpo full` later to provision the rest.",
+    "Dev-mode setup. Provisions Convex and Better Auth only. The first `npm run ios` native build takes a few minutes on top. No Apple Developer account, no domain, no EAS, no Resend. Sign-up auto-verifies (no OTP). Re-run `vexpo full` later to provision the rest.",
   )
-  .option("--new", "first-time user: walk Convex signup before provisioning", false)
-  .option("--force", "re-run every step idempotently regardless of cache", false)
+  .option("--new", "walk Convex signup before provisioning", false)
+  .option("--force", "re-run every step, ignoring the cache", false)
   .option("--fresh", "wipe state and reprovision Convex from scratch", false)
   .option("--local", "self-hosted Convex backend", false)
   .option("--dry-run", "print what each phase would do, exit without changes", false)
@@ -112,14 +112,10 @@ program
 program
   .command("full")
   .description(
-    "Full provisioning: Convex + Better Auth + Resend + Apple Sign In + ASC API key + EAS init + rebrand. Everything you need to ship to TestFlight. Default assumes you have Apple/Convex/Expo/Resend accounts + API keys; pass `--new` to walk every signup first. On completion, prints the `eas build` command to run when you're ready. vexpo doesn't invoke `eas build` itself.",
+    "Provisions Convex, Better Auth, Resend, Apple Sign In, the ASC API key, EAS init, and rebrand. Assumes you already have Apple, Convex, Expo and Resend accounts and API keys. Pass `--new` to walk every signup first. On completion, prints the `eas build` command to run when you're ready. vexpo doesn't invoke `eas build` itself.",
   )
-  .option(
-    "--new",
-    "first-time user: walk Apple/Convex/Expo/Resend signups before provisioning",
-    false,
-  )
-  .option("--force", "re-run every step idempotently regardless of cache", false)
+  .option("--new", "walk Apple, Convex, Expo and Resend signups before provisioning", false)
+  .option("--force", "re-run every step, ignoring the cache", false)
   .option("--fresh", "wipe state and reprovision Convex from scratch", false)
   .option("--local", "self-hosted Convex backend", false)
   .option("--dry-run", "print what each phase would do, exit without changes", false)
@@ -155,7 +151,9 @@ program
 
 program
   .command("accounts")
-  .description("Walk Apple/Expo/Convex/Resend signups + auth checks. Idempotent.")
+  .description(
+    "Walk Apple, Expo, Convex and Resend signups plus auth checks. Skips accounts already signed in.",
+  )
   .option("--check", "check only, exit non-zero on missing", false)
   .action((options: { check?: boolean }) => {
     exitWith(runAccounts(options));
@@ -206,7 +204,7 @@ program
 program
   .command("adopt")
   .description(
-    "Finish a project created by `eas integrations:convex:connect`: adopt the existing dev deployment (never a fresh one), backfill site URLs + Better Auth, report the deployment topology (flagging a duplicate dev deployment), and print the exact commands left to finish.",
+    "Finish a project created by `eas integrations:convex:connect`. Adopts the existing dev deployment (never a fresh one), backfills site URLs + Better Auth, reports the deployment topology (flagging a duplicate dev deployment), and prints the exact commands left to finish.",
   )
   .option("--skip-dev-steps", "report topology + runbook only, don't run convex/better-auth", false)
   .action((options: { skipDevSteps?: boolean }) => exitWith(runAdopt(options)));
@@ -215,7 +213,7 @@ const convex = program
   .command("convex")
   .description("Provision or connect a Convex deployment.")
   .option("--fresh", "provision a NEW deployment", false)
-  .option("--local", "self-hosted / local backend", false)
+  .option("--local", "self-hosted or local backend", false)
   .option("--name <name>", "override Convex project name")
   .action((options: { fresh?: boolean; local?: boolean; name?: string }) =>
     exitWith(runConvex(options)),
@@ -224,7 +222,7 @@ const convex = program
 convex
   .command("migrate")
   .description(
-    "Copy server-side Convex env (BETTER_AUTH_SECRET, RESEND_*, APPLE_*, APP_*, ...) from another deployment onto the current one. The piece a deployment migration can't get off disk; CONVEX_* are left untouched.",
+    "Copy server-side Convex env (BETTER_AUTH_SECRET, RESEND_*, APPLE_*, APP_*, ...) from another deployment onto the current one. The piece a deployment migration can't get off disk. CONVEX_* are left untouched.",
   )
   .requiredOption("--from <deployment>", "source deployment slug to copy env from")
   .option("--prod", "target the prod deployment (reads prod creds from .env.prod)")
@@ -294,7 +292,7 @@ apple
   .option("--rotate", "re-sign the JWT only", false)
   .option(
     "--copy-from <deployment>",
-    "copy APPLE_* env from another deployment (slug) instead of signing; no .p8 needed",
+    "copy APPLE_* env from another deployment (slug) instead of signing, no .p8 needed",
   )
   .action((options: { rotate?: boolean; copyFrom?: string }) => exitWith(runAppleJwt(options)));
 
@@ -354,7 +352,7 @@ env
 env
   .command("convex-key")
   .description(
-    "Sync the Convex deploy key + deployment selector to EAS env (dev → development, prod → production/preview). Fixes a stale EAS deploy key after a deployment migration; env push skips these on purpose.",
+    "Sync the Convex deploy key + deployment selector to EAS env (dev → development, prod → production/preview). Fixes a stale EAS deploy key after a deployment migration. Env push skips these on purpose.",
   )
   .option("--dev-key <key>", "dev deploy key (default: CONVEX_DEPLOY_KEY in .env.local)")
   .option("--prod-key <key>", "prod deploy key (default: CONVEX_DEPLOY_KEY in .env.prod)")
@@ -385,7 +383,7 @@ const asc = program.command("asc").description("App Store Connect: link + requir
 asc
   .command("connect")
   .description(
-    "Write the project's ascAppId into eas.json and link the EAS project to its App Store Connect app. Lands the ascAppId even headless (CI); the interactive EAS↔ASC link (wraps `eas integrations:asc:connect`) needs a terminal.",
+    "Write the project's ascAppId into eas.json and link the EAS project to its App Store Connect app. Lands the ascAppId even headless (CI). The interactive EAS↔ASC link (wraps `eas integrations:asc:connect`) needs a terminal.",
   )
   .option("--force", "re-run even if already connected", false)
   .action((options: { force?: boolean }) => exitWith(runAscConnect(options)));
@@ -393,7 +391,7 @@ asc
 program
   .command("submit")
   .description(
-    "Submit a finished iOS build non-interactively (TestFlight by default): sets EXPO_ASC_* from the cached ASC key and writes ascAppId into eas.json, then `eas submit --latest`. No EAS credential store needed.",
+    "Submit a finished iOS build non-interactively (TestFlight by default). Sets EXPO_ASC_* from the cached ASC key and writes ascAppId into eas.json, then runs `eas submit --latest`. No EAS credential store needed.",
   )
   .option("--profile <name>", "eas.json submit profile", "testflight")
   .option("--id <buildId>", "submit a specific build id (default: the latest finished build)")
@@ -405,7 +403,7 @@ const ascPrivacy = asc.command("privacy").description("Privacy nutrition labels 
 
 ascPrivacy
   .command("show [file]")
-  .description("Show the declared privacy.config.json (Apple has no live read API; set it in ASC).")
+  .description("Show the declared privacy.config.json (Apple has no live read API, set it in ASC).")
   .option("--json", "JSON output", false)
   .action((file: string | undefined, options: { json?: boolean }) =>
     exitWith(runPrivacyShow(file ?? "app-store/privacy.config.json", options)),
@@ -493,7 +491,7 @@ testflight
 testflight
   .command("whats-new <buildId> <text>")
   .description(
-    'Set the "What\'s new" release notes for a TestFlight build. At submit time `eas submit --what-to-test` does this for the build it submits; use this for a build that is already up, or for a locale other than en-US.',
+    'Set the "What\'s new" release notes for a TestFlight build. At submit time `eas submit --what-to-test` does this for the build it submits. Use this for a build that is already up, or for a locale other than en-US.',
   )
   .option("--locale <locale>", "ISO locale", "en-US")
   .action((buildId: string, text: string, options: { locale?: string }) =>
