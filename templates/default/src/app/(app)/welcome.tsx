@@ -13,6 +13,8 @@ import {
   TabView,
 } from "@expo/ui/swift-ui";
 import {
+  animation,
+  Animation,
   foregroundStyle,
   buttonStyle,
   clipped,
@@ -33,13 +35,14 @@ import {
 } from "@expo/ui/swift-ui/modifiers";
 import { useDynamicFont } from "@/lib/dynamic-font";
 import { Button as ButtonTokens, TouchTarget } from "@/constants/layout";
-import { DynamicType } from "@/constants/ui";
+import { DynamicType, Duration, toSeconds } from "@/constants/ui";
 import { ProminentButton } from "@/components/ui/prominent-button";
 
 import { assets } from "@/lib/assets";
 import { haptics } from "@/lib/haptics";
 import { useColors, useThemedAsset } from "@/hooks/use-theme";
 import { useOnboarding } from "@/hooks/use-onboarding";
+import { useReducedMotion } from "@/hooks/use-reduced-motion";
 
 type WelcomeStep =
   | { id: string; brand: true; title: string; subtitle: string }
@@ -72,6 +75,7 @@ export default function WelcomeScreen() {
   const brandIcon = useThemedAsset(assets.brandIconLight, assets.brandIconDark);
   const [step, setStep] = useState(0);
   const { markSeen } = useOnboarding();
+  const reduceMotion = useReducedMotion();
 
   const handleContinue = useCallback(() => {
     haptics.medium();
@@ -109,6 +113,12 @@ export default function WelcomeScreen() {
             value={(step + 1) / STEPS.length}
             modifiers={[
               progressViewStyle("linear"),
+              // The page slides under a bar that was jumping. Ease-out so the
+              // fill leads the swipe rather than trailing it. A filling bar is
+              // travel, so Reduce Motion gets the jump back.
+              ...(reduceMotion
+                ? []
+                : [animation(Animation.easeOut({ duration: toSeconds(Duration.normal) }), step)]),
               accessibilityLabel("Onboarding progress"),
               accessibilityValue(`Step ${step + 1} of ${STEPS.length}`),
             ]}

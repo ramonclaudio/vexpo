@@ -16,6 +16,10 @@ export const Duration = {
   splash: 1000,
 } as const;
 
+// SwiftUI animations are measured in seconds. `Duration` is milliseconds like
+// the rest of the React Native side, so the `animation()` modifier converts.
+export const toSeconds = (ms: number) => ms / 1000;
+
 // Dynamic Type ceilings for fixed-geometry controls. upstream expo/expo#46007
 // opts the app into native Dynamic Type through the `textStyle` font path, this
 // bounds it where a control can't reflow. `dynamicTypeSize({ max })` from

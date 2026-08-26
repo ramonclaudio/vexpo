@@ -5,6 +5,8 @@ import {
   accessibilityElement,
   accessibilityInputLabels,
   accessibilityLabel,
+  animation,
+  Animation,
   background,
   buttonStyle,
   contentShape,
@@ -22,7 +24,7 @@ import {
 } from "@expo/ui/swift-ui/modifiers";
 
 import { TouchTarget } from "@/constants/layout";
-import { DynamicType } from "@/constants/ui";
+import { DynamicType, Duration, toSeconds } from "@/constants/ui";
 import { ContentUnavailable } from "@/components/ui/content-unavailable";
 import { SkeletonSessions } from "@/components/ui/skeleton";
 import { ErrorText } from "@/components/ui/status-text";
@@ -34,6 +36,7 @@ import { haptics } from "@/lib/haptics";
 import { announce } from "@/lib/a11y";
 import { useColors } from "@/hooks/use-theme";
 import { useScenePrivacy } from "@/hooks/use-scene-privacy";
+import { useReducedMotion } from "@/hooks/use-reduced-motion";
 
 type SessionRow = {
   id: string;
@@ -64,6 +67,7 @@ export default function SessionsScreen() {
   const dfont = useDynamicFont();
   const colors = useColors();
   const scenePrivacy = useScenePrivacy();
+  const reduceMotion = useReducedMotion();
   const { data: current } = authClient.useSession();
   const currentToken = current?.session?.token ?? null;
   const [sessions, setSessions] = useState<SessionRow[] | null>(null);
@@ -164,7 +168,19 @@ export default function SessionsScreen() {
           <VStack
             spacing={12}
             alignment="leading"
-            modifiers={[padding({ horizontal: 24, top: 24, bottom: 40 })]}
+            modifiers={[
+              padding({ horizontal: 24, top: 24, bottom: 40 }),
+              // Revoking a session drops a row and everything under it snaps up.
+              // Animating the stack closes that gap instead of cutting to it.
+              ...(reduceMotion
+                ? []
+                : [
+                    animation(
+                      Animation.easeOut({ duration: toSeconds(Duration.normal) }),
+                      sessions.length,
+                    ),
+                  ]),
+            ]}
           >
             <Text
               testID="sessions-heading"
