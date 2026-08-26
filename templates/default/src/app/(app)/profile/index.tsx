@@ -229,11 +229,18 @@ export default function ProfileScreen() {
       setAvatarError(null);
       setAvatarUpdating(true);
       const uploadUrl = await generateAvatarUploadUrl();
-      const blob = await (await fetch(asset.uri)).blob();
+      // Raw bytes, not a Blob: expo/fetch (the global fetch since SDK 56)
+      // replaces an explicit Content-Type header with the blob's own type,
+      // which is empty for a file:// read, and Convex rejects an empty
+      // Content-Type value with 400 BadHeader.
+      const read = await fetch(asset.uri);
+      if (!read.ok) {
+        throw new ConvexError({ message: "Couldn't read that photo. Please try another one." });
+      }
       const upload = await fetch(uploadUrl, {
         method: "POST",
         headers: { "Content-Type": asset.mimeType ?? "image/jpeg" },
-        body: blob,
+        body: await read.arrayBuffer(),
       });
       // A ConvexError carries a message formatError will show. A plain Error
       // would surface as the generic line, and "Upload failed: 413" is not
