@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import Animated from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Button, Host, Text } from "@expo/ui/swift-ui";
 import {
@@ -16,6 +17,7 @@ import {
 
 import { Material } from "@/components/ui/material";
 import { useAppUpdates } from "@/hooks/use-updates";
+import { useBannerMotion } from "@/hooks/use-banner-motion";
 import { Spacing, FontSize, TouchTarget } from "@/constants/layout";
 import { Radius } from "@/constants/theme";
 import { ZIndex } from "@/constants/ui";
@@ -28,6 +30,7 @@ export function UpdateBanner({ testID }: { testID?: string } = {}) {
   const insets = useSafeAreaInsets();
   const colors = useColors();
   const dfont = useDynamicFont();
+  const motion = useBannerMotion("bottom");
 
   const showProgress = updates.isDownloading;
   const showError = !!updates.downloadError;
@@ -50,48 +53,55 @@ export function UpdateBanner({ testID }: { testID?: string } = {}) {
   const label = showError ? "Update failed. Tap to retry." : `Updating${pct}`;
 
   return (
-    <Material
-      accessibilityLiveRegion="polite"
-      accessibilityRole="alert"
-      variant="chrome"
-      tintColor={tint}
-      isInteractive={showError}
+    <Animated.View
+      entering={motion.entering}
+      exiting={motion.exiting}
       style={{
         position: "absolute",
         bottom: insets.bottom + Spacing.xs,
         left: Spacing.md,
         right: Spacing.md,
         zIndex: ZIndex.updateBanner,
-        borderRadius: Radius.full,
-        overflow: "hidden",
-        alignItems: "center",
       }}
     >
-      <Host matchContents>
-        <Button
-          testID="update-banner-retry"
-          modifiers={[
-            buttonStyle("plain"),
-            padding({ vertical: Spacing.sm, horizontal: Spacing.lg }),
-            frame({ minHeight: TouchTarget.min }),
-            contentShape(shapes.rectangle()),
-            disabledModifier(!showError),
-            accessibilityLabel(label),
-            // upstream expo/expo#47387: the label re-announces each progress
-            // tick; the static error label shouldn't carry the trait.
-            ...(showProgress ? [accessibilityAddTraits(["updatesFrequently"])] : []),
-            ...(showError ? [accessibilityHint("Re-attempts the update download")] : []),
-          ]}
-          onPress={showError ? () => updates.downloadAndApply() : () => {}}
-        >
-          <Text
-            testID={testID}
-            modifiers={[dfont({ size: FontSize["3xl"], weight: "bold" }), foregroundStyle(fg)]}
+      <Material
+        accessibilityLiveRegion="polite"
+        accessibilityRole="alert"
+        variant="chrome"
+        tintColor={tint}
+        isInteractive={showError}
+        style={{
+          borderRadius: Radius.full,
+          overflow: "hidden",
+          alignItems: "center",
+        }}
+      >
+        <Host matchContents>
+          <Button
+            testID="update-banner-retry"
+            modifiers={[
+              buttonStyle("plain"),
+              padding({ vertical: Spacing.sm, horizontal: Spacing.lg }),
+              frame({ minHeight: TouchTarget.min }),
+              contentShape(shapes.rectangle()),
+              disabledModifier(!showError),
+              accessibilityLabel(label),
+              // upstream expo/expo#47387: the label re-announces each progress
+              // tick; the static error label shouldn't carry the trait.
+              ...(showProgress ? [accessibilityAddTraits(["updatesFrequently"])] : []),
+              ...(showError ? [accessibilityHint("Re-attempts the update download")] : []),
+            ]}
+            onPress={showError ? () => updates.downloadAndApply() : () => {}}
           >
-            {label}
-          </Text>
-        </Button>
-      </Host>
-    </Material>
+            <Text
+              testID={testID}
+              modifiers={[dfont({ size: FontSize["3xl"], weight: "bold" }), foregroundStyle(fg)]}
+            >
+              {label}
+            </Text>
+          </Button>
+        </Host>
+      </Material>
+    </Animated.View>
   );
 }
