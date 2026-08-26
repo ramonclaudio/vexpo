@@ -116,6 +116,11 @@ export default function WelcomeScreen() {
               // The page slides under a bar that was jumping. Ease-out so the
               // fill leads the swipe rather than trailing it. A filling bar is
               // travel, so Reduce Motion gets the jump back.
+              //
+              // The modifier is what turns the jump into a fill, but ProgressView
+              // runs the fill on its own clock: measured on a simulator, 3s and
+              // 0.2s both render in about 0.6s. The duration here is nominal, so
+              // read it as "matches the other transitions", not as 200ms.
               ...(reduceMotion
                 ? []
                 : [animation(Animation.easeOut({ duration: toSeconds(Duration.normal) }), step)]),
