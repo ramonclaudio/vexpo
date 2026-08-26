@@ -167,7 +167,7 @@ export default function ProfileScreen() {
     const attempt = (prev.attempt ?? 0) + 1;
     // Read the native field, not the JS `otp` mirror: submitting via the
     // keyboard "done" key on the same frame the sixth digit lands can see a
-    // stale five-char `otp` because `runOnJS(setOtp)` trails a frame behind.
+    // stale five-char `otp` because `scheduleOnRN(setOtp, ...)` trails a frame behind.
     const code = otpCodeState.value;
     if (!pendingEmail || code.length !== 6) {
       haptics.error();

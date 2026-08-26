@@ -12,7 +12,7 @@ import {
   RNHostView,
   useNativeState,
 } from "@expo/ui/swift-ui";
-import { runOnJS } from "react-native-worklets";
+import { scheduleOnRN } from "react-native-worklets";
 import {
   autocorrectionDisabled,
   foregroundStyle,
@@ -385,7 +385,7 @@ export default function SignInScreen() {
                     "worklet";
                     const next = maskUsername(text);
                     usernameFieldState.value = next;
-                    runOnJS(setUsernameValue)(next);
+                    scheduleOnRN(setUsernameValue, next);
                   }}
                   modifiers={[
                     keyboardType("ascii-capable"),

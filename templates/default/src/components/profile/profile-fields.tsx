@@ -19,7 +19,7 @@ import {
   textFieldStyle,
   textInputAutocapitalization,
 } from "@expo/ui/swift-ui/modifiers";
-import { runOnJS } from "react-native-worklets";
+import { scheduleOnRN } from "react-native-worklets";
 
 import { CapsuleTextField } from "@/components/ui/capsule-text-field";
 import { HelperText } from "@/components/ui/helper-text";
@@ -93,7 +93,7 @@ export function ProfileFields({
             "worklet";
             const next = maskUsername(text);
             if (usernameState) usernameState.value = next;
-            runOnJS(onUsernameChange)(next);
+            scheduleOnRN(onUsernameChange, next);
           }}
           modifiers={[
             keyboardType("ascii-capable"),

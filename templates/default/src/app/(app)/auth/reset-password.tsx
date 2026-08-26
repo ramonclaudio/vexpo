@@ -39,7 +39,7 @@ import { useDynamicFont } from "@/lib/dynamic-font";
 import { TouchTarget } from "@/constants/layout";
 import { DynamicType } from "@/constants/ui";
 
-import { runOnJS } from "react-native-worklets";
+import { scheduleOnRN } from "react-native-worklets";
 
 import { authClient } from "@/lib/auth-client";
 import { assets } from "@/lib/assets";
@@ -270,7 +270,7 @@ export default function ResetPasswordScreen() {
                 "worklet";
                 const digits = maskOtp(text);
                 otpState.value = digits;
-                runOnJS(setOtp)(digits);
+                scheduleOnRN(setOtp, digits);
               }}
               autoFocus
               modifiers={[
