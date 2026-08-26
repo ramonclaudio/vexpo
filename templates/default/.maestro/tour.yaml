@@ -182,10 +182,13 @@ appId: ${MAESTRO_APP_ID}
     timeout: 15000
 
 # The privacy screen is disclosure plus a link out to System Settings. Nothing
-# on it is a toggle, so there is no state for the tour to leave behind.
+# on it is a toggle, so there is no state for the tour to leave behind. The
+# rows are the whole assertable surface here: the disclaimer under them is a
+# HelperText, and an inner Text reaches the hierarchy by neither id nor copy.
 - assertVisible:
-    id: "privacy-data-disclaimer"
-- assertVisible: "System Settings"
+    id: "privacy-camera-photos"
+- assertVisible:
+    id: "privacy-system-settings"
 
 # Back to Settings.
 - swipe:
