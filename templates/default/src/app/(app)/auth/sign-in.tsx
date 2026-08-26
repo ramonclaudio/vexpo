@@ -123,7 +123,6 @@ export default function SignInScreen() {
 
   const [emailState, signInWithEmail, isEmailPending] = useActionState<SignInState, void>(
     async () => {
-      haptics.light();
       const parsed = signInEmailSchema.safeParse({ email: emailValue, password });
       if (!parsed.success) {
         haptics.error();
@@ -154,7 +153,6 @@ export default function SignInScreen() {
 
   const [usernameState, signInWithUsername, isUsernamePending] = useActionState<SignInState, void>(
     async () => {
-      haptics.light();
       const parsed = signInUsernameSchema.safeParse({ username: usernameValue, password });
       if (!parsed.success) {
         haptics.error();
@@ -190,7 +188,6 @@ export default function SignInScreen() {
 
   const [otpRequestState, sendSignInOtp, isSendingOtp] = useActionState<SignInState, void>(
     async () => {
-      haptics.light();
       const parsed = forgotPasswordSchema.safeParse({ email: otpEmail });
       if (!parsed.success) {
         haptics.error();
@@ -369,7 +366,6 @@ export default function SignInScreen() {
                     contentShape(shapes.rectangle()),
                   ]}
                   onPress={() => {
-                    haptics.light();
                     router.push("/auth/forgot-password");
                   }}
                 />
@@ -426,7 +422,6 @@ export default function SignInScreen() {
                     contentShape(shapes.rectangle()),
                   ]}
                   onPress={() => {
-                    haptics.light();
                     router.push("/auth/forgot-password");
                   }}
                 />

@@ -159,8 +159,6 @@ export default function SignUpScreen() {
   const { pendingNavAction, discard, dismiss } = useUnsavedChanges(hasInput && !showVerification);
 
   const [state, signUp, isPending] = useActionState<SignUpState, void>(async () => {
-    haptics.light();
-
     const parsed = signUpSchema.safeParse({ name, username, email, password });
     if (!parsed.success) {
       haptics.error();

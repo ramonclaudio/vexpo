@@ -76,7 +76,6 @@ export function OtpVerification({ email, onBack, flow = "verify-email" }: OtpVer
   const isSignIn = flow === "sign-in";
 
   const [verifyState, verify, isVerifying] = useActionState<OtpState, void>(async (prev) => {
-    haptics.light();
     const attempt = (prev.attempt ?? 0) + 1;
 
     // Read the native field value, not the JS `otp` mirror: submitting via the
@@ -113,7 +112,6 @@ export function OtpVerification({ email, onBack, flow = "verify-email" }: OtpVer
   }, initialState);
 
   const [resendState, resend, isResending] = useActionState<OtpState, void>(async (prev) => {
-    haptics.light();
     const attempt = (prev.attempt ?? 0) + 1;
     try {
       const response = await authClient.emailOtp.sendVerificationOtp({
@@ -309,7 +307,6 @@ export function OtpVerification({ email, onBack, flow = "verify-email" }: OtpVer
                 contentShape(shapes.rectangle()),
               ]}
               onPress={() => {
-                haptics.light();
                 onBack();
               }}
             />

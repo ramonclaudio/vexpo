@@ -30,7 +30,6 @@ export function DangerZone({
           testID="profile-change-password"
           label="Change password"
           onPress={() => {
-            haptics.light();
             router.push("/profile/change-password");
           }}
         />

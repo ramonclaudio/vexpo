@@ -54,7 +54,6 @@ function ChangePasswordForm({ email }: { email: string }) {
   const emailState = useNativeState(email);
 
   const [state, submit, isPending] = useActionState<ChangePasswordState, void>(async (prev) => {
-    haptics.light();
     const attempt = (prev.attempt ?? 0) + 1;
     if (!current || !next || !confirm) {
       haptics.error();
@@ -208,7 +207,6 @@ function ChangePasswordForm({ email }: { email: string }) {
                 disabled(isPending),
               ]}
               onPress={() => {
-                haptics.light();
                 router.back();
               }}
             />

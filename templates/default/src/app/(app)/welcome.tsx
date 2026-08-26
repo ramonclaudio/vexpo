@@ -80,7 +80,7 @@ export default function WelcomeScreen() {
   }, [markSeen]);
 
   const handleNext = useCallback(() => {
-    haptics.light();
+    haptics.selection();
     setStep((s) => Math.min(s + 1, STEPS.length - 1));
   }, []);
 

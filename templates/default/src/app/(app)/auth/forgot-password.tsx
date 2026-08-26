@@ -60,8 +60,6 @@ export default function ForgotPasswordScreen() {
   }, [providers]);
 
   const [state, submit, isPending] = useActionState<ForgotState, void>(async () => {
-    haptics.light();
-
     const parsed = forgotPasswordSchema.safeParse({ email });
     if (!parsed.success) {
       haptics.error();
@@ -164,7 +162,6 @@ export default function ForgotPasswordScreen() {
                 frame({ minHeight: TouchTarget.min }),
               ]}
               onPress={() => {
-                haptics.light();
                 router.back();
               }}
             />

@@ -8,7 +8,6 @@ import {
   reload,
   buildReloadScreenConfig,
 } from "@/lib/updates";
-import { haptics } from "@/lib/haptics";
 import { useColorScheme } from "@/hooks/use-theme";
 import { useReducedMotion } from "@/hooks/use-reduced-motion";
 
@@ -64,13 +63,11 @@ export function useAppUpdates() {
 
   const checkForUpdate = () => {
     if (state.isChecking) return;
-    haptics.light();
     checkForUpdateFn();
   };
 
   const downloadAndApply = () => {
     if (state.isDownloading) return;
-    haptics.light();
     fetchUpdate();
   };
 

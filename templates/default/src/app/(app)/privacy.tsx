@@ -4,14 +4,12 @@ import { frame, padding, tint } from "@expo/ui/swift-ui/modifiers";
 
 import { CapsuleRowButton } from "@/components/ui/capsule-row-button";
 import { HelperText } from "@/components/ui/helper-text";
-import { haptics } from "@/lib/haptics";
 import { useColors } from "@/hooks/use-theme";
 
 export default function PrivacyScreen() {
   const colors = useColors();
 
   const handleOpenSettings = () => {
-    haptics.light();
     openSettings();
   };
 

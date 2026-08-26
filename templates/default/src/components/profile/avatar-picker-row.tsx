@@ -28,7 +28,6 @@ import { DynamicType } from "@/constants/ui";
 import { TouchTarget } from "@/constants/layout";
 import { useColors } from "@/hooks/use-theme";
 import { useDynamicFont } from "@/lib/dynamic-font";
-import { haptics } from "@/lib/haptics";
 
 const AVATAR_SIZE = 96;
 
@@ -68,7 +67,6 @@ export function AvatarPickerRow({
             accessibilityLabel("Change profile photo"),
           ]}
           onPress={() => {
-            haptics.light();
             setAvatarPicker(true);
           }}
         >

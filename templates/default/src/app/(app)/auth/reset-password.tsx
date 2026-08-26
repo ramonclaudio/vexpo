@@ -88,8 +88,6 @@ export default function ResetPasswordScreen() {
   const emailIdentityState = useNativeState(email);
 
   const [state, submit, isPending] = useActionState<ResetState, void>(async () => {
-    haptics.light();
-
     if (!email) {
       haptics.error();
       return { error: "Missing email. Start over from forgot password.", expired: true };
@@ -173,7 +171,6 @@ export default function ResetPasswordScreen() {
             testID="reset-password-success-sign-in"
             label="Sign in"
             onPress={() => {
-              haptics.light();
               router.replace("/auth/sign-in");
             }}
           />
@@ -256,7 +253,6 @@ export default function ResetPasswordScreen() {
                     contentShape(shapes.rectangle()),
                   ]}
                   onPress={() => {
-                    haptics.light();
                     router.push("/auth/forgot-password");
                   }}
                 />
@@ -341,7 +337,6 @@ export default function ResetPasswordScreen() {
                 contentShape(shapes.rectangle()),
               ]}
               onPress={() => {
-                haptics.light();
                 router.push("/auth/sign-in");
               }}
             />

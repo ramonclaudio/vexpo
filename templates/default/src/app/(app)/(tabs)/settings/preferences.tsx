@@ -65,7 +65,7 @@ export default function PreferencesScreen() {
               value={hapticsOn}
               onChange={(v) => {
                 setHapticsOn(v);
-                if (v) haptics.light();
+                if (v) haptics.selection();
               }}
             />
           </VStack>
@@ -79,7 +79,7 @@ export default function PreferencesScreen() {
               value={debugOn}
               onChange={(v) => {
                 setDebugOn(v);
-                haptics.light();
+                haptics.selection();
               }}
             />
             <HelperText modifiers={[padding({ horizontal: 8 })]}>

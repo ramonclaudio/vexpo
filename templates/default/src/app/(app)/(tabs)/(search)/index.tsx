@@ -21,7 +21,6 @@ import { useDynamicFont } from "@/lib/dynamic-font";
 import { useColors } from "@/hooks/use-theme";
 import { useDebounce } from "@/hooks/use-debounce";
 import { useDebugEnabled } from "@/lib/preferences";
-import { haptics } from "@/lib/haptics";
 import { ContentUnavailable } from "@/components/ui/content-unavailable";
 import { SectionLabel } from "@/components/ui/section-label";
 
@@ -137,7 +136,6 @@ export default function SearchScreen() {
   }, [query, destinations]);
 
   const open = (href: Destination["href"]) => {
-    haptics.light();
     router.push(href);
   };
 

@@ -103,7 +103,6 @@ export default function ProfileScreen() {
   const [saveState, save, isSaving] = useActionState<SaveState, void>(async (prev) => {
     const attempt = (prev.attempt ?? 0) + 1;
     if (!me) return { error: "Not loaded", attempt };
-    haptics.light();
 
     // Accounts without a username must still save name/email/bio; the strict
     // schema would reject the empty username field they never set.
@@ -149,7 +148,7 @@ export default function ProfileScreen() {
           haptics.error();
           return { error: res.error.message ?? "Failed to update email", attempt };
         }
-        haptics.light();
+        haptics.success();
         setPendingEmail(nextEmail);
         setOtp("");
         return { pendingEmail: nextEmail };
@@ -166,7 +165,6 @@ export default function ProfileScreen() {
 
   const [otpState, verifyOtp, isVerifying] = useActionState<OtpState, void>(async (prev) => {
     const attempt = (prev.attempt ?? 0) + 1;
-    haptics.light();
     // Read the native field, not the JS `otp` mirror: submitting via the
     // keyboard "done" key on the same frame the sixth digit lands can see a
     // stale five-char `otp` because `runOnJS(setOtp)` trails a frame behind.
@@ -196,7 +194,6 @@ export default function ProfileScreen() {
   const [avatarError, setAvatarError] = useState<string | null>(null);
 
   const pickAvatar = async (source: "library" | "camera") => {
-    haptics.light();
     setAvatarPicker(false);
     // Let the avatar picker sheet finish dismissing before presenting the
     // image picker. iOS drops a present that starts while a sheet is animating out.
@@ -351,7 +348,6 @@ export default function ProfileScreen() {
                 onCodeChange={setOtp}
                 onVerify={() => startTransition(() => verifyOtp())}
                 onCancel={() => {
-                  haptics.light();
                   setPendingEmail(null);
                   setOtp("");
                 }}

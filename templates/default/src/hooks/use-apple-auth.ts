@@ -47,7 +47,6 @@ export function useAppleAuth({ successMessage }: { successMessage: string }) {
   }, []);
 
   const [state, signIn, isPending] = useActionState<AppleState, void>(async () => {
-    haptics.light();
     try {
       const credential = await AppleAuthentication.signInAsync({
         requestedScopes: [
