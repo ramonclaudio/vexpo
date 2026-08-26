@@ -71,7 +71,10 @@ export default function AppLayout() {
             headerShown: false,
             presentation: "fullScreenModal",
             gestureEnabled: false,
-            animation: reduceMotion ? "none" : "fade",
+            // A cross-fade is already the Reduce Motion answer: opacity only, no
+            // travel. Cutting it to "none" there is stricter than the setting asks
+            // for, and it's the one transition into onboarding.
+            animation: "fade",
           }}
         />
 
