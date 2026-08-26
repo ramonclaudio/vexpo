@@ -12,7 +12,7 @@ export function SuspenseFallback() {
 
 export default function AuthLayout() {
   const colors = useColors();
-  const motion = useMotionScreenOptions("fade_from_bottom", 250);
+  const motion = useMotionScreenOptions("default");
   return (
     <Stack
       screenOptions={{

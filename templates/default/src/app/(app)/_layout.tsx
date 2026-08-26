@@ -47,7 +47,7 @@ export default function AppLayout() {
 
   const colors = useColors();
   const reduceMotion = useReducedMotion();
-  const motion = useMotionScreenOptions("slide_from_right", 300);
+  const motion = useMotionScreenOptions("default");
   const headerTint = colors.foreground as string;
   const titleStyle = { color: headerTint, fontFamily: FontFamily.semiBold };
 
