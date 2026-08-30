@@ -4,10 +4,11 @@
 #
 # Requires an existing signed-in session: this flow launches WITHOUT clearState
 # and asserts the home tab. It does NOT sign in. Run `auth.yaml` first to seed a
-# session. On EAS folder runs Maestro executes flows alphabetically, and
-# `app-tour` sorts BEFORE `auth`, so this file is named `tour.yaml` ('t' > 'a')
-# to guarantee it runs AFTER auth.yaml. As a safety net the flow fails fast with
-# a clear message if it lands on the sign-in screen instead of the tabs.
+# session. Order comes from ORDERED_FLOWS in scripts/e2e.mjs, not from the
+# filename: Maestro plans a folder in REVERSE alphabetical order, so the old
+# `tour.yaml` ('t' > 'a') rename put this BEFORE auth.yaml, not after, and it
+# failed on every run. As a safety net the flow fails fast with a clear message
+# if it lands on the sign-in screen instead of the tabs.
 #
 # @expo/ui SwiftUI driving notes (same as auth.yaml/launch.yaml):
 #   - Inner SwiftUI Text testIDs do NOT surface to Maestro; only Host roots and
@@ -41,48 +42,30 @@ appId: ${MAESTRO_APP_ID}
 - waitForAnimationToEnd:
     timeout: 15000
 
-# Dev-client builds may show the one-time developer-menu intro sheet after a
-# relaunch. Drag it down to dismiss. Release builds skip this block.
-- runFlow:
-    when:
-      visible: "This is the developer menu.*"
-    commands:
-      - swipe:
-          start: 50%, 55%
-          end: 50%, 95%
-      - waitForAnimationToEnd:
-          timeout: 5000
+# The session rehydrates from the keychain on relaunch, so the auth guard is
+# still resolving on the first frame and can render sign-in for a beat before it
+# swaps to the tabs. Wait for the tab bar before deciding anything, or the
+# safety net below races the guard and fails on a session that is about to
+# arrive.
+- extendedWaitUntil:
+    visible: "Home"
+    timeout: 30000
 
-# The intro sheet can appear late while Metro is still bundling, so check a
-# second time after the bundle settles.
-- waitForAnimationToEnd:
-    timeout: 10000
-- runFlow:
-    when:
-      visible: "This is the developer menu.*"
-    commands:
-      - swipe:
-          start: 50%, 55%
-          end: 50%, 95%
-      - waitForAnimationToEnd:
-          timeout: 5000
-
-# Safety net: if the session is missing we land on sign-in. Fail loudly so the
-# failure points at "run auth.yaml first", not at a mystery missing element.
+# Safety net: a genuinely missing session leaves us on sign-in. Checked after the
+# guard settles, so a failure here means "run auth.yaml first", not "we looked
+# too early".
 - assertNotVisible:
     id: "sign-in-screen"
 
 # launchApp may resume on a nested screen. Get back to the tabs root via the
-# Home tab, then assert the home Host id. Native tab taps can be flaky, so
-# assert-then-tap.
-- assertVisible: "Home"
+# Home tab, then assert the home Host id.
 - tapOn: "Home"
 - waitForAnimationToEnd:
     timeout: 5000
 - extendedWaitUntil:
     visible:
       id: "home-screen"
-    timeout: 20000
+    timeout: 30000
 
 # --- 1. Search tab -------------------------------------------------------
 # Search is a native large-title Stack.SearchBar above a Host list. Tap the tab,
@@ -110,9 +93,12 @@ appId: ${MAESTRO_APP_ID}
 # A result for "privacy" should rank. The result row carries a stable id.
 - assertVisible:
     id: "search-result-privacy"
-# Active search replaces the tab bar, close it ("Close" a11y label) so the
-# tabs come back before navigating on.
-- tapOn: "Close"
+# Active search replaces the tab bar, so dismiss it before navigating on.
+# `Stack.SearchBar` renders UIKit's own dismiss button and its label is not
+# ours: it reads "Close" on the local simulator and "Cancel" on the one EAS
+# provisions, so match either. There is no testID to aim at, the button belongs
+# to UIKit rather than the screen.
+- tapOn: "Cancel|Close"
 - waitForAnimationToEnd:
     timeout: 3000
 
@@ -159,10 +145,12 @@ appId: ${MAESTRO_APP_ID}
 - waitForAnimationToEnd:
     timeout: 2000
 
-# Back to Settings.
-- swipe:
-    start: 2%, 50%
-    end: 90%, 50%
+# Back to Settings. Tap the Settings tab rather than edge-swiping: the swipe
+# registers on the local simulator and not on the one EAS provisions, which is
+# where this flow used to die. Both the header back button and the tab read
+# "Settings", and either lands on the settings root, so the ambiguity is
+# harmless.
+- tapOn: "Settings"
 - waitForAnimationToEnd:
     timeout: 5000
 - extendedWaitUntil:
@@ -190,10 +178,12 @@ appId: ${MAESTRO_APP_ID}
 - assertVisible:
     id: "privacy-system-settings"
 
-# Back to Settings.
-- swipe:
-    start: 2%, 50%
-    end: 90%, 50%
+# Back to Settings. Tap the Settings tab rather than edge-swiping: the swipe
+# registers on the local simulator and not on the one EAS provisions, which is
+# where this flow used to die. Both the header back button and the tab read
+# "Settings", and either lands on the settings root, so the ambiguity is
+# harmless.
+- tapOn: "Settings"
 - waitForAnimationToEnd:
     timeout: 5000
 - extendedWaitUntil:
@@ -245,10 +235,12 @@ appId: ${MAESTRO_APP_ID}
 - assertVisible: ".*e2e tour.*"
 - assertVisible: "Saved"
 
-# Back to Settings.
-- swipe:
-    start: 2%, 50%
-    end: 90%, 50%
+# Back to Settings. Tap the Settings tab rather than edge-swiping: the swipe
+# registers on the local simulator and not on the one EAS provisions, which is
+# where this flow used to die. Both the header back button and the tab read
+# "Settings", and either lands on the settings root, so the ambiguity is
+# harmless.
+- tapOn: "Settings"
 - waitForAnimationToEnd:
     timeout: 5000
 - extendedWaitUntil:
@@ -273,10 +265,12 @@ appId: ${MAESTRO_APP_ID}
     visible: "This device"
     timeout: 20000
 
-# Back to Settings.
-- swipe:
-    start: 2%, 50%
-    end: 90%, 50%
+# Back to Settings. Tap the Settings tab rather than edge-swiping: the swipe
+# registers on the local simulator and not on the one EAS provisions, which is
+# where this flow used to die. Both the header back button and the tab read
+# "Settings", and either lands on the settings root, so the ambiguity is
+# harmless.
+- tapOn: "Settings"
 - waitForAnimationToEnd:
     timeout: 5000
 - extendedWaitUntil:

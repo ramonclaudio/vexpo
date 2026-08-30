@@ -21,8 +21,9 @@
 # Run on EAS:  via `.eas/workflows/e2e-tests.yml` (workflow_dispatch only).
 appId: ${MAESTRO_APP_ID}
 ---
-# No clearState here. The e2e workflow runs every flow under .maestro/ in folder
-# order (auth -> launch -> tour -> zz-delete-restore), and auth.yaml owns the
+# No clearState here. The suite runs in the order ORDERED_FLOWS in
+# scripts/e2e.mjs sets (auth -> launch -> tour -> zz-delete-restore), and
+# auth.yaml owns the
 # clean-state reset at the start of the suite. Clearing again mid-suite would
 # wipe the onboarding_seen flag while the Better Auth session survives in the
 # keychain, so tour.yaml and zz-delete-restore.yaml would resume authenticated
@@ -30,4 +31,12 @@ appId: ${MAESTRO_APP_ID}
 - launchApp
 - waitForAnimationToEnd:
     timeout: 15000
+
+# auth.yaml runs first and leaves a session, so a healthy cold start lands on
+# the tabs. Assert it: a screenshot alone passes even when the app never
+# rendered.
+- extendedWaitUntil:
+    visible:
+      id: "home-screen"
+    timeout: 30000
 - takeScreenshot: .maestro/screenshots/launch
