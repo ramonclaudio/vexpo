@@ -95,27 +95,11 @@ npm run e2e                 # whole folder
 npm run e2e -- .maestro/auth.yaml
 ```
 
-`scripts/e2e.mjs` finds the keg and sets `JAVA_HOME` itself. It also passes in three things the flows can't get on their own. `MAESTRO_APP_ID` from `.env.local`, since only EAS injects it in CI. A unique `MAESTRO_TEST_EMAIL` per run. And a simulator keychain reset, because `clearState` leaves Better Auth's session cookie behind and the next launch comes up already signed in.
+`scripts/e2e.mjs` finds the keg and sets `JAVA_HOME` itself. It also handles five things the flows can't get on their own. `MAESTRO_APP_ID` from `.env.local`, since only EAS injects it in CI. A unique `MAESTRO_TEST_EMAIL` per run. A simulator keychain reset, because `clearState` leaves Better Auth's session cookie behind and the next launch comes up already signed in. The flow order, since Maestro plans a folder in reverse alphabetical order and would otherwise run `auth.yaml` last. And an enrolled biometric plus an answer for the Face ID prompt, so the delete step in `zz-delete-restore.yaml` can get past it.
 
-### A folder run fails `tour` and `zz-delete-restore` on the sign-in screen
+### Running one flow on its own starts signed out
 
-`npm run e2e` with no arguments hands Maestro the whole folder, and it runs those flows at the same time rather than in name order. `tour.yaml` and `zz-delete-restore.yaml` both need the session `auth.yaml` creates, so both land on sign-in and go red while `auth` is still typing. The `zz-` prefix and the `t` in `tour` only order an EAS run. Name the flows in order instead, which keeps them in one invocation and so one keychain reset:
-
-```bash
-npm run e2e -- .maestro/auth.yaml .maestro/tour.yaml .maestro/zz-delete-restore.yaml
-```
-
-Running a dependent flow by itself can't work either, for the same reason the runner resets the keychain: `npm run e2e -- .maestro/tour.yaml` always starts signed out.
-
-### `zz-delete-restore` stalls or silently no-ops at the delete step
-
-`deleteAccount` gates on `LocalAuthentication.authenticateAsync`, and a simulator with no enrolled biometric never satisfies it, so the mutation never runs. Enroll once, then answer the prompt while the flow is on that step:
-
-```bash
-xcrun simctl spawn booted notifyutil -s com.apple.BiometricKit.enrollmentChanged 1
-xcrun simctl spawn booted notifyutil -p com.apple.BiometricKit.enrollmentChanged
-xcrun simctl spawn booted notifyutil -p com.apple.BiometricKit_Sim.pearl.match   # the answer
-```
+`tour.yaml` and `zz-delete-restore.yaml` both need the session `auth.yaml` creates, and the runner resets the keychain on every invocation, so `npm run e2e -- .maestro/tour.yaml` always lands on sign-in. Run the whole suite instead.
 
 ### `tour.yaml` fails on `"This device" is visible`
 

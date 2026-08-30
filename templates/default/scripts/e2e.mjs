@@ -19,11 +19,22 @@
  * relaunch comes up already signed in and auth.yaml asserts against the wrong
  * screen.
  *
+ * And it answers Face ID. `deleteAccount` gates on
+ * LocalAuthentication.authenticateAsync, and a simulator with no enrolled
+ * biometric falls back to "Enter iPhone Passcode", a system dialog Maestro
+ * cannot drive and no passcode can satisfy. So enroll a biometric up front,
+ * then answer every prompt with a match for as long as the run lasts. Maestro
+ * has no shell command, so the flow cannot do this itself, and without it
+ * zz-delete-restore.yaml stalls on the passcode sheet.
+ *
+ * It also mutes the dev menu, for the same reason: the flows cannot. See
+ * muteDevMenu below.
+ *
  * Args pass through: `npm run e2e -- .maestro/launch.yaml` runs one flow, and
  * with none it runs the whole folder.
  */
 
-import { spawnSync } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -110,6 +121,106 @@ function devUrl() {
 // clearState leaves the session cookie behind, so a stale one has to go first.
 spawnSync("xcrun", ["simctl", "keychain", "booted", "reset"], { stdio: "ignore" });
 
+/**
+ * Turn off the dev-client menu for this app on the booted simulator.
+ *
+ * The intro sheet appears about 13 seconds into every relaunch and never
+ * closes by itself. It is a full-screen modal, so while it is up the app is out
+ * of the accessibility hierarchy entirely and no screen id resolves. Dismissing
+ * it per flow means every flow racing a sheet that has not appeared yet, so
+ * stop it from showing at all.
+ *
+ * expo-dev-menu reads these off UserDefaults with `register(defaults:)` (see
+ * expo-dev-menu/ios/Modules/DevMenuPreferences.swift), which only sets
+ * fallbacks, so an explicit write to the app's own domain wins. Written per run
+ * because a reinstall drops them, and read back because a silent miss here
+ * looks like a mystery timeout three flows later.
+ */
+function muteDevMenu(bundleId) {
+  const wanted = {
+    EXDevMenuIsOnboardingFinished: true,
+    EXDevMenuShowsAtLaunch: false,
+    // The floating gear defaults to on and sits in the top-right of every
+    // screenshot, over page titles.
+    EXDevMenuShowFloatingActionButton: false,
+  };
+
+  // Write while the app is stopped: a live process can flush its cached
+  // defaults over these on exit.
+  spawnSync("xcrun", ["simctl", "terminate", "booted", bundleId], { stdio: "ignore" });
+
+  for (const [key, value] of Object.entries(wanted)) {
+    spawnSync(
+      "xcrun",
+      ["simctl", "spawn", "booted", "defaults", "write", bundleId, key, "-bool", String(value)],
+      { stdio: "ignore" },
+    );
+  }
+
+  const missed = Object.entries(wanted).filter(([key, value]) => {
+    const read = spawnSync(
+      "xcrun",
+      ["simctl", "spawn", "booted", "defaults", "read", bundleId, key],
+      { encoding: "utf8" },
+    );
+    return read.stdout?.trim() !== (value ? "1" : "0");
+  });
+
+  if (missed.length > 0) {
+    console.error(
+      `Could not turn off the dev menu for ${bundleId}: ${missed.map(([k]) => k).join(", ")}.\n` +
+        "The dev-menu sheet covers the whole app, so the flows would fail on screens that\n" +
+        "are actually on screen. Check the key names still match\n" +
+        "expo-dev-menu/ios/Modules/DevMenuPreferences.swift, and that the app is installed\n" +
+        "on the booted simulator.",
+    );
+    process.exit(1);
+  }
+}
+
+muteDevMenu(appId);
+
+const notify = (...args) =>
+  spawnSync("xcrun", ["simctl", "spawn", "booted", "notifyutil", ...args], { stdio: "ignore" });
+
+// Enroll a biometric, then post the change so the simulator picks it up.
+notify("-s", "com.apple.BiometricKit.enrollmentChanged", "1");
+notify("-p", "com.apple.BiometricKit.enrollmentChanged");
+
+// The prompt only appears mid-flow, and there is no way to wait for it from
+// here, so answer on a timer instead. A match posted while nothing is asking is
+// a no-op, which makes polling safe.
+const faceId = spawn(
+  "sh",
+  [
+    "-c",
+    "while :; do xcrun simctl spawn booted notifyutil -p com.apple.BiometricKit_Sim.pearl.match >/dev/null 2>&1; sleep 2; done",
+  ],
+  { stdio: "ignore", detached: true },
+);
+const stopFaceId = () => {
+  try {
+    process.kill(-faceId.pid);
+  } catch {
+    // already gone
+  }
+};
+process.on("exit", stopFaceId);
+
+// Folder order is not ours to assume. `maestro test .maestro/` plans the
+// directory in REVERSE alphabetical order, so a folder run went
+// zz -> tour -> launch -> auth, with the flow that creates the session running
+// last and the three that need one running first. They came up on sign-in and
+// failed there every time. `.maestro/config.yaml`'s executionOrder produced an
+// empty plan, so the order is spelled out here instead, where it also documents
+// the dependency.
+const ORDERED_FLOWS = [
+  ".maestro/auth.yaml", // creates the account and the session the rest need
+  ".maestro/launch.yaml",
+  ".maestro/tour.yaml",
+  ".maestro/zz-delete-restore.yaml", // deletes the account, so it goes last
+];
+
 const flows = process.argv.slice(2);
 const env = {
   ...process.env,
@@ -126,11 +237,12 @@ console.log(`email   ${env.MAESTRO_TEST_EMAIL}`);
 console.log(`devUrl  ${env.MAESTRO_DEV_URL}`);
 console.log(`jdk     ${jdk}\n`);
 
-const run = spawnSync(maestro, ["test", ...(flows.length ? flows : [".maestro/"])], {
+const run = spawnSync(maestro, ["test", ...(flows.length ? flows : ORDERED_FLOWS)], {
   cwd: PROJECT,
   stdio: "inherit",
   env,
 });
+stopFaceId();
 if (run.error) {
   console.error(
     `Could not run \`${maestro}\`: ${run.error.message}\n` +
