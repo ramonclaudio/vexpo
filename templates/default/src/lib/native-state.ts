@@ -1,5 +1,5 @@
 import { useNativeState } from "@expo/ui/swift-ui";
-import { runOnUI } from "react-native-worklets";
+import { scheduleOnUI } from "react-native-worklets";
 
 type ObservableState<T> = ReturnType<typeof useNativeState<T>>;
 
@@ -13,8 +13,8 @@ type ObservableState<T> = ReturnType<typeof useNativeState<T>>;
 // worklet serializer (`State/index.fx`) so `state` crosses thread boundaries
 // safely.
 export function setNativeValue<T>(state: ObservableState<T>, value: T): void {
-  runOnUI(() => {
+  scheduleOnUI(() => {
     "worklet";
     state.value = value;
-  })();
+  });
 }

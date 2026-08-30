@@ -3,7 +3,9 @@
   "version": "0.3.2",
   "description": "Scaffold a new vexpo project, an iOS app built on Expo SDK 57 and designed entirely with SwiftUI (@expo/ui), with Convex, Better Auth, and Resend wired in.",
   "keywords": [
+    "apple-sign-in",
     "better-auth",
+    "boilerplate",
     "convex",
     "create",
     "expo",
@@ -13,6 +15,7 @@
     "resend",
     "scaffold",
     "starter",
+    "swiftui",
     "template",
     "vexpo"
   ],

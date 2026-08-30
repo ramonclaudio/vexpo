@@ -95,7 +95,11 @@ npm run e2e                 # whole folder
 npm run e2e -- .maestro/auth.yaml
 ```
 
-`scripts/e2e.mjs` finds the keg and sets `JAVA_HOME` itself. It also passes in three things the flows can't get on their own. `MAESTRO_APP_ID` from `.env.local`, since only EAS injects it in CI. A unique `MAESTRO_TEST_EMAIL` per run. And a simulator keychain reset, because `clearState` leaves Better Auth's session cookie behind and the next launch comes up already signed in.
+`scripts/e2e.mjs` finds the keg and sets `JAVA_HOME` itself. It also handles five things the flows can't get on their own. `MAESTRO_APP_ID` from `.env.local`, since only EAS injects it in CI. A unique `MAESTRO_TEST_EMAIL` per run. A simulator keychain reset, because `clearState` leaves Better Auth's session cookie behind and the next launch comes up already signed in. The flow order, since Maestro plans a folder in reverse alphabetical order and would otherwise run `auth.yaml` last. And an enrolled biometric plus an answer for the Face ID prompt, so the delete step in `zz-delete-restore.yaml` can get past it.
+
+### Running one flow on its own starts signed out
+
+`tour.yaml` and `zz-delete-restore.yaml` both need the session `auth.yaml` creates, and the runner resets the keychain on every invocation, so `npm run e2e -- .maestro/tour.yaml` always lands on sign-in. Run the whole suite instead.
 
 ### `tour.yaml` fails on `"This device" is visible`
 
@@ -121,6 +125,14 @@ xcrun simctl privacy booted grant location <bundle-id>
 ```
 
 If one is already stuck on screen, `xcrun simctl shutdown booted` and boot again. Nothing short of a reboot clears it.
+
+### An assert fails on copy you can see in the screenshot
+
+Only `Host` roots and real controls reach the accessibility tree. A bare `@expo/ui` `Text` reaches it by neither `testID` nor copy, so an `assertVisible` against one fails while the words sit there in the failure screenshot. `HelperText` is the usual one to trip over. Assert the screen's `Host` id or a control next to the copy instead. To see exactly what a step had to work with, read the hierarchy Maestro dumps beside the screenshot:
+
+```bash
+ls ~/.maestro/tests/<run>/<flow>/screen-hierarchy/
+```
 
 ### `scrollUntilVisible` reports `COMPLETED` but the list never moved
 

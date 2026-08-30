@@ -38,7 +38,7 @@ import { useDynamicFont } from "@/lib/dynamic-font";
 
 import { api } from "@/convex/_generated/api";
 import { isReservedUsername, isValidUsernameFormat } from "@/convex/constants";
-import { runOnJS } from "react-native-worklets";
+import { scheduleOnRN } from "react-native-worklets";
 
 import { authClient } from "@/lib/auth-client";
 import { assets } from "@/lib/assets";
@@ -159,8 +159,6 @@ export default function SignUpScreen() {
   const { pendingNavAction, discard, dismiss } = useUnsavedChanges(hasInput && !showVerification);
 
   const [state, signUp, isPending] = useActionState<SignUpState, void>(async () => {
-    haptics.light();
-
     const parsed = signUpSchema.safeParse({ name, username, email, password });
     if (!parsed.success) {
       haptics.error();
@@ -368,7 +366,7 @@ export default function SignUpScreen() {
                 "worklet";
                 const next = maskUsername(text);
                 usernameState.value = next;
-                runOnJS(handleUsernameChange)(next);
+                scheduleOnRN(handleUsernameChange, next);
               }}
               modifiers={[
                 keyboardType("ascii-capable"),

@@ -162,7 +162,7 @@ export function PasswordField({
           accessibilityInputLabels(["show password", "hide password"]),
         ]}
         onPress={() => {
-          haptics.light();
+          haptics.selection();
           pendingRefocus.current = focused.current;
           setVisible((v) => !v);
         }}

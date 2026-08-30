@@ -8,16 +8,21 @@
 # gate in (app)/_layout.tsx swaps the whole authed tree for `restore-account`.
 # Tapping Restore clears the tombstone and `router.replace("/")` drops us back on
 # the tabs root. Because this flow ends with the account restored and signed in,
-# it leaves the shared test account exactly as auth.yaml left it. The `zz-`
-# prefix makes it sort LAST in alphabetical folder runs so nothing downstream
-# inherits a half-deleted account.
+# it leaves the shared test account exactly as auth.yaml left it. It runs last
+# by way of ORDERED_FLOWS in scripts/e2e.mjs so nothing downstream inherits a
+# half-deleted account. The `zz-` prefix no longer buys that on its own: Maestro
+# plans a folder in REVERSE alphabetical order, which put this FIRST.
 #
-# Face ID note: `deleteAccount` gates on LocalAuthentication.authenticateAsync
-# before the mutation. The simulator must have a matched/enrolled biometric
-# (Features > Face ID > Enrolled, then Matching Face after the prompt) or the
-# delete silently no-ops (`if (!result.success) return`). On EAS the device
-# profile handles this; locally, trigger "Matching Face" if the run stalls at
-# the delete step.
+# Local only. `deleteAccount` gates on LocalAuthentication.authenticateAsync,
+# and the simulator EAS provisions has no enrolled biometric, so on EAS the
+# prompt falls back to a passcode sheet Maestro cannot drive. The EAS job runs
+# Maestro directly, so scripts/e2e.mjs never executes there and nothing can
+# enroll one. This flow is left out of .eas/workflows/e2e-tests.yml for that
+# reason and runs through `npm run e2e`, where scripts/e2e.mjs enrolls a
+# biometric and answers the prompt, so it needs no hand-holding. Driving it by hand instead (Features >
+# Face ID > Enrolled, then Matching Face) still works. With neither, the
+# simulator falls back to "Enter iPhone Passcode", which Maestro cannot drive,
+# and the delete silently no-ops (`if (!result.success) return`).
 #
 # Same @expo/ui SwiftUI conventions as auth.yaml: `testID` maps to the native
 # accessibilityIdentifier and surfaces to Maestro as `resource-id`, so id-based
@@ -55,37 +60,13 @@ appId: ${MAESTRO_APP_ID}
 - waitForAnimationToEnd:
     timeout: 15000
 
-# Dev-client builds may show the one-time developer-menu intro sheet after a
-# relaunch. Drag it down to dismiss. Release builds skip this block.
-- runFlow:
-    when:
-      visible: "This is the developer menu.*"
-    commands:
-      - swipe:
-          start: 50%, 55%
-          end: 50%, 95%
-      - waitForAnimationToEnd:
-          timeout: 5000
-
-# The intro sheet can appear late while Metro is still bundling, so check a
-# second time after the bundle settles.
-- waitForAnimationToEnd:
-    timeout: 10000
-- runFlow:
-    when:
-      visible: "This is the developer menu.*"
-    commands:
-      - swipe:
-          start: 50%, 55%
-          end: 50%, 95%
-      - waitForAnimationToEnd:
-          timeout: 5000
-
-# Authenticated entry: the tabs root mounts on home.
+# Authenticated entry: the tabs root mounts on home. The session rehydrates from
+# the keychain on relaunch, so give the auth guard room to resolve before the
+# Host is expected.
 - extendedWaitUntil:
     visible:
       id: "home-screen"
-    timeout: 20000
+    timeout: 30000
 
 # Into Settings. Native tab taps can be flaky, so assert-then-tap.
 - assertVisible: "Settings"

@@ -64,14 +64,12 @@ export default function SettingsScreen() {
   const [debugOn] = useDebugEnabled();
 
   const navigate = (path: Href) => {
-    haptics.light();
     router.push(path);
   };
 
   const version = Constants.expoConfig?.version ?? "1.0.0";
 
   const handleCopyVersion = async () => {
-    haptics.light();
     await Clipboard.setStringAsync(`v${version}`);
     haptics.success();
     announce("Version copied");

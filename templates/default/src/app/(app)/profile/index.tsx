@@ -103,7 +103,6 @@ export default function ProfileScreen() {
   const [saveState, save, isSaving] = useActionState<SaveState, void>(async (prev) => {
     const attempt = (prev.attempt ?? 0) + 1;
     if (!me) return { error: "Not loaded", attempt };
-    haptics.light();
 
     // Accounts without a username must still save name/email/bio; the strict
     // schema would reject the empty username field they never set.
@@ -149,7 +148,7 @@ export default function ProfileScreen() {
           haptics.error();
           return { error: res.error.message ?? "Failed to update email", attempt };
         }
-        haptics.light();
+        haptics.success();
         setPendingEmail(nextEmail);
         setOtp("");
         return { pendingEmail: nextEmail };
@@ -166,10 +165,9 @@ export default function ProfileScreen() {
 
   const [otpState, verifyOtp, isVerifying] = useActionState<OtpState, void>(async (prev) => {
     const attempt = (prev.attempt ?? 0) + 1;
-    haptics.light();
     // Read the native field, not the JS `otp` mirror: submitting via the
     // keyboard "done" key on the same frame the sixth digit lands can see a
-    // stale five-char `otp` because `runOnJS(setOtp)` trails a frame behind.
+    // stale five-char `otp` because `scheduleOnRN(setOtp, ...)` trails a frame behind.
     const code = otpCodeState.value;
     if (!pendingEmail || code.length !== 6) {
       haptics.error();
@@ -196,7 +194,6 @@ export default function ProfileScreen() {
   const [avatarError, setAvatarError] = useState<string | null>(null);
 
   const pickAvatar = async (source: "library" | "camera") => {
-    haptics.light();
     setAvatarPicker(false);
     // Let the avatar picker sheet finish dismissing before presenting the
     // image picker. iOS drops a present that starts while a sheet is animating out.
@@ -229,11 +226,18 @@ export default function ProfileScreen() {
       setAvatarError(null);
       setAvatarUpdating(true);
       const uploadUrl = await generateAvatarUploadUrl();
-      const blob = await (await fetch(asset.uri)).blob();
+      // Raw bytes, not a Blob: expo/fetch (the global fetch since SDK 56)
+      // replaces an explicit Content-Type header with the blob's own type,
+      // which is empty for a file:// read, and Convex rejects an empty
+      // Content-Type value with 400 BadHeader.
+      const read = await fetch(asset.uri);
+      if (!read.ok) {
+        throw new ConvexError({ message: "Couldn't read that photo. Please try another one." });
+      }
       const upload = await fetch(uploadUrl, {
         method: "POST",
         headers: { "Content-Type": asset.mimeType ?? "image/jpeg" },
-        body: blob,
+        body: await read.arrayBuffer(),
       });
       // A ConvexError carries a message formatError will show. A plain Error
       // would surface as the generic line, and "Upload failed: 413" is not
@@ -344,7 +348,6 @@ export default function ProfileScreen() {
                 onCodeChange={setOtp}
                 onVerify={() => startTransition(() => verifyOtp())}
                 onCancel={() => {
-                  haptics.light();
                   setPendingEmail(null);
                   setOtp("");
                 }}

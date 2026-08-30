@@ -40,13 +40,30 @@ function useBetterAuthForConvex() {
     async ({ forceRefreshToken = false }: { forceRefreshToken?: boolean } = {}) => {
       if (!forceRefreshToken && inflightRef.current) return inflightRef.current;
 
-      const promise = authClient.convex
-        .token({ fetchOptions: { throw: false } })
-        .then(({ data }) => data?.token ?? null)
-        .catch(() => null)
-        .finally(() => {
-          inflightRef.current = null;
-        });
+      // Convex treats one null from this fetcher as "signed out" and clears
+      // auth without retrying (authentication_manager `refetchToken`), so a
+      // single failed request here leaves the socket unauthenticated until
+      // the next auth change. On a phone resuming from lock the first call
+      // races the radio waking up, so retry transient failures and return
+      // null only when the server genuinely rejects the session.
+      const promise = (async () => {
+        for (let attempt = 0; ; attempt++) {
+          try {
+            const { data, error } = await authClient.convex.token({
+              fetchOptions: { throw: false },
+            });
+            if (data?.token) return data.token;
+            // 4xx means no valid session: that null is real.
+            if (error && error.status >= 400 && error.status < 500) return null;
+          } catch {
+            // fall through to retry
+          }
+          if (attempt >= 2) return null;
+          await new Promise((resolve) => setTimeout(resolve, 500 * 2 ** attempt));
+        }
+      })().finally(() => {
+        inflightRef.current = null;
+      });
 
       inflightRef.current = promise;
       return promise;

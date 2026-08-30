@@ -19,7 +19,7 @@ import {
   submitLabel,
   textContentType,
 } from "@expo/ui/swift-ui/modifiers";
-import { runOnJS } from "react-native-worklets";
+import { scheduleOnRN } from "react-native-worklets";
 
 import { CapsuleTextField } from "@/components/ui/capsule-text-field";
 import { HelperText } from "@/components/ui/helper-text";
@@ -65,7 +65,7 @@ export function EmailOtpVerify({
             "worklet";
             const digits = maskOtp(text);
             if (codeState) codeState.value = digits;
-            runOnJS(onCodeChange)(digits);
+            scheduleOnRN(onCodeChange, digits);
           }}
           autoFocus
           modifiers={[

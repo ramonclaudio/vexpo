@@ -9,7 +9,7 @@ import {
   Image,
   useNativeState,
 } from "@expo/ui/swift-ui";
-import { runOnJS } from "react-native-worklets";
+import { scheduleOnRN } from "react-native-worklets";
 import {
   foregroundStyle,
   buttonStyle,
@@ -76,12 +76,11 @@ export function OtpVerification({ email, onBack, flow = "verify-email" }: OtpVer
   const isSignIn = flow === "sign-in";
 
   const [verifyState, verify, isVerifying] = useActionState<OtpState, void>(async (prev) => {
-    haptics.light();
     const attempt = (prev.attempt ?? 0) + 1;
 
     // Read the native field value, not the JS `otp` mirror: submitting via the
     // keyboard "done" key on the same frame the sixth digit lands can see a
-    // stale five-char `otp` because `runOnJS(setOtp)` trails a frame behind.
+    // stale five-char `otp` because `scheduleOnRN(setOtp, ...)` trails a frame behind.
     const code = otpState.value;
     if (code.length !== 6) {
       haptics.error();
@@ -113,7 +112,6 @@ export function OtpVerification({ email, onBack, flow = "verify-email" }: OtpVer
   }, initialState);
 
   const [resendState, resend, isResending] = useActionState<OtpState, void>(async (prev) => {
-    haptics.light();
     const attempt = (prev.attempt ?? 0) + 1;
     try {
       const response = await authClient.emailOtp.sendVerificationOtp({
@@ -232,7 +230,7 @@ export function OtpVerification({ email, onBack, flow = "verify-email" }: OtpVer
                 "worklet";
                 const digits = maskOtp(text);
                 otpState.value = digits;
-                runOnJS(setOtp)(digits);
+                scheduleOnRN(setOtp, digits);
               }}
               autoFocus
               modifiers={[
@@ -309,7 +307,6 @@ export function OtpVerification({ email, onBack, flow = "verify-email" }: OtpVer
                 contentShape(shapes.rectangle()),
               ]}
               onPress={() => {
-                haptics.light();
                 onBack();
               }}
             />

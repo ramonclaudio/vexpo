@@ -1,5 +1,5 @@
 import { defineConfig } from "vitest/config";
-import path from "node:path";
+import { resolve } from "node:path";
 
 export default defineConfig({
   // Metro injects `__DEV__` at bundle time; define it for node so RN/Expo
@@ -9,9 +9,9 @@ export default defineConfig({
   },
   resolve: {
     alias: {
-      "@/convex": path.resolve(__dirname, "convex"),
-      "@/assets": path.resolve(__dirname, "assets"),
-      "@": path.resolve(__dirname, "src"),
+      "@/convex": resolve(import.meta.dirname, "convex"),
+      "@/assets": resolve(import.meta.dirname, "assets"),
+      "@": resolve(import.meta.dirname, "src"),
     },
   },
   test: {

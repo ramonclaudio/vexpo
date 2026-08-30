@@ -67,7 +67,6 @@ export default function HelpScreen() {
 
   const handleOpenIssues = async () => {
     if (!issuesUrl) return;
-    haptics.light();
     setLinkError(null);
     const canOpen = await canOpenURL(issuesUrl);
     if (canOpen) {
@@ -80,7 +79,6 @@ export default function HelpScreen() {
 
   const handleOpenEmail = async () => {
     if (!support.email) return;
-    haptics.light();
     setLinkError(null);
     const url = `mailto:${support.email}?subject=${encodeURIComponent("App Support")}`;
     const canOpen = await canOpenURL(url);
