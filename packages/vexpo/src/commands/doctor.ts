@@ -1,6 +1,17 @@
 import { access } from "node:fs/promises";
 
-import { DIM, GREEN, RED, RESET, YELLOW, bad, line, note, section } from "../lib/output.ts";
+import {
+  DIM,
+  GREEN,
+  RED,
+  RESET,
+  YELLOW,
+  bad,
+  errText,
+  line,
+  note,
+  section,
+} from "../lib/output.ts";
 import { renderVerifyResults } from "../lib/verify-render.ts";
 import { readContext, summarize, verifyAll, type Channel } from "../lib/verify.ts";
 
@@ -22,6 +33,29 @@ export type DoctorOptions = {
   strict?: boolean;
 };
 
+function resolveChannel(value: string | undefined): Channel | null {
+  if (value === undefined || value === "dev") return "dev";
+  if (value === "prod" || value === "production") return "prod";
+  return null;
+}
+
+function renderDoctor(
+  channel: Channel,
+  checks: Parameters<typeof renderVerifyResults>[0],
+  summary: ReturnType<typeof summarize>,
+): void {
+  section(`Verify (${channel})`);
+  renderVerifyResults(checks, "section");
+  line();
+  const parts = [
+    `${GREEN}${summary.ok} ok${RESET}`,
+    summary.warn > 0 ? `${YELLOW}${summary.warn} warn${RESET}` : null,
+    summary.fail > 0 ? `${RED}${summary.fail} fail${RESET}` : null,
+    summary.skip > 0 ? `${DIM}${summary.skip} skip${RESET}` : null,
+  ].filter(Boolean);
+  line(`  ${parts.join(", ")}`);
+}
+
 export async function runDoctor(options: DoctorOptions): Promise<number> {
   try {
     if (!(await isInVexpoProject())) {
@@ -38,12 +72,8 @@ export async function runDoctor(options: DoctorOptions): Promise<number> {
       return 1;
     }
 
-    let channel: Channel;
-    if (options.channel === undefined || options.channel === "dev") {
-      channel = "dev";
-    } else if (options.channel === "prod" || options.channel === "production") {
-      channel = "prod";
-    } else {
+    const channel = resolveChannel(options.channel);
+    if (!channel) {
       bad(`unknown --channel '${options.channel}' (allowed: dev, prod)`);
       return 2;
     }
@@ -54,22 +84,13 @@ export async function runDoctor(options: DoctorOptions): Promise<number> {
     if (options.json) {
       process.stdout.write(JSON.stringify({ channel, summary, checks }, null, 2) + "\n");
     } else {
-      section(`Verify (${channel})`);
-      renderVerifyResults(checks, "section");
-      line();
-      const parts = [
-        `${GREEN}${summary.ok} ok${RESET}`,
-        summary.warn > 0 ? `${YELLOW}${summary.warn} warn${RESET}` : null,
-        summary.fail > 0 ? `${RED}${summary.fail} fail${RESET}` : null,
-        summary.skip > 0 ? `${DIM}${summary.skip} skip${RESET}` : null,
-      ].filter(Boolean);
-      line(`  ${parts.join(", ")}`);
+      renderDoctor(channel, checks, summary);
     }
 
     const shouldFail = summary.fail > 0 || (options.strict === true && summary.warn > 0);
     return shouldFail ? 1 : 0;
   } catch (err) {
-    process.stderr.write(`doctor failed: ${err instanceof Error ? err.message : err}\n`);
+    process.stderr.write(`doctor failed: ${errText(err)}\n`);
     return 2;
   }
 }

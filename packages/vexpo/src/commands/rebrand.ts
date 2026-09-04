@@ -7,6 +7,7 @@ import {
   ask,
   askYesNo,
   bad,
+  errText,
   line,
   nop,
   note,
@@ -73,6 +74,98 @@ function bundleSlug(value: string): string {
     .slice(0, 32);
 }
 
+type Basics = { appName: string; ownerName: string; bundleId: string; reviewEmail: string };
+
+async function field(
+  given: string | undefined,
+  interactive: boolean,
+  prompt: string,
+  fallback: string,
+): Promise<string> {
+  if (given !== undefined) return given;
+  if (!interactive) return fallback;
+  return (await ask(prompt)).trim() || fallback;
+}
+
+async function askForBasics(
+  overrides: Partial<RebrandInputs>,
+  interactive: boolean,
+): Promise<Basics> {
+  const appName = await field(
+    overrides.appName,
+    interactive,
+    `  ${BOLD}App name${RESET} ${DIM}(e.g. Foobar)${RESET} > `,
+    "",
+  );
+  if (!appName) throw new Error("app name required");
+
+  const ownerName = await field(
+    overrides.ownerName,
+    interactive,
+    `  ${BOLD}Your name${RESET} > `,
+    "Owner",
+  );
+
+  const orgSlug = bundleSlug(overrides.expoOwner ?? ownerName) || "example";
+  const bundleHint = `com.${orgSlug}.${bundleSlug(slug(appName))}`;
+  const bundleId = await field(
+    overrides.bundleId,
+    interactive,
+    `  ${BOLD}Bundle ID${RESET} ${DIM}[${bundleHint}]${RESET} > `,
+    bundleHint,
+  );
+
+  const reviewEmail = await field(
+    overrides.reviewEmail,
+    interactive,
+    `  ${BOLD}Apple review contact email${RESET} > `,
+    "",
+  );
+  if (!reviewEmail) throw new Error("review email required");
+
+  return { appName, ownerName, bundleId, reviewEmail };
+}
+
+function deriveReviewer(
+  overrides: Partial<RebrandInputs>,
+  ownerName: string,
+): Pick<RebrandInputs, "reviewFirstName" | "reviewLastName" | "reviewPhone"> {
+  const [first = "First", ...rest] = ownerName.split(/\s+/);
+  return {
+    reviewFirstName: overrides.reviewFirstName ?? first,
+    reviewLastName: overrides.reviewLastName ?? (rest.join(" ") || "Last"),
+    reviewPhone: overrides.reviewPhone ?? "",
+  };
+}
+
+function deriveUrls(
+  overrides: Partial<RebrandInputs>,
+  githubHint: string,
+): Pick<RebrandInputs, "marketingUrl" | "supportUrl" | "privacyUrl"> {
+  return {
+    marketingUrl: overrides.marketingUrl ?? githubHint,
+    supportUrl: overrides.supportUrl ?? `${githubHint}/issues`,
+    privacyUrl: overrides.privacyUrl ?? `${githubHint}#privacy`,
+  };
+}
+
+function deriveInputs(basics: Basics, overrides: Partial<RebrandInputs>): RebrandInputs {
+  const { appName, ownerName, bundleId, reviewEmail } = basics;
+  const packageName = overrides.packageName ?? slug(appName);
+  return {
+    appName,
+    packageName,
+    bundleId,
+    scheme: overrides.scheme ?? bundleSlug(packageName),
+    ownerName,
+    reviewEmail,
+    ...deriveReviewer(overrides, ownerName),
+    ...deriveUrls(overrides, `https://github.com/${slug(ownerName)}/${packageName}`),
+    copyrightOwner: overrides.copyrightOwner ?? `${new Date().getFullYear()} ${ownerName}`,
+    expoOwner: overrides.expoOwner,
+  };
+}
+
 async function promptInputs(overrides: Partial<RebrandInputs>): Promise<RebrandInputs> {
   const interactive = process.stdin.isTTY === true;
   if (interactive) {
@@ -82,62 +175,7 @@ async function promptInputs(overrides: Partial<RebrandInputs>): Promise<RebrandI
     );
     line();
   }
-
-  const appName =
-    overrides.appName ??
-    (interactive
-      ? (await ask(`  ${BOLD}App name${RESET} ${DIM}(e.g. Foobar)${RESET} > `)).trim()
-      : "");
-  if (!appName) throw new Error("app name required");
-
-  const ownerName =
-    overrides.ownerName ??
-    (interactive ? (await ask(`  ${BOLD}Your name${RESET} > `)).trim() || "Owner" : "Owner");
-
-  const defaultPkg = slug(appName);
-  const orgSlug = bundleSlug(overrides.expoOwner ?? ownerName) || "example";
-  const bundleHint = `com.${orgSlug}.${bundleSlug(defaultPkg)}`;
-  const bundleId =
-    overrides.bundleId ??
-    (interactive
-      ? (await ask(`  ${BOLD}Bundle ID${RESET} ${DIM}[${bundleHint}]${RESET} > `)).trim() ||
-        bundleHint
-      : bundleHint);
-
-  const reviewEmail =
-    overrides.reviewEmail ??
-    (interactive ? (await ask(`  ${BOLD}Apple review contact email${RESET} > `)).trim() : "");
-  if (!reviewEmail) throw new Error("review email required");
-
-  const packageName = overrides.packageName ?? defaultPkg;
-  const scheme = overrides.scheme ?? bundleSlug(packageName);
-  const githubHint = `https://github.com/${slug(ownerName)}/${packageName}`;
-  const marketingUrl = overrides.marketingUrl ?? githubHint;
-  const supportUrl = overrides.supportUrl ?? `${githubHint}/issues`;
-  const privacyUrl = overrides.privacyUrl ?? `${githubHint}#privacy`;
-  const reviewPhone = overrides.reviewPhone ?? "";
-  const [firstFromOwner = "First", ...restOwner] = ownerName.split(/\s+/);
-  const reviewFirstName = overrides.reviewFirstName ?? firstFromOwner;
-  const reviewLastName = overrides.reviewLastName ?? (restOwner.join(" ") || "Last");
-  const copyrightOwner = overrides.copyrightOwner ?? `${new Date().getFullYear()} ${ownerName}`;
-  const expoOwner = overrides.expoOwner;
-
-  return {
-    appName,
-    packageName,
-    bundleId,
-    scheme,
-    ownerName,
-    reviewFirstName,
-    reviewLastName,
-    reviewEmail,
-    reviewPhone,
-    marketingUrl,
-    supportUrl,
-    privacyUrl,
-    copyrightOwner,
-    expoOwner,
-  };
+  return deriveInputs(await askForBasics(overrides, interactive), overrides);
 }
 
 async function syncBundleId(bundleId: string): Promise<void> {
@@ -312,7 +350,7 @@ async function readJsonTarget(file: string): Promise<unknown> {
   }
 }
 
-async function validateTargets(): Promise<void> {
+async function validateAppConfig(): Promise<void> {
   let cfg: string;
   try {
     cfg = await readFile("app.config.ts", "utf8");
@@ -337,16 +375,9 @@ async function validateTargets(): Promise<void> {
       );
     }
   }
+}
 
-  await readJsonTarget("app.json");
-
-  const pkg = await readJsonTarget("package.json");
-  if (typeof pkg !== "object" || pkg === null) {
-    throw new Error(
-      "package.json: expected a JSON object; restore it from the vexpo template first",
-    );
-  }
-
+async function validateStoreConfig(): Promise<void> {
   const store = await readJsonTarget("store.config.json");
   const apple = (store as { apple?: { info?: Record<string, unknown>; review?: unknown } }).apple;
   if (
@@ -361,6 +392,18 @@ async function validateTargets(): Promise<void> {
       'store.config.json: missing apple.info["en-US"]/apple.review; restore it from the vexpo template first',
     );
   }
+}
+
+async function validateTargets(): Promise<void> {
+  await validateAppConfig();
+  await readJsonTarget("app.json");
+  const pkg = await readJsonTarget("package.json");
+  if (typeof pkg !== "object" || pkg === null) {
+    throw new Error(
+      "package.json: expected a JSON object; restore it from the vexpo template first",
+    );
+  }
+  await validateStoreConfig();
 }
 
 async function readOrSkip(file: string): Promise<string | null> {
@@ -461,6 +504,68 @@ async function detectTemplateDefaults(): Promise<{ stillTemplate: boolean; signa
   return { stillTemplate: signals.length > 0, signals };
 }
 
+function printPlan(inputs: RebrandInputs): void {
+  line();
+  note(`${BOLD}About to rewrite:${RESET}`);
+  note(
+    `  app name      ${BOLD}${inputs.appName}${RESET} ${DIM}/ slug ${inputs.packageName} / scheme ${inputs.scheme}${RESET}`,
+  );
+  note(`  bundle id     ${BOLD}${inputs.bundleId}${RESET}`);
+  note(`  marketing     ${inputs.marketingUrl}`);
+  note(`  support       ${inputs.supportUrl}`);
+  note(`  privacy       ${inputs.privacyUrl}`);
+  note(
+    `  review        ${inputs.reviewFirstName} ${inputs.reviewLastName} <${inputs.reviewEmail}>`,
+  );
+}
+
+async function resolveInputs(
+  options: RebrandOptions,
+  overrides: Partial<RebrandInputs>,
+): Promise<RebrandInputs | null> {
+  const missing =
+    !overrides.appName || !overrides.bundleId || !overrides.ownerName || !overrides.reviewEmail;
+  if (!process.stdin.isTTY && missing) {
+    throw new Error(
+      "non-TTY rebrand needs --app-name, --bundle-id, --owner-name, --review-email at minimum",
+    );
+  }
+  const inputs = await promptInputs(overrides);
+  printPlan(inputs);
+  if (!options.yes && !(await askYesNo("Apply these changes?", true))) {
+    nop("aborted, no files changed");
+    return null;
+  }
+  return inputs;
+}
+
+const REWRITE_TARGETS = [
+  "app.config.ts",
+  "app.json",
+  "package.json",
+  "store.config.json",
+  "store.config.example.json",
+  "convex/env.ts",
+  "README.md",
+];
+
+async function applyRewrites(inputs: RebrandInputs): Promise<void> {
+  await rewriteAppConfig(inputs);
+  await rewriteAppJson();
+  await rewritePackageJson(inputs);
+  await syncPackageLock(inputs);
+  await rewriteStoreConfig(inputs);
+  await rewriteConvexEnv(inputs);
+  await rewriteEnvExample(inputs);
+  await rewriteReadme(inputs);
+  await formatTargets(REWRITE_TARGETS);
+  await syncBundleId(inputs.bundleId);
+  if (inputs.expoOwner) {
+    await ensureLine("EXPO_PUBLIC_EXPO_OWNER", inputs.expoOwner);
+    ok(`wrote EXPO_PUBLIC_EXPO_OWNER=${inputs.expoOwner} to .env.local`);
+  }
+}
+
 export async function runRebrand(options: RebrandOptions): Promise<number> {
   try {
     const overrides: Partial<RebrandInputs> = {
@@ -500,76 +605,12 @@ export async function runRebrand(options: RebrandOptions): Promise<number> {
       line();
     }
 
-    if (!process.stdin.isTTY) {
-      if (
-        !overrides.appName ||
-        !overrides.bundleId ||
-        !overrides.ownerName ||
-        !overrides.reviewEmail
-      ) {
-        bad(
-          "non-TTY rebrand needs --app-name, --bundle-id, --owner-name, --review-email at minimum",
-        );
-        return 1;
-      }
-    }
-
-    const inputs = await promptInputs(overrides);
-    line();
-    note(`${BOLD}About to rewrite:${RESET}`);
-    note(
-      `  app name      ${BOLD}${inputs.appName}${RESET} ${DIM}/ slug ${inputs.packageName} / scheme ${inputs.scheme}${RESET}`,
-    );
-    note(`  bundle id     ${BOLD}${inputs.bundleId}${RESET}`);
-    note(`  marketing     ${inputs.marketingUrl}`);
-    note(`  support       ${inputs.supportUrl}`);
-    note(`  privacy       ${inputs.privacyUrl}`);
-    note(
-      `  review        ${inputs.reviewFirstName} ${inputs.reviewLastName} <${inputs.reviewEmail}>`,
-    );
-    if (!options.yes && !(await askYesNo("Apply these changes?", true))) {
-      nop("aborted, no files changed");
-      return 0;
-    }
+    const inputs = await resolveInputs(options, overrides);
+    if (!inputs) return 0;
 
     const stamp = new Date().toISOString().replace(/[:.]/g, "-");
-    await backup(
-      [
-        "app.config.ts",
-        "app.json",
-        "package.json",
-        "store.config.json",
-        "store.config.example.json",
-        "convex/env.ts",
-        ".env.example",
-        "README.md",
-      ],
-      stamp,
-    );
-
-    await rewriteAppConfig(inputs);
-    await rewriteAppJson();
-    await rewritePackageJson(inputs);
-    await syncPackageLock(inputs);
-    await rewriteStoreConfig(inputs);
-    await rewriteConvexEnv(inputs);
-    await rewriteEnvExample(inputs);
-    await rewriteReadme(inputs);
-    await formatTargets([
-      "app.config.ts",
-      "app.json",
-      "package.json",
-      "store.config.json",
-      "store.config.example.json",
-      "convex/env.ts",
-      "README.md",
-    ]);
-    await syncBundleId(inputs.bundleId);
-
-    if (inputs.expoOwner) {
-      await ensureLine("EXPO_PUBLIC_EXPO_OWNER", inputs.expoOwner);
-      ok(`wrote EXPO_PUBLIC_EXPO_OWNER=${inputs.expoOwner} to .env.local`);
-    }
+    await backup([...REWRITE_TARGETS, ".env.example"], stamp);
+    await applyRewrites(inputs);
 
     await recordStep("rebrand", {
       appName: inputs.appName,
@@ -585,7 +626,7 @@ export async function runRebrand(options: RebrandOptions): Promise<number> {
     yep("re-run `vexpo full` to regenerate EAS projectId + reprovision Convex env");
     return 0;
   } catch (err) {
-    bad(err instanceof Error ? err.message : String(err));
+    bad(errText(err));
     return 1;
   }
 }

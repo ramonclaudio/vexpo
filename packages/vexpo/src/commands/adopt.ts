@@ -1,6 +1,6 @@
 import { runBetterAuth } from "./better-auth.ts";
 import { runConvex } from "./convex.ts";
-import { deploymentRefFromDeployKey, deploymentSlug, envMap } from "../lib/convex-env.ts";
+import { deploymentSlug, envMap, recordedOrDerivedDeployment } from "../lib/convex-env.ts";
 import {
   deploymentsOfType,
   describeDeployment,
@@ -52,19 +52,33 @@ export function buildFinishRunbook(s: RunbookState): Array<{ cmd: string; desc: 
   return steps;
 }
 
+async function reportDeployments(devSlug: string): Promise<string | undefined> {
+  const deployments = await listProjectDeployments(devSlug);
+  if (!deployments) {
+    nop("deployment enumeration unavailable (offline or not logged in); continuing");
+    return undefined;
+  }
+  line();
+  note("project deployments:");
+  for (const d of deployments) {
+    const mine = d.name === devSlug ? `  ${DIM}← .env.local${RESET}` : "";
+    note(`  ${describeDeployment(d)} ${DIM}[${d.deploymentType}]${RESET}${mine}`);
+  }
+  const devs = deploymentsOfType(deployments, "dev");
+  if (devs.length > 1) {
+    yep(`${devs.length} dev deployments; pick one canonical and delete the rest in the dashboard`);
+  }
+  return deploymentsOfType(deployments, "prod")[0]?.name;
+}
+
 export async function runAdopt(options: AdoptOptions): Promise<number> {
   section("Adopt");
 
   const localEnv = await readAll();
-  let deploymentRef = localEnv.get("CONVEX_DEPLOYMENT");
-  if (!deploymentRef) {
-    const derived = deploymentRefFromDeployKey(localEnv.get("CONVEX_DEPLOY_KEY"));
-    if (derived?.startsWith("dev:")) {
-      await ensureLine("CONVEX_DEPLOYMENT", derived);
-      deploymentRef = derived;
-      ok(`derived CONVEX_DEPLOYMENT=${derived} from CONVEX_DEPLOY_KEY`);
-    }
-  }
+  const deploymentRef = await recordedOrDerivedDeployment(localEnv, async (ref) => {
+    await ensureLine("CONVEX_DEPLOYMENT", ref);
+    ok(`derived CONVEX_DEPLOYMENT=${ref} from CONVEX_DEPLOY_KEY`);
+  });
   if (!deploymentRef) {
     bad("no CONVEX_DEPLOYMENT in .env.local, and no dev deploy key to derive it from");
     note("run `eas integrations:convex:connect` first, or `vexpo full` to provision from scratch");
@@ -77,25 +91,7 @@ export async function runAdopt(options: AdoptOptions): Promise<number> {
   }
   ok(`adopting Convex deployment: ${BOLD}${devSlug}${RESET}`);
 
-  const deployments = await listProjectDeployments(devSlug);
-  let prodSlug: string | undefined;
-  if (deployments) {
-    line();
-    note("project deployments:");
-    for (const d of deployments) {
-      const mine = d.name === devSlug ? `  ${DIM}← .env.local${RESET}` : "";
-      note(`  ${describeDeployment(d)} ${DIM}[${d.deploymentType}]${RESET}${mine}`);
-    }
-    const devs = deploymentsOfType(deployments, "dev");
-    if (devs.length > 1) {
-      yep(
-        `${devs.length} dev deployments; pick one canonical and delete the rest in the dashboard`,
-      );
-    }
-    prodSlug = deploymentsOfType(deployments, "prod")[0]?.name;
-  } else {
-    nop("deployment enumeration unavailable (offline or not logged in); continuing");
-  }
+  const prodSlug = await reportDeployments(devSlug);
 
   if (!options.skipDevSteps) {
     line();

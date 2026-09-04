@@ -15,6 +15,7 @@ import {
   missingKeys,
   readSources,
   unrecognizedKeys,
+  type EnvSource,
   withTempEnvFile,
   type Channel,
   type Destination,
@@ -30,10 +31,12 @@ import {
   YELLOW,
   askYesNo,
   bad,
+  errText,
   line,
   nop,
   note,
   ok,
+  plural,
   section,
   yep,
 } from "../../lib/output.ts";
@@ -206,73 +209,232 @@ function printFilePlan(plan: FilePlan): {
   return { actionable, conflicts, blocked };
 }
 
-export async function applyPlan(plan: FilePlan): Promise<{ applied: number; failed: number }> {
-  const convexBatches = new Map<"dev" | "prod", Array<[string, string]>>();
-  const easBatches = new Map<
-    string,
-    { envs: EasEnvironment[]; entries: Array<[string, string]> }
-  >();
+type Batch = {
+  label: string;
+  past: string;
+  present: string;
+  entries: Array<[string, string]>;
+  push: (tmp: string) => Promise<unknown>;
+};
+
+function planBatches(plan: FilePlan): Batch[] {
+  const convex = new Map<"dev" | "prod", Array<[string, string]>>();
+  const eas = new Map<string, { envs: EasEnvironment[]; entries: Array<[string, string]> }>();
 
   for (const row of plan.rows) {
     for (const r of row.resolved) {
       if (r.status === "noop" || r.status === "blocked") continue;
       if (r.destination.type === "convex") {
-        const list = convexBatches.get(r.destination.channel) ?? [];
+        const list = convex.get(r.destination.channel) ?? [];
         list.push([r.destination.key, row.entry.value]);
-        convexBatches.set(r.destination.channel, list);
+        convex.set(r.destination.channel, list);
       } else {
         const key = [...r.destination.environments].toSorted().join(",");
-        const cur = easBatches.get(key) ?? {
-          envs: [...r.destination.environments],
-          entries: [],
-        };
+        const cur = eas.get(key) ?? { envs: [...r.destination.environments], entries: [] };
         cur.entries.push([r.destination.key, row.entry.value]);
-        easBatches.set(key, cur);
+        eas.set(key, cur);
       }
     }
   }
 
+  return [
+    ...[...convex].map(([channel, entries]) => ({
+      label: `convex(${channel})`,
+      past: "bulk-set",
+      present: "bulk-set",
+      entries,
+      push: (tmp: string) =>
+        convexEnvSetFromFile(
+          tmp,
+          channel === "prod" ? { prod: true, envFile: plan.sourceFile } : undefined,
+          { force: true },
+        ),
+    })),
+    ...[...eas.values()].map(({ envs, entries }) => ({
+      label: `eas(${envs.join(",")})`,
+      past: "pushed",
+      present: "push",
+      entries,
+      push: (tmp: string) => easEnvPush({ path: tmp, environments: envs, force: true }),
+    })),
+  ].filter((b) => b.entries.length > 0);
+}
+
+export async function applyPlan(plan: FilePlan): Promise<{ applied: number; failed: number }> {
   let applied = 0;
   let failed = 0;
-
-  for (const [channel, entries] of convexBatches) {
-    if (entries.length === 0) continue;
+  for (const { label, past, present, entries, push } of planBatches(plan)) {
     try {
       await withTempEnvFile(
         entries.map(([k, v]) => `${k}=${v}`),
-        (tmp) =>
-          convexEnvSetFromFile(
-            tmp,
-            channel === "prod" ? { prod: true, envFile: plan.sourceFile } : undefined,
-            { force: true },
-          ),
+        push,
       );
-      ok(`convex(${channel}) bulk-set ${entries.length} var${entries.length === 1 ? "" : "s"}`);
+      ok(`${label} ${past} ${entries.length} var${plural(entries.length)}`);
       for (const [k] of entries) note(`  ${k}`);
       applied += entries.length;
     } catch (err) {
-      bad(`convex(${channel}) bulk-set failed: ${err instanceof Error ? err.message : err}`);
+      bad(`${label} ${present} failed: ${errText(err)}`);
       failed += entries.length;
     }
   }
-
-  for (const { envs, entries } of easBatches.values()) {
-    if (entries.length === 0) continue;
-    try {
-      await withTempEnvFile(
-        entries.map(([k, v]) => `${k}=${v}`),
-        (tmp) => easEnvPush({ path: tmp, environments: envs, force: true }),
-      );
-      ok(`eas(${envs.join(",")}) pushed ${entries.length} var${entries.length === 1 ? "" : "s"}`);
-      for (const [k] of entries) note(`  ${k}`);
-      applied += entries.length;
-    } catch (err) {
-      bad(`eas(${envs.join(",")}) push failed: ${err instanceof Error ? err.message : err}`);
-      failed += entries.length;
-    }
-  }
-
   return { applied, failed };
+}
+
+function reportUnrecognized(sources: EnvSource[]): void {
+  const unknown = unrecognizedKeys(sources);
+  if (unknown.length === 0) return;
+  yep(`${unknown.length} unrecognized key${plural(unknown.length)} ignored:`);
+  for (const k of unknown) note(`  ${k}`);
+}
+
+function reportMissing(sources: EnvSource[]): void {
+  const missing = missingKeys(sources);
+  const total = missing.dev.length + missing.prod.length;
+  if (total === 0) return;
+  line();
+  note(`${BOLD}Missing from source files (${total} keys total)${RESET}`);
+  for (const [channel, keys] of [
+    ["dev", missing.dev],
+    ["prod", missing.prod],
+  ] as const) {
+    if (keys.length === 0) continue;
+    const more = keys.length > 8 ? "…" : "";
+    note(`  ${channel} (${keys.length}): ${keys.slice(0, 8).join(", ")}${more}`);
+  }
+}
+
+function reportManualSecrets(sources: EnvSource[]): void {
+  const hits = sources.flatMap((s) =>
+    Object.keys(MANUAL_EAS_SECRETS)
+      .filter((k) => s.entries.has(k))
+      .map((key) => ({ key, file: s.path })),
+  );
+  if (hits.length === 0) return;
+  line();
+  yep(`${hits.length} secret-visibility key${plural(hits.length)} detected. set manually:`);
+  for (const { key, file } of hits) {
+    note(`  ${BOLD}${key}${RESET} ${DIM}(${file})${RESET}`);
+    note(`    ${DIM}${MANUAL_EAS_SECRETS[key]}${RESET}`);
+  }
+  note(`${DIM}lite skips these to avoid pushing secrets at default visibility${RESET}`);
+}
+
+type PlanTotals = { actionable: number; conflicts: number; blocked: number };
+
+function printPlans(plans: FilePlan[]): PlanTotals {
+  const totals: PlanTotals = { actionable: 0, conflicts: 0, blocked: 0 };
+  for (const plan of plans) {
+    const one = printFilePlan(plan);
+    totals.actionable += one.actionable;
+    totals.conflicts += one.conflicts;
+    totals.blocked += one.blocked;
+  }
+  return totals;
+}
+
+function reportDryRun(totals: PlanTotals): void {
+  line();
+  if (totals.actionable > 0) {
+    const blocked = totals.blocked > 0 ? `, ${totals.blocked} blocked` : "";
+    note(
+      `${totals.actionable} action${plural(totals.actionable)} would be applied${blocked}; --dry-run, exiting`,
+    );
+    return;
+  }
+  if (totals.blocked > 0) {
+    note(
+      `0 actionable, ${totals.blocked} blocked; --dry-run, exiting (resolve blockers and re-run)`,
+    );
+    return;
+  }
+  ok("nothing to do. all source values match destinations (--dry-run)");
+}
+
+function prodConvexWritesAreSafe(entries: SyncEntry[], sources: EnvSource[]): boolean {
+  const writesProd = entries.some(
+    (e) => e.channel === "prod" && e.destinations.some((d) => d.type === "convex"),
+  );
+  if (!writesProd) return true;
+
+  const prod = sources.find((s) => s.channel === "prod");
+  const deployKey = prod?.entries.get("CONVEX_DEPLOY_KEY") ?? "";
+  const selector = prod?.entries.get("CONVEX_DEPLOYMENT") ?? "";
+  if (deployKey.startsWith("prod:") || selector.startsWith("prod:")) return true;
+
+  line();
+  bad(`${prod?.path ?? "prod source"} has no prod-scoped CONVEX_DEPLOY_KEY or CONVEX_DEPLOYMENT`);
+  note("prod env would silently write to the DEV deployment (the dev key shadows --prod)");
+  note("add a `prod:` CONVEX_DEPLOY_KEY (or CONVEX_DEPLOYMENT) to the prod file and re-run");
+  return false;
+}
+
+async function applyAllPlans(
+  plans: FilePlan[],
+  force: boolean,
+): Promise<{ applied: number; failed: number }> {
+  let applied = 0;
+  let failed = 0;
+  for (const plan of plans) {
+    if (!force && process.stdin.isTTY) {
+      line();
+      if (!(await askYesNo(`Apply ${plan.sourceFile} (${plan.channel})?`, true))) {
+        nop(`skipped ${plan.sourceFile}`);
+        continue;
+      }
+    }
+    const result = await applyPlan(plan);
+    applied += result.applied;
+    failed += result.failed;
+  }
+  return { applied, failed };
+}
+
+async function verifyAfterPush(channels: Array<"dev" | "prod">, strict: boolean): Promise<number> {
+  let totalFail = 0;
+  let totalWarn = 0;
+  for (const channel of channels) {
+    section(`Verify (${channel})`);
+    const checks = await verifyAll(await readContext(channel));
+    renderVerifyResults(checks, "compact");
+    const s = summarize(checks);
+    totalFail += s.fail;
+    totalWarn += s.warn;
+    const warn = s.warn > 0 ? `, ${YELLOW}${s.warn} warn${RESET}` : "";
+    const fail = s.fail > 0 ? `, ${RED}${s.fail} fail${RESET}` : "";
+    const skip = s.skip > 0 ? `, ${DIM}${s.skip} skip${RESET}` : "";
+    line(`  ${GREEN}${s.ok} ok${RESET}${warn}${fail}${skip}`);
+  }
+  if (totalFail > 0) {
+    line();
+    bad(`${totalFail} verification failure${plural(totalFail)}`);
+    note("re-run `vexpo doctor` for full output, or fix the env values and re-run");
+    return 1;
+  }
+  if (strict && totalWarn > 0) {
+    line();
+    bad(`${totalWarn} warning${plural(totalWarn)} with --strict`);
+    return 1;
+  }
+  return 0;
+}
+
+function nothingToDo(totals: { blocked: number }): number {
+  line();
+  if (totals.blocked > 0) {
+    yep(
+      `${totals.blocked} blocked, 0 actionable. resolve blockers (run \`vexpo full\` first) and re-run`,
+    );
+    return 2;
+  }
+  ok("nothing to do. all source values match destinations");
+  return 0;
+}
+
+function verifyPushed(sources: EnvSource[], strict: boolean): Promise<number> {
+  const channels: Array<"dev" | "prod"> = sources.some((s) => s.channel === "prod")
+    ? ["dev", "prod"]
+    : ["dev"];
+  return verifyAfterPush(channels, strict);
 }
 
 export async function runEnvPush(options: EnvPushOptions): Promise<number> {
@@ -295,166 +457,46 @@ export async function runEnvPush(options: EnvPushOptions): Promise<number> {
     ok(`source: ${s.path} ${DIM}(${s.channel}, ${s.entries.size} keys)${RESET}`);
   }
 
-  const unknown = unrecognizedKeys(sources);
-  if (unknown.length > 0) {
-    yep(`${unknown.length} unrecognized key${unknown.length === 1 ? "" : "s"} ignored:`);
-    for (const k of unknown) note(`  ${k}`);
-  }
+  reportUnrecognized(sources);
+  reportMissing(sources);
 
-  const missing = missingKeys(sources);
-  const totalMissing = missing.dev.length + missing.prod.length;
-  if (totalMissing > 0) {
-    line();
-    note(`${BOLD}Missing from source files (${totalMissing} keys total)${RESET}`);
-    if (missing.dev.length > 0) {
-      note(
-        `  dev (${missing.dev.length}): ${missing.dev.slice(0, 8).join(", ")}${missing.dev.length > 8 ? "…" : ""}`,
-      );
-    }
-    if (missing.prod.length > 0) {
-      note(
-        `  prod (${missing.prod.length}): ${missing.prod.slice(0, 8).join(", ")}${missing.prod.length > 8 ? "…" : ""}`,
-      );
-    }
-  }
-
-  const prodEnvFile = sources.find((s) => s.channel === "prod")?.path;
-  const remote = await readRemoteState(prodEnvFile);
+  const remote = await readRemoteState(sources.find((s) => s.channel === "prod")?.path);
   if (!remote.hasEasProject) yep("no EAS projectId in app.json. EAS env routes will be blocked");
 
-  const manualHits: Array<{ key: string; file: string }> = [];
-  for (const s of sources) {
-    for (const k of Object.keys(MANUAL_EAS_SECRETS)) {
-      if (s.entries.has(k)) manualHits.push({ key: k, file: s.path });
-    }
-  }
-  if (manualHits.length > 0) {
-    line();
-    yep(
-      `${manualHits.length} secret-visibility key${manualHits.length === 1 ? "" : "s"} detected. set manually:`,
-    );
-    for (const { key, file } of manualHits) {
-      note(`  ${BOLD}${key}${RESET} ${DIM}(${file})${RESET}`);
-      note(`    ${DIM}${MANUAL_EAS_SECRETS[key]}${RESET}`);
-    }
-    note(`${DIM}lite skips these to avoid pushing secrets at default visibility${RESET}`);
-  }
+  reportManualSecrets(sources);
 
   const entries = buildPlan(sources);
   const filePlans = groupByFile(entries, remote);
-
-  let totalActionable = 0;
-  let totalConflicts = 0;
-  let totalBlocked = 0;
-  for (const plan of filePlans) {
-    const { actionable, conflicts, blocked } = printFilePlan(plan);
-    totalActionable += actionable;
-    totalConflicts += conflicts;
-    totalBlocked += blocked;
-  }
+  const totals = printPlans(filePlans);
 
   if (options.dryRun) {
-    line();
-    if (totalActionable === 0 && totalBlocked === 0) {
-      ok("nothing to do. all source values match destinations (--dry-run)");
-    } else if (totalActionable === 0 && totalBlocked > 0) {
-      note(
-        `0 actionable, ${totalBlocked} blocked; --dry-run, exiting (resolve blockers and re-run)`,
-      );
-    } else {
-      note(
-        `${totalActionable} action${totalActionable === 1 ? "" : "s"} would be applied${totalBlocked > 0 ? `, ${totalBlocked} blocked` : ""}; --dry-run, exiting`,
-      );
-    }
+    reportDryRun(totals);
     return 0;
   }
 
-  if (totalActionable === 0) {
-    line();
-    if (totalBlocked > 0) {
-      yep(
-        `${totalBlocked} blocked, 0 actionable. resolve blockers (run \`vexpo full\` first) and re-run`,
-      );
-      return 2;
-    }
-    ok("nothing to do. all source values match destinations");
-    return 0;
-  }
+  if (totals.actionable === 0) return nothingToDo(totals);
 
-  const prodConvexWrites = entries.some(
-    (e) => e.channel === "prod" && e.destinations.some((d) => d.type === "convex"),
-  );
-  if (prodConvexWrites) {
-    const pf = sources.find((s) => s.channel === "prod");
-    const deployKey = pf?.entries.get("CONVEX_DEPLOY_KEY") ?? "";
-    const selector = pf?.entries.get("CONVEX_DEPLOYMENT") ?? "";
-    if (!deployKey.startsWith("prod:") && !selector.startsWith("prod:")) {
-      line();
-      bad(`${pf?.path ?? "prod source"} has no prod-scoped CONVEX_DEPLOY_KEY or CONVEX_DEPLOYMENT`);
-      note("prod env would silently write to the DEV deployment (the dev key shadows --prod)");
-      note("add a `prod:` CONVEX_DEPLOY_KEY (or CONVEX_DEPLOYMENT) to the prod file and re-run");
-      return 1;
-    }
-  }
+  if (!prodConvexWritesAreSafe(entries, sources)) return 1;
 
   line();
-  if (totalConflicts > 0) {
+  if (totals.conflicts > 0) {
     note(
-      `${totalConflicts} update${totalConflicts === 1 ? "" : "s"} will overwrite existing values (fingerprints shown above)`,
+      `${totals.conflicts} update${plural(totals.conflicts)} will overwrite existing values (fingerprints shown above)`,
     );
   }
 
-  let appliedTotal = 0;
-  let failedTotal = 0;
-  for (const plan of filePlans) {
-    if (!options.force && process.stdin.isTTY) {
-      line();
-      const proceed = await askYesNo(`Apply ${plan.sourceFile} (${plan.channel})?`, true);
-      if (!proceed) {
-        nop(`skipped ${plan.sourceFile}`);
-        continue;
-      }
-    }
-    const { applied, failed } = await applyPlan(plan);
-    appliedTotal += applied;
-    failedTotal += failed;
-  }
+  const { applied, failed } = await applyAllPlans(filePlans, options.force === true);
 
   line();
-  if (failedTotal > 0) {
-    bad(`${appliedTotal} applied, ${failedTotal} failed`);
+  if (failed > 0) {
+    bad(`${applied} applied, ${failed} failed`);
     return 1;
   }
-  ok(`${appliedTotal} value${appliedTotal === 1 ? "" : "s"} synced`);
+  ok(`${applied} value${plural(applied)} synced`);
 
   if (!options.noVerify) {
-    const haveProd = sources.some((s) => s.channel === "prod");
-    const verifyChannels: Array<"dev" | "prod"> = haveProd ? ["dev", "prod"] : ["dev"];
-    let totalFail = 0;
-    let totalWarn = 0;
-    for (const channel of verifyChannels) {
-      section(`Verify (${channel})`);
-      const ctx = await readContext(channel);
-      const checks = await verifyAll(ctx);
-      renderVerifyResults(checks, "compact");
-      const summary = summarize(checks);
-      totalFail += summary.fail;
-      totalWarn += summary.warn;
-      line(
-        `  ${GREEN}${summary.ok} ok${RESET}${summary.warn > 0 ? `, ${YELLOW}${summary.warn} warn${RESET}` : ""}${summary.fail > 0 ? `, ${RED}${summary.fail} fail${RESET}` : ""}${summary.skip > 0 ? `, ${DIM}${summary.skip} skip${RESET}` : ""}`,
-      );
-    }
-    if (totalFail > 0) {
-      line();
-      bad(`${totalFail} verification failure${totalFail === 1 ? "" : "s"}`);
-      note("re-run `vexpo doctor` for full output, or fix the env values and re-run");
-      return 1;
-    }
-    if (options.strict && totalWarn > 0) {
-      line();
-      bad(`${totalWarn} warning${totalWarn === 1 ? "" : "s"} with --strict`);
-      return 1;
-    }
+    const code = await verifyPushed(sources, options.strict === true);
+    if (code !== 0) return code;
   }
 
   line();

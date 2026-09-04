@@ -1,8 +1,7 @@
 import { randomBytes } from "node:crypto";
 import { readFile, writeFile } from "node:fs/promises";
 
-import { readEnvFile } from "../lib/env-files.ts";
-import { fileExists } from "../lib/fs.ts";
+import { findProdEnvFile, readEnvFile } from "../lib/env-files.ts";
 import { bad, line, nop, note, ok, section, yep } from "../lib/output.ts";
 import { dlx } from "../lib/pkg-manager.ts";
 import { run } from "../lib/proc.ts";
@@ -54,11 +53,7 @@ async function writeBack(config: StoreConfig, email: string, password: string): 
 }
 
 async function prodEnvFile(): Promise<string | null> {
-  const file = (await fileExists(".env.prod"))
-    ? ".env.prod"
-    : (await fileExists(".env.production"))
-      ? ".env.production"
-      : null;
+  const file = await findProdEnvFile();
   if (!file) return null;
   const env = await readEnvFile(file);
   const key = env.get("CONVEX_DEPLOY_KEY") ?? "";
@@ -66,45 +61,54 @@ async function prodEnvFile(): Promise<string | null> {
   return key.startsWith("prod:") || selector.startsWith("prod:") ? file : null;
 }
 
+function resolveCreds(
+  options: ReviewAccountOptions,
+  config: StoreConfig,
+): { email: string; password: string } | null {
+  const review = config.apple?.review;
+  const email = options.email ?? review?.demoUsername;
+  if (!email) return null;
+  const configured = options.password ?? review?.demoPassword;
+  if (configured && configured !== PLACEHOLDER) return { email, password: configured };
+  ok("generated a demo password (placeholder never gets seeded)");
+  return { email, password: generatePassword() };
+}
+
+async function seedBothChannels(payload: string): Promise<boolean> {
+  if (!(await seed(payload))) return false;
+  const prodFile = await prodEnvFile();
+  if (!prodFile) {
+    nop("no prod-scoped .env.prod; prod seeding skipped (re-run once prod exists)");
+    yep("App Review signs into the PRODUCTION build, so seed prod before submitting");
+    return true;
+  }
+  if (!(await seed(payload, prodFile))) return false;
+  ok("seeded on the prod deployment too");
+  return true;
+}
+
 export async function runReviewAccount(options: ReviewAccountOptions): Promise<number> {
   section("App Review demo account");
 
   const config = JSON.parse(await readFile("store.config.json", "utf8")) as StoreConfig;
-  const email = options.email ?? config.apple?.review?.demoUsername;
-  const configured = config.apple?.review?.demoPassword;
-  const name = options.name ?? "App Review";
-
-  if (!email) {
+  const creds = resolveCreds(options, config);
+  if (!creds) {
     bad("missing email (set --email, or fill apple.review.demoUsername in store.config.json)");
     return 1;
   }
-
-  let password = options.password ?? configured;
-  if (!password || password === PLACEHOLDER) {
-    password = generatePassword();
-    ok("generated a demo password (placeholder never gets seeded)");
-  }
+  const { email, password } = creds;
 
   ok(`email: ${email}`);
 
   const payload = JSON.stringify({
     email,
     password,
-    name,
+    name: options.name ?? "App Review",
     reset: true,
     ...(options.username ? { username: options.username } : {}),
   });
 
-  if (!(await seed(payload))) return 1;
-
-  const prodFile = await prodEnvFile();
-  if (prodFile) {
-    if (!(await seed(payload, prodFile))) return 1;
-    ok("seeded on the prod deployment too");
-  } else {
-    nop("no prod-scoped .env.prod; prod seeding skipped (re-run once prod exists)");
-    yep("App Review signs into the PRODUCTION build, so seed prod before submitting");
-  }
+  if (!(await seedBothChannels(payload))) return 1;
 
   await writeBack(config, email, password);
 

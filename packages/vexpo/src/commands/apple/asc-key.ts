@@ -13,6 +13,7 @@ import {
   nop,
   note,
   ok,
+  plural,
   section,
   yep,
 } from "../../lib/output.ts";
@@ -112,7 +113,7 @@ export async function runAscKey(options: AscKeyOptions): Promise<number> {
       bad(`cached key invalid: ${result.reason}`);
       return 1;
     }
-    ok(`cached key still valid (${result.appCount} app${result.appCount === 1 ? "" : "s"})`);
+    ok(`cached key still valid (${result.appCount} app${plural(result.appCount)})`);
     await recordStep("asc-key", {
       issuerId: cached.issuerId,
       keyId: cached.keyId,
@@ -126,7 +127,7 @@ export async function runAscKey(options: AscKeyOptions): Promise<number> {
     nop(`cached ASC key found (issuer=${cached.issuerId.slice(0, 8)}…, key=${cached.keyId})`);
     const result = await validateAsc(cached);
     if (result.ok) {
-      ok(`cached key valid (${result.appCount} app${result.appCount === 1 ? "" : "s"})`);
+      ok(`cached key valid (${result.appCount} app${plural(result.appCount)})`);
       await recordStep("asc-key", {
         issuerId: cached.issuerId,
         keyId: cached.keyId,
@@ -149,9 +150,7 @@ export async function runAscKey(options: AscKeyOptions): Promise<number> {
     bad(validation.reason);
     return 1;
   }
-  ok(
-    `ASC API authenticated (${validation.appCount} app${validation.appCount === 1 ? "" : "s"} on team)`,
-  );
+  ok(`ASC API authenticated (${validation.appCount} app${plural(validation.appCount)} on team)`);
 
   const p8Path = p8PathOf(creds);
   await recordStep("asc-key", {
