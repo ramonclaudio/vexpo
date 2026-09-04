@@ -23,6 +23,7 @@ type Flags = {
   git: boolean;
   yes: boolean;
   setup: boolean;
+  brand: boolean;
 };
 
 async function main() {
@@ -35,6 +36,7 @@ async function main() {
     .option("--no-install", "skip installing dependencies")
     .option("--no-git", "skip git init")
     .option("--no-setup", "skip the printed next-steps block after install")
+    .option("--no-brand", "skip the rebrand prompts after install")
     .option("-y, --yes", "accept defaults, skip prompts")
     .version(pkg.version, "-v, --version")
     .parse();
@@ -54,7 +56,19 @@ async function main() {
 
   const pm = detectPackageManager();
 
-  const copySpin = ora(
+  await copyTemplate(target, name);
+
+  const depsReady = flags.install ? await install(target, pm) : true;
+
+  if (flags.brand && depsReady && !flags.yes) await brand(target);
+
+  if (flags.git) await initGit(target, pm, depsReady);
+
+  if (flags.setup) nextSteps(target, pm, depsReady);
+}
+
+async function copyTemplate(target: string, name: string): Promise<void> {
+  const spin = ora(
     `Copying template to ${kleur.cyan(relative(process.cwd(), target) || ".")}`,
   ).start();
   try {
@@ -62,69 +76,77 @@ async function main() {
     await restoreStrippedDotfiles(target);
     await rewritePackage(target, name);
     await rewriteEasJson(target);
-    copySpin.succeed("Template copied");
   } catch (err) {
-    copySpin.fail("Template copy failed");
+    spin.fail("Template copy failed");
     throw err;
   }
+  spin.succeed("Template copied");
+}
 
-  let depsReady = !flags.install;
-
-  if (flags.install) {
-    const installSpin = ora(`Installing dependencies with ${kleur.cyan(pm)}`).start();
-    try {
-      await execa(pm, ["install"], { cwd: target, stdout: "ignore" });
-      installSpin.succeed(`Installed with ${pm}`);
-      depsReady = true;
-    } catch (err) {
-      installSpin.fail(`Install failed. Run ${kleur.cyan(`${pm} install`)} manually.`);
-      const stderr = installFailureStderr(err);
-      if (stderr) console.error(kleur.gray(tail(stderr, 20)));
-    }
+async function install(target: string, pm: PM): Promise<boolean> {
+  const spin = ora(`Installing dependencies with ${kleur.cyan(pm)}`).start();
+  try {
+    await execa(pm, ["install"], { cwd: target, stdout: "ignore" });
+  } catch (err) {
+    spin.fail(`Install failed. Run ${kleur.cyan(`${pm} install`)} manually.`);
+    const stderr = installFailureStderr(err);
+    if (stderr) console.error(kleur.gray(tail(stderr, 20)));
+    return false;
   }
+  spin.succeed(`Installed with ${pm}`);
+  return true;
+}
 
-  if (flags.git) {
-    const gitSpin = ora("Initializing git").start();
-    let initialized = false;
-    try {
-      await execa("git", ["init", "--initial-branch=main"], { cwd: target, stdio: "ignore" });
-      initialized = true;
-    } catch {
-      gitSpin.warn("Git init skipped");
-    }
-    if (initialized) {
-      try {
-        if (!depsReady) {
-          gitSpin.warn("Git repo initialized, commit skipped (install failed)");
-          console.error(kleur.gray(`  Commit yourself after ${pm} install lands.`));
-        } else {
-          await execa("git", ["add", "-A"], { cwd: target, stdio: "ignore" });
-          const email = await execa("git", ["config", "user.email"], {
-            cwd: target,
-            reject: false,
-          });
-          const uname = await execa("git", ["config", "user.name"], { cwd: target, reject: false });
-          if (!email.stdout.trim() || !uname.stdout.trim()) {
-            gitSpin.warn("Git repo initialized, commit skipped (no git identity)");
-            console.error(
-              kleur.gray("  Set git config user.name and user.email, then commit yourself."),
-            );
-          } else {
-            await execa("git", ["commit", "-m", "feat: initial commit", "--no-gpg-sign"], {
-              cwd: target,
-              stdio: "ignore",
-            });
-            gitSpin.succeed("Git repo initialized");
-          }
-        }
-      } catch {
-        gitSpin.warn("Git repo initialized, commit failed");
-        console.error(kleur.gray("  Commit yourself once the working tree is ready."));
-      }
-    }
+async function brand(target: string): Promise<void> {
+  const bin = join(target, "node_modules", ".bin", "vexpo");
+  if (!existsSync(bin) || process.stdin.isTTY !== true) return;
+  console.log();
+  try {
+    await execa(bin, ["rebrand"], { cwd: target, stdio: "inherit" });
+  } catch {
+    console.error(
+      kleur.gray("  Rebrand skipped. Run ") +
+        kleur.cyan("npx vexpo rebrand") +
+        kleur.gray(" in the project when you are ready."),
+    );
   }
+}
 
-  if (flags.setup) nextSteps(target, pm, depsReady);
+async function commitAll(target: string, spin: ReturnType<typeof ora>): Promise<void> {
+  await execa("git", ["add", "-A"], { cwd: target, stdio: "ignore" });
+  const email = await execa("git", ["config", "user.email"], { cwd: target, reject: false });
+  const uname = await execa("git", ["config", "user.name"], { cwd: target, reject: false });
+  if (!email.stdout.trim() || !uname.stdout.trim()) {
+    spin.warn("Git repo initialized, commit skipped (no git identity)");
+    console.error(kleur.gray("  Set git config user.name and user.email, then commit yourself."));
+    return;
+  }
+  await execa("git", ["commit", "-m", "feat: initial commit", "--no-gpg-sign"], {
+    cwd: target,
+    stdio: "ignore",
+  });
+  spin.succeed("Git repo initialized");
+}
+
+async function initGit(target: string, pm: PM, depsReady: boolean): Promise<void> {
+  const spin = ora("Initializing git").start();
+  try {
+    await execa("git", ["init", "--initial-branch=main"], { cwd: target, stdio: "ignore" });
+  } catch {
+    spin.warn("Git init skipped");
+    return;
+  }
+  if (!depsReady) {
+    spin.warn("Git repo initialized, commit skipped (install failed)");
+    console.error(kleur.gray(`  Commit yourself after ${pm} install lands.`));
+    return;
+  }
+  try {
+    await commitAll(target, spin);
+  } catch {
+    spin.warn("Git repo initialized, commit failed");
+    console.error(kleur.gray("  Commit yourself once the working tree is ready."));
+  }
 }
 
 const NAME_RE = /^[a-z0-9][a-z0-9-]*$/;
@@ -257,7 +279,7 @@ function nextSteps(target: string, pm: PM, depsReady: boolean): void {
   );
   console.log(
     kleur.gray(
-      `  npx vexpo full         ${kleur.dim("# adds Resend, Apple Sign In, the ASC key, eas init, and rebrand")}`,
+      `  npx vexpo full         ${kleur.dim("# adds Resend, Apple Sign In, the ASC key, and eas init")}`,
     ),
   );
   console.log(
@@ -271,9 +293,7 @@ function nextSteps(target: string, pm: PM, depsReady: boolean): void {
   console.log(kleur.gray(`  ${pm} run ios          ${kleur.dim("# terminal 2")}`));
   console.log();
   console.log(
-    kleur.gray("Using an AI agent? The setup playbook is in ") +
-      kleur.cyan("AGENTS.md") +
-      kleur.gray(", the paste-in prompt in ") +
+    kleur.gray("Using an AI agent? The setup playbook and the paste-in prompt are in ") +
       kleur.cyan("README.md") +
       kleur.gray("."),
   );
