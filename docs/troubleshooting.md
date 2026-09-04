@@ -116,6 +116,40 @@ npx convex env remove REQUIRE_EMAIL_VERIFICATION   # only on a deployment you e2
 
 Otherwise seed a pre-verified account with `npx vexpo review-account` and drive a sign-in-only variant, or run the suite on EAS release builds via `.eas/workflows/e2e-tests.yml`.
 
+### An assert on a `testID` that is definitely on screen fails
+
+In `@expo/ui`, only real controls publish their `testID` to the accessibility hierarchy Maestro reads. `Host` roots, `Button`, `TextField`, `DisclosureGroup` and the native tab triggers do. A `Text` does not, at any nesting depth, and neither its id nor its copy is matchable. That is why the settings profile card's name and email lines, the version footer, the debug rows and every `HelperText` in the app are unassertable, even though they are plainly in the screenshot.
+
+Dump the tree to see what is really there before writing the assert:
+
+```bash
+JAVA_HOME=/opt/homebrew/opt/openjdk/libexec/openjdk.jdk/Contents/Home \
+  ~/.maestro/bin/maestro hierarchy
+```
+
+Assert the component that wraps the text instead, or a structural consequence: an inline Save button only renders while a form is dirty, and a `DisclosureGroup` publishes `collapsed` / `expanded` as a child node.
+
+### A deep link into an app route wedges the whole suite
+
+`openLink: vexpo://settings` (or any app route) does not work on a development build, and it leaves the simulator in a state where every later flow fails on its first assert. expo-dev-launcher claims the app's scheme on a dev build, so the link opens the launcher and raises an `Open in "Vexpo"?` SpringBoard alert. That alert sits outside the accessibility tree Maestro queries, so nothing can see or tap it, and it survives an app terminate.
+
+Reboot the simulator to clear it:
+
+```bash
+xcrun simctl shutdown booted && xcrun simctl boot "iPhone 17"
+```
+
+Deep-link routes are only drivable on a release build, which is what `.eas/workflows/e2e-tests.yml` builds (`preview:simulator`). Locally, reach screens through the UI. `__tests__/lib/deep-link.test.ts` covers the path validation and the query reattach without a simulator.
+
+### `guest.yaml` fails on `sign-in-guest`
+
+The button only renders when `getEnabledProviders` answers `guest: true`, which is `GUEST_MODE` unset or `true` on the deployment. If you set it to `false` because the app really does need an account, drop the flow from the run instead of debugging the assert:
+
+```bash
+npx convex env get GUEST_MODE
+npm run e2e -- .maestro/auth.yaml .maestro/launch.yaml .maestro/tour.yaml
+```
+
 ### Every step after `clearState` SKIPs, and the failure lands somewhere unrelated
 
 `clearState: true` wipes the app's permission answers, so the next launch re-raises whatever alert the app asks for first. iOS draws those from SpringBoard, so they sit over the app and never appear in the accessibility tree. Maestro can't see the alert, can't tap it, and every `runFlow` guarded by a `visible` condition quietly SKIPs, so the run goes red on a step that has nothing to do with it. Terminating the app doesn't clear it either. `auth.yaml` denies the push alert at launch for this reason. For anything the template doesn't cover, answer it once at the simulator level and stop wiping it:
@@ -124,7 +158,7 @@ Otherwise seed a pre-verified account with `npx vexpo review-account` and drive 
 xcrun simctl privacy booted grant location <bundle-id>
 ```
 
-If one is already stuck on screen, `xcrun simctl shutdown booted` and boot again. Nothing short of a reboot clears it.
+If one is already stuck on screen, `xcrun simctl shutdown booted` and boot again. Nothing else clears it.
 
 ### An assert fails on copy you can see in the screenshot
 
