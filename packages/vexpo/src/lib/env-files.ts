@@ -162,6 +162,12 @@ export async function readEnvFile(path: string): Promise<Map<string, string>> {
   return out;
 }
 
+export async function findProdEnvFile(): Promise<string | null> {
+  if (await fileExists(".env.prod")) return ".env.prod";
+  if (await fileExists(".env.production")) return ".env.production";
+  return null;
+}
+
 export type EnvSource = { path: string; channel: Channel; entries: Map<string, string> };
 
 export async function readSources(paths?: { local?: string; prod?: string }): Promise<EnvSource[]> {

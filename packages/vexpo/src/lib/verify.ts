@@ -24,8 +24,9 @@ import {
   projectInfo as easProjectInfo,
   whoami as easWhoami,
 } from "./eas-project.ts";
-import { readEnvFile, type Channel } from "./env-files.ts";
+import { findProdEnvFile, readEnvFile, type Channel } from "./env-files.ts";
 import { listDomains, listWebhooks, probeAccess } from "./resend-api.ts";
+import { errText, plural } from "./output.ts";
 
 export type { Channel };
 
@@ -136,393 +137,566 @@ function convexEnvFor(ctx: VerifyContext): Map<string, string> | null {
   return ctx.channel === "prod" ? ctx.convexProdEnv : ctx.convexEnv;
 }
 
-async function verifyConvex(ctx: VerifyContext): Promise<Check[]> {
-  const checks: Check[] = [];
-  const env = convexEnvFor(ctx);
-  const local = ctx.channel === "prod" ? ctx.envProd : ctx.envLocal;
-
-  if (local.get("CONVEX_DEPLOYMENT")) {
-    const status = await checkToken();
-    if (status === "unauthorized") {
-      checks.push(
-        fail("convex", "login", "Convex token expired or revoked", "run `npx convex login`"),
-      );
-    } else if (status === "valid") {
-      checks.push(ok("convex", "login", "token valid"));
-    }
+async function convexLoginChecks(local: Map<string, string>): Promise<Check[]> {
+  if (!local.get("CONVEX_DEPLOYMENT")) return [];
+  const status = await checkToken();
+  if (status === "unauthorized") {
+    return [fail("convex", "login", "Convex token expired or revoked", "run `npx convex login`")];
   }
+  return status === "valid" ? [ok("convex", "login", "token valid")] : [];
+}
 
-  const cloudUrl = local.get("EXPO_PUBLIC_CONVEX_URL");
-  const siteUrl = local.get("EXPO_PUBLIC_CONVEX_SITE_URL");
+async function convexReachChecks(cloudUrl: string | undefined): Promise<Check[]> {
+  if (!cloudUrl) return [skip("convex", "deployment-reachable", "no EXPO_PUBLIC_CONVEX_URL")];
+  const reach = await fetchOk(cloudUrl);
+  return [
+    reach.ok
+      ? ok("convex", "deployment-reachable", `${cloudUrl} → ${reach.status}`)
+      : fail("convex", "deployment-reachable", `${cloudUrl} unreachable (status ${reach.status})`),
+  ];
+}
 
-  if (cloudUrl) {
-    const reach = await fetchOk(cloudUrl);
-    if (reach.ok)
-      checks.push(ok("convex", "deployment-reachable", `${cloudUrl} → ${reach.status}`));
-    else
-      checks.push(
-        fail("convex", "deployment-reachable", `${cloudUrl} unreachable (status ${reach.status})`),
-      );
-  } else {
-    checks.push(skip("convex", "deployment-reachable", "no EXPO_PUBLIC_CONVEX_URL"));
-  }
+function convexSlugMatchChecks(cloudUrl?: string, siteUrl?: string): Check[] {
+  if (!cloudUrl || !siteUrl) return [];
+  const cloudSlug = deploymentSlugFromHost(hostnameOf(cloudUrl) ?? "");
+  const siteSlug = deploymentSlugFromHost(hostnameOf(siteUrl) ?? "");
+  if (!cloudSlug || !siteSlug) return [];
+  if (cloudSlug === siteSlug) return [ok("convex", "site-cloud-match", `slug=${cloudSlug}`)];
+  return [
+    warn(
+      "convex",
+      "site-cloud-match",
+      `cloud=${cloudSlug} ≠ site=${siteSlug} (different deployments?)`,
+    ),
+  ];
+}
 
-  if (cloudUrl && siteUrl) {
-    const cloud = hostnameOf(cloudUrl);
-    const site = hostnameOf(siteUrl);
-    if (cloud && site) {
-      const cloudSlug = deploymentSlugFromHost(cloud);
-      const siteSlug = deploymentSlugFromHost(site);
-      if (cloudSlug && siteSlug && cloudSlug === siteSlug) {
-        checks.push(ok("convex", "site-cloud-match", `slug=${cloudSlug}`));
-      } else if (cloudSlug && siteSlug) {
-        checks.push(
-          warn(
-            "convex",
-            "site-cloud-match",
-            `cloud=${cloudSlug} ≠ site=${siteSlug} (different deployments?)`,
-          ),
-        );
-      }
-    }
-  }
-
+function betterAuthSecretChecks(env: Map<string, string> | null, channel: Channel): Check[] {
   if (env === null) {
-    checks.push(
+    return [
       warn(
         "convex",
         "env-read",
-        `Convex env unreadable on ${ctx.channel}; per-var checks skipped`,
-        ctx.channel === "prod"
+        `Convex env unreadable on ${channel}; per-var checks skipped`,
+        channel === "prod"
           ? "check CONVEX_DEPLOY_KEY in .env.prod, or run `npx convex login`"
           : "run `npx convex login`",
       ),
-    );
-  } else {
-    const secret = env.get("BETTER_AUTH_SECRET");
-    if (secret) {
-      try {
-        const bytes = Buffer.from(secret, "base64");
-        if (bytes.length >= 32) checks.push(ok("convex", "better-auth-secret", `${bytes.length}b`));
-        else
-          checks.push(
-            warn(
-              "convex",
-              "better-auth-secret",
-              `BETTER_AUTH_SECRET is only ${bytes.length}b (32+ recommended)`,
-            ),
-          );
-      } catch {
-        checks.push(fail("convex", "better-auth-secret", "BETTER_AUTH_SECRET not valid base64"));
-      }
-    } else {
-      checks.push(fail("convex", "better-auth-secret", `not set on Convex (${ctx.channel})`));
-    }
+    ];
   }
+  const secret = env.get("BETTER_AUTH_SECRET");
+  if (!secret) {
+    return [fail("convex", "better-auth-secret", `not set on Convex (${channel})`)];
+  }
+  let bytes: Buffer;
+  try {
+    bytes = Buffer.from(secret, "base64");
+  } catch {
+    return [fail("convex", "better-auth-secret", "BETTER_AUTH_SECRET not valid base64")];
+  }
+  if (bytes.length >= 32) return [ok("convex", "better-auth-secret", `${bytes.length}b`)];
+  return [
+    warn(
+      "convex",
+      "better-auth-secret",
+      `BETTER_AUTH_SECRET is only ${bytes.length}b (32+ recommended)`,
+    ),
+  ];
+}
 
+async function convexDeploymentChecks(local: Map<string, string>): Promise<Check[]> {
   const deploymentName = deploymentSlug(local.get("CONVEX_DEPLOYMENT"));
-  if (deploymentName) {
-    const deployments = await listProjectDeployments(deploymentName);
-    if (deployments) {
-      const devs = deploymentsOfType(deployments, "dev");
-      if (devs.length > 1) {
-        checks.push(
-          warn(
-            "convex",
-            "deployments",
-            `${devs.length} dev deployments in this project`,
-            `${devs.map(describeDeployment).join(", ")} — pick one canonical, delete the others`,
-          ),
-        );
-      } else {
-        checks.push(ok("convex", "deployments", `${deployments.length} total, ${devs.length} dev`));
-      }
-    }
+  if (!deploymentName) return [];
+  const deployments = await listProjectDeployments(deploymentName);
+  if (!deployments) return [];
+  const devs = deploymentsOfType(deployments, "dev");
+  if (devs.length <= 1) {
+    return [ok("convex", "deployments", `${deployments.length} total, ${devs.length} dev`)];
   }
+  return [
+    warn(
+      "convex",
+      "deployments",
+      `${devs.length} dev deployments in this project`,
+      `${devs.map(describeDeployment).join(", ")} — pick one canonical, delete the others`,
+    ),
+  ];
+}
 
-  return checks;
+async function verifyConvex(ctx: VerifyContext): Promise<Check[]> {
+  const env = convexEnvFor(ctx);
+  const local = ctx.channel === "prod" ? ctx.envProd : ctx.envLocal;
+  const cloudUrl = local.get("EXPO_PUBLIC_CONVEX_URL");
+  const siteUrl = local.get("EXPO_PUBLIC_CONVEX_SITE_URL");
+
+  return [
+    ...(await convexLoginChecks(local)),
+    ...(await convexReachChecks(cloudUrl)),
+    ...convexSlugMatchChecks(cloudUrl, siteUrl),
+    ...betterAuthSecretChecks(env, ctx.channel),
+    ...(await convexDeploymentChecks(local)),
+  ];
+}
+
+type ResendDomain = { id: string; name: string; status: string };
+type ResendWebhook = { id: string; endpoint: string; status: string };
+
+function resendUnconfiguredChecks(env: Map<string, string>, channel: Channel): Check[] {
+  const required = env.get("REQUIRE_EMAIL_VERIFICATION");
+  if (!required || required === "false") {
+    return [skip("resend", "api-key-set", "lite mode (run `npx vexpo full` to provision)")];
+  }
+  return [fail("resend", "api-key-set", `RESEND_API_KEY not set on Convex (${channel})`)];
+}
+
+async function listResendResources(
+  apiKey: string,
+  access: string,
+): Promise<{ domains: ResendDomain[]; webhooks: ResendWebhook[]; checks: Check[] }> {
+  if (access !== "full") {
+    return {
+      domains: [],
+      webhooks: [],
+      checks: [
+        skip(
+          "resend",
+          "domain-coverage",
+          `key is sending-restricted; can't enumerate domains/webhooks`,
+        ),
+      ],
+    };
+  }
+  const checks: Check[] = [];
+  let domains: ResendDomain[] = [];
+  let webhooks: ResendWebhook[] = [];
+  try {
+    domains = await listDomains(apiKey);
+  } catch (e) {
+    checks.push(warn("resend", "domains-readable", `couldn't list domains: ${errText(e)}`));
+  }
+  try {
+    webhooks = await listWebhooks(apiKey);
+  } catch (e) {
+    checks.push(warn("resend", "webhooks-readable", `couldn't list webhooks: ${errText(e)}`));
+  }
+  return { domains, webhooks, checks };
+}
+
+function emailFromChecks(
+  emailFrom: string | undefined,
+  domains: ResendDomain[],
+  channel: Channel,
+): Check[] {
+  if (!emailFrom) {
+    return [warn("resend", "email-from-set", `EMAIL_FROM not set on Convex (${channel})`)];
+  }
+  const at = emailFrom.indexOf("@");
+  if (at < 0) return [fail("resend", "email-from-valid", `EMAIL_FROM=${emailFrom} (no @)`)];
+  if (domains.length === 0) return [];
+
+  const domain = emailFrom.slice(at + 1);
+  const match = domains.find((d) => d.name === domain);
+  if (!match) {
+    return [
+      warn(
+        "resend",
+        "email-from-domain",
+        `EMAIL_FROM=${emailFrom} but '${domain}' not in Resend domains: ${domains
+          .map((d) => d.name)
+          .join(", ")}`,
+      ),
+    ];
+  }
+  if (match.status !== "verified") {
+    return [
+      warn(
+        "resend",
+        "email-from-domain",
+        `EMAIL_FROM domain '${domain}' status=${match.status} (not verified)`,
+      ),
+    ];
+  }
+  return [ok("resend", "email-from-domain", `${domain} verified`)];
+}
+
+function missingWebhookCheck(
+  webhooks: ResendWebhook[],
+  expectedEndpoint: string,
+  channel: Channel,
+): Check {
+  const others = webhooks.map((w) => w.endpoint);
+  const stale = others.filter((e) => e.includes(".convex.site") && e.endsWith("/resend-webhook"));
+  if (stale.length === 0) {
+    return warn(
+      "resend",
+      "webhook-endpoint",
+      `no webhook pointing at ${expectedEndpoint}`,
+      others.length ? `existing: ${others.join(", ")}` : undefined,
+    );
+  }
+  return warn(
+    "resend",
+    "webhook-endpoint",
+    `no webhook for this deployment; ${stale.length} point at other convex.site deployments (stale after a deployment migration)`,
+    `run \`vexpo resend --repoint${channel === "prod" ? " --prod" : ""}\` to move it to ${expectedEndpoint} and realign RESEND_WEBHOOK_SECRET. stale: ${stale.join(", ")}`,
+  );
+}
+
+function webhookEventChecks(webhook: ResendWebhook): Check[] {
+  const required = ["email.bounced", "email.complained", "email.suppressed", "email.failed"];
+  const events = (webhook as { events?: string[] }).events ?? [];
+  const missing = required.filter((e) => !events.includes(e));
+  if (missing.length === 0) {
+    return [ok("resend", "webhook-events", `${required.length} actionable events covered`)];
+  }
+  return [
+    warn(
+      "resend",
+      "webhook-events",
+      `webhook missing ${missing.join(", ")}`,
+      "re-run `npx vexpo resend` to refresh subscription",
+    ),
+  ];
+}
+
+function webhookChecks(
+  expectedSiteUrl: string | undefined,
+  webhooks: ResendWebhook[],
+  channel: Channel,
+): Check[] {
+  if (!expectedSiteUrl || webhooks.length === 0) return [];
+  const expectedEndpoint = `${expectedSiteUrl.replace(/\/$/, "")}/resend-webhook`;
+  const match = webhooks.find((w) => w.endpoint === expectedEndpoint);
+  if (!match) return [missingWebhookCheck(webhooks, expectedEndpoint, channel)];
+
+  const live = match.status === "enabled" || match.status === "active";
+  return [
+    live
+      ? ok("resend", "webhook-endpoint", `→ ${expectedEndpoint}`)
+      : warn("resend", "webhook-endpoint", `webhook ${match.id} status=${match.status}`),
+    ...webhookEventChecks(match),
+  ];
 }
 
 async function verifyResend(ctx: VerifyContext): Promise<Check[]> {
-  const checks: Check[] = [];
   const env = convexEnvFor(ctx);
   if (env === null) {
-    checks.push(
+    return [
       skip("resend", "api-key-set", `Convex env unreadable on ${ctx.channel}; checks skipped`),
-    );
-    return checks;
+    ];
   }
   const apiKey = env.get("RESEND_API_KEY");
-  const emailFrom = env.get("EMAIL_FROM");
-  const local = ctx.channel === "prod" ? ctx.envProd : ctx.envLocal;
-  const expectedSiteUrl = local.get("EXPO_PUBLIC_CONVEX_SITE_URL");
-
-  if (!apiKey) {
-    const requireEmailVerification = env.get("REQUIRE_EMAIL_VERIFICATION");
-    if (!requireEmailVerification || requireEmailVerification === "false") {
-      checks.push(skip("resend", "api-key-set", "lite mode (run `npx vexpo full` to provision)"));
-      return checks;
-    }
-    checks.push(fail("resend", "api-key-set", `RESEND_API_KEY not set on Convex (${ctx.channel})`));
-    return checks;
-  }
+  if (!apiKey) return resendUnconfiguredChecks(env, ctx.channel);
 
   const access = await probeAccess(apiKey);
   if (access === "invalid") {
-    checks.push(fail("resend", "api-key-valid", "RESEND_API_KEY rejected by Resend"));
-    return checks;
+    return [fail("resend", "api-key-valid", "RESEND_API_KEY rejected by Resend")];
   }
-  checks.push(ok("resend", "api-key-valid", `key authenticated (access=${access})`));
 
-  let domains: { id: string; name: string; status: string }[] = [];
-  let webhooks: { id: string; endpoint: string; status: string }[] = [];
+  const local = ctx.channel === "prod" ? ctx.envProd : ctx.envLocal;
+  const { domains, webhooks, checks } = await listResendResources(apiKey, access);
+  return [
+    ok("resend", "api-key-valid", `key authenticated (access=${access})`),
+    ...checks,
+    ...emailFromChecks(env.get("EMAIL_FROM"), domains, ctx.channel),
+    ...webhookChecks(local.get("EXPO_PUBLIC_CONVEX_SITE_URL"), webhooks, ctx.channel),
+  ];
+}
 
-  if (access === "full") {
-    try {
-      domains = await listDomains(apiKey);
-    } catch (e) {
-      checks.push(
-        warn(
-          "resend",
-          "domains-readable",
-          `couldn't list domains: ${e instanceof Error ? e.message : e}`,
-        ),
-      );
-    }
-    try {
-      webhooks = await listWebhooks(apiKey);
-    } catch (e) {
-      checks.push(
-        warn(
-          "resend",
-          "webhooks-readable",
-          `couldn't list webhooks: ${e instanceof Error ? e.message : e}`,
-        ),
-      );
-    }
-  } else {
+type AppleIds = { servicesId?: string; teamId?: string; keyId?: string };
+
+const TEN_ALNUM = /^[A-Z0-9]{10}$/;
+
+function appleIdFormatChecks(
+  env: Map<string, string> | null,
+  ids: AppleIds,
+  channel: Channel,
+): Check[] {
+  const checks: Check[] = [];
+  if (env === null) {
     checks.push(
-      skip(
-        "resend",
-        "domain-coverage",
-        `key is sending-restricted; can't enumerate domains/webhooks`,
-      ),
+      skip("apple", "convex-env", `Convex env unreadable on ${channel}; env checks skipped`),
+    );
+  } else if (!ids.teamId) {
+    checks.push(warn("apple", "team-id-set", "APPLE_TEAM_ID not set"));
+  } else if (!TEN_ALNUM.test(ids.teamId)) {
+    checks.push(
+      warn("apple", "team-id-format", `APPLE_TEAM_ID='${ids.teamId}' not 10 alphanumeric`),
     );
   }
 
-  if (emailFrom) {
-    const at = emailFrom.indexOf("@");
-    if (at < 0) {
-      checks.push(fail("resend", "email-from-valid", `EMAIL_FROM=${emailFrom} (no @)`));
-    } else {
-      const domain = emailFrom.slice(at + 1);
-      if (domains.length > 0) {
-        const match = domains.find((d) => d.name === domain);
-        if (!match) {
-          checks.push(
-            warn(
-              "resend",
-              "email-from-domain",
-              `EMAIL_FROM=${emailFrom} but '${domain}' not in Resend domains: ${domains
-                .map((d) => d.name)
-                .join(", ")}`,
-            ),
-          );
-        } else if (match.status !== "verified") {
-          checks.push(
-            warn(
-              "resend",
-              "email-from-domain",
-              `EMAIL_FROM domain '${domain}' status=${match.status} (not verified)`,
-            ),
-          );
-        } else {
-          checks.push(ok("resend", "email-from-domain", `${domain} verified`));
-        }
-      }
-    }
-  } else {
-    checks.push(warn("resend", "email-from-set", `EMAIL_FROM not set on Convex (${ctx.channel})`));
+  if (ids.keyId && !TEN_ALNUM.test(ids.keyId)) {
+    checks.push(warn("apple", "key-id-format", `APPLE_KEY_ID='${ids.keyId}' not 10 alphanumeric`));
   }
-
-  if (expectedSiteUrl && webhooks.length > 0) {
-    const expectedEndpoint = `${expectedSiteUrl.replace(/\/$/, "")}/resend-webhook`;
-    const match = webhooks.find((w) => w.endpoint === expectedEndpoint);
-    if (!match) {
-      const others = webhooks.map((w) => w.endpoint);
-      const staleConvex = others.filter(
-        (e) => e.includes(".convex.site") && e.endsWith("/resend-webhook"),
-      );
-      if (staleConvex.length > 0) {
-        checks.push(
-          warn(
-            "resend",
-            "webhook-endpoint",
-            `no webhook for this deployment; ${staleConvex.length} point at other convex.site deployments (stale after a deployment migration)`,
-            `run \`vexpo resend --repoint${ctx.channel === "prod" ? " --prod" : ""}\` to move it to ${expectedEndpoint} and realign RESEND_WEBHOOK_SECRET. stale: ${staleConvex.join(", ")}`,
-          ),
-        );
-      } else {
-        checks.push(
-          warn(
-            "resend",
-            "webhook-endpoint",
-            `no webhook pointing at ${expectedEndpoint}`,
-            others.length ? `existing: ${others.join(", ")}` : undefined,
-          ),
-        );
-      }
-    } else if (match.status !== "enabled" && match.status !== "active") {
-      checks.push(warn("resend", "webhook-endpoint", `webhook ${match.id} status=${match.status}`));
-    } else {
-      checks.push(ok("resend", "webhook-endpoint", `→ ${expectedEndpoint}`));
-    }
-    if (match) {
-      const required = ["email.bounced", "email.complained", "email.suppressed", "email.failed"];
-      const events = (match as { events?: string[] }).events ?? [];
-      const missing = required.filter((e) => !events.includes(e));
-      if (missing.length === 0)
-        checks.push(ok("resend", "webhook-events", `${required.length} actionable events covered`));
-      else
-        checks.push(
-          warn(
-            "resend",
-            "webhook-events",
-            `webhook missing ${missing.join(", ")}`,
-            "re-run `npx vexpo resend` to refresh subscription",
-          ),
-        );
-    }
+  if (ids.servicesId && !/^[a-z0-9.-]+$/i.test(ids.servicesId)) {
+    checks.push(warn("apple", "services-id-format", `APPLE_SERVICES_ID looks malformed`));
   }
-
   return checks;
+}
+
+function jwtExpiryCheck(payload: Record<string, unknown>): Check {
+  const exp = typeof payload.exp === "number" ? payload.exp : 0;
+  const now = Math.floor(Date.now() / 1000);
+  const daysLeft = Math.floor((exp - now) / 86_400);
+  if (exp <= now) return fail("apple", "jwt-expiry", `JWT expired ${-daysLeft}d ago`);
+  if (daysLeft < 30)
+    return warn("apple", "jwt-expiry", `JWT expires in ${daysLeft}d (rotate soon)`);
+  return ok("apple", "jwt-expiry", `${daysLeft}d remaining`);
+}
+
+function claimCheck(
+  name: string,
+  claim: unknown,
+  expected: string | undefined,
+  claimLabel: string,
+  expectedLabel: string,
+): Check[] {
+  if (!claim || !expected) return [];
+  if (claim === expected) return [ok("apple", name, claim as string)];
+  return [
+    fail("apple", name, `${claimLabel}='${claim as string}' ≠ ${expectedLabel}='${expected}'`),
+  ];
+}
+
+function appleJwtChecks(jwt: string, ids: AppleIds): Check[] {
+  const decoded = decodeJwt(jwt);
+  if (!decoded) return [fail("apple", "jwt-decode", "APPLE_CLIENT_SECRET is not a valid JWT")];
+
+  const { header, payload } = decoded;
+  const checks: Check[] = [];
+  if (header.alg !== "ES256") {
+    checks.push(warn("apple", "jwt-alg", `JWT alg=${header.alg} (expected ES256)`));
+  }
+  if (payload.aud !== "https://appleid.apple.com") {
+    checks.push(
+      warn("apple", "jwt-aud", `JWT aud=${payload.aud} (expected https://appleid.apple.com)`),
+    );
+  }
+  checks.push(
+    jwtExpiryCheck(payload),
+    ...claimCheck("jwt-kid-matches", header.kid, ids.keyId, "JWT.header.kid", "APPLE_KEY_ID"),
+    ...claimCheck("jwt-iss-matches", payload.iss, ids.teamId, "JWT.iss", "APPLE_TEAM_ID"),
+    ...claimCheck("jwt-sub-matches", payload.sub, ids.servicesId, "JWT.sub", "APPLE_SERVICES_ID"),
+  );
+  return checks;
+}
+
+async function servicesIdChecks(creds: AscCredentials, servicesId: string): Promise<Check[]> {
+  try {
+    const matches = await makeAscClient(creds).bundleIds.list({ identifier: servicesId });
+    if (matches.length > 0) {
+      return [ok("apple", "services-id-exists", `${servicesId} found in ASC`)];
+    }
+    return [
+      fail(
+        "apple",
+        "services-id-exists",
+        `${servicesId} not found in App Store Connect`,
+        "run `npx vexpo apple services-id` to provision it",
+      ),
+    ];
+  } catch (e) {
+    return [warn("apple", "services-id-lookup", `ASC lookup failed: ${errText(e)}`)];
+  }
+}
+
+async function ascKeyChecks(
+  creds: AscCredentials | null,
+  servicesId: string | undefined,
+): Promise<Check[]> {
+  if (!creds) {
+    return [skip("apple", "asc-key-valid", "no cached ASC creds (run `npx vexpo apple asc-key`)")];
+  }
+  const v = await ascValidate(creds);
+  if (!v.ok) return [fail("apple", "asc-key-valid", v.reason)];
+  return [
+    ok("apple", "asc-key-valid", `${v.appCount} app${plural(v.appCount)}`),
+    ...(servicesId ? await servicesIdChecks(creds, servicesId) : []),
+  ];
 }
 
 async function verifyApple(ctx: VerifyContext): Promise<Check[]> {
-  const checks: Check[] = [];
   const env = convexEnvFor(ctx);
   const local = ctx.channel === "prod" ? ctx.envProd : ctx.envLocal;
-
-  const servicesId = env?.get("APPLE_CLIENT_ID") ?? local.get("APPLE_SERVICES_ID");
-  const teamId = env?.get("APPLE_TEAM_ID") ?? local.get("EXPO_PUBLIC_APPLE_TEAM_ID");
-  const keyId = env?.get("APPLE_KEY_ID");
+  const ids: AppleIds = {
+    servicesId: env?.get("APPLE_CLIENT_ID") ?? local.get("APPLE_SERVICES_ID"),
+    teamId: env?.get("APPLE_TEAM_ID") ?? local.get("EXPO_PUBLIC_APPLE_TEAM_ID"),
+    keyId: env?.get("APPLE_KEY_ID"),
+  };
   const jwt = env?.get("APPLE_CLIENT_SECRET");
 
-  if (env === null) {
-    checks.push(
-      skip("apple", "convex-env", `Convex env unreadable on ${ctx.channel}; env checks skipped`),
-    );
-  } else if (!teamId) checks.push(warn("apple", "team-id-set", "APPLE_TEAM_ID not set"));
-  else if (!/^[A-Z0-9]{10}$/.test(teamId))
-    checks.push(warn("apple", "team-id-format", `APPLE_TEAM_ID='${teamId}' not 10 alphanumeric`));
+  const jwtChecks =
+    env === null
+      ? []
+      : jwt
+        ? appleJwtChecks(jwt, ids)
+        : [skip("apple", "jwt-decode", "APPLE_CLIENT_SECRET not set (Apple Sign In disabled)")];
 
-  if (keyId && !/^[A-Z0-9]{10}$/.test(keyId))
-    checks.push(warn("apple", "key-id-format", `APPLE_KEY_ID='${keyId}' not 10 alphanumeric`));
+  return [
+    ...appleIdFormatChecks(env, ids, ctx.channel),
+    ...jwtChecks,
+    ...(await ascKeyChecks(ctx.ascCreds, ids.servicesId)),
+  ];
+}
 
-  if (servicesId && !/^[a-z0-9.-]+$/i.test(servicesId))
-    checks.push(warn("apple", "services-id-format", `APPLE_SERVICES_ID looks malformed`));
+type EasEnvName = "production" | "preview" | "development";
+const EAS_ENVS: readonly EasEnvName[] = ["production", "preview", "development"];
 
-  if (env === null) {
-  } else if (jwt) {
-    const decoded = decodeJwt(jwt);
-    if (!decoded) {
-      checks.push(fail("apple", "jwt-decode", "APPLE_CLIENT_SECRET is not a valid JWT"));
-    } else {
-      const { header, payload } = decoded;
-      if (header.alg !== "ES256")
-        checks.push(warn("apple", "jwt-alg", `JWT alg=${header.alg} (expected ES256)`));
-      if (payload.aud !== "https://appleid.apple.com")
-        checks.push(
-          warn("apple", "jwt-aud", `JWT aud=${payload.aud} (expected https://appleid.apple.com)`),
-        );
-      const exp = typeof payload.exp === "number" ? payload.exp : 0;
-      const now = Math.floor(Date.now() / 1000);
-      const daysLeft = Math.floor((exp - now) / 86_400);
-      if (exp <= now) checks.push(fail("apple", "jwt-expiry", `JWT expired ${-daysLeft}d ago`));
-      else if (daysLeft < 30)
-        checks.push(warn("apple", "jwt-expiry", `JWT expires in ${daysLeft}d (rotate soon)`));
-      else checks.push(ok("apple", "jwt-expiry", `${daysLeft}d remaining`));
+async function easSignInCheck(): Promise<{ signedIn: boolean; check: Check }> {
+  try {
+    const who = await easWhoami();
+    return {
+      signedIn: !!who,
+      check: who
+        ? ok("eas", "signed-in", who)
+        : warn("eas", "signed-in", "not signed in (run `npx eas-cli login`)"),
+    };
+  } catch {
+    return { signedIn: false, check: skip("eas", "signed-in", "eas CLI not available") };
+  }
+}
 
-      if (header.kid && keyId && header.kid !== keyId)
-        checks.push(
-          fail(
-            "apple",
-            "jwt-kid-matches",
-            `JWT.header.kid='${header.kid}' ≠ APPLE_KEY_ID='${keyId}'`,
-          ),
-        );
-      else if (header.kid && keyId)
-        checks.push(ok("apple", "jwt-kid-matches", header.kid as string));
-
-      if (payload.iss && teamId && payload.iss !== teamId)
-        checks.push(
-          fail("apple", "jwt-iss-matches", `JWT.iss='${payload.iss}' ≠ APPLE_TEAM_ID='${teamId}'`),
-        );
-      else if (payload.iss && teamId)
-        checks.push(ok("apple", "jwt-iss-matches", payload.iss as string));
-
-      if (payload.sub && servicesId && payload.sub !== servicesId)
-        checks.push(
-          fail(
-            "apple",
-            "jwt-sub-matches",
-            `JWT.sub='${payload.sub}' ≠ APPLE_SERVICES_ID='${servicesId}'`,
-          ),
-        );
-      else if (payload.sub && servicesId)
-        checks.push(ok("apple", "jwt-sub-matches", payload.sub as string));
-    }
-  } else {
-    checks.push(
-      skip("apple", "jwt-decode", "APPLE_CLIENT_SECRET not set (Apple Sign In disabled)"),
+function easProjectIdCheck(projectId: string | null, provisioned: boolean): Check {
+  if (projectId) return ok("eas", "project-id", projectId);
+  if (provisioned) {
+    return warn(
+      "eas",
+      "project-id",
+      "EAS env is provisioned but projectId is unresolved",
+      "set EAS_PROJECT_ID in .env.local (app.json is intentionally stubbed)",
     );
   }
+  return fail("eas", "project-id", "no projectId in app.json, EAS_PROJECT_ID env, or .env.local");
+}
 
-  if (ctx.ascCreds) {
-    const v = await ascValidate(ctx.ascCreds);
-    if (v.ok) {
-      checks.push(ok("apple", "asc-key-valid", `${v.appCount} app${v.appCount === 1 ? "" : "s"}`));
-      const client = makeAscClient(ctx.ascCreds);
-
-      if (servicesId) {
-        try {
-          const matches = await client.bundleIds.list({ identifier: servicesId });
-          if (matches.length > 0)
-            checks.push(ok("apple", "services-id-exists", `${servicesId} found in ASC`));
-          else
-            checks.push(
-              fail(
-                "apple",
-                "services-id-exists",
-                `${servicesId} not found in App Store Connect`,
-                "run `npx vexpo apple services-id` to provision it",
-              ),
-            );
-        } catch (e) {
-          checks.push(
-            warn(
-              "apple",
-              "services-id-lookup",
-              `ASC lookup failed: ${e instanceof Error ? e.message : e}`,
-            ),
-          );
-        }
-      }
-    } else {
-      checks.push(fail("apple", "asc-key-valid", v.reason));
+async function easProjectInfoChecks(projectId: string | null, signedIn: boolean): Promise<Check[]> {
+  if (!projectId) return [];
+  try {
+    const info = await easProjectInfo();
+    if (info && info.id === projectId) return [ok("eas", "project-info", info.fullName)];
+    if (info) {
+      return [
+        fail(
+          "eas",
+          "project-info",
+          `local projectId (${projectId}) doesn't match resolved project (${info.id})`,
+          "run `eas init` to re-link (or `vexpo full`)",
+        ),
+      ];
     }
-  } else {
-    checks.push(
-      skip("apple", "asc-key-valid", "no cached ASC creds (run `npx vexpo apple asc-key`)"),
-    );
+    if (!signedIn) return [skip("eas", "project-info", "not signed in")];
+    return [
+      warn("eas", "project-info", "eas project:info failed (project deleted or transferred?)"),
+    ];
+  } catch {
+    return [skip("eas", "project-info", "eas-cli not available")];
   }
+}
 
-  return checks;
+function convexUrlDriftChecks(env: EasEnvName, expected?: string, actual?: string): Check[] {
+  if (!expected || !actual) return [];
+  const expSlug = deploymentSlugFromHost(hostnameOf(expected) ?? "");
+  const actSlug = deploymentSlugFromHost(hostnameOf(actual) ?? "");
+  if (!expSlug || !actSlug) return [];
+  if (expSlug === actSlug) return [ok("eas", `convex-url-${env}`, `points at ${actSlug}`)];
+  return [
+    fail(
+      "eas",
+      `convex-url-${env}`,
+      `EAS points at ${actSlug}, local at ${expSlug}`,
+      "run `vexpo env push` + `vexpo env convex-key` to repoint EAS at the active deployment",
+    ),
+  ];
+}
+
+function rotationSecretChecks(list: Map<string, string>): Check[] {
+  const missing = [
+    "CONVEX_DEPLOY_KEY",
+    "APPLE_P8_PRIVATE_KEY",
+    "APPLE_TEAM_ID",
+    "APPLE_KEY_ID",
+    "APPLE_SERVICES_ID",
+  ].filter((k) => !list.has(k));
+  if (missing.length === 0) return [ok("eas", "rotation-secrets", "all 5 present (production)")];
+  return [
+    warn(
+      "eas",
+      "rotation-secrets",
+      `missing ${missing.join(", ")}`,
+      "set with `eas env:create --visibility secret --environment production`",
+    ),
+  ];
+}
+
+function easEnvChecks(
+  env: EasEnvName,
+  list: Map<string, string> | null,
+  ctx: VerifyContext,
+): Check[] {
+  if (!list) return [skip("eas", `env-${env}`, "eas env:list unavailable")];
+
+  const missing = ["EXPO_PUBLIC_CONVEX_URL", "EXPO_PUBLIC_APP_BUNDLE_ID"].filter(
+    (k) => !list.has(k),
+  );
+  const presence =
+    missing.length === 0
+      ? ok("eas", `env-${env}`, "required vars present")
+      : warn(
+          "eas",
+          `env-${env}`,
+          `missing ${missing.join(", ")}`,
+          "run `npx vexpo full` to init EAS + mirror env",
+        );
+
+  const local = env === "development" ? ctx.envLocal : ctx.envProd;
+  return [
+    presence,
+    ...convexUrlDriftChecks(
+      env,
+      local.get("EXPO_PUBLIC_CONVEX_URL"),
+      list.get("EXPO_PUBLIC_CONVEX_URL"),
+    ),
+    ...(env === "production" ? rotationSecretChecks(list) : []),
+  ];
+}
+
+function ascSubmitIdChecks(): Check[] {
+  if (!existsSync("eas.json")) return [];
+  const missing = submitProfilesMissingAscAppId(readFileSync("eas.json", "utf8"));
+  if (missing.length === 0) return [ok("eas", "asc-submit-id", "submit profiles carry ascAppId")];
+  return [
+    warn(
+      "eas",
+      "asc-submit-id",
+      `submit profile${plural(missing.length)} ${missing.join(", ")} missing ascAppId`,
+      "run `vexpo asc connect` to write it; non-interactive `eas submit` (CI) fails without it",
+    ),
+  ];
+}
+
+async function ascIntegrationChecks(): Promise<Check[]> {
+  try {
+    const status = await ascStatus();
+    if (status.status !== "connected") {
+      return [
+        warn(
+          "eas",
+          "asc-integration",
+          `not connected (${status.status})`,
+          "run `vexpo asc connect` in a terminal; if the key picker shows only stale keys, its create-or-upload entry mints the EAS-managed key (a second key alongside eas.json's is by design)",
+        ),
+      ];
+    }
+    return [
+      ok("eas", "asc-integration", status.appStoreConnectApp?.bundleIdentifier ?? "connected"),
+      ...ascSubmitIdChecks(),
+    ];
+  } catch {
+    return [skip("eas", "asc-integration", "eas integrations:asc:status unavailable")];
+  }
 }
 
 async function verifyEas(ctx: VerifyContext): Promise<Check[]> {
-  const checks: Check[] = [];
-
   let projectId: string | null = null;
   try {
     projectId = await resolveProjectId();
@@ -531,266 +705,122 @@ async function verifyEas(ctx: VerifyContext): Promise<Check[]> {
   if (!projectId) {
     const rev = convexEnvFor(ctx)?.get("REQUIRE_EMAIL_VERIFICATION");
     if (!rev || rev === "false") {
-      checks.push(skip("eas", "project-id", "lite mode (run `npx vexpo full` to init EAS)"));
-      return checks;
+      return [skip("eas", "project-id", "lite mode (run `npx vexpo full` to init EAS)")];
     }
   }
 
-  let signedIn = false;
-  try {
-    const who = await easWhoami();
-    signedIn = !!who;
-    checks.push(
-      who
-        ? ok("eas", "signed-in", who)
-        : warn("eas", "signed-in", "not signed in (run `npx eas-cli login`)"),
-    );
-  } catch {
-    checks.push(skip("eas", "signed-in", "eas CLI not available"));
-  }
+  const signIn = await easSignInCheck();
+  const checks: Check[] = [signIn.check];
 
-  const envNames = ["production", "preview", "development"] as const;
-  const envMaps = new Map<(typeof envNames)[number], Map<string, string> | null>();
-  for (const e of envNames) envMaps.set(e, await easEnvList(e));
+  const envMaps = new Map<EasEnvName, Map<string, string> | null>();
+  for (const e of EAS_ENVS) envMaps.set(e, await easEnvList(e));
   const provisioned = [...envMaps.values()].some((m) => m !== null && m.size > 0);
 
-  if (projectId) {
-    checks.push(ok("eas", "project-id", projectId));
-  } else if (provisioned) {
-    checks.push(
-      warn(
-        "eas",
-        "project-id",
-        "EAS env is provisioned but projectId is unresolved",
-        "set EAS_PROJECT_ID in .env.local (app.json is intentionally stubbed)",
-      ),
-    );
-  } else {
-    checks.push(
-      fail("eas", "project-id", "no projectId in app.json, EAS_PROJECT_ID env, or .env.local"),
-    );
-    return checks;
-  }
+  const idCheck = easProjectIdCheck(projectId, provisioned);
+  checks.push(idCheck);
+  if (idCheck.severity === "fail") return checks;
 
-  if (projectId) {
-    try {
-      const info = await easProjectInfo();
-      if (info && info.id === projectId) checks.push(ok("eas", "project-info", info.fullName));
-      else if (info)
-        checks.push(
-          fail(
-            "eas",
-            "project-info",
-            `local projectId (${projectId}) doesn't match resolved project (${info.id})`,
-            "run `eas init` to re-link (or `vexpo full`)",
-          ),
-        );
-      else if (!signedIn) checks.push(skip("eas", "project-info", "not signed in"));
-      else
-        checks.push(
-          warn("eas", "project-info", "eas project:info failed (project deleted or transferred?)"),
-        );
-    } catch {
-      checks.push(skip("eas", "project-info", "eas-cli not available"));
-    }
-  }
-
-  for (const env of envNames) {
-    const list = envMaps.get(env) ?? null;
-    if (!list) {
-      checks.push(skip("eas", `env-${env}`, "eas env:list unavailable"));
-      continue;
-    }
-    const required = ["EXPO_PUBLIC_CONVEX_URL", "EXPO_PUBLIC_APP_BUNDLE_ID"];
-    const missing = required.filter((k) => !list.has(k));
-    if (missing.length === 0) checks.push(ok("eas", `env-${env}`, "required vars present"));
-    else
-      checks.push(
-        warn(
-          "eas",
-          `env-${env}`,
-          `missing ${missing.join(", ")}`,
-          "run `npx vexpo full` to init EAS + mirror env",
-        ),
-      );
-
-    const expected = (env === "development" ? ctx.envLocal : ctx.envProd).get(
-      "EXPO_PUBLIC_CONVEX_URL",
-    );
-    const actual = list.get("EXPO_PUBLIC_CONVEX_URL");
-    if (expected && actual) {
-      const expSlug = deploymentSlugFromHost(hostnameOf(expected) ?? "");
-      const actSlug = deploymentSlugFromHost(hostnameOf(actual) ?? "");
-      if (expSlug && actSlug && expSlug !== actSlug) {
-        checks.push(
-          fail(
-            "eas",
-            `convex-url-${env}`,
-            `EAS points at ${actSlug}, local at ${expSlug}`,
-            "run `vexpo env push` + `vexpo env convex-key` to repoint EAS at the active deployment",
-          ),
-        );
-      } else if (expSlug && actSlug) {
-        checks.push(ok("eas", `convex-url-${env}`, `points at ${actSlug}`));
-      }
-    }
-
-    if (env === "production") {
-      const rotationSecrets = [
-        "CONVEX_DEPLOY_KEY",
-        "APPLE_P8_PRIVATE_KEY",
-        "APPLE_TEAM_ID",
-        "APPLE_KEY_ID",
-        "APPLE_SERVICES_ID",
-      ];
-      const missingRotation = rotationSecrets.filter((k) => !list.has(k));
-      if (missingRotation.length === 0)
-        checks.push(ok("eas", "rotation-secrets", "all 5 present (production)"));
-      else
-        checks.push(
-          warn(
-            "eas",
-            "rotation-secrets",
-            `missing ${missingRotation.join(", ")}`,
-            "set with `eas env:create --visibility secret --environment production`",
-          ),
-        );
-    }
-  }
-
-  try {
-    const status = await ascStatus();
-    if (status.status === "connected") {
-      checks.push(
-        ok("eas", "asc-integration", status.appStoreConnectApp?.bundleIdentifier ?? "connected"),
-      );
-      const missing = existsSync("eas.json")
-        ? submitProfilesMissingAscAppId(readFileSync("eas.json", "utf8"))
-        : [];
-      if (missing.length > 0) {
-        checks.push(
-          warn(
-            "eas",
-            "asc-submit-id",
-            `submit profile${missing.length === 1 ? "" : "s"} ${missing.join(", ")} missing ascAppId`,
-            "run `vexpo asc connect` to write it; non-interactive `eas submit` (CI) fails without it",
-          ),
-        );
-      } else if (existsSync("eas.json")) {
-        checks.push(ok("eas", "asc-submit-id", "submit profiles carry ascAppId"));
-      }
-    } else {
-      checks.push(
-        warn(
-          "eas",
-          "asc-integration",
-          `not connected (${status.status})`,
-          "run `vexpo asc connect` in a terminal; if the key picker shows only stale keys, its create-or-upload entry mints the EAS-managed key (a second key alongside eas.json's is by design)",
-        ),
-      );
-    }
-  } catch {
-    checks.push(skip("eas", "asc-integration", "eas integrations:asc:status unavailable"));
-  }
-
+  checks.push(...(await easProjectInfoChecks(projectId, signIn.signedIn)));
+  for (const env of EAS_ENVS) checks.push(...easEnvChecks(env, envMaps.get(env) ?? null, ctx));
+  checks.push(...(await ascIntegrationChecks()));
   return checks;
 }
 
-function verifyCoherence(ctx: VerifyContext): Check[] {
-  const checks: Check[] = [];
-  const env = convexEnvFor(ctx) ?? new Map<string, string>();
-  const local = ctx.channel === "prod" ? ctx.envProd : ctx.envLocal;
+function matchCheck(
+  name: string,
+  message: string,
+  a: string | undefined,
+  b: string | undefined,
+): Check[] {
+  if (!a || !b) return [];
+  return a === b ? [ok("coherence", name, a)] : [fail("coherence", name, message)];
+}
 
+function bundleIdChecks(
+  ctx: VerifyContext,
+  local: Map<string, string>,
+  env: Map<string, string>,
+): Check[] {
   const expoBundle = local.get("EXPO_PUBLIC_APP_BUNDLE_ID");
   const convexBundle = env.get("APP_BUNDLE_ID");
-  if (expoBundle && convexBundle && expoBundle !== convexBundle) {
-    checks.push(
-      fail(
-        "coherence",
-        "bundle-id-match",
-        `EXPO_PUBLIC_APP_BUNDLE_ID='${expoBundle}' ≠ Convex APP_BUNDLE_ID='${convexBundle}'`,
-      ),
-    );
-  } else if (expoBundle && convexBundle) {
-    checks.push(ok("coherence", "bundle-id-match", expoBundle));
-  } else if (expoBundle && ctx.appConfig.bundleIdFallback) {
-    if (expoBundle === ctx.appConfig.bundleIdFallback)
-      checks.push(ok("coherence", "bundle-id-config", expoBundle));
-    else
-      checks.push(
-        warn(
-          "coherence",
-          "bundle-id-config",
-          `EXPO_PUBLIC_APP_BUNDLE_ID='${expoBundle}' ≠ app.config.ts fallback '${ctx.appConfig.bundleIdFallback}'`,
-        ),
-      );
-  }
+  const matched = matchCheck(
+    "bundle-id-match",
+    `EXPO_PUBLIC_APP_BUNDLE_ID='${expoBundle}' ≠ Convex APP_BUNDLE_ID='${convexBundle}'`,
+    expoBundle,
+    convexBundle,
+  );
+  if (matched.length > 0) return matched;
 
-  const expoTeam = local.get("EXPO_PUBLIC_APPLE_TEAM_ID");
-  const convexTeam = env.get("APPLE_TEAM_ID");
-  if (expoTeam && convexTeam && expoTeam !== convexTeam)
-    checks.push(
-      fail(
-        "coherence",
-        "team-id-match",
-        `EXPO_PUBLIC_APPLE_TEAM_ID='${expoTeam}' ≠ Convex APPLE_TEAM_ID='${convexTeam}'`,
-      ),
-    );
-  else if (expoTeam && convexTeam) checks.push(ok("coherence", "team-id-match", expoTeam));
+  const fallback = ctx.appConfig.bundleIdFallback;
+  if (!expoBundle || !fallback) return [];
+  if (expoBundle === fallback) return [ok("coherence", "bundle-id-config", expoBundle)];
+  return [
+    warn(
+      "coherence",
+      "bundle-id-config",
+      `EXPO_PUBLIC_APP_BUNDLE_ID='${expoBundle}' ≠ app.config.ts fallback '${fallback}'`,
+    ),
+  ];
+}
 
-  const localServices = local.get("APPLE_SERVICES_ID");
-  const convexServices = env.get("APPLE_CLIENT_ID");
-  if (localServices && convexServices && localServices !== convexServices)
-    checks.push(
-      fail(
-        "coherence",
-        "services-id-match",
-        `APPLE_SERVICES_ID='${localServices}' ≠ Convex APPLE_CLIENT_ID='${convexServices}'`,
-      ),
-    );
-  else if (localServices && convexServices)
-    checks.push(ok("coherence", "services-id-match", localServices));
-
+function siteUrlChecks(local: Map<string, string>, env: Map<string, string>): Check[] {
   const expoSite = local.get("EXPO_PUBLIC_CONVEX_SITE_URL");
   const convexSite = env.get("SITE_URL");
   const localSite = local.get("EXPO_PUBLIC_SITE_URL");
-  if (
-    expoSite &&
-    convexSite &&
-    localSite &&
-    convexSite !== localSite &&
-    !convexSite.startsWith(localSite)
-  ) {
-    checks.push(
-      warn(
-        "coherence",
-        "site-url-match",
-        `Convex SITE_URL='${convexSite}' ≠ EXPO_PUBLIC_SITE_URL='${localSite}'`,
-      ),
-    );
-  }
+  if (!expoSite || !convexSite || !localSite) return [];
+  if (convexSite === localSite || convexSite.startsWith(localSite)) return [];
+  return [
+    warn(
+      "coherence",
+      "site-url-match",
+      `Convex SITE_URL='${convexSite}' ≠ EXPO_PUBLIC_SITE_URL='${localSite}'`,
+    ),
+  ];
+}
 
-  if (ctx.appConfig.name) {
-    const convexName = env.get("APP_NAME");
-    const expected = ctx.appConfig.name;
-    const matches =
-      convexName === expected ||
-      (ctx.channel === "dev" &&
-        (convexName === `${expected} (Dev)` || convexName === `${expected} Dev`));
-    if (convexName && !matches) {
-      checks.push(
-        warn(
-          "coherence",
-          "app-name-match",
-          `APP_NAME='${convexName}' ≠ app.config.ts name='${expected}'`,
-        ),
-      );
-    } else if (convexName) {
-      checks.push(ok("coherence", "app-name-match", convexName));
-    }
-  }
+function appNameChecks(ctx: VerifyContext, env: Map<string, string>): Check[] {
+  const expected = ctx.appConfig.name;
+  const convexName = env.get("APP_NAME");
+  if (!expected || !convexName) return [];
+  const matches =
+    convexName === expected ||
+    (ctx.channel === "dev" &&
+      (convexName === `${expected} (Dev)` || convexName === `${expected} Dev`));
+  if (matches) return [ok("coherence", "app-name-match", convexName)];
+  return [
+    warn(
+      "coherence",
+      "app-name-match",
+      `APP_NAME='${convexName}' ≠ app.config.ts name='${expected}'`,
+    ),
+  ];
+}
 
-  return checks;
+function verifyCoherence(ctx: VerifyContext): Check[] {
+  const env = convexEnvFor(ctx) ?? new Map<string, string>();
+  const local = ctx.channel === "prod" ? ctx.envProd : ctx.envLocal;
+  const expoTeam = local.get("EXPO_PUBLIC_APPLE_TEAM_ID");
+  const convexTeam = env.get("APPLE_TEAM_ID");
+  const localServices = local.get("APPLE_SERVICES_ID");
+  const convexServices = env.get("APPLE_CLIENT_ID");
+
+  return [
+    ...bundleIdChecks(ctx, local, env),
+    ...matchCheck(
+      "team-id-match",
+      `EXPO_PUBLIC_APPLE_TEAM_ID='${expoTeam}' ≠ Convex APPLE_TEAM_ID='${convexTeam}'`,
+      expoTeam,
+      convexTeam,
+    ),
+    ...matchCheck(
+      "services-id-match",
+      `APPLE_SERVICES_ID='${localServices}' ≠ Convex APPLE_CLIENT_ID='${convexServices}'`,
+      localServices,
+      convexServices,
+    ),
+    ...siteUrlChecks(local, env),
+    ...appNameChecks(ctx, env),
+  ];
 }
 
 function verifyFiles(ctx: VerifyContext): Check[] {
@@ -816,7 +846,7 @@ function verifyFiles(ctx: VerifyContext): Check[] {
       warn(
         "files",
         `${sourceName}-keys`,
-        `missing ${missing.length} key${missing.length === 1 ? "" : "s"}`,
+        `missing ${missing.length} key${plural(missing.length)}`,
         missing.join(", "),
       ),
     );
@@ -824,11 +854,7 @@ function verifyFiles(ctx: VerifyContext): Check[] {
 }
 
 export async function readContext(channel: Channel): Promise<VerifyContext> {
-  const prodEnvFile = existsSync(".env.prod")
-    ? ".env.prod"
-    : existsSync(".env.production")
-      ? ".env.production"
-      : undefined;
+  const prodEnvFile = (await findProdEnvFile()) ?? undefined;
   const [envLocal, envProd, convexEnv, convexProdEnv, appConfigFacts, ascCreds] = await Promise.all(
     [
       readEnvFile(".env.local"),

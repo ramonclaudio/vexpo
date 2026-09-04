@@ -30,6 +30,9 @@ export const yep = (m: string): void => line(`  ${YELLOW}!!${RESET}   ${m}`);
 export const bad = (m: string): void => line(`  ${RED}xx${RESET}   ${RED}${m}${RESET}`);
 export const note = (m: string): void => line(`       ${DIM}${m}${RESET}`);
 
+export const errText = (err: unknown): string => (err instanceof Error ? err.message : String(err));
+export const plural = (n: number): string => (n === 1 ? "" : "s");
+
 function stringWidth(s: string): number {
   return [...s].length;
 }
@@ -72,6 +75,19 @@ async function openUrlExternal(url: string): Promise<void> {
   spawn(cmd, { stdin: "ignore", stdout: "ignore", stderr: "ignore" });
 }
 
+async function tryOpen(input: string, urls: { url: string }[]): Promise<boolean> {
+  if (urls.length === 0) return false;
+  if (input === "open") {
+    await openUrlExternal(urls[0].url);
+    return true;
+  }
+  if (!input.startsWith("open ")) return false;
+  const target = urls[parseInt(input.slice(5), 10) - 1];
+  if (!target) return false;
+  await openUrlExternal(target.url);
+  return true;
+}
+
 export async function helpAndWait(opts: {
   body?: string;
   urls: { label: string; url: string }[];
@@ -93,18 +109,7 @@ export async function helpAndWait(opts: {
       .toLowerCase();
     if (!input) return "ready";
     if (input === (opts.skipLabel ?? "skip") && opts.allowSkip) return "skip";
-    if (input === "open" && opts.urls.length > 0) {
-      await openUrlExternal(opts.urls[0].url);
-      continue;
-    }
-    if (input.startsWith("open ") && opts.urls.length > 0) {
-      const idx = parseInt(input.slice(5), 10);
-      const target = opts.urls[idx - 1];
-      if (target) {
-        await openUrlExternal(target.url);
-        continue;
-      }
-    }
+    if (await tryOpen(input, opts.urls)) continue;
     yep("press Enter, type 'open' to launch the URL, or 'skip' to bypass");
   }
 }

@@ -104,3 +104,15 @@ export function deploymentRefFromDeployKey(key: string | undefined): string | un
   const m = /^((?:dev|prod|preview):[^|:\s]+)\|/.exec(key);
   return m?.[1];
 }
+
+export async function recordedOrDerivedDeployment(
+  localEnv: Map<string, string>,
+  onDerived: (ref: string) => Promise<void>,
+): Promise<string | undefined> {
+  const recorded = localEnv.get("CONVEX_DEPLOYMENT");
+  if (recorded) return recorded;
+  const derived = deploymentRefFromDeployKey(localEnv.get("CONVEX_DEPLOY_KEY"));
+  if (!derived?.startsWith("dev:")) return undefined;
+  await onDerived(derived);
+  return derived;
+}

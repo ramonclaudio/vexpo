@@ -1,6 +1,7 @@
 import { access, readFile, rename, stat, unlink, writeFile } from "node:fs/promises";
 
 import { fileExists } from "./fs.ts";
+import { errText } from "./output.ts";
 
 export const STATE_FILE = ".setup-state.json";
 const AUDIT_CAP = 50;
@@ -55,26 +56,21 @@ const empty = (): SetupState => ({
   audit: [],
 });
 
-export async function load(): Promise<SetupState> {
-  if (!(await fileExists(STATE_FILE))) return empty();
+async function readStateJson(): Promise<unknown> {
   try {
     const s = await stat(STATE_FILE);
     if (s.isDirectory()) throw new Error(`${STATE_FILE} is a directory, not a file`);
   } catch (err) {
     if ((err as { code?: string }).code !== "ENOENT") throw err;
   }
-  let raw: unknown;
   try {
-    raw = JSON.parse(await readFile(STATE_FILE, "utf8"));
+    return JSON.parse(await readFile(STATE_FILE, "utf8"));
   } catch (err) {
-    throw new Error(`${STATE_FILE} is invalid JSON: ${err instanceof Error ? err.message : err}`, {
-      cause: err,
-    });
+    throw new Error(`${STATE_FILE} is invalid JSON: ${errText(err)}`, { cause: err });
   }
-  if (raw === null || raw === undefined) throw new Error(`${STATE_FILE} is empty or null`);
-  if (Array.isArray(raw)) throw new Error(`${STATE_FILE} is an array, expected object`);
-  if (typeof raw !== "object") throw new Error(`${STATE_FILE} is not an object`);
-  const parsed = raw as Partial<SetupState>;
+}
+
+function normalizeState(parsed: Partial<SetupState>): SetupState {
   const now = new Date().toISOString();
   return {
     createdAt: typeof parsed.createdAt === "string" ? parsed.createdAt : now,
@@ -83,6 +79,15 @@ export async function load(): Promise<SetupState> {
     steps: parsed.steps && typeof parsed.steps === "object" ? parsed.steps : {},
     audit: Array.isArray(parsed.audit) ? parsed.audit : [],
   };
+}
+
+export async function load(): Promise<SetupState> {
+  if (!(await fileExists(STATE_FILE))) return empty();
+  const raw = await readStateJson();
+  if (raw === null || raw === undefined) throw new Error(`${STATE_FILE} is empty or null`);
+  if (Array.isArray(raw)) throw new Error(`${STATE_FILE} is an array, expected object`);
+  if (typeof raw !== "object") throw new Error(`${STATE_FILE} is not an object`);
+  return normalizeState(raw as Partial<SetupState>);
 }
 
 export async function save(state: SetupState): Promise<void> {

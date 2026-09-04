@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 
-import { BOLD, RED, RESET, YELLOW, bad, line, ok, section } from "./output.ts";
+import { BOLD, RED, RESET, YELLOW, bad, errText, line, ok, section } from "./output.ts";
 
 export type LintIssue = { severity: "error" | "warning"; message: string };
 
@@ -13,7 +13,7 @@ export function runLint(
   try {
     parsed = JSON.parse(readFileSync(filePath, "utf8"));
   } catch (err) {
-    bad(`failed to read ${filePath}: ${err instanceof Error ? err.message : String(err)}`);
+    bad(`failed to read ${filePath}: ${errText(err)}`);
     return 1;
   }
   const issues = linter(parsed);
