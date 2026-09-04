@@ -47,14 +47,15 @@ if (!jdk) {
   process.exit(1);
 }
 
-const appId =
-  process.env.MAESTRO_APP_ID ??
-  envValue(resolve(PROJECT, ".env.local"), "EXPO_PUBLIC_APP_BUNDLE_ID");
+const baseId = envValue(resolve(PROJECT, ".env.local"), "EXPO_PUBLIC_APP_BUNDLE_ID");
+const appId = process.env.MAESTRO_APP_ID ?? (baseId ? `${baseId}.dev` : undefined);
 if (!appId) {
   console.error(
     "MAESTRO_APP_ID is unset and EXPO_PUBLIC_APP_BUNDLE_ID is not in .env.local, so the\n" +
       "flows have no appId to launch. Copy .env.example to .env.local, or export\n" +
-      "MAESTRO_APP_ID=<bundle id>.",
+      "MAESTRO_APP_ID=<bundle id>.\n\n" +
+      "The local build is the development variant, so its id is <bundle id>.dev. A build\n" +
+      "from the preview or production profile uses the id without the suffix.",
   );
   process.exit(1);
 }

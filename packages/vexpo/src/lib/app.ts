@@ -43,7 +43,7 @@ export async function appName(): Promise<string> {
 export async function scheme(): Promise<string> {
   const text = await readTextOrNull("app.config.ts");
   if (!text) return "app";
-  return /scheme:\s*["']([^"']+)["']/.exec(text)?.[1] ?? "app";
+  return /const SCHEME = ["']([^"']+)["'];/.exec(text)?.[1] ?? "app";
 }
 
 export async function bundleIdFallback(): Promise<string | null> {

@@ -11,6 +11,8 @@ const pkg = JSON.parse(readFileSync(resolve(process.cwd(), "package.json"), "utf
 const IS_DEV = process.env.APP_VARIANT === "development";
 
 const BUNDLE_ID = process.env.EXPO_PUBLIC_APP_BUNDLE_ID ?? `com.example.${pkg.name}`;
+const APP_NAME = "Vexpo";
+const SCHEME = "vexpo";
 const APPLE_TEAM_ID = process.env.EXPO_PUBLIC_APPLE_TEAM_ID ?? "ABCDE12345";
 const EXPO_OWNER = process.env.EXPO_PUBLIC_EXPO_OWNER ?? undefined;
 
@@ -61,7 +63,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
 
   return {
     ...config,
-    name: IS_DEV ? "Vexpo (Dev)" : "Vexpo",
+    name: IS_DEV ? `${APP_NAME} (Dev)` : APP_NAME,
     slug: "vexpo",
     description: "",
     version: pkg.version,
@@ -70,7 +72,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     backgroundColor: "#0A0A0A",
     primaryColor: "#171717",
     platforms: ["ios"],
-    scheme: "vexpo",
+    scheme: IS_DEV ? `${SCHEME}dev` : SCHEME,
     icon: "./assets/icon.png",
     ...(EXPO_OWNER ? { owner: EXPO_OWNER } : {}),
     runtimeVersion: { policy: "fingerprint" },
@@ -97,7 +99,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     },
     ios: {
       supportsTablet: false,
-      bundleIdentifier: BUNDLE_ID,
+      bundleIdentifier: IS_DEV ? `${BUNDLE_ID}.dev` : BUNDLE_ID,
       appleTeamId: APPLE_TEAM_ID,
       userInterfaceStyle: "automatic",
       backgroundColor: "#0A0A0A",

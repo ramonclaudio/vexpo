@@ -6,6 +6,9 @@
   "build": {
     "development": {
       "developmentClient": true,
+      "env": {
+        "APP_VARIANT": "development"
+      },
       "distribution": "internal",
       "channel": "development",
       "autoIncrement": true,

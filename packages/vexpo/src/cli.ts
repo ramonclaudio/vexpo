@@ -257,7 +257,13 @@ apple
     "Detect SIWA Services ID via ASC API + attach `APPLE_ID_AUTH` capability. Walks the user through manual creation in the Apple Developer Portal if missing (Apple removed the create-via-API path in 2025). No eas-cli equivalent.",
   )
   .option("--services-id <id>", "override Services ID")
-  .action((options: { servicesId?: string }) => exitWith(runServicesId(options)));
+  .option(
+    "--bundle-id <id>",
+    "register a bundle id other than .env.local's, e.g. <id>.dev for the development variant",
+  )
+  .action((options: { servicesId?: string; bundleId?: string }) =>
+    exitWith(runServicesId(options)),
+  );
 
 apple
   .command("jwt")

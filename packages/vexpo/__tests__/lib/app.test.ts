@@ -92,7 +92,7 @@ describe("appName", () => {
 
 describe("scheme", () => {
   it("extracts the scheme from app.config.ts", async () => {
-    await writeFile("app.config.ts", `export default { scheme: "myapp" };`);
+    await writeFile("app.config.ts", `const SCHEME = "myapp";`);
     expect(await scheme()).toBe("myapp");
   });
 
@@ -106,7 +106,7 @@ describe("scheme", () => {
   });
 
   it("matches single quotes", async () => {
-    await writeFile("app.config.ts", `export default { scheme: 'singlequoted' };`);
+    await writeFile("app.config.ts", `const SCHEME = 'singlequoted';`);
     expect(await scheme()).toBe("singlequoted");
   });
 });

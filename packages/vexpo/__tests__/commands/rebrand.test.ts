@@ -24,10 +24,12 @@ const fromFileWrites: string[] = [];
 
 const APP_CONFIG = `const pkg = { name: "vexpo" };
 const BUNDLE_ID = process.env.EXPO_PUBLIC_APP_BUNDLE_ID ?? \`com.example.\${pkg.name}\`;
+const APP_NAME = "Vexpo";
+const SCHEME = "vexpo";
 export default {
-  name: IS_DEV ? "Vexpo (Dev)" : "Vexpo",
+  name: IS_DEV ? \`\${APP_NAME} (Dev)\` : APP_NAME,
   slug: "vexpo",
-  scheme: "vexpo",
+  scheme: IS_DEV ? \`\${SCHEME}dev\` : SCHEME,
 };
 `;
 
@@ -59,7 +61,8 @@ const CONVEX_ENV = `export const env = {
 
 const ENV_EXAMPLE = `# Reverse-DNS bundle id, e.g. com.you.vexpo.
 EXPO_PUBLIC_APP_BUNDLE_ID=
-# Toggles \`name\` to "Vexpo (Dev)" so dev and prod can install side-by-side.
+# Appends .dev to the bundle id and the scheme, so a dev build and a TestFlight
+# build sit on the same phone. You do not set this by hand.
 # APP_VARIANT=development
 `;
 
@@ -129,7 +132,7 @@ describe("runRebrand non-TTY", () => {
 
     const cfg = await readFile("app.config.ts", "utf8");
     expect(cfg).toContain(`?? "com.acme.foobar"`);
-    expect(cfg).toContain(`name: IS_DEV ? "Foobar (Dev)" : "Foobar"`);
+    expect(cfg).toContain(`const APP_NAME = "Foobar"`);
     expect(cfg).toContain(`slug: "foobar"`);
 
     const pkg = JSON.parse(await readFile("package.json", "utf8")) as { name: string };
@@ -223,8 +226,8 @@ describe("runRebrand rewrite correctness", () => {
     ).toBe(0);
 
     const cfg = await readFile("app.config.ts", "utf8");
-    expect(cfg).toContain(`name: IS_DEV ? "Second App (Dev)" : "Second App",`);
-    expect(cfg).toContain(`scheme: "second",`);
+    expect(cfg).toContain(`const APP_NAME = "Second App";`);
+    expect(cfg).toContain(`const SCHEME = "second";`);
     expect(cfg).not.toContain("Smoke");
   });
 
@@ -235,19 +238,14 @@ describe("runRebrand rewrite correctness", () => {
     const cfg = await readFile("app.config.ts", "utf8");
     await writeFile(
       "app.config.ts",
-      cfg.replace(
-        `name: IS_DEV ? "E2E \\"Smoke\\" App (Dev)" : "E2E \\"Smoke\\" App",`,
-        `name: IS_DEV ? 'E2E "Smoke" App (Dev)' : 'E2E "Smoke" App',`,
-      ),
+      cfg.replace(`const APP_NAME = "E2E \\"Smoke\\" App";`, `const APP_NAME = 'E2E "Smoke" App';`),
     );
     expect((await readFile("app.config.ts", "utf8")).includes("'E2E")).toBe(true);
 
     expect(
       await runRebrand({ ...FLAGS, appName: "Third App", scheme: "third", force: true, yes: true }),
     ).toBe(0);
-    expect(await readFile("app.config.ts", "utf8")).toContain(
-      `name: IS_DEV ? "Third App (Dev)" : "Third App",`,
-    );
+    expect(await readFile("app.config.ts", "utf8")).toContain(`const APP_NAME = "Third App";`);
   });
 
   it("inserts values containing $& verbatim instead of expanding replacement patterns", async () => {
@@ -257,7 +255,7 @@ describe("runRebrand rewrite correctness", () => {
     expect(exit).toBe(0);
 
     const cfg = await readFile("app.config.ts", "utf8");
-    expect(cfg).toContain(`name: IS_DEV ? "Foo$&Bar (Dev)" : "Foo$&Bar"`);
+    expect(cfg).toContain(`const APP_NAME = "Foo$&Bar"`);
   });
 
   it("escapes a double-quote in the app name instead of corrupting the literal", async () => {
@@ -267,9 +265,7 @@ describe("runRebrand rewrite correctness", () => {
     expect(await runRebrand({ ...FLAGS, appName: name, yes: true })).toBe(0);
 
     const cfg = await readFile("app.config.ts", "utf8");
-    expect(cfg).toContain(
-      `name: IS_DEV ? ${JSON.stringify(`${name} (Dev)`)} : ${JSON.stringify(name)},`,
-    );
+    expect(cfg).toContain(`const APP_NAME = ${JSON.stringify(name)};`);
     expect(cfg).not.toContain(`"Foo "Bar" (Dev)"`);
   });
 
@@ -280,9 +276,7 @@ describe("runRebrand rewrite correctness", () => {
     expect(await runRebrand({ ...FLAGS, appName: name, yes: true })).toBe(0);
 
     const cfg = await readFile("app.config.ts", "utf8");
-    expect(cfg).toContain(
-      `name: IS_DEV ? ${JSON.stringify(`${name} (Dev)`)} : ${JSON.stringify(name)},`,
-    );
+    expect(cfg).toContain(`const APP_NAME = ${JSON.stringify(name)};`);
   });
 });
 
@@ -304,7 +298,6 @@ describe("runRebrand secondary targets", () => {
 
     const env = await readFile(".env.example", "utf8");
     expect(env).toContain("e.g. com.acme.foobar.");
-    expect(env).toContain(`"Foobar (Dev)"`);
     expect(env).not.toContain("vexpo");
   });
 

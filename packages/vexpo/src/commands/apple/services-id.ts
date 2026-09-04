@@ -25,6 +25,7 @@ import { recordStep } from "../../lib/state.ts";
 
 export type ServicesIdOptions = {
   servicesId?: string;
+  bundleId?: string;
 };
 
 async function findOrCreateBundleId(
@@ -89,7 +90,7 @@ async function findServicesIdOrPromptManual(
 export async function runServicesId(options: ServicesIdOptions): Promise<number> {
   section("Apple Sign In Services ID");
 
-  const bundleId = await requireBundleId();
+  const bundleId = options.bundleId ?? (await requireBundleId());
   if (!bundleId) return 1;
   ok(`bundle id: ${bundleId}`);
 

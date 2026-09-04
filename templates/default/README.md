@@ -230,6 +230,22 @@ npm run upgrade                expo install expo@next && expo install --fix
 npm run upgrade:stable         expo install expo@latest && expo install --fix
 ```
 
+### Dev and prod side by side
+
+The dev-facing scripts and the EAS `development` profile set `APP_VARIANT=development`. That appends `.dev` to the bundle id and the URL scheme and adds `(Dev)` to the display name, so a dev build and a TestFlight build install on the same phone without overwriting each other and without fighting over the same deep links. `preview` and `production` builds keep the plain identity.
+
+Two things follow from the dev build having its own bundle id.
+
+`npx vexpo convex` and `npx vexpo rebrand` write `APP_BUNDLE_ID=<your id>.dev` to the dev Convex deployment, because that deployment only ever serves the dev build. Prod gets the plain id from `.env.prod` through `npx vexpo env push`.
+
+Apple treats `<your id>.dev` as its own App ID, so Sign In with Apple on the dev build needs it registered:
+
+```bash
+npx vexpo apple services-id --bundle-id <your id>.dev
+```
+
+Skip that if you only sign in with Apple on TestFlight and production builds.
+
 ### Bundle size
 
 `npm run atlas` starts Metro with [Atlas](https://github.com/expo/atlas) on and serves the bundle explorer at `/_expo/atlas`. It runs in production mode, so the sizes match what ships instead of what the dev bundle looks like. `npm run atlas:export` writes `.expo/atlas.jsonl` and opens the same report without a running server.
