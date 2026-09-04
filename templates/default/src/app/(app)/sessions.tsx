@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Host, ScrollView, Button, Text, VStack, HStack, Spacer, Alert } from "@expo/ui/swift-ui";
 import {
   accessibilityAddTraits,
@@ -76,7 +76,7 @@ export default function SessionsScreen() {
   const [revokeError, setRevokeError] = useState(false);
   const [confirmToken, setConfirmToken] = useState<string | null>(null);
 
-  const load = async () => {
+  const load = useCallback(async () => {
     try {
       const res = await authClient.listSessions();
       if (res.error) {
@@ -96,11 +96,11 @@ export default function SessionsScreen() {
     } catch {
       setLoadError("network");
     }
-  };
+  }, []);
 
   useEffect(() => {
     load();
-  }, []);
+  }, [load]);
 
   const revoke = async (token: string) => {
     haptics.medium();

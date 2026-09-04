@@ -9,12 +9,12 @@ export function useNetwork() {
   const [settledOffline, setSettledOffline] = useState(false);
 
   useEffect(() => {
-    if (!probablyOffline) {
-      setSettledOffline(false);
-      return;
-    }
+    if (!probablyOffline) return;
     const id = setTimeout(() => setSettledOffline(true), OFFLINE_SETTLE_MS);
-    return () => clearTimeout(id);
+    return () => {
+      clearTimeout(id);
+      setSettledOffline(false);
+    };
   }, [probablyOffline]);
 
   return {
