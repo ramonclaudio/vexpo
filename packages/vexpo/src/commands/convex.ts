@@ -1,6 +1,7 @@
 import { appleTeamIdFallback, bundleIdFallback, pkgName, scheme } from "../lib/app.ts";
 import { envSet as convexEnvSet, recordedOrDerivedDeployment } from "../lib/convex-env.ts";
 import { checkToken } from "../lib/convex-management.ts";
+import { easSpawn } from "../lib/eas-cli.ts";
 import { ensureLine, readAll, removeLines } from "../lib/env-local.ts";
 import {
   BOLD,
@@ -24,6 +25,8 @@ export type ConvexOptions = {
   fresh?: boolean;
   local?: boolean;
   name?: string;
+  eas?: boolean;
+  region?: string;
 };
 
 const BUNDLE_ID_RE = /^[A-Za-z0-9.-]+$/;
@@ -39,18 +42,24 @@ export function resolveTeamIdInput(raw: string, fromConfig: string | null): Team
 }
 
 export function planConvexDev(
-  options: { local?: boolean },
+  options: { local?: boolean; eas?: boolean; region?: string },
   needsProvisioning: boolean,
   projectName: string,
   team?: string,
-): { selectLocalFirst: boolean; devArgs: string[] } {
+): { selectLocalFirst: boolean; connectArgs?: string[]; devArgs: string[] } {
   const devArgs = ["convex", "dev", "--once", "--tail-logs", "disable"];
+  if (needsProvisioning && options.eas) {
+    const connectArgs = ["integrations:convex:connect", "--project-name", projectName];
+    if (team) connectArgs.push("--team-name", team);
+    if (options.region) connectArgs.push("--region", options.region);
+    return { selectLocalFirst: false, connectArgs, devArgs };
+  }
   if (needsProvisioning) {
     devArgs.push("--configure", "new", "--project", projectName);
     if (team) devArgs.push("--team", team);
     devArgs.push("--dev-deployment", options.local ? "local" : "cloud");
   }
-  return { selectLocalFirst: !!options.local && !needsProvisioning, devArgs };
+  return { selectLocalFirst: !!options.local && !options.eas && !needsProvisioning, devArgs };
 }
 
 export function convexUrls(slug: string, local: boolean): { url: string; siteUrl: string } {
@@ -85,8 +94,49 @@ function explainDevFailure(needsProvisioning: boolean, team: string | undefined)
     return;
   }
   note('if the error above says the team "is managed by oauth:...", the');
-  note("account creates projects only through the EAS integration: run");
-  note("`npx eas-cli integrations:convex:connect`, then `npx vexpo adopt`.");
+  note("account creates projects only through the EAS integration. Rerun as");
+  note("`npx vexpo convex --eas`, which spawns it and then picks up from there.");
+}
+
+async function connectThroughEas(
+  options: ConvexOptions,
+  connectArgs: string[] | undefined,
+  projectName: string,
+): Promise<boolean> {
+  if (options.eas && options.local) {
+    bad("--eas and --local are mutually exclusive");
+    note("the EAS integration provisions a cloud deployment. Drop one of the two.");
+    return false;
+  }
+  if (!connectArgs) return true;
+  ok(`connecting Convex through EAS for '${projectName}'`);
+  note("spawning `eas integrations:convex:connect`. It prompts for a region, and");
+  note("for a team name only when it has to create the team connection.");
+  line();
+  const code = await easSpawn(connectArgs);
+  line();
+  if (code !== 0) {
+    bad(`eas integrations:convex:connect exited with code ${code}`);
+    note("it needs the app linked to EAS first. Run `npx eas-cli init`, then retry.");
+    return false;
+  }
+  note("EAS wrote CONVEX_DEPLOY_KEY to .env.local. That key wins over `--prod` and");
+  note("`--deployment-name` on every convex command, so `npm run convex:logs:prod`");
+  note("reads dev until you point the CLI at another env file. See .env.example.");
+  return await recordKeyDeployment();
+}
+
+async function recordKeyDeployment(): Promise<boolean> {
+  const env = await readAll();
+  const ref = await recordedOrDerivedDeployment(env, async (derived) => {
+    await ensureLine("CONVEX_DEPLOYMENT", derived);
+    ok(`derived CONVEX_DEPLOYMENT=${derived} from CONVEX_DEPLOY_KEY`);
+  });
+  if (ref) return true;
+  bad("no dev CONVEX_DEPLOY_KEY in .env.local after the EAS integration ran");
+  note("open the EAS dashboard and check the Convex integration finished, then");
+  note("rerun `npx vexpo convex --eas`.");
+  return false;
 }
 
 async function writeUnlessSet(
@@ -159,6 +209,8 @@ export async function runConvex(options: ConvexOptions): Promise<number> {
 
   const plan = planConvexDev(options, needsProvisioning, projectName, team);
   if (plan.selectLocalFirst && !(await selectLocalDeployment())) return 1;
+
+  if (!(await connectThroughEas(options, plan.connectArgs, projectName))) return 1;
 
   if (needsProvisioning) ok(`provisioning Convex project '${projectName}'`);
   else ok(`connecting to existing deployment ${existing}`);

@@ -121,12 +121,14 @@ To install a build without a terminal, use [Orbit](https://github.com/expo/orbit
 brew install expo-orbit
 ```
 
-One team setup needs a different route. If your Convex team is EAS-managed (created through Expo's integration), direct project creation fails with `is managed by oauth:...`, so provision through the integration instead and then adopt the deployment it made:
+One team setup needs a different route. If your Convex team is EAS-managed (created through Expo's integration), direct project creation fails with `is managed by oauth:...`. Provision through the integration instead:
 
 ```bash
-npx eas-cli integrations:convex:connect
-npx vexpo adopt
+npx eas-cli init            # if the app is not linked to EAS yet
+npx vexpo convex --eas      # add --region aws-us-east-1 to skip the region prompt
 ```
+
+That spawns `eas integrations:convex:connect`, which creates the project and writes `CONVEX_DEPLOY_KEY` and `EXPO_PUBLIC_CONVEX_URL` to `.env.local`, then carries on with the site URLs, the identity vars, and the schema push. A deploy key in `.env.local` wins over `--prod` on every convex command, so `npm run convex:logs:prod` reads dev until you point the CLI at another env file. `.env.example` has the recipe.
 
 ## Ship path
 
