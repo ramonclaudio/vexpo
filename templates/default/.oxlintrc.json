@@ -8,7 +8,7 @@
     "style": "off"
   },
   "rules": {
-    "complexity": ["error", { "max": 18 }],
+    "complexity": ["error", { "max": 16 }],
     "no-console": "off",
     "react/react-in-jsx-scope": "off",
     "react/style-prop-object": "off",

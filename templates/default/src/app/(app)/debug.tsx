@@ -196,10 +196,22 @@ function BuildSection({
   );
 }
 
+function otaValues(running: Updates["currentlyRunning"]) {
+  return {
+    channel: running.channel ?? "N/A",
+    runtime: running.runtimeVersion ?? expoRuntimeVersion ?? "N/A",
+    updateId: running.updateId?.slice(0, 8) ?? "Embedded",
+    created: running.createdAt?.toLocaleDateString() ?? "N/A",
+    source: running.isEmbeddedLaunch ? "Embedded" : "OTA Update",
+    emergencyReason: running.emergencyLaunchReason ?? "Unknown error",
+  };
+}
+
 function OtaStatusCard({ updates }: { updates: Updates }) {
   const colors = useColors();
   const dfont = useDynamicFont();
   const running = updates.currentlyRunning;
+  const values = otaValues(running);
   const error = updates.checkError ?? updates.downloadError;
   return (
     <InfoCard>
@@ -209,28 +221,16 @@ function OtaStatusCard({ updates }: { updates: Updates }) {
         value={updates.statusText}
         valueModifiers={[invalidatableContent()]}
       />
-      <InfoRow testID="debug-ota-channel-value" label="Channel" value={running.channel ?? "N/A"} />
-      <InfoRow
-        testID="debug-ota-runtime-value"
-        label="Runtime"
-        value={running.runtimeVersion ?? expoRuntimeVersion ?? "N/A"}
-      />
+      <InfoRow testID="debug-ota-channel-value" label="Channel" value={values.channel} />
+      <InfoRow testID="debug-ota-runtime-value" label="Runtime" value={values.runtime} />
       <InfoRow
         testID="debug-ota-update-id-value"
         label="Update id"
-        value={running.updateId?.slice(0, 8) ?? "Embedded"}
+        value={values.updateId}
         valueModifiers={[dfont({ size: 13, design: "monospaced" })]}
       />
-      <InfoRow
-        testID="debug-ota-created-value"
-        label="Created"
-        value={running.createdAt?.toLocaleDateString() ?? "N/A"}
-      />
-      <InfoRow
-        testID="debug-ota-source-value"
-        label="Source"
-        value={running.isEmbeddedLaunch ? "Embedded" : "OTA Update"}
-      />
+      <InfoRow testID="debug-ota-created-value" label="Created" value={values.created} />
+      <InfoRow testID="debug-ota-source-value" label="Source" value={values.source} />
       {running.launchDuration != null ? (
         <InfoRow
           testID="debug-ota-launch-time-value"
@@ -242,7 +242,7 @@ function OtaStatusCard({ updates }: { updates: Updates }) {
         <InfoRow
           testID="debug-ota-emergency-launch-value"
           label="Emergency launch"
-          value={running.emergencyLaunchReason ?? "Unknown error"}
+          value={values.emergencyReason}
           valueColor={colors.warning}
         />
       ) : null}
