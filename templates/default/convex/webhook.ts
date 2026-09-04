@@ -4,8 +4,9 @@ import { log, newRequestId } from "./log";
 
 export type SignatureAlgorithm = "sha1" | "sha256";
 
-export type WithWebhookOptions = {
+export type WithWebhookOptions<T> = {
   source: string;
+  parse: (value: unknown) => T | null;
   signatureHeader: string;
   secretEnv: string;
   algorithm: SignatureAlgorithm;
@@ -28,8 +29,8 @@ export type WebhookHandler<T> = (
   webhookCtx: WebhookContext,
 ) => Promise<Response> | Response;
 
-export function withWebhook<T = unknown>(
-  opts: WithWebhookOptions,
+export function withWebhook<T>(
+  opts: WithWebhookOptions<T>,
   handler: WebhookHandler<T>,
 ): (ctx: GenericActionCtx<Record<string, never>>, req: Request) => Promise<Response> {
   const maxBodyBytes = opts.maxBodyBytes ?? 1024 * 1024;
@@ -88,12 +89,18 @@ export function withWebhook<T = unknown>(
       return jsonError(401, "signature mismatch", requestId);
     }
 
-    let payload: T;
+    let raw: unknown;
     try {
-      payload = JSON.parse(rawBody) as T;
+      raw = JSON.parse(rawBody);
     } catch {
       log.warn({ ...baseFields, event: "webhook.bad_json" });
       return jsonError(400, "invalid json", requestId);
+    }
+
+    const payload = opts.parse(raw);
+    if (payload === null) {
+      log.warn({ ...baseFields, event: "webhook.bad_payload" });
+      return jsonError(400, "payload does not match the expected shape", requestId);
     }
 
     try {
