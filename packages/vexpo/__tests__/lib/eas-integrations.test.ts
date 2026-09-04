@@ -16,7 +16,7 @@ vi.mock("../../src/lib/pkg-manager.ts", () => ({
   dlx: () => "bunx",
 }));
 
-import { ascStatus, type AscStatus } from "../../src/lib/eas-integrations.ts";
+import { ascStatus, convexProjectLink, type AscStatus } from "../../src/lib/eas-integrations.ts";
 import { run } from "../../src/lib/proc.ts";
 
 const runSpy = run as unknown as ReturnType<typeof vi.fn>;
@@ -90,5 +90,61 @@ describe("ascStatus", () => {
     const status = await ascStatus();
     expect(status.status).toBe("invalid");
     expect(status.appStoreConnectApp).toBeUndefined();
+  });
+});
+
+const BOLD_ON = "\u001b[1m";
+const BOLD_OFF = "\u001b[22m";
+
+const linkedOutput = [
+  `${BOLD_ON}Convex project linked to acme${BOLD_OFF}`,
+  `${BOLD_ON}Name${BOLD_OFF}: acme`,
+  `${BOLD_ON}Slug${BOLD_OFF}: acme-1a2b3`,
+  `${BOLD_ON}Identifier${BOLD_OFF}: 42`,
+  `${BOLD_ON}Team${BOLD_OFF}: Acme / acme-team`,
+  `${BOLD_ON}Dashboard${BOLD_OFF}: https://dashboard.convex.dev/t/acme-team/acme-1a2b3`,
+].join("\n");
+
+describe("convexProjectLink", () => {
+  it("spawns `eas integrations:convex:project` without --json", async () => {
+    runSpy.mockResolvedValue({ code: 0, stdout: "No Convex project is linked", stderr: "" });
+    await convexProjectLink();
+    expect(runSpy.mock.calls[0]?.[0]).toEqual(["bunx", "eas-cli", "integrations:convex:project"]);
+  });
+
+  it("returns null when no project is linked", async () => {
+    runSpy.mockResolvedValue({
+      code: 0,
+      stdout: "",
+      stderr: "No Convex project is linked to Expo app acme on EAS.",
+    });
+    expect(await convexProjectLink()).toBeNull();
+  });
+
+  it("reads the name and dashboard through the ANSI codes", async () => {
+    runSpy.mockResolvedValue({ code: 0, stdout: linkedOutput, stderr: "" });
+    expect(await convexProjectLink()).toEqual({
+      name: "acme",
+      dashboard: "https://dashboard.convex.dev/t/acme-team/acme-1a2b3",
+    });
+  });
+
+  it("throws with the last line when eas exits non-zero", async () => {
+    runSpy.mockResolvedValue({ code: 1, stdout: "", stderr: "Error: not logged in" });
+    await expect(convexProjectLink()).rejects.toThrow("not logged in");
+  });
+
+  it("points at `eas init` when the app is not linked to EAS", async () => {
+    runSpy.mockResolvedValue({
+      code: 1,
+      stdout: "",
+      stderr: "EAS project not configured.\nInput is required, but stdin is not readable.",
+    });
+    await expect(convexProjectLink()).rejects.toThrow("npx eas-cli init");
+  });
+
+  it("throws when the output has no Name line", async () => {
+    runSpy.mockResolvedValue({ code: 0, stdout: "Convex project linked to acme", stderr: "" });
+    await expect(convexProjectLink()).rejects.toThrow("could not read the Convex project");
   });
 });

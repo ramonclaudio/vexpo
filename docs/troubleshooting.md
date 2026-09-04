@@ -60,6 +60,21 @@ That spawns `eas integrations:convex:connect` and then does the rest of the usua
 
 The integration writes `CONVEX_DEPLOY_KEY` to `.env.local`, and that key wins over `--prod` and `--deployment-name` on every convex command. So `npm run convex:logs:prod` reads dev afterwards until you point the CLI at another env file.
 
+### `--eas` stops with `EAS already has a Convex project linked to this app`
+
+`eas integrations:convex:connect` takes a team, a region and a name, and nothing
+else. There is no input for an existing Convex project, and the command does not
+check whether the app already has one before it provisions. `--eas` reads
+`eas integrations:convex:project` first and stops when the app is already
+linked. A fresh clone hits this, because
+the check that decides to provision reads `.env.local`, which git does not track.
+
+To use the project that is already linked, get its deploy key from the Convex
+dashboard, put it in `.env.local` as `CONVEX_DEPLOY_KEY`, then run
+`npx vexpo convex` without `--eas`. To provision a replacement on purpose, run
+`npx eas-cli integrations:convex:project:delete` first. That drops the EAS link
+only, nothing on Convex is destroyed.
+
 ## Resend
 
 ### Key that worked minutes ago now returns `API key is invalid`

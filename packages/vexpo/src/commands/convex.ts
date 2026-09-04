@@ -2,6 +2,7 @@ import { appleTeamIdFallback, bundleIdFallback, pkgName, scheme } from "../lib/a
 import { envSet as convexEnvSet, recordedOrDerivedDeployment } from "../lib/convex-env.ts";
 import { checkToken } from "../lib/convex-management.ts";
 import { easSpawn } from "../lib/eas-cli.ts";
+import { convexProjectLink } from "../lib/eas-integrations.ts";
 import { ensureLine, readAll, removeLines } from "../lib/env-local.ts";
 import {
   BOLD,
@@ -98,6 +99,19 @@ function explainDevFailure(needsProvisioning: boolean, team: string | undefined)
   note("`npx vexpo convex --eas`, which spawns it and then picks up from there.");
 }
 
+async function noProjectLinkedYet(): Promise<boolean> {
+  const linked = await convexProjectLink();
+  if (!linked) return true;
+  bad(`EAS already has a Convex project linked to this app: ${linked.name}`);
+  note("`eas integrations:convex:connect` provisions a second one, it has no way");
+  note("to reuse an existing Convex project. Put that project's deploy key in");
+  note("`.env.local` as CONVEX_DEPLOY_KEY and rerun without `--eas`.");
+  if (linked.dashboard) note(`deploy keys: ${linked.dashboard}/settings`);
+  note("to relink on purpose, run `npx eas-cli integrations:convex:project:delete`");
+  note("first. That drops the EAS link only, nothing on Convex is destroyed.");
+  return false;
+}
+
 async function connectThroughEas(
   options: ConvexOptions,
   connectArgs: string[] | undefined,
@@ -109,6 +123,7 @@ async function connectThroughEas(
     return false;
   }
   if (!connectArgs) return true;
+  if (!(await noProjectLinkedYet())) return false;
   ok(`connecting Convex through EAS for '${projectName}'`);
   note("spawning `eas integrations:convex:connect`. It prompts for a region, and");
   note("for a team name only when it has to create the team connection.");
@@ -123,6 +138,9 @@ async function connectThroughEas(
   note("EAS wrote CONVEX_DEPLOY_KEY to .env.local. That key wins over `--prod` and");
   note("`--deployment-name` on every convex command, so `npm run convex:logs:prod`");
   note("reads dev until you point the CLI at another env file. See .env.example.");
+  note("it also wrote this dev URL to EXPO_PUBLIC_CONVEX_URL on EAS for all three");
+  note("environments, production included. `vexpo env push` corrects production");
+  note("and preview once a prod deployment exists.");
   return await recordKeyDeployment();
 }
 
