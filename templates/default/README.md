@@ -17,7 +17,7 @@ There are two ways to get to a configured app.
 
 To do it by hand, follow [Quick start](#quick-start), then run `npx vexpo rebrand` when you're ready to make the identity yours (`vexpo full` includes it).
 
-To use an AI agent, the playbook lives in [`AGENTS.md`](./AGENTS.md), which most agents read on their own. Or paste this:
+To use an AI agent, paste this:
 
 ```text
 Set up this fresh vexpo scaffold as my app. Collect from me first if I haven't
@@ -34,13 +34,13 @@ slug, App Review contact email, and marketing, support, and privacy URLs. Then:
 2. Provision the dev backend: npx vexpo lite (hand any login prompt to me).
 3. Verify: npm run typecheck && npm run lint && npm run format:check && npm run test
 4. Commit the result as one commit.
-5. Read AGENTS.md before writing any feature code.
+5. Read the Conventions section of this README before writing any feature code.
 
 Done means the gate is green, setup is committed, and you tell me to run
 `npm run convex:dev` and `npm run ios` in two terminals. When I say ship,
-follow the Ship path playbook in AGENTS.md, where you run everything headless
-and hand me only the login, the ASC .p8 download, the Resend key paste, and
-the one interactive first build.
+follow the Ship path in this README. Run everything headless and hand me only
+the login, the ASC .p8 download, the Resend key paste, and the one interactive
+first build.
 ```
 
 ## Prerequisites
@@ -222,6 +222,27 @@ npm run upgrade:stable         expo install expo@latest && expo install --fix
 
 `runtimeVersion` uses the fingerprint policy with `appVersionSource: "remote"`, and the ASC key is managed by EAS. PR previews, Maestro E2E, and the production deploy are `workflow_dispatch`-only by default. Restore the `pull_request` triggers to build on every PR, or add a `push: main` trigger to deploy on merge.
 
+## Conventions
+
+For anyone writing code here, agent or human.
+
+- TypeScript is `strict: true`. Don't add `any` casts. If a type is hard, ask before reaching for `any`.
+- The path alias `@/` resolves to the project root. No deep relative imports (`../../../`).
+- Files are lowercase kebab-case, one component each. Default-export the component, name-export everything else.
+- Convex `useQuery` and `useMutation` hold server state, React `useState` holds local UI state. No Redux, no Zustand, no Jotai.
+- Native UI is `@expo/ui/swift-ui` primitives plus `modifiers`. `<Host>` marks where SwiftUI starts. iOS only today.
+- Validation runs at both boundaries: Zod on the client (`lib/schemas.ts`), Convex validators on the server (`convex/validators.ts`).
+- Throw real `Error` instances and wrap server errors with `formatError` from `lib/convex-error.ts`. Don't swallow.
+- Tests are Vitest under `__tests__/`. New validator logic and new HTTP handlers need one.
+
+Five things bite harder than the rest:
+
+- Every Convex query and mutation needs a server validator and matching client types. `convex/_generated/` is the contract, so run `npx convex codegen` after any schema or function change.
+- Every public route in `convex/http.ts` goes through the `withWebhook()` factory in `convex/webhook.ts`, which does HMAC verification, a body cap, and structured logging. Inbound webhooks are untrusted by default.
+- The Sign in with Apple JWT rotates every 90 days through `.eas/workflows/rotate-apple-jwt.yml`. That cron depends on `APPLE_P8_PRIVATE_KEY`, `APPLE_TEAM_ID`, `APPLE_KEY_ID`, `APPLE_SERVICES_ID` and `CONVEX_DEPLOY_KEY`, so don't break the env-var contract.
+- Push notifications only work on a physical device. The iOS Simulator does not deliver APNs.
+- `npx eas-cli <subcommand>` for EAS work, never bare `npx eas`, which can't resolve the binary. And don't rebuild what EAS already does.
+
 ## Project structure
 
 ```text
@@ -253,10 +274,6 @@ scripts/
   rotate-apple-jwt.mjs            CI: re-sign JWT from env vars
 __tests__/                        Convex + lib unit tests (validators, HMAC, deep link, schemas)
 ```
-
-## More
-
-- [`AGENTS.md`](./AGENTS.md): conventions for AI coding agents (and humans) working in this codebase.
 
 ## Re-adding App Attest
 
