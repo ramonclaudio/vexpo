@@ -6,6 +6,8 @@
 [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/ramonclaudio/vexpo/badge)](https://scorecard.dev/viewer/?uri=github.com/ramonclaudio/vexpo)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
+[![Launch with Expo](https://github.com/expo/examples/blob/master/.gh-assets/launch.svg?raw=true)](https://launch.expo.dev/?github=https://github.com/ramonclaudio/vexpo)
+
 vexpo is a template for iOS apps built on Expo SDK 57 and designed entirely with SwiftUI (`@expo/ui`), with Convex, Better Auth, and Resend wired in.
 
 <p align="center">
