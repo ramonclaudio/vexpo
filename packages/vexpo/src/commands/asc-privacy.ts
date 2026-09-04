@@ -25,22 +25,31 @@ export async function runPrivacyShow(file: string, opts: { json?: boolean } = {}
     return 0;
   }
   section(`Privacy details (declared in ${file})`);
-  const config = parsed as { collectsData?: boolean; entries?: Array<Record<string, unknown>> };
+  printPrivacyEntries(parsed as PrivacyConfig);
+  return 0;
+}
+
+type PrivacyEntry = Record<string, unknown>;
+type PrivacyConfig = { collectsData?: boolean; entries?: PrivacyEntry[] };
+
+function entryFlags(entry: PrivacyEntry): string {
+  return [
+    entry.usedForTracking ? "tracking" : "",
+    entry.linkedToUser ? "linked" : "",
+    Array.isArray(entry.purposes) ? entry.purposes.join(",") : "",
+  ]
+    .filter(Boolean)
+    .join(" · ");
+}
+
+function printPrivacyEntries(config: PrivacyConfig): void {
   if (!config.collectsData) {
     line(`  ${BOLD}Data Not Collected${RESET}`);
-    return 0;
+    return;
   }
-  for (const e of config.entries ?? []) {
-    const flags = [
-      e.usedForTracking ? "tracking" : "",
-      e.linkedToUser ? "linked" : "",
-      Array.isArray(e.purposes) ? e.purposes.join(",") : "",
-    ]
-      .filter(Boolean)
-      .join(" · ");
-    line(`  ${BOLD}${String(e.category)}${RESET}  ${DIM}${flags}${RESET}`);
+  for (const entry of config.entries ?? []) {
+    line(`  ${BOLD}${String(entry.category)}${RESET}  ${DIM}${entryFlags(entry)}${RESET}`);
   }
-  return 0;
 }
 
 export async function runPrivacyLint(filePath: string): Promise<number> {

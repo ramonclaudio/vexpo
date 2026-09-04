@@ -88,12 +88,14 @@ async function tryOpen(input: string, urls: { url: string }[]): Promise<boolean>
   return true;
 }
 
-export async function helpAndWait(opts: {
+type HelpPrompt = {
   body?: string;
   urls: { label: string; url: string }[];
   allowSkip?: boolean;
   skipLabel?: string;
-}): Promise<"ready" | "skip"> {
+};
+
+export async function helpAndWait(opts: HelpPrompt): Promise<"ready" | "skip"> {
   if (opts.body) note(opts.body);
   for (const { label, url } of opts.urls) {
     note(`  ${label}: ${BOLD}${url}${RESET}`);
@@ -101,6 +103,10 @@ export async function helpAndWait(opts: {
   if (!process.stdin.isTTY) {
     return opts.allowSkip ? "skip" : "ready";
   }
+  return waitForReady(opts);
+}
+
+async function waitForReady(opts: HelpPrompt): Promise<"ready" | "skip"> {
   const skipHint = opts.allowSkip ? `, '${opts.skipLabel ?? "skip"}' to skip` : "";
   const openHint = opts.urls.length > 0 ? ", 'open' to launch in browser" : "";
   for (;;) {

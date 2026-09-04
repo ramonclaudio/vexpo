@@ -693,6 +693,32 @@ async function writeAudit(
   } catch {}
 }
 
+function reportNothingToDo(): void {
+  line();
+  ok("everything is configured, nothing to do");
+  note("`vexpo full --force` to re-run every step idempotently");
+  note("`vexpo full --fresh` to wipe state and reprovision Convex from scratch");
+  note("`vexpo full --dry-run` to preview what each phase would do");
+  note("standalone subcommands (e.g. `vexpo resend`) re-run a single step");
+}
+
+/** Returns an exit code when the run is a preview or already complete, else null. */
+async function exitBeforeRunning(probe: Probe, options: SetupOptions): Promise<number | null> {
+  if (options.plan) {
+    printJourneyPlan(options.lite === true);
+    return 0;
+  }
+  if (options.dryRun) {
+    await printDryRunPlan(probe, options, computeScope(options));
+    return 0;
+  }
+  if (isComplete(probe) && !options.force && !options.fresh) {
+    reportNothingToDo();
+    return 0;
+  }
+  return null;
+}
+
 export async function runSetup(opts: SetupOptions): Promise<number> {
   const ctx: RunContext = { options: opts, completed: [], skipped: [], failedStep: null };
   const { options } = ctx;
@@ -707,25 +733,8 @@ export async function runSetup(opts: SetupOptions): Promise<number> {
     await stepPrerequisites();
     const probe = await stepProbe(ctx);
 
-    if (options.plan) {
-      printJourneyPlan(options.lite === true);
-      return 0;
-    }
-
-    if (options.dryRun) {
-      await printDryRunPlan(probe, options, computeScope(options));
-      return 0;
-    }
-
-    if (isComplete(probe) && !options.force && !options.fresh) {
-      line();
-      ok("everything is configured, nothing to do");
-      note("`vexpo full --force` to re-run every step idempotently");
-      note("`vexpo full --fresh` to wipe state and reprovision Convex from scratch");
-      note("`vexpo full --dry-run` to preview what each phase would do");
-      note("standalone subcommands (e.g. `vexpo resend`) re-run a single step");
-      return 0;
-    }
+    const early = await exitBeforeRunning(probe, options);
+    if (early !== null) return early;
 
     if (options.fresh) await stepCleanup(true);
     else if (probe.install) await stepInstallOnly();

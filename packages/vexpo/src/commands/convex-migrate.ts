@@ -106,6 +106,15 @@ export async function runConvexMigrate(options: ConvexMigrateOptions): Promise<n
     return 0;
   }
 
+  return applyMigration(toMove, target, options);
+}
+
+async function applyMigration(
+  toMove: Array<[string, string]>,
+  target: ConvexTarget | undefined,
+  options: ConvexMigrateOptions,
+): Promise<number> {
+  const channel = options.prod ? "prod" : "dev";
   const failed = await copyVars(toMove, target);
 
   line();

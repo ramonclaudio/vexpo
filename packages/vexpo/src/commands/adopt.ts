@@ -71,6 +71,19 @@ async function reportDeployments(devSlug: string): Promise<string | undefined> {
   return deploymentsOfType(deployments, "prod")[0]?.name;
 }
 
+async function runDevSteps(): Promise<number> {
+  line();
+  const code = await runConvex({});
+  if (code !== 0) return code;
+
+  const devEnv = (await envMap()) ?? new Map<string, string>();
+  if (devEnv.has("BETTER_AUTH_SECRET")) {
+    nop("BETTER_AUTH_SECRET already set on the dev deployment");
+    return 0;
+  }
+  return runBetterAuth({});
+}
+
 export async function runAdopt(options: AdoptOptions): Promise<number> {
   section("Adopt");
 
@@ -94,17 +107,8 @@ export async function runAdopt(options: AdoptOptions): Promise<number> {
   const prodSlug = await reportDeployments(devSlug);
 
   if (!options.skipDevSteps) {
-    line();
-    const code = await runConvex({});
+    const code = await runDevSteps();
     if (code !== 0) return code;
-
-    const devEnv = (await envMap()) ?? new Map<string, string>();
-    if (!devEnv.has("BETTER_AUTH_SECRET")) {
-      const baCode = await runBetterAuth({});
-      if (baCode !== 0) return baCode;
-    } else {
-      nop("BETTER_AUTH_SECRET already set on the dev deployment");
-    }
   }
 
   const devEnv = (await envMap()) ?? new Map<string, string>();

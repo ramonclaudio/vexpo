@@ -198,6 +198,35 @@ function describePhase(
   };
 }
 
+const APPLE_PHASES: StepName[] = [
+  "asc-key",
+  "apple-credentials",
+  "apple-asc-link",
+  "apple-services-id",
+  "apple-sign-in",
+  "apple-eas-rotation-secrets",
+];
+
+function plannedPhases(scope: EffectiveScope): StepName[] {
+  const phases: StepName[] = [];
+  if (scope.accounts) phases.push("accounts");
+  if (scope.rebrand) phases.push("rebrand");
+  phases.push("convex", "better-auth");
+  if (scope.resend) phases.push("resend");
+  if (scope.reviewAccount) phases.push("review-account");
+  if (scope.eas) phases.push("eas");
+  if (scope.apple) phases.push(...APPLE_PHASES);
+  return phases;
+}
+
+function printPhase(desc: { label: string; action: string; details: string[] }): boolean {
+  const willRun = !desc.action.startsWith("skip");
+  const prefix = willRun ? `${GREEN}→${RESET}` : `${DIM}-${RESET}`;
+  line(`\n  ${prefix} ${BOLD}${desc.label}${RESET}  ${DIM}${desc.action}${RESET}`);
+  for (const detail of desc.details) note(`    ${detail}`);
+  return willRun;
+}
+
 export async function printDryRunPlan(
   probe: {
     rows: Map<string, ProbeRow>;
@@ -207,25 +236,7 @@ export async function printDryRunPlan(
   options: SetupOptions,
   scope: EffectiveScope,
 ): Promise<void> {
-  const phases: StepName[] = [
-    ...((scope.accounts ? ["accounts"] : []) as StepName[]),
-    ...((scope.rebrand ? ["rebrand"] : []) as StepName[]),
-    "convex",
-    "better-auth",
-    ...((scope.resend ? ["resend"] : []) as StepName[]),
-    ...((scope.reviewAccount ? ["review-account"] : []) as StepName[]),
-    ...((scope.eas ? ["eas"] : []) as StepName[]),
-    ...((scope.apple
-      ? [
-          "asc-key",
-          "apple-credentials",
-          "apple-asc-link",
-          "apple-services-id",
-          "apple-sign-in",
-          "apple-eas-rotation-secrets",
-        ]
-      : []) as StepName[]),
-  ];
+  const phases = plannedPhases(scope);
 
   section("Dry run plan");
   if (options.fresh)
@@ -238,13 +249,8 @@ export async function printDryRunPlan(
   let runCount = 0;
   let skipCount = 0;
   for (const step of phases) {
-    const desc = describePhase(step, probe, options);
-    const isSkip = desc.action.startsWith("skip");
-    if (isSkip) skipCount += 1;
-    else runCount += 1;
-    const prefix = isSkip ? `${DIM}-${RESET}` : `${GREEN}→${RESET}`;
-    line(`\n  ${prefix} ${BOLD}${desc.label}${RESET}  ${DIM}${desc.action}${RESET}`);
-    for (const d of desc.details) note(`    ${d}`);
+    if (printPhase(describePhase(step, probe, options))) runCount += 1;
+    else skipCount += 1;
   }
   line();
   section("Summary");
@@ -439,6 +445,19 @@ const LITE_AUTO_LABELS = new Set<string>([
   "BETTER_AUTH_SECRET generation",
 ]);
 
+function printEasSection(
+  projectId: string | null,
+  easEnv: Map<string, string>,
+  easKeys: string[],
+  row: (key: string, set: boolean) => void,
+): void {
+  if (!projectId) return;
+  line(`\n  ${BOLD}EAS project${RESET}  ${projectId}`);
+  if (easEnv.size === 0) return;
+  line(`  ${BOLD}EAS env (production)${RESET}`);
+  for (const key of easKeys) row(key, easEnv.has(key));
+}
+
 export async function printSummary(useLocal: boolean, elapsedMs: number): Promise<void> {
   section("Summary");
   const [localEnv, convexEnvOrNull] = await Promise.all([readAll(), convexEnvMap()]);
@@ -508,20 +527,15 @@ export async function printSummary(useLocal: boolean, elapsedMs: number): Promis
   line(`\n  ${BOLD}Convex env${RESET}`);
   for (const k of convexKeys) row(k, convexEnv.has(k));
 
-  if (projectId) {
-    line(`\n  ${BOLD}EAS project${RESET}  ${projectId}`);
-    if (easEnv.size > 0) {
-      line(`  ${BOLD}EAS env (production)${RESET}`);
-      for (const k of easKeys) row(k, easEnv.has(k));
-    }
-  }
+  printEasSection(projectId, easEnv, easKeys, row);
 
   line(`\n  ${BOLD}.setup-state.json${RESET}`);
   for (const k of stateKeys) {
-    const rec = state.steps[k];
-    line(
-      `    ${k.padEnd(width)}  ${rec ? `${GREEN}ok${RESET} ${DIM}(${rec.completedAt.slice(0, 10)})${RESET}` : `${DIM}-${RESET}`}`,
-    );
+    const done = state.steps[k];
+    const value = done
+      ? `${GREEN}ok${RESET} ${DIM}(${done.completedAt.slice(0, 10)})${RESET}`
+      : `${DIM}-${RESET}`;
+    line(`    ${k.padEnd(width)}  ${value}`);
   }
 
   line(`\n  ${GREEN}ok${RESET}   setup complete in ${(elapsedMs / 1000).toFixed(2)}s`);

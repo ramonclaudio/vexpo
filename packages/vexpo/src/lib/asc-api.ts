@@ -53,6 +53,19 @@ type AscErrorEntry = {
 
 type AscErrorBody = { errors: AscErrorEntry[] };
 
+function parseAscErrorBody(body: string): AscErrorBody | null {
+  try {
+    return JSON.parse(body) as AscErrorBody;
+  } catch {
+    return null;
+  }
+}
+
+function ascErrorMessage(status: number, body: string, first?: AscErrorEntry): string {
+  if (!first) return `ASC ${status}: ${body}`;
+  return `ASC ${status} ${first.code ?? ""}: ${first.detail ?? first.title ?? body}`;
+}
+
 export class AscApiError extends Error {
   readonly status: number;
   readonly code?: string;
@@ -60,18 +73,9 @@ export class AscApiError extends Error {
   readonly errors: AscErrorEntry[];
   readonly responseBody: string;
   constructor(status: number, body: string) {
-    let parsed: AscErrorBody | null = null;
-    try {
-      parsed = JSON.parse(body) as AscErrorBody;
-    } catch {
-      parsed = null;
-    }
+    const parsed = parseAscErrorBody(body);
     const first = parsed?.errors?.[0];
-    super(
-      first
-        ? `ASC ${status} ${first.code ?? ""}: ${first.detail ?? first.title ?? body}`
-        : `ASC ${status}: ${body}`,
-    );
+    super(ascErrorMessage(status, body, first));
     this.name = "AscApiError";
     this.status = status;
     this.code = first?.code;
