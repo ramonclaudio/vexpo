@@ -22,6 +22,16 @@ crons.daily(
   internal.users.hardDeleteExpired,
 );
 
+// A guest whose sessions have all expired can never reach their row again,
+// and nothing in the app flow deletes one, so the table would grow with every
+// install that never signs up.
+crons.daily(
+  "purge abandoned guest accounts",
+  { hourUTC: 4, minuteUTC: 30 },
+  internal.users.purgeAbandonedGuests,
+  {},
+);
+
 // The Resend component retains finalized (delivered, cancelled, bounced)
 // emails and it's our job to clear them. Run hourly to keep the emails table
 // bounded. See @convex-dev/resend README → "Data retention".
