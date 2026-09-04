@@ -40,21 +40,18 @@ import { announce } from "@/lib/a11y";
 type SaveState = { error?: string; success?: string; pendingEmail?: string; attempt?: number };
 type OtpState = { error?: string; success?: string; attempt?: number };
 
-export default function ProfileScreen() {
-  const colors = useColors();
-  const scenePrivacy = useScenePrivacy();
-  const me = useQuery(api.users.getMe);
-  const { isGuest } = useAuthStatus();
-  const hasPasswordResult = useQuery(api.auth.hasPassword, isGuest ? "skip" : {});
-  const providers = useQuery(api.auth.getEnabledProviders);
-  const emailFeatures = providers?.emailFeatures === true;
-  const updateProfile = useMutation(api.users.updateProfile);
-  const generateAvatarUploadUrl = useMutation(api.users.generateAvatarUploadUrl);
-  const updateAvatar = useMutation(api.users.updateAvatar);
-  const deleteAvatar = useMutation(api.users.deleteAvatar);
-  const { deleteAccount, deleteError } = useDeleteAccount();
-  const handleSignOut = useSignOut();
+type EditableProfile = {
+  name: string;
+  username?: string | null;
+  email: string;
+  bio?: string | null;
+};
 
+type FieldValues = { name: string; username: string; email: string; bio: string };
+
+function useProfileFields(
+  me: (EditableProfile & { _id: string; updatedAt: number }) | null | undefined,
+) {
   const nameState = useNativeState(me?.name ?? "");
   const usernameState = useNativeState(me?.username ?? "");
   const emailState = useNativeState(me?.email ?? "");
@@ -78,20 +75,61 @@ export default function ProfileScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentKey]);
 
+  return {
+    nameState,
+    usernameState,
+    emailState,
+    bioState,
+    values: { name, username, email, bio } satisfies FieldValues,
+    setName,
+    setUsername,
+    setEmail,
+    setBio,
+  };
+}
+
+function hasProfileChanges(
+  me: EditableProfile | null | undefined,
+  v: FieldValues,
+  isGuest: boolean,
+): boolean {
+  if (!me) return false;
+  const nameOrBioChanged = v.name.trim() !== me.name || v.bio.trim() !== (me.bio ?? "");
+  if (isGuest) return nameOrBioChanged;
+  return (
+    nameOrBioChanged ||
+    v.username.trim().toLowerCase() !== (me.username ?? "") ||
+    v.email.trim().toLowerCase() !== me.email.toLowerCase()
+  );
+}
+
+export default function ProfileScreen() {
+  const colors = useColors();
+  const scenePrivacy = useScenePrivacy();
+  const me = useQuery(api.users.getMe);
+  const { isGuest } = useAuthStatus();
+  const hasPasswordResult = useQuery(api.auth.hasPassword, isGuest ? "skip" : {});
+  const providers = useQuery(api.auth.getEnabledProviders);
+  const emailFeatures = providers?.emailFeatures === true;
+  const updateProfile = useMutation(api.users.updateProfile);
+  const generateAvatarUploadUrl = useMutation(api.users.generateAvatarUploadUrl);
+  const updateAvatar = useMutation(api.users.updateAvatar);
+  const deleteAvatar = useMutation(api.users.deleteAvatar);
+  const { deleteAccount, deleteError } = useDeleteAccount();
+  const handleSignOut = useSignOut();
+
+  const fields = useProfileFields(me);
+  const { nameState, usernameState, emailState, bioState } = fields;
+  const { name, username, email, bio } = fields.values;
+  const { setName, setUsername, setEmail, setBio } = fields;
+
   const [pendingEmail, setPendingEmail] = useState<string | null>(null);
   const otpCodeState = useNativeState("");
   const [otp, setOtp] = useState("");
   const [avatarPicker, setAvatarPicker] = useState(false);
   const [signOutConfirm, setSignOutConfirm] = useState(false);
   const [deleteAccountConfirm, setDeleteAccountConfirm] = useState(false);
-  const hasChanges =
-    !!me &&
-    (isGuest
-      ? name.trim() !== me.name || bio.trim() !== (me.bio ?? "")
-      : name.trim() !== me.name ||
-        username.trim().toLowerCase() !== (me.username ?? "") ||
-        email.trim().toLowerCase() !== me.email.toLowerCase() ||
-        bio.trim() !== (me.bio ?? ""));
+  const hasChanges = hasProfileChanges(me, fields.values, isGuest);
 
   const saveGuest = async (
     current: NonNullable<typeof me>,
@@ -131,13 +169,16 @@ export default function ProfileScreen() {
     }
   };
 
-  const [saveState, save, isSaving] = useActionState<SaveState, void>(async (prev) => {
-    const attempt = (prev.attempt ?? 0) + 1;
-    if (!me) return { error: "Not loaded", attempt };
+  const saveIdentity = async (updates: Record<string, string>): Promise<string | null> => {
+    const res = await authClient.updateUser(updates);
+    return res.error ? (res.error.message ?? "Failed to update profile") : null;
+  };
 
-    if (isGuest) return await saveGuest(me, attempt);
-
-    const schema = me.username ? profileUpdateSchema : profileUpdateOptionalUsernameSchema;
+  const saveAccount = async (
+    current: NonNullable<typeof me>,
+    attempt: number,
+  ): Promise<SaveState> => {
+    const schema = current.username ? profileUpdateSchema : profileUpdateOptionalUsernameSchema;
     const parsed = schema.safeParse({ name, username, email });
     if (!parsed.success) {
       haptics.error();
@@ -152,28 +193,24 @@ export default function ProfileScreen() {
     }
 
     const { name: nextName, username: nextUsername, email: nextEmail } = parsed.data;
-    const nameChanged = nextName !== me.name;
-    const usernameChanged = nextUsername !== (me.username ?? "");
-    const emailChanged = nextEmail !== me.email.toLowerCase();
-    const bioChanged = trimmedBio !== (me.bio ?? "");
+    const identity: Record<string, string> = {};
+    if (nextName !== current.name) identity.name = nextName;
+    if (nextUsername !== (current.username ?? "")) identity.username = nextUsername;
 
     try {
-      if (nameChanged || usernameChanged) {
-        const updates: Record<string, string> = {};
-        if (nameChanged) updates.name = nextName;
-        if (usernameChanged) updates.username = nextUsername;
-        const res = await authClient.updateUser(updates);
-        if (res.error) {
+      if (Object.keys(identity).length > 0) {
+        const failed = await saveIdentity(identity);
+        if (failed) {
           haptics.error();
-          return { error: res.error.message ?? "Failed to update profile", attempt };
+          return { error: failed, attempt };
         }
       }
 
-      if (bioChanged) {
+      if (trimmedBio !== (current.bio ?? "")) {
         await updateProfile({ bio: trimmedBio.length === 0 ? undefined : trimmedBio });
       }
 
-      if (emailChanged) {
+      if (nextEmail !== current.email.toLowerCase()) {
         const res = await authClient.changeEmail({ newEmail: nextEmail });
         if (res.error) {
           haptics.error();
@@ -192,6 +229,12 @@ export default function ProfileScreen() {
       haptics.error();
       return { error: formatError(err), attempt };
     }
+  };
+
+  const [saveState, save, isSaving] = useActionState<SaveState, void>(async (prev) => {
+    const attempt = (prev.attempt ?? 0) + 1;
+    if (!me) return { error: "Not loaded", attempt };
+    return isGuest ? await saveGuest(me, attempt) : await saveAccount(me, attempt);
   }, {} as SaveState);
 
   const [otpState, verifyOtp, isVerifying] = useActionState<OtpState, void>(async (prev) => {
