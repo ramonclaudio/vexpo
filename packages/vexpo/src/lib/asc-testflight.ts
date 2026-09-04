@@ -37,8 +37,47 @@ export type BetaBuildLocalization = {
   attributes: { whatsNew?: string; locale?: string };
 };
 
+type BetaFeedbackAttributes = {
+  createdDate?: string;
+  comment?: string;
+  email?: string;
+  deviceModel?: string;
+  osVersion?: string;
+  locale?: string;
+  appPlatform?: string;
+  buildBundleId?: string;
+};
+
+export type BetaFeedbackScreenshotSubmission = {
+  type: "betaFeedbackScreenshotSubmissions";
+  id: string;
+  attributes: BetaFeedbackAttributes & {
+    screenshots?: Array<{ url?: string; expirationDate?: string; fileName?: string }>;
+  };
+};
+
+export type BetaFeedbackCrashSubmission = {
+  type: "betaFeedbackCrashSubmissions";
+  id: string;
+  attributes: BetaFeedbackAttributes;
+};
+
 export function testflight(client: AscClient) {
+  const feedback =
+    <T>(path: string) =>
+    async (appId: string, limit: number): Promise<T[]> => {
+      const res = await client.request<{ data: T[] }>(
+        "GET",
+        `/v1/apps/${appId}/${path}?sort=-createdDate&limit=${Math.min(limit, 200)}`,
+      );
+      return res.data;
+    };
+
   return {
+    betaFeedback: {
+      screenshots: feedback<BetaFeedbackScreenshotSubmission>("betaFeedbackScreenshotSubmissions"),
+      crashes: feedback<BetaFeedbackCrashSubmission>("betaFeedbackCrashSubmissions"),
+    },
     betaGroups: {
       list(filter?: { appId?: string; name?: string }): Promise<BetaGroup[]> {
         const query: Record<string, string> = {};
