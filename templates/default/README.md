@@ -289,7 +289,10 @@ That file holds the original and transformed source of every bundled module, inc
 - Theme switching, haptics, reduced motion, VoiceOver, and Dynamic Type
 - Liquid Glass on iOS 26+, with a `UIVisualEffectView` blur fallback on iOS 16.4 through 25
 - OTA updates code-signed, so only signed bundles install
+- Startup metrics through `expo-observe`, reported to EAS Observe
 - EAS Build, Update, Submit, and Metadata, with nine workflows under `.eas/workflows/`
+
+`ObserveRoot` wraps the root layout and `markInteractive()` fires in the same effect that hides the splash, so Time to First Render and Time to Interactive both land. Release builds only, it stays quiet in debug. Startup metrics are all that is wired up. The Expo Router per-route integration and `Observe.logEvent` are both there in the library if you want them, they just add to your event count. The free plan covers 100,000 events a month.
 
 `runtimeVersion` uses the fingerprint policy with `appVersionSource: "remote"`, and the ASC key is managed by EAS. PR previews, Maestro E2E, and the production deploy are `workflow_dispatch`-only by default. Restore the `pull_request` triggers to build on every PR, or add a `push: main` trigger to deploy on merge.
 
