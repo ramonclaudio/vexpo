@@ -17,6 +17,7 @@ import { env } from "@/lib/env";
 import { useColorScheme, useColors } from "@/hooks/use-theme";
 import { useMotionScreenOptions } from "@/hooks/use-motion-screen-options";
 import { useNotifications } from "@/hooks/use-notifications";
+import { useWidgetSync } from "@/hooks/use-widget-sync";
 import { useNavigationTracking } from "@/hooks/use-navigation-tracking";
 import { OfflineBanner } from "@/components/ui/offline-banner";
 import { UpdateBanner } from "@/components/ui/update-banner";
@@ -60,6 +61,7 @@ function RootNavigator() {
 
   useNotifications();
   useNavigationTracking();
+  useWidgetSync();
 
   useEffect(() => {
     if (assetError && __DEV__) console.warn("[assets] failed to load:", assetError);
