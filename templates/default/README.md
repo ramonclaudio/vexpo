@@ -208,10 +208,23 @@ npm run test:watch             vitest
 npm run e2e                    Maestro flows on the simulator (one flow: npm run e2e -- .maestro/guest.yaml)
                                .maestro/guest-mode-off.yaml is opt-in. Its header has the two env commands
 npm run fp                     Print Expo fingerprint hash
+npm run atlas                  Bundle explorer at /_expo/atlas, served in production mode
+npm run atlas:export           Export the iOS bundle and open the report offline
+npm run repack                 Swap a new JS bundle into an existing build (npm run repack -- --source-app app.ipa)
 npm run updates:gen-cert       Generate the OTA code-signing keypair (run once)
 npm run upgrade                expo install expo@next && expo install --fix
 npm run upgrade:stable         expo install expo@latest && expo install --fix
 ```
+
+### Bundle size
+
+`npm run atlas` starts Metro with [Atlas](https://github.com/expo/atlas) on and serves the bundle explorer at `/_expo/atlas`. It runs in production mode, so the sizes match what ships instead of what the dev bundle looks like. `npm run atlas:export` writes `.expo/atlas.jsonl` and opens the same report without a running server.
+
+That file holds the original and transformed source of every bundled module, including the values of your inlined `EXPO_PUBLIC_` vars. It is gitignored. Treat it like source and only share it with people you trust.
+
+### Repacking a build
+
+`npm run repack -- --source-app app.ipa` swaps a fresh JS bundle into a build you already have, so you can check a JS-only change against a real signed binary without waiting on another EAS build. It runs locally and costs nothing. Add `-o out.ipa` to write somewhere other than the default.
 
 ## What's wired up
 
