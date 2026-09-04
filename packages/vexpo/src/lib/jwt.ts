@@ -16,10 +16,6 @@ async function readPrivateKey(source: PrivateKeySource): Promise<string> {
   return readFile(path, "utf8");
 }
 
-/**
- * Sign an ES256 JWT from a `.p8` private key. Apple wants the raw r||s
- * signature (`ieee-p1363`), not the ASN.1/DER default. Callers build the claims.
- */
 export async function signEs256(
   key: PrivateKeySource,
   header: Record<string, string | number>,

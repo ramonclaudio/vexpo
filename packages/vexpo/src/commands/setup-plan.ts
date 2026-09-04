@@ -429,8 +429,6 @@ export function printJourneyPlan(lite: boolean): void {
   line();
 }
 
-// Auto-tier phases that lite mode also runs. Keep the labels in sync with
-// JOURNEY.auto entries above.
 const LITE_AUTO_LABELS = new Set<string>([
   "Convex deployment provisioning",
   "BETTER_AUTH_SECRET generation",

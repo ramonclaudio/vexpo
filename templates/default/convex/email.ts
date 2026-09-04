@@ -8,21 +8,8 @@ import type { DataModel } from "./_generated/dataModel";
 import { internalMutation } from "./_generated/server";
 import { env } from "./env";
 
-// @convex-dev/resend's testMode only permits @resend.dev sandbox addresses and
-// throws otherwise. To keep dev sign-up working with real-shaped emails,
-// sendAuthOTP below short-circuits when testMode is on and logs the OTP to the
-// Convex deployment console instead of calling sendEmail.
-// Explicit `: Resend` annotation is required because `onEmailEvent` references
-// a function in this same module, which would otherwise cause TS inference to
-// loop on itself.
 const testMode = process.env.RESEND_TEST_MODE !== "false";
 
-// testMode defaults ON, so a deployment that forgets `RESEND_TEST_MODE=false`
-// logs OTPs instead of sending them. When email verification is required
-// (testflight/prod tier), that means sign-up verification and password reset
-// silently no-op with no error. Surface it loudly at deploy/load time; the
-// only legitimate testMode deployment is the lite tier, where verification is
-// off and this stays quiet.
 if (testMode && env.requireEmailVerification) {
   console.error(
     "[resend] RESEND_TEST_MODE is on while REQUIRE_EMAIL_VERIFICATION is set: " +

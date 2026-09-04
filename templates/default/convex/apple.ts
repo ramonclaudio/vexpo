@@ -4,19 +4,6 @@ import { internalAction } from "./_generated/server";
 
 const REVOKE_URL = "https://appleid.apple.com/auth/revoke";
 
-// Revokes a Sign in with Apple refresh token via Apple's REST API. Scheduled
-// from `users.deleteAccount` so app authorization is removed from Apple's
-// side, per Apple's account-deletion requirement:
-//
-//   "If people used Sign in with Apple to create an account within your app,
-//   you revoke the associated tokens when they delete their account."
-//   developer.apple.com/documentation/SigninwithAppleRESTAPI/Revoke-tokens
-//
-// `APPLE_CLIENT_ID` is the SIWA Services ID and `APPLE_CLIENT_SECRET` is the
-// ES256 JWT that the `rotate-apple-jwt` EAS workflow refreshes every 90 days
-// (180-day Apple cap). Best-effort: a failed revoke logs and returns rather
-// than throwing, because the user has already confirmed account deletion and
-// the local rows are about to be wiped anyway.
 export const revokeRefreshToken = internalAction({
   args: { refreshToken: v.string() },
   returns: v.null(),

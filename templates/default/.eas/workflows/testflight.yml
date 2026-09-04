@@ -1,10 +1,5 @@
 name: TestFlight
 
-# Builds and distributes to TestFlight using the dedicated `testflight` job
-# (https://docs.expo.dev/eas/workflows/pre-packaged-jobs/#testflight). Unlike a
-# plain `submit`, this job lets us name internal/external groups, attach a
-# changelog, and gate on Beta App Review.
-
 on:
   push:
     branches: ["beta/*"]

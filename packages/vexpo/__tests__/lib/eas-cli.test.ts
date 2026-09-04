@@ -81,11 +81,6 @@ describe("easJson", () => {
   });
 });
 
-// Logged out is the failure everything else cascades from, and eas-cli reports
-// it in the shape a plain tail throws away: with stdin ignored, which is how
-// run() invokes it, the login prompt goes to stdout and stderr keeps only
-// "<cmd> command failed." A live `vexpo env push` printed exactly that and gave
-// no hint that the fix was `eas login`.
 const LOGGED_OUT = {
   code: 1,
   stdout:

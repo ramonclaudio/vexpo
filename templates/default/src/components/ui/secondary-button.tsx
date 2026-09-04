@@ -14,9 +14,6 @@ import { useDynamicFont } from "@/lib/dynamic-font";
 import { Button as ButtonTokens } from "@/constants/layout";
 import { useColors } from "@/hooks/use-theme";
 
-// The muted, centered-label counterpart to ProminentButton. `destructive`
-// paints the label red; `filled={false}` drops the muted capsule fill for the
-// most-destructive action (delete account) that shouldn't read as a chip.
 export function SecondaryButton({
   label,
   onPress,

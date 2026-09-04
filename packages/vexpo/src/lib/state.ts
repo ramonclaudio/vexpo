@@ -1,17 +1,3 @@
-/**
- * Resumable setup state at .setup-state.json. Records which orchestrator
- * steps have completed, with a per-step verifyAt cache to avoid re-querying
- * external services on every run. Secrets are never written here, only IDs
- * and timestamps. Atomic writes via tmp + rename so a Ctrl+C mid-write
- * leaves the previous state intact.
- *
- * The local cache is never the source of truth: external services win on
- * disagreement. Callers re-check freshness with `isStepFresh` before
- * trusting a cached step.
- *
- * Uses node:fs so the module works under both bun and node (vitest runs node).
- */
-
 import { access, readFile, rename, stat, unlink, writeFile } from "node:fs/promises";
 
 import { fileExists } from "./fs.ts";
@@ -50,8 +36,6 @@ export type AuditEntry = {
   cwd: string;
   completed: StepName[];
   skipped: StepName[];
-  // "unknown" covers failures outside a tracked step (cleanup, install, probe,
-  // summary), so the audit doesn't misattribute them to a real step.
   failed?: { step: StepName | "unknown"; message: string };
 };
 
@@ -73,16 +57,10 @@ const empty = (): SetupState => ({
 
 export async function load(): Promise<SetupState> {
   if (!(await fileExists(STATE_FILE))) return empty();
-  // Stat first so we can label "is a directory" distinctly from "JSON parse
-  // failed". A misleading "invalid JSON: EISDIR" sends users hunting for syntax
-  // errors in a file that isn't there.
   try {
     const s = await stat(STATE_FILE);
     if (s.isDirectory()) throw new Error(`${STATE_FILE} is a directory, not a file`);
   } catch (err) {
-    // Swallow only a racing delete (file gone between fileExists and stat) so
-    // readFile surfaces it. The directory guard and real stat errors
-    // (permissions, I/O) propagate instead of being masked as invalid JSON.
     if ((err as { code?: string }).code !== "ENOENT") throw err;
   }
   let raw: unknown;
@@ -135,11 +113,6 @@ export async function recordStep(name: StepName, outputs?: Record<string, unknow
   await save(state);
 }
 
-// A live-check passed after the TTL expired. Bump the step's freshness clock
-// without touching its cached outputs: a re-run of `vexpo full` past TTL must
-// not wipe the IDs (servicesId/teamId/keyId/p8Path, webhookId, ...) that
-// downstream commands read back via lookupOutput / lookupCachedPath. When no
-// record exists yet (env configured out of band), seed one marked live-check.
 export async function touchVerifyAt(name: StepName): Promise<void> {
   const state = await load();
   const now = new Date().toISOString();
@@ -185,8 +158,6 @@ export function fingerprint(value: string): string {
   return h.toString(16).padStart(8, "0");
 }
 
-// Read a recorded string output (an ID, not a path) from the first step that
-// has it. Unlike lookupCachedPath this skips the filesystem check.
 export function lookupOutput(
   state: SetupState,
   steps: readonly StepName[],

@@ -1,10 +1,3 @@
-/**
- * Two Apple rules discovered on a live run, encoded as behavior: internal
- * groups only accept App Store Connect team members (outside emails fall
- * through to the external group when the group was auto-resolved), and the
- * invitation email can't send until the group has an installable build (the
- * tester is durably added, so that's a success with a note, not a failure).
- */
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { AscApiError } from "../../src/lib/asc-api.ts";
@@ -111,9 +104,6 @@ describe("runTestflightInvite", () => {
 });
 
 describe("runTestflightGroupsList", () => {
-  // A live run printed 8-character prefixes, and every id in this CLI exists to
-  // be pasted into `groups view`, `groups delete` or `invite --group`. Apple 404s
-  // a prefix, so the listing has to print the whole thing.
   it("prints the whole group id, not a prefix", async () => {
     const stderr = vi.spyOn(process.stderr, "write").mockReturnValue(true);
     tf.betaGroups.list.mockResolvedValue([

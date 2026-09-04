@@ -1,23 +1,12 @@
-# Extend gitleaks' built-in rules, then carve out test fixtures.
 [extend]
 useDefault = true
 
-# `vexpo asc connect` and `vexpo submit` write the App Store Connect app id and
-# key id into eas.json's submit profiles, because that's the only place
-# `eas submit` reads them. The template shares a directory with a real shipping
-# project, so every run leaves those ids in the working tree waiting for a
-# `git add -A`. None of them is secret-shaped (an app id is digits, an issuer id
-# is a UUID), so the default ruleset passes and the only thing that catches it
-# is this rule. A scaffold built from a dirty tree would submit to somebody
-# else's app.
 [[rules]]
 id = "asc-identity-in-template-eas-json"
 description = "App Store Connect identity in the template eas.json; drop the asc* keys before committing"
 regex = '''"asc(AppId|ApiKeyId|ApiKeyIssuerId|ApiKeyPath)"\s*:\s*"[^"]+"'''
 path = '''templates/default/eas\.json'''
 
-# Redaction and parsing tests need secret-shaped fixtures. Scope the
-# allowlist to test paths so the scanner stays strict everywhere else.
 [[allowlists]]
 description = "fake secrets in test fixtures"
 paths = [

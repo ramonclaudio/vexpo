@@ -17,8 +17,6 @@ const base = {
 };
 
 describe("resolveDestination convex read failure", () => {
-  // A null convex map means the env read failed (auth/CLI). It must block, not
-  // fall through to "create" and blindly overwrite the whole deployment.
   it("blocks when the dev convex map is null", () => {
     const r = resolveDestination(convexDev, "new", { ...base, convexDev: null });
     expect(r.status).toBe("blocked");

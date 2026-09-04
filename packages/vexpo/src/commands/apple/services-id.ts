@@ -30,10 +30,6 @@ async function findOrCreateBundleId(
   client: ReturnType<typeof makeAscClient>,
   args: { identifier: string; name: string; platform: "IOS" | "SERVICES" },
 ): Promise<AscBundleId> {
-  // Apple stores app bundle ids as IOS, MAC_OS, or UNIVERSAL depending on
-  // capabilities. For an IOS lookup, accept any non-SERVICES platform. For
-  // SERVICES, match strictly. The find by identifier alone risks crossing
-  // SERVICES with non-SERVICES if both exist (rare, but possible).
   const all = await client.bundleIds.list({ identifier: args.identifier });
   const existing = all.find((b) => {
     if (b.attributes.identifier !== args.identifier) return false;
@@ -48,12 +44,6 @@ async function findOrCreateBundleId(
   });
 }
 
-/**
- * Look up an existing Services ID by identifier. Apple removed the API path
- * to create one (`POST /v1/bundleIds` rejects `platform: "SERVICES"` as of
- * 2025), so if it doesn't exist we walk the user through the web UI flow
- * and re-poll until it shows up.
- */
 async function findServicesIdOrPromptManual(
   client: ReturnType<typeof makeAscClient>,
   identifier: string,

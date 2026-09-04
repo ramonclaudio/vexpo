@@ -30,8 +30,6 @@ describe("expandTilde", () => {
   });
 
   it("does not expand ~user (other-user homedirs)", () => {
-    // bash expands ~alice to /home/alice; we don't, since the CLI takes file
-    // paths the current user has access to.
     expect(expandTilde("~alice/file")).toBe("~alice/file");
   });
 });

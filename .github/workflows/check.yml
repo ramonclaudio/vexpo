@@ -17,15 +17,13 @@ jobs:
   packages:
     name: packages (typecheck, lint, format, build, test, e2e)
     runs-on: ubuntu-latest
-    # `engines` claims >=22.12 (commander 15's floor), so test the exact floor,
-    # the latest 22.x, and current.
     strategy:
       fail-fast: false
       matrix:
         node-version: ["22.12", "22", "24"]
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
         with:
           node-version: ${{ matrix.node-version }}
           cache: npm
@@ -35,13 +33,9 @@ jobs:
       - run: npm run format:check
       - run: npm run build
       - run: npm run test:packages
-      # Coverage gate for the CLI, one Node to avoid triple work. Fails if
-      # coverage drops below the thresholds pinned in `vitest.config.ts`.
       - run: npm run coverage
         if: matrix.node-version == '22'
       - run: npm run test:packages:e2e
-      # Guard the publish surface: fail if a tarball would ship anything outside
-      # each package's `files` allowlist (source, tests, env files, keys).
       - run: node .github/scripts/pack-guard.mjs packages/vexpo
       - run: node .github/scripts/pack-guard.mjs packages/create-vexpo
 
@@ -52,15 +46,12 @@ jobs:
       run:
         working-directory: templates/default
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
         with:
           node-version: "22"
           cache: npm
           cache-dependency-path: templates/default/package-lock.json
-      # Integration-test the CLI source in this PR, not the last npm release.
-      # Build and pack the local `@ramonclaudio/vexpo`, then install the tarball
-      # over the lockfile pin (`--no-save` keeps the committed lockfile clean).
       - run: npm ci
         working-directory: .
       - run: npm run build -w @ramonclaudio/vexpo
@@ -69,29 +60,20 @@ jobs:
         working-directory: .
       - run: npm ci
       - run: npm install --no-save ramonclaudio-vexpo-*.tgz
-      # Drive the packed binary: help must exit 0, and `doctor --json` in the
-      # scaffolded template must emit a parseable report (same shape the package
-      # e2e asserts). A not-fully-provisioned project is fine, this exercises the
-      # real CLI, not just that the tarball installed.
       - run: npx vexpo --help
       - run: npx vexpo doctor --json | node -e 'const r=JSON.parse(require("fs").readFileSync(0));process.exit(Array.isArray(r.checks)&&"summary"in r&&"channel"in r?0:1)'
       - run: npm run typecheck
       - run: npm run lint
       - run: npm run format:check
       - run: npm run test
-      # The SDK compatibility gate, and the only check that reads the Expo
-      # version matrix. Dependabot resolves from the registry and can't know a
-      # package is pinned by SDK 57, so a bump like typescript 7 typechecks,
-      # lints and tests clean while being wrong for the template. This is what
-      # turns that into a red PR instead of a green one.
       - run: npx expo-doctor
 
   knip:
     name: knip (unused exports, deps, files)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
         with:
           node-version: "22"
           cache: npm
@@ -106,8 +88,8 @@ jobs:
       contents: read
       pull-requests: write
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-      - uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294 # v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294
         with:
           fail-on-severity: high
           comment-summary-in-pr: on-failure
@@ -116,9 +98,9 @@ jobs:
     name: secret scan (gitleaks)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           fetch-depth: 0
-      - uses: gitleaks/gitleaks-action@e0c47f4f8be36e29cdc102c57e68cb5cbf0e8d1e # v3.0.0
+      - uses: gitleaks/gitleaks-action@e0c47f4f8be36e29cdc102c57e68cb5cbf0e8d1e
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

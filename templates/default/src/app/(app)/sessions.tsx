@@ -80,9 +80,6 @@ export default function SessionsScreen() {
     try {
       const res = await authClient.listSessions();
       if (res.error) {
-        // Better Auth freshness-gates session management (freshAge in
-        // convex/auth.ts). A stale session gets 403 SESSION_NOT_FRESH, which
-        // no retry can fix, only a fresh sign-in can.
         setLoadError(res.error.code === "SESSION_NOT_FRESH" ? "stale" : "network");
         return;
       }
@@ -110,9 +107,6 @@ export default function SessionsScreen() {
     setRevoking(token);
     setRevokeError(false);
     try {
-      // revokeSession resolves with an `error` object (not a throw) on a
-      // server-side failure, so check it before announcing success, matching
-      // load()'s `res.error` handling above.
       const res = await authClient.revokeSession({ token });
       if (res.error) {
         haptics.error();
@@ -134,8 +128,6 @@ export default function SessionsScreen() {
     <Host
       testID="sessions-screen"
       style={{ flex: 1, backgroundColor: colors.background }}
-      // upstream expo/expo#47269: raises redacted("privacy") when the app
-      // resigns, hiding privacySensitive leaves in the app-switcher snapshot
       modifiers={scenePrivacy}
     >
       {sessions === null ? (
@@ -170,8 +162,6 @@ export default function SessionsScreen() {
             alignment="leading"
             modifiers={[
               padding({ horizontal: 24, top: 24, bottom: 40 }),
-              // Revoking a session drops a row and everything under it snaps up.
-              // Animating the stack closes that gap instead of cutting to it.
               ...(reduceMotion
                 ? []
                 : [
@@ -211,10 +201,7 @@ export default function SessionsScreen() {
                     testID={`session-identity-${s.token}`}
                     alignment="leading"
                     spacing={2}
-                    modifiers={[
-                      // upstream expo/expo#47156: combine collapses the identity block into one VoiceOver stop
-                      accessibilityElement("combine"),
-                    ]}
+                    modifiers={[accessibilityElement("combine")]}
                   >
                     <HStack spacing={8} alignment="center">
                       <Text
@@ -232,8 +219,6 @@ export default function SessionsScreen() {
                             padding({ horizontal: 8, vertical: 2 }),
                             background(colors.primary as string),
                             cornerRadius(8),
-                            // upstream expo/expo#46540: fixed pill, cap Dynamic
-                            // Type so it can't balloon beside the device name.
                             dynamicTypeSize({ max: DynamicType.control }),
                           ]}
                         >
@@ -268,7 +253,6 @@ export default function SessionsScreen() {
                             frame({ minHeight: TouchTarget.min }),
                             contentShape(shapes.rectangle()),
                             accessibilityLabel(`Revoke ${deviceLabel(s.userAgent)}`),
-                            // upstream expo/expo#46661: every row's button says "Revoke", so give Voice Control the device name as a spoken alias
                             accessibilityInputLabels([`Revoke ${deviceLabel(s.userAgent)}`]),
                           ]}
                           onPress={() => {

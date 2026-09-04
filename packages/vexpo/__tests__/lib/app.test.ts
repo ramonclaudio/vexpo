@@ -6,9 +6,6 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { appName, appleTeamIdFallback, bundleIdFallback, pkgName, scheme } from "../../src/lib/app";
 
-// `app.ts` reads `package.json` + `app.config.ts` from the current working
-// directory. Tests chdir into a temp dir + write fixtures.
-
 let workdir: string;
 let originalCwd: string;
 
@@ -82,7 +79,6 @@ describe("appName", () => {
   });
 
   it("ignores app.config.ts `name:` inside a different object", async () => {
-    // Top-level name only. Nested `name:` in plugin config shouldn't win.
     await writeFile(
       "app.config.ts",
       `export default {
@@ -117,8 +113,6 @@ describe("scheme", () => {
 
 describe("bundleIdFallback", () => {
   it('extracts the bundle id from the `EXPO_PUBLIC_APP_BUNDLE_ID ?? "..."` pattern', async () => {
-    // Matches the actual shape of app.config.ts in the template: a const
-    // declaration that reads from process.env with a string fallback.
     await writeFile(
       "app.config.ts",
       `const APP_BUNDLE_ID = process.env.EXPO_PUBLIC_APP_BUNDLE_ID ?? "com.example.myapp";`,

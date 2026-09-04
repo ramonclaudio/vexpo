@@ -15,10 +15,6 @@ import { DynamicType } from "@/constants/ui";
 import { useColors } from "@/hooks/use-theme";
 import { useDynamicFont } from "@/lib/dynamic-font";
 
-// `@expo/ui`'s ContentUnavailableView wraps SwiftUI's iOS 17+ view with no
-// `else`, so it renders blank on the iOS 16.4-16.7 deployment floor. Branch to
-// a hand-built layout there so every empty state still shows; iOS 17+ keeps the
-// native view.
 const NATIVE = Platform.OS === "ios" && Number.parseInt(String(Platform.Version), 10) >= 17;
 
 type Props = {
@@ -55,7 +51,6 @@ function Fallback({ title, systemImage, description, testID }: Props) {
       modifiers={[
         frame({ maxWidth: Infinity }),
         padding({ vertical: 40, horizontal: 24 }),
-        // upstream expo/expo#47156: read icon + title + description as one VoiceOver stop.
         accessibilityElement("combine"),
       ]}
     >

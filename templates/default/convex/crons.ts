@@ -11,9 +11,6 @@ crons.daily(
   internal.pushTokens.cleanupStale,
 );
 
-// Expo only surfaces dead devices (DeviceNotRegistered, etc.) in the push
-// RECEIPT, which lands minutes after the send ticket. Poll for them so tokens
-// get tombstoned promptly instead of waiting on the 90-day staleness sweep.
 crons.interval("reconcile push receipts", { minutes: 15 }, internal.pushSender.reconcileReceipts);
 
 crons.daily(
@@ -22,9 +19,6 @@ crons.daily(
   internal.users.hardDeleteExpired,
 );
 
-// A guest whose sessions have all expired can never reach their row again,
-// and nothing in the app flow deletes one, so the table would grow with every
-// install that never signs up.
 crons.daily(
   "purge abandoned guest accounts",
   { hourUTC: 4, minuteUTC: 30 },
@@ -32,9 +26,6 @@ crons.daily(
   {},
 );
 
-// The Resend component retains finalized (delivered, cancelled, bounced)
-// emails and it's our job to clear them. Run hourly to keep the emails table
-// bounded. See @convex-dev/resend README → "Data retention".
 crons.interval(
   "Remove old emails from the resend component",
   { hours: 1 },

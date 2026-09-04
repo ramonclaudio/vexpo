@@ -1,13 +1,3 @@
-/**
- * `vexpo asc privacy` group.
- *
- *   show [f]   Show the locally declared `privacy.config.json`. Apple exposes
- *              no public read API for the live label (the `App` resource has no
- *              privacy relationship); set it in App Store Connect.
- *   lint <f>   Validate a local `app-store/privacy.config.json` against Apple's
- *              published category + purpose enums.
- */
-
 import { existsSync, readFileSync } from "node:fs";
 
 import { lintPrivacyConfig } from "../lib/asc-privacy.ts";

@@ -5,16 +5,6 @@ import { envList as easEnvList } from "../../lib/eas-project.ts";
 import { BOLD, RESET, askYesNo, bad, line, nop, note, ok, section, yep } from "../../lib/output.ts";
 import { recordStep } from "../../lib/state.ts";
 
-/**
- * The template's `app.config.ts` ships with
- * `const BUNDLE_ID = process.env.EXPO_PUBLIC_APP_BUNDLE_ID ?? \`com.example.${pkg.name}\`;`.
- * If the rebrand wizard hasn't been run AND production EAS env doesn't carry
- * `EXPO_PUBLIC_APP_BUNDLE_ID`, eas-cli resolves the bundle id to this
- * placeholder and silently registers it on the user's Apple Developer team
- * (e.g. `com.example.vexpo`). The dist cert + provisioning profile end up
- * bound to a bundle id the app will never actually ship under. Refuse before
- * we get there.
- */
 async function resolveBundleId(profile: string): Promise<{
   source: "app.config.ts" | "EAS env" | null;
   value: string | null;

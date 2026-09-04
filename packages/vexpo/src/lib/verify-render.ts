@@ -16,9 +16,6 @@ function glyph(severity: Severity): string {
   }
 }
 
-// doctor prints each category under its own section rule and pads names per
-// category; env push nests a lighter bold label under one Verify section and
-// pads across every check. Same glyphs, colors, and order either way.
 export function renderVerifyResults(checks: Check[], style: "section" | "compact"): void {
   const byCategory = new Map<Category, Check[]>();
   for (const c of checks) {

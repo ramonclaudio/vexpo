@@ -1,22 +1,3 @@
-/**
- * Restore-or-confirm surface for the account-deletion window.
- *
- * Reachable only when `getMe` returns a user with `deletedAt` set. The
- * (app) layout's two-layer `Stack.Protected` switches the entire subtree
- * to this screen and keeps the user from navigating elsewhere until they
- * pick a path:
- *
- *   Restore Account       calls `users.restoreAccount`, clears the
- *                         tombstone, drops us back at the home tab
- *   Sign Out              hard sign-out; the 30-day cron continues to
- *                         tick down toward permanent deletion
- *
- * Apple revoke does NOT happen here; the soft-delete pattern in
- * `users.deleteAccount` defers Apple's `revokeRefreshToken` to the
- * `hardDeleteExpired` cron so a restore within the window leaves SIWA
- * authorization intact.
- */
-
 import { router } from "expo-router";
 import { startTransition, useActionState, useState } from "react";
 import { Image as ExpoImage } from "expo-image";
@@ -43,10 +24,6 @@ import { formatError } from "@/lib/convex-error";
 import { useDynamicFont } from "@/lib/dynamic-font";
 import { haptics } from "@/lib/haptics";
 
-// Mirror of `ACCOUNT_DELETION_GRACE_MS` in `convex/users.ts`. Importing
-// across the convex / app boundary costs a runtime require for a single
-// constant, so inline it here. If you ever change the grace window,
-// keep the two in sync.
 const ACCOUNT_DELETION_GRACE_MS = 30 * 24 * 60 * 60 * 1000;
 
 type ActionState = { error?: string };
@@ -97,9 +74,6 @@ export default function RestoreAccountScreen() {
     );
   }
 
-  // Note: `deletedAt` cleared mid-mount is handled by the two-layer
-  // Stack.Protected in (app)/_layout.tsx, which switches us back to the
-  // authed subtree on the next render. No side-effect-in-render needed.
   if (!me.deletedAt) {
     return (
       <Host style={{ flex: 1, backgroundColor: colors.background }}>
@@ -118,10 +92,7 @@ export default function RestoreAccountScreen() {
 
   return (
     <Host testID="restore-account-screen" style={{ flex: 1, backgroundColor: colors.background }}>
-      {/* This modal traps the user (gestureEnabled false), so the Restore and
-          Sign Out buttons must stay reachable when Dynamic Type overflows the
-          frame: scroll instead of clipping, centered when it fits (iOS 17+,
-          plain scroll on the floor). */}
+      {}
       <ScrollView modifiers={[defaultScrollAnchor("center")]}>
         <VStack
           spacing={24}

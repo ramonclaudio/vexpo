@@ -6,9 +6,6 @@ import { useDynamicFont } from "@/lib/dynamic-font";
 import { useColors } from "@/hooks/use-theme";
 import { announce } from "@/lib/a11y";
 
-// `attempt` re-fires the announcement when consecutive submits produce the
-// identical message: the string dependency alone would stay unchanged and
-// VoiceOver would hear nothing on the second failure.
 type Props = { children: string; size?: number; testID?: string; attempt?: number };
 
 export function ErrorText({ children, size = 14, testID, attempt }: Props) {

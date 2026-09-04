@@ -101,9 +101,6 @@ describe("withAscAppId", () => {
 
   it("returns a non-object ios value unchanged (identity no-op)", () => {
     const weird = '{\n  "submit": { "p": { "ios": "weird" } }\n}\n';
-    // needsAscAppId sees ios is not an object, so withAscAppId must return the
-    // input untouched. `.toBe` pins that no-op; `.not.toThrow` would still pass
-    // if the early-return guard were deleted and the value got reformatted.
     expect(withAscAppId(weird, "1234567890")).toBe(weird);
   });
 
@@ -152,7 +149,6 @@ describe("withAscApiKey", () => {
   it("is idempotent, keyed on all three fields", () => {
     const once = withAscApiKey(EAS, KEY);
     expect(withAscApiKey(once, KEY)).toBe(once);
-    // A profile carrying only one of the three still gets the full set.
     const partial = once.replace(`"ascApiKeyId": "${KEY.keyId}",\n`, "");
     const healed = parse(withAscApiKey(partial, KEY));
     expect(healed.submit.production.ios.ascApiKeyId).toBe(KEY.keyId);

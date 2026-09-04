@@ -10,7 +10,6 @@ on:
         description: Tag to publish (e.g. v0.2.0). Must already exist on the repo.
         required: true
 
-# Least privilege at the top; the publish job widens to exactly what it needs.
 permissions:
   contents: read
 
@@ -21,21 +20,17 @@ concurrency:
 jobs:
   publish:
     runs-on: ubuntu-latest
-    # Forks lack NPM_TOKEN and don't own the packages, so a synced v* tag would
-    # run the whole pipeline into a doomed npm publish (upstream expo/expo#45859).
     if: github.repository == 'ramonclaudio/vexpo'
-    # Least privilege: `contents: write` for the GitHub release, `id-token: write`
-    # so npm can attach build provenance to the published packages.
     permissions:
       contents: write
       id-token: write
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           ref: ${{ inputs.tag || github.ref }}
           fetch-depth: 0
 
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
         with:
           node-version: "22"
           registry-url: https://registry.npmjs.org
@@ -60,11 +55,8 @@ jobs:
       - run: npm run typecheck
       - run: npm run build
       - run: npm run test:packages
-      # Smoke-test the built binaries before they reach the registry.
       - run: npm run test:packages:e2e
 
-      # Rehearse the publish: pack each package and fail if it would ship
-      # anything outside its `files` allowlist, then dry-run the registry upload.
       - name: Publish dry-run rehearsal
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
@@ -74,11 +66,6 @@ jobs:
           npm publish --dry-run -w @ramonclaudio/vexpo
           npm publish --dry-run -w @ramonclaudio/create-vexpo
 
-      # `--access public` and `--provenance` come from each package's
-      # `publishConfig`, so the CLI needs no flags. Auth is the NPM_TOKEN secret;
-      # `id-token: write` above lets npm attach provenance.
-      # Guard each publish so a re-run finishes a half-published release instead
-      # of dying on npm's "cannot publish over previously published version".
       - name: Publish vexpo
         working-directory: packages/vexpo
         env:
@@ -124,7 +111,7 @@ jobs:
           } >> "$GITHUB_OUTPUT"
 
       - name: Create GitHub release
-        uses: softprops/action-gh-release@3d0d9888cb7fd7b750713d6e236d1fcb99157228 # v3.0.2
+        uses: softprops/action-gh-release@3d0d9888cb7fd7b750713d6e236d1fcb99157228
         with:
           tag_name: ${{ inputs.tag || github.ref_name }}
           name: ${{ inputs.tag || github.ref_name }}

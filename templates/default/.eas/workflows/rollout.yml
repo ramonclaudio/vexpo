@@ -1,11 +1,5 @@
 name: Rollout
 
-# Two paths, controlled by `action`, mirroring the EAS Update rollout flow
-# (https://docs.expo.dev/eas-update/rollouts/):
-#   "publish" → `eas update` publishes a fresh OTA from HEAD at the given %.
-#   "edit"    → `eas update:edit` bumps the % of the active rollout group.
-# To kill a bad rollout, use the `rollback` workflow.
-
 on:
   workflow_dispatch:
     inputs:
@@ -28,18 +22,11 @@ on:
         required: true
         default: 25
 
-# No concurrency block on purpose. EAS only accepts `cancel_in_progress: true`
-# (and no custom group yet), but cancelling an in-flight rollout mid-publish is
-# worse than letting it finish, so the no-block default (don't cancel) is the
-# correct behaviour here.
-
 jobs:
   rollout:
     name: ${{ inputs.action }} → ${{ inputs.percentage }}% on ${{ inputs.branch }}
     environment: ${{ inputs.branch == 'production' && 'production' || 'development' }}
     runs_on: linux-medium
-    # Inputs reach the script only as env vars (never interpolated into the body)
-    # so a branch with shell metacharacters is treated as data, not code.
     env:
       ROLLOUT_BRANCH: ${{ inputs.branch }}
       ROLLOUT_ACTION: ${{ inputs.action }}

@@ -141,8 +141,6 @@ describe("resolveProjectId / .env.local source", () => {
     await writeFile(".env.local", "EAS_PROJECT_ID=from-dotenv-export\n");
     expect(process.env.EAS_PROJECT_ID).toBeUndefined();
     expect(await resolveProjectId()).toBe("from-dotenv-export");
-    // Side effect: subsequent subprocess spawns (e.g. eas project:info) now
-    // see the value via the inherited environment.
     expect(process.env.EAS_PROJECT_ID).toBe("from-dotenv-export");
   });
 
@@ -154,7 +152,6 @@ describe("resolveProjectId / .env.local source", () => {
     await writeFile(".env.local", "EAS_PROJECT_ID=from-dotenv\n");
     expect(process.env.EAS_PROJECT_ID).toBeUndefined();
     expect(await resolveProjectId()).toBe("from-json");
-    // We didn't reach the .env.local branch, so process.env stays untouched.
     expect(process.env.EAS_PROJECT_ID).toBeUndefined();
   });
 });

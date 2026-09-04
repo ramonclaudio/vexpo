@@ -1,80 +1,16 @@
-# Auth journey: sign up (auto-verify lite path) -> land authed -> sign out -> sign back in.
-#
-# LITE MODE ONLY: this flow requires REQUIRE_EMAIL_VERIFICATION to be UNSET on
-# the deployment. Once Resend is provisioned (verification on), sign-up needs a
-# real OTP email and the land-authed assertion cannot pass headlessly. On a
-# verification-on deployment, seed a pre-verified account (`npx vexpo
-# review-account`) and drive a sign-IN-only variant, or run this suite on EAS
-# release builds via `.eas/workflows/e2e-tests.yml`.
-#
-# Run locally: `npm run e2e -- .maestro/auth.yaml`. macOS ships no JDK and
-# Maestro is a JVM tool, so scripts/e2e.mjs finds a Homebrew keg itself rather
-# than needing JAVA_HOME set by hand.
-#
-# With verification unset, `getEnabledProviders` returns emailFeatures: false.
-# Sign-up creates a verified account and Better Auth's autoSignIn returns a
-# session in the same call, so there is no OTP step: the user lands signed in.
-# A fresh signed-in user trips the first-launch gate in (app)/_layout.tsx and
-# gets redirected to /welcome; this flow completes that onboarding before
-# asserting the tabs.
-#
-# Same @expo/ui SwiftUI conventions as launch.yaml: `testID` maps to the native
-# accessibilityIdentifier and surfaces to Maestro as `resource-id`, so id-based
-# asserts/taps resolve. Driving notes carry over:
-#   - ProminentButton submits hold content in the center, so tap them by `id`.
-#   - Segmented Picker rows put their label text in the middle, so tap the
-#     sign-in/sign-up toggle by its label text (`tapOn: "Sign up"`), not by id.
-#   - The sign-out row is a full-width Button with its label in the center, so
-#     tap it by `id`.
-#   - waitForAnimationToEnd between navigations; assert-then-tap for tab bars.
-#   - Use extendedWaitUntil with a generous timeout after sign-up/sign-in: those
-#     hit the live Convex deployment over the network.
-#
-# Env vars:
-#   MAESTRO_APP_ID        bundle id (EAS injects from EXPO_PUBLIC_APP_BUNDLE_ID)
-#   MAESTRO_TEST_EMAIL    unique email per run (a fresh account is created)
-#   MAESTRO_TEST_PASSWORD password, at least 10 chars (signUpSchema)
-#
-# Local re-runs: Better Auth keeps the session in the keychain, which
-# clearState does NOT wipe. Reset it first or the relaunch comes up signed in:
-#   xcrun simctl keychain booted reset
-#
-# Run locally: `npm run e2e -- .maestro/auth.yaml`. The script mints a unique
-# MAESTRO_TEST_EMAIL per run and resets the keychain first.
-# Run on EAS: via `.eas/workflows/e2e-tests.yml` (workflow_dispatch only).
 appId: ${MAESTRO_APP_ID}
 ---
 - launchApp:
     clearState: true
-    # Landing authed registers for push, and iOS puts its permission alert over
-    # the welcome screen. That alert is SpringBoard's, not the app's, so it is
-    # absent from the accessibility tree Maestro queries: it cannot see the text
-    # or tap the buttons, and every assert after it fails with the screen sitting
-    # right there behind it. Answering it up front is the only way through. Deny,
-    # because push needs a physical device anyway.
     permissions:
       notifications: deny
 - waitForAnimationToEnd:
     timeout: 15000
 
-# Dev-client builds: clearState also wipes the dev client's last-opened-bundle
-# memory, so the launcher shows the server picker instead of the app. Tap the
-# running Metro server when the picker appears. Release builds skip this block.
 - runFlow:
     when:
       visible: "DEVELOPMENT SERVERS"
     commands:
-      # Local dev-client runs only. On EAS this job builds `development:simulator`,
-      # which extends a `developmentClient: true` profile, so the picker appears
-      # there too but no Metro is reachable and neither this nor a tap can
-      # resolve. That path wants a release build, see .eas/workflows/e2e-tests.yml.
-      #
-      # Don't tap the picker's server row: it finds Metro by scanning the local
-      # network and on a simulator it sits on "Searching for development
-      # servers..." indefinitely, so the row never arrives and the flow dies on
-      # "Element not found: http://.*:8081" while Metro is perfectly healthy.
-      # Open the bundle by deep link instead, the same URL and mechanism
-      # `expo run:ios` uses. `scripts/e2e.mjs` builds MAESTRO_DEV_URL.
       - openLink: ${MAESTRO_DEV_URL}
       - extendedWaitUntil:
           notVisible: "DEVELOPMENT SERVERS"
@@ -82,18 +18,12 @@ appId: ${MAESTRO_APP_ID}
       - waitForAnimationToEnd:
           timeout: 15000
 
-# Signed out: the auth guard mounts the `auth` group, whose stack starts at
-# sign-in. Wait for the screen root before touching anything.
 - extendedWaitUntil:
     visible:
       id: "sign-in-screen"
     timeout: 20000
-# Inner SwiftUI Text testIDs do not surface to Maestro (Host roots and real
-# controls do), so static copy is asserted by its text.
 - assertVisible: "Enter your credentials.*"
 
-# Cross to sign-up via the segmented toggle. Tap the segment by label text, not
-# id (the Picker row holds its label in the middle).
 - tapOn: "Sign up"
 - waitForAnimationToEnd:
     timeout: 5000
@@ -103,11 +33,6 @@ appId: ${MAESTRO_APP_ID}
     timeout: 15000
 - assertVisible: "Create your account"
 
-# Fill name, email, password. Username is optional and skipped. Tapping the
-# field by id focuses it, then `inputText` types into the focused field.
-# The keyboard covers the lower fields once it is up. Both auth screens use
-# scrollDismissesKeyboard("interactively"), so a downward drag dismisses the
-# keyboard between fields (hideKeyboard is flaky on iOS, don't use it).
 - tapOn:
     id: "sign-up-name"
 - inputText: "Maestro E2E"
@@ -128,9 +53,6 @@ appId: ${MAESTRO_APP_ID}
     element:
       id: "sign-up-password"
     direction: DOWN
-# iOS Automatic Strong Password hijacks SecureFields with newPassword content
-# type in the simulator and swallows typed input. The eye toggle swaps to a
-# plain TextField (and auto-focuses it), which types fine.
 - tapOn:
     id: "sign-up-password-visibility"
 - waitForAnimationToEnd:
@@ -142,7 +64,6 @@ appId: ${MAESTRO_APP_ID}
     start: 50%, 35%
     end: 50%, 85%
 
-# Submit. ProminentButton center holds content, so tap by id.
 - scrollUntilVisible:
     element:
       id: "sign-up-submit"
@@ -150,39 +71,23 @@ appId: ${MAESTRO_APP_ID}
 - tapOn:
     id: "sign-up-submit"
 
-# Fail on the cause, not the symptom. With REQUIRE_EMAIL_VERIFICATION set, this
-# is where sign-up lands on the OTP screen instead: the account and the session
-# are fine, there is just a code in an inbox that Maestro cannot read. Asserting
-# that first turns an opaque "welcome-screen is visible" timeout into the reason.
-#   npx convex env get REQUIRE_EMAIL_VERIFICATION
-#   npx convex env remove REQUIRE_EMAIL_VERIFICATION   # only on an e2e deployment
-# tour.yaml and zz-delete-restore.yaml both need the session this flow creates,
-# so all three fail together when it is set.
 - assertNotVisible: "Verify your email"
 
-# Auto-verify lite path: account is created verified and the session returns in
-# the same call, so the app signs in. A fresh authed user is redirected to the
-# first-launch welcome onboarding. Generous timeout: this is a live network call.
 - extendedWaitUntil:
     visible:
       id: "welcome-screen"
     timeout: 30000
 
-# Complete onboarding. Three steps; the button is "Next" until the last step,
-# then "Get Started" (both share id welcome-continue). Skip jumps straight to
-# the app. Tap Skip by label text to dismiss the gate in one move.
 - assertVisible: "Skip"
 - tapOn: "Skip"
 - waitForAnimationToEnd:
     timeout: 5000
 
-# Authenticated: the tabs root mounts on home.
 - extendedWaitUntil:
     visible:
       id: "home-screen"
     timeout: 20000
 
-# Sign out via Settings. Native tab taps can be flaky, so assert-then-tap.
 - assertVisible: "Settings"
 - tapOn: "Settings"
 - waitForAnimationToEnd:
@@ -192,29 +97,23 @@ appId: ${MAESTRO_APP_ID}
       id: "settings-screen"
     timeout: 15000
 
-# The sign-out row is a capsule row (label left, Spacer center), so tap by text.
 - tapOn: "Sign out"
 - waitForAnimationToEnd:
     timeout: 3000
-# Confirm in the native ConfirmationDialog. The action label is "Sign Out"
-# (capital O), distinct from the row's "Sign out".
 - assertVisible: "Sign Out"
 - tapOn: "Sign Out"
 
-# Back to the unauthenticated entry.
 - extendedWaitUntil:
     visible:
       id: "sign-in-screen"
     timeout: 20000
 
-# Sign back in with the same credentials. Method toggle defaults to Email.
 - tapOn:
     id: "sign-in-email"
 - inputText: ${MAESTRO_TEST_EMAIL}
 - swipe:
     start: 50%, 35%
     end: 50%, 85%
-# Same strong-password autofill dodge as sign-up: reveal, which auto-focuses.
 - tapOn:
     id: "sign-in-email-password-visibility"
 - waitForAnimationToEnd:
@@ -232,8 +131,6 @@ appId: ${MAESTRO_APP_ID}
 - tapOn:
     id: "sign-in-submit"
 
-# Authenticated again. Onboarding was already marked seen, so this lands on the
-# tabs root directly. Generous timeout: live network call.
 - extendedWaitUntil:
     visible:
       id: "home-screen"
@@ -241,12 +138,6 @@ appId: ${MAESTRO_APP_ID}
 
 - takeScreenshot: .maestro/screenshots/auth-final
 
-# Prove the session survives a cold start before handing the suite on. Better
-# Auth writes it to secure storage asynchronously, after the UI has already
-# switched to the tabs, so the next flow's launchApp used to kill the app
-# mid-write and every flow after this one came up on sign-in. Relaunching here
-# both asserts what a real user gets (quit the app, come back signed in) and
-# lets that write land.
 - launchApp
 - waitForAnimationToEnd:
     timeout: 15000

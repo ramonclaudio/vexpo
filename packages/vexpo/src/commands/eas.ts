@@ -18,14 +18,6 @@ export type EasOptions = {
   withProd?: boolean;
 };
 
-/**
- * Pushes ONLY the EAS-routed keys (the `EXPO_PUBLIC_*` vars) from an env file
- * to EAS. Server-side secrets (`BETTER_AUTH_SECRET`, `RESEND_API_KEY`,
- * `CONVEX_DEPLOY_KEY`, …) route to the Convex deployment per `env-files.ts`
- * and must never land on EAS at default Sensitive (locally-pullable)
- * visibility. The filtered subset is written to a 0600 temp file so the
- * plaintext never touches a predictable path. Returns the pushed key names.
- */
 async function pushEasRoutedKeys(
   file: string,
   environments: readonly EasEnvironment[],

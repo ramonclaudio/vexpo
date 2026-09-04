@@ -8,24 +8,12 @@ import { internalAction } from "./_generated/server";
 const EXPO_PUSH_URL = "https://exp.host/--/api/v2/push/send";
 const EXPO_RECEIPTS_URL = "https://exp.host/--/api/v2/push/getReceipts";
 
-// Expo rejects a /push/send batch above 100 messages, so slice into pages.
-// https://docs.expo.dev/push-notifications/sending-notifications/#push-tickets
 const PUSH_CHUNK = 100;
 
-// getReceipts caps at 1000 ids per call; we stay well under and reschedule
-// when a full page comes back so a backlog drains without unbounded reads.
 export const RECEIPT_PAGE = 100;
 
-// Expo keeps receipts for about a day. A row with no receipt by then is a
-// lost cause, so drop it instead of polling forever.
 const RECEIPT_MAX_AGE_MS = 24 * 60 * 60 * 1000;
 
-// Permanent failure codes from the Expo Push Service. A receipt or ticket
-// with one of these means the device or app install will never accept a
-// push again, so the token is tombstoned. Transient codes (rate limit,
-// message-too-big, server error) are not in this set; those just log.
-//
-// https://docs.expo.dev/push-notifications/sending-notifications/#individual-push-notification-errors
 const PERMANENT_ERROR_CODES = new Set([
   "DeviceNotRegistered",
   "InvalidCredentials",
@@ -39,9 +27,6 @@ type ExpoMessage = {
   data?: Record<string, unknown>;
   sound?: "default" | null;
   badge?: number;
-  // `content-available: 1`-style silent push. Wakes the background task
-  // without showing a banner. Pair with `priority: "high"` so iOS doesn't
-  // throttle delivery.
   _contentAvailable?: boolean;
   priority?: "default" | "normal" | "high";
 };
@@ -65,16 +50,6 @@ type ExpoReceiptsResponse = {
   errors?: Array<{ code?: string; message?: string }>;
 };
 
-/**
- * Fan out a push to every active token of `userId`. Tickets returned with
- * a permanent error code mark the originating token revoked so subsequent
- * sends skip it. Transient errors are logged but kept.
- *
- * Best-effort: a single network failure logs and returns; the caller is
- * always a mutation that already committed (account-event hook, scheduled
- * job, etc.), so we never want a push send to surface as a user-facing
- * error.
- */
 export const sendToUser = internalAction({
   args: {
     userId: v.id("users"),
@@ -107,9 +82,6 @@ export const sendToUser = internalAction({
       return m;
     });
 
-    // Expo caps /push/send at 100 messages per request. Pair each ticket with
-    // its own token slice as we go, so a short or skipped chunk can't shift the
-    // alignment of later chunks.
     const entries: TicketEntry[] = [];
     for (let i = 0; i < messages.length; i += PUSH_CHUNK) {
       const chunk = messages.slice(i, i + PUSH_CHUNK);
@@ -140,8 +112,6 @@ export const sendToUser = internalAction({
     }
     const revoked = await reconcileTickets(ctx, entries);
 
-    // Park accepted tickets so `reconcileReceipts` can poll for the receipt
-    // that reveals a dead device. Each entry already carries its own token.
     const receipts = entries.flatMap(({ ticket, token }) =>
       ticket.status === "ok" ? [{ ticketId: ticket.id, tokenId: token._id }] : [],
     );
@@ -153,16 +123,6 @@ export const sendToUser = internalAction({
   },
 });
 
-/**
- * Poll Expo for the receipts of earlier sends. A ticket accepted at send
- * time (status ok) only reveals a dead device later, in the receipt. So we
- * stored each ok ticket id against its token; here we batch them to
- * getReceipts and tombstone any token whose receipt carries a permanent
- * error code.
- *
- * Scheduled from crons. Best-effort like the send path: a network failure
- * logs and returns, leaving the rows for the next run.
- */
 export const reconcileReceipts = internalAction({
   args: {},
   returns: v.object({ checked: v.number(), revoked: v.number(), pruned: v.number() }),
@@ -207,7 +167,6 @@ export const reconcileReceipts = internalAction({
       await ctx.runMutation(internal.pushTokens.deleteReceipts, { ids: settled });
     }
 
-    // A full page back means more may be queued; drain on the next tick.
     if (pending.length === RECEIPT_PAGE) {
       await ctx.scheduler.runAfter(0, internal.pushSender.reconcileReceipts, {});
     }
@@ -222,13 +181,6 @@ type PendingReceipt = {
   createdAt: number;
 };
 
-/**
- * Decide each pending row's fate from Expo's getReceipts response. A row is
- * "settled" (safe to delete) once Expo returns its receipt, or once it has
- * aged past RECEIPT_MAX_AGE_MS with no receipt. Permanent-error receipts also
- * bucket their token id by error code for revocation. Receipts are keyed by
- * ticket id, so position doesn't matter here.
- */
 function planReceiptReconciliation(
   pending: PendingReceipt[],
   receipts: Record<string, ExpoReceipt>,
@@ -239,7 +191,6 @@ function planReceiptReconciliation(
   for (const row of pending) {
     const receipt = receipts[row.ticketId];
     if (!receipt) {
-      // Not ready yet. Give up only once it's too old to keep retrying.
       if (now - row.createdAt >= RECEIPT_MAX_AGE_MS) settled.push(row._id);
       continue;
     }
@@ -254,11 +205,6 @@ function planReceiptReconciliation(
   return { revoke, settled };
 }
 
-/**
- * Tombstone tokens whose ticket reported a permanent error. Each entry pairs a
- * ticket with the token it was sent to, so alignment holds even when a chunk
- * returned fewer tickets than messages or was skipped entirely.
- */
 async function reconcileTickets(ctx: ActionCtx, entries: TicketEntry[]): Promise<number> {
   const buckets = new Map<string, Id<"pushTokens">[]>();
   for (const { ticket, token } of entries) {

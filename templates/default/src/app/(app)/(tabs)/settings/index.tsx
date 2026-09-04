@@ -85,8 +85,6 @@ export default function SettingsScreen() {
     <Host
       testID="settings-screen"
       style={{ flex: 1, backgroundColor: colors.background }}
-      // upstream expo/expo#47269: raises redacted("privacy") when the app
-      // resigns, hiding privacySensitive leaves in the app-switcher snapshot
       modifiers={scenePrivacy}
     >
       <ScrollView
@@ -97,9 +95,7 @@ export default function SettingsScreen() {
           alignment="leading"
           modifiers={[padding({ horizontal: 24, top: 24, bottom: 40 })]}
         >
-          {/* A guest gets the same card: name, photo and bio are theirs to
-              edit and they travel to the account on sign-up. Only the email
-              line goes, because theirs is a throwaway the server generated. */}
+          {}
           <Button
             testID="settings-profile"
             modifiers={[
@@ -224,10 +220,7 @@ export default function SettingsScreen() {
           </VStack>
 
           <VStack spacing={8} modifiers={[frame({ maxWidth: Infinity })]}>
-            {/* A guest has nothing to sign back in with, so "Sign out" would
-                be a one-way door dressed up as a reversible one, and the
-                30-day restore window in "Delete account" opens onto nothing.
-                One honest destructive action instead. */}
+            {}
             {isGuest ? (
               <Alert
                 title="Discard guest data?"
@@ -294,7 +287,7 @@ export default function SettingsScreen() {
                   </ConfirmationDialog.Message>
                 </ConfirmationDialog>
 
-                {/* upstream expo/expo#45700: Alert component, SwiftUI .alert(...) on iOS 15+ */}
+                {}
                 <Alert
                   title="Delete account?"
                   isPresented={showDeleteAccount}

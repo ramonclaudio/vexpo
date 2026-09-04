@@ -10,9 +10,6 @@ export const unstable_settings = {
   search: { anchor: "index" },
 };
 
-// `segment` is the active group name in the comma-shared array, e.g.
-// `(home)` or `(search)`. Per the SDK 56 shared-routes docs, this is the
-// canonical entry point — no `useSegments()` cast, no magic index.
 export default function SharedLayout({ segment }: { segment: string }) {
   const colors = useColors();
   const motion = useMotionScreenOptions("default");

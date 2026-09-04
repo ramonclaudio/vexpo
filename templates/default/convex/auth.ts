@@ -31,10 +31,6 @@ const SEVEN_DAYS = 7 * ONE_DAY;
 const TEN_MINUTES = 10 * ONE_MINUTE;
 const FIVE_MINUTES = 5 * ONE_MINUTE;
 
-// `session.expiresIn` below, in milliseconds. A session's `expiresAt` is never
-// earlier than its creation plus this, so a user created more recently than
-// this cannot have an expired session yet. `users.purgeAbandonedGuests` uses
-// that to skip fresh guests without asking the component about each one.
 export const SESSION_MAX_AGE_MS = SEVEN_DAYS * 1000;
 
 const authFunctions: AuthFunctions = internal.auth;
@@ -49,15 +45,6 @@ export async function getUserByAuthId(
     .unique();
 }
 
-/**
- * Everything the app owns for one Better Auth user: the `users` row, the
- * avatar blob it points at, and the push tokens that point at it. One function
- * because there are two ways a user gets deleted and both have to agree.
- * Better Auth's own deletes (a guest linking to an account, the plugin's
- * `/delete-anonymous-user`) reach it through the `user.onDelete` trigger.
- * `users.purgeUser` calls it by hand, because it drives the component adapter
- * directly and that path never fires the trigger.
- */
 export async function purgeAppUser(ctx: MutationCtx, authId: string): Promise<void> {
   const user = await getUserByAuthId(ctx, authId);
   if (!user) return;
@@ -89,9 +76,6 @@ export const authComponent = createClient<DataModel>(components.betterAuth, {
     user: {
       onCreate: async (ctx, authUser) => {
         const now = Date.now();
-        // Mirror the anonymous flag as a timestamp so the reaper can range on
-        // it. Better Auth owns `isAnonymous` on its own user row; copying it
-        // here keeps the sweep inside the app schema and off a component scan.
         const isAnonymous = !!(authUser as { isAnonymous?: boolean | null }).isAnonymous;
         await ctx.db.insert("users", {
           authId: authUser._id,
@@ -115,13 +99,7 @@ export const createAuth = (ctx: GenericCtx<DataModel>) =>
   betterAuth({
     baseURL: env.convexSiteUrl,
     trustedOrigins: [
-      // The app's deep-link origin (`<scheme>://`). `env.siteUrl` reads the
-      // SITE_URL Convex env var, which `vexpo convex` derives from the
-      // app.config.ts scheme, so a rebrand stays coherent with no literal here.
       env.siteUrl,
-      // In dev, Expo Go uses `exp://<lan-ip>:<port>` and the dev client uses
-      // `exp+<scheme>://`. Wildcards match the host/port suffix that Better
-      // Auth sees in the request origin. Production builds drop these.
       ...(process.env.NODE_ENV === "development"
         ? ["exp://*", "exp://**", "http://localhost:8081"]
         : []),
@@ -129,41 +107,20 @@ export const createAuth = (ctx: GenericCtx<DataModel>) =>
     database: authComponent.adapter(ctx),
     emailAndPassword: {
       enabled: true,
-      // Email verification is gated on the `REQUIRE_EMAIL_VERIFICATION`
-      // Convex env var. The lite-mode setup (`npx vexpo lite`) leaves it
-      // unset (default `false`) so sign-up creates verified accounts
-      // immediately and the user can sign in without an OTP. No Resend
-      // configuration needed to get up and running on the iOS Simulator.
-      // `npx vexpo full` flips this to `true` when it provisions Resend.
-      // Production runs with verification on.
       requireEmailVerification: env.requireEmailVerification,
       minPasswordLength: 10,
       maxPasswordLength: 128,
-      // When verification is off, accounts land verified-on-create so
-      // password sign-in works without the email round-trip.
       autoSignIn: !env.requireEmailVerification,
     },
     emailVerification: {
-      // When `emailOtp.verifyEmail` succeeds, Better Auth creates a session and
-      // sets the cookie inline instead of returning { token: null } and forcing
-      // the user to sign in manually.
       autoSignInAfterVerification: true,
     },
-    // Only register the Apple provider when its credentials are present.
-    // Better Auth logs a warning on every request otherwise, and the client
-    // hides the button via `getEnabledProviders` when the env vars are unset,
-    // so registering an empty provider serves no purpose.
     socialProviders:
       process.env.APPLE_CLIENT_ID && process.env.APPLE_CLIENT_SECRET
         ? {
             apple: {
               clientId: process.env.APPLE_CLIENT_ID,
               clientSecret: process.env.APPLE_CLIENT_SECRET,
-              // Native Sign in with Apple sends an identity token whose `aud` is
-              // the bundle id, while `clientId` holds the Services ID (the web
-              // flow's audience). Better Auth verifies against
-              // `audience ?? appBundleIdentifier ?? clientId`, so without this
-              // every native sign-in fails audience verification.
               appBundleIdentifier: process.env.APP_BUNDLE_ID,
             },
           }
@@ -174,21 +131,11 @@ export const createAuth = (ctx: GenericCtx<DataModel>) =>
       freshAge: TEN_MINUTES,
       cookieCache: { enabled: true, maxAge: FIVE_MINUTES },
     },
-    // Better Auth handles HTTP-level rate limiting for all auth endpoints.
-    // Custom rules use EXACT match unless the key contains "*" (wildcard).
-    // Paths here are the post-basePath form (Better Auth strips /api/auth).
-    // This app uses the email-OTP flow exclusively, so password reset and
-    // verification hit /email-otp/* rather than the link-based endpoints.
     rateLimit: {
       enabled: true,
       window: ONE_MINUTE,
       max: 100,
       customRules: {
-        // Covers /sign-in/anonymous too, deliberately. A per-hour rule for
-        // guests reads tighter but this limiter keys on IP, so anything that
-        // strict locks out a whole office or campus behind one NAT address.
-        // The plugin already refuses a second anonymous sign-in while one is
-        // live, and the app only calls it on an explicit tap.
         "/sign-in/*": { window: ONE_MINUTE, max: 5 },
         "/sign-up/*": { window: ONE_MINUTE, max: 3 },
         "/email-otp/request-password-reset": { window: ONE_HOUR, max: 3 },
@@ -209,9 +156,6 @@ export const createAuth = (ctx: GenericCtx<DataModel>) =>
         otpLength: 6,
         expiresIn: FIVE_MINUTES,
         overrideDefaultEmailVerification: true,
-        // Only send a verification OTP on sign-up when verification is
-        // actually required. Minimal-tier setup short-circuits the OTP
-        // so users can sign up without ever opening their email.
         sendVerificationOnSignUp: env.requireEmailVerification,
         changeEmail: {
           enabled: true,
@@ -230,11 +174,6 @@ export const createAuth = (ctx: GenericCtx<DataModel>) =>
           return USERNAME_FORMAT_REGEX.test(normalized);
         },
       }),
-      // Guest browsing. `signIn.anonymous()` mints a real session backed by a
-      // throwaway user, so every authQuery/authMutation keeps working for a
-      // guest with no branching. Signing in or signing up from a guest session
-      // fires `onLinkAccount` (before Better Auth deletes the guest user), which
-      // is where the guest's rows move onto the real account.
       ...(env.guestMode
         ? [
             anonymous({
@@ -295,9 +234,6 @@ export const authUserValidator = v.object({
   avatar: v.optional(v.id("_storage")),
   createdAt: v.number(),
   updatedAt: v.number(),
-  // Set when the user has requested account deletion. Within the 30-day
-  // grace window the user is still authenticated; the client routes
-  // these users to a "restore or continue with deletion" surface.
   deletedAt: v.optional(v.number()),
   guestSince: v.optional(v.number()),
   authUserId: v.string(),
@@ -312,10 +248,6 @@ export const authUserValidator = v.object({
   hasUploadedAvatar: v.boolean(),
 });
 
-// These use the raw `query` builder because this file IS the auth primitive
-// that functions.ts depends on. Importing wrappers from ./functions would
-// create a circular dependency.
-
 export const hasPassword = query({
   args: {},
   returns: v.boolean(),
@@ -328,22 +260,6 @@ export const hasPassword = query({
   },
 });
 
-/**
- * Public read of which auth features are configured server-side. Lets the
- * client hide buttons that would fail at submit (e.g. Apple Sign In with empty
- * `APPLE_CLIENT_ID`, OTP sign-in or password reset with `REQUIRE_EMAIL_VERIFICATION`
- * unset). Returns booleans only, never leaks the credentials.
- *
- * `emailFeatures` is true when `REQUIRE_EMAIL_VERIFICATION` is set on the
- * Convex deployment env (testflight tier setup or later). When false, the
- * client hides OTP sign-in, password reset, change-email. the only working
- * flow is email + password sign-up/sign-in. This is the minimal-tier path:
- * users get into the app without configuring Resend or any DNS.
- *
- * `guest` is true when `GUEST_MODE` is on (the default). When false, the
- * "Continue as guest" button is hidden and `/sign-in/anonymous` is not
- * registered at all, so an account is required to get past the sign-in screen.
- */
 export const getEnabledProviders = query({
   args: {},
   returns: v.object({ apple: v.boolean(), emailFeatures: v.boolean(), guest: v.boolean() }),
@@ -354,18 +270,8 @@ export const getEnabledProviders = query({
   },
 });
 
-/**
- * Manual ops tool, deliberately NOT on a cron. `rotateKeys` deletes the whole
- * JWKS and regenerates it with no grace period, so every JWT signed by the old
- * key stops verifying and Convex (which validates tokens against `/convex/jwks`)
- * rejects them until clients re-fetch a token. A scheduled run would invalidate
- * every active session on each fire. Run it by hand only when you must rotate
- * (suspected key compromise): `npx convex run auth:rotateKeys`.
- */
 export const rotateKeys = internalAction({
   args: {},
-  // Better Auth's `rotateKeys()` returns implementation-specific JWKS metadata
-  // that we don't constrain here. `v.any()` documents the upstream contract.
   returns: v.any(),
   handler: async (ctx) => {
     const auth = createAuth(ctx);

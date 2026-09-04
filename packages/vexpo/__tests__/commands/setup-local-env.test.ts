@@ -2,9 +2,6 @@ import { describe, expect, it } from "vitest";
 
 import { classifyLocalEnv } from "../../src/commands/setup.ts";
 
-// The lite core is everything `vexpo lite` writes. EXPO_PUBLIC_APPLE_TEAM_ID is
-// optional after lite (convex.ts treats it as such), so it sits outside the
-// core and only flips "partial" to "ok".
 const LITE_CORE = [
   "CONVEX_DEPLOYMENT",
   "EXPO_PUBLIC_CONVEX_URL",
@@ -28,7 +25,6 @@ describe("classifyLocalEnv", () => {
     for (const drop of LITE_CORE) {
       const keys = LITE_CORE.filter((k) => k !== drop);
       expect(classifyLocalEnv(envOf(keys))).toBe("missing");
-      // team id alone never rescues an incomplete core
       expect(classifyLocalEnv(envOf([...keys, "EXPO_PUBLIC_APPLE_TEAM_ID"]))).toBe("missing");
     }
   });

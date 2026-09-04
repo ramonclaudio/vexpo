@@ -5,7 +5,6 @@ export type AppleJwtArgs = {
   teamId: string;
   keyId: string;
   servicesId: string;
-  /** Apple's max is 180 days. Default: 180. */
   expirationDays?: number;
 };
 

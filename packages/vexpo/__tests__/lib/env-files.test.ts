@@ -69,8 +69,6 @@ describe("readEnvFile", () => {
   });
 
   it("keeps trailing content after a closed quote without dropping later keys", async () => {
-    // A close quote followed by trailing text (e.g. a display name) must end the
-    // value, not start a multi-line scan that swallows every following key.
     await writeFile(
       ".env.local",
       `EMAIL_FROM="My App" <hi@app.com>\nRESEND_API_KEY=re_abc\nNAME=app\n`,
@@ -154,14 +152,12 @@ describe("readSources", () => {
   });
 
   it("default `.env.local` missing is fine (no error)", async () => {
-    // Without --local-file flag, an absent .env.local is normal (lite-mode scaffold).
     const out = await readSources();
     expect(out.length).toBe(0);
   });
 
   it("default `.env.prod` missing is fine (no error)", async () => {
     await writeFile(".env.local", "FOO=bar\n");
-    // Without --prod-file flag, an absent .env.prod is normal.
     const out = await readSources();
     expect(out.length).toBe(1);
     expect(out[0].channel).toBe("dev");
@@ -339,8 +335,6 @@ it("ROUTING covers all expected keys", () => {
   expect(keys).toContain("REQUIRE_EMAIL_VERIFICATION");
   expect(keys).toContain("APPLE_CLIENT_SECRET");
   expect(keys).toContain("APPLE_SERVICES_ID");
-  // APPLE_P8_PRIVATE_KEY and CONVEX_DEPLOY_KEY are NOT in ROUTING. they need
-  // `eas env:create --visibility secret` and live in MANUAL_EAS_SECRETS instead.
   expect(keys).not.toContain("APPLE_P8_PRIVATE_KEY");
   expect(keys).not.toContain("CONVEX_DEPLOY_KEY");
 });

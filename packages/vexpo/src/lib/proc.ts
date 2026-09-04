@@ -55,11 +55,6 @@ async function streamText(stream: Readable | null): Promise<string> {
   return Buffer.concat(chunks).toString("utf8");
 }
 
-/**
- * Spawn + collect stdout + stderr + exit code, all concurrently. Use this
- * instead of `spawn(...) + streamText` when you want to avoid the pitfall
- * where awaiting `exited` before reading the stream loses output.
- */
 export async function run(
   argv: readonly string[],
   opts: ProcOpts = {},
@@ -68,10 +63,6 @@ export async function run(
     stdin: opts.stdin ?? "ignore",
     stdout: "pipe",
     stderr: "pipe",
-    // run() exists to PARSE output. A FORCE_COLOR=1 in the caller's shell
-    // (CI, recordings) makes child CLIs wrap fields in ANSI codes and every
-    // regex parser downstream silently misses. Force color off; an explicit
-    // opts.env can still override.
     env: { FORCE_COLOR: "0", NO_COLOR: "1", ...opts.env },
     cwd: opts.cwd,
   });

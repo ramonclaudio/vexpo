@@ -36,8 +36,6 @@ export function useNotifications(options?: UseNotificationsOptions) {
   const registered = useRef(false);
   const [expoPushToken, setExpoPushToken] = useState<string | null>(null);
 
-  // Read callbacks through a ref so inline `options` literals don't re-subscribe
-  // the listeners (or re-run the cold-start handler) on every render.
   const optionsRef = useRef(options);
   optionsRef.current = options;
 
@@ -61,9 +59,6 @@ export function useNotifications(options?: UseNotificationsOptions) {
         setExpoPushToken(token);
         await upsertToken({ token, deviceType: "ios" });
       } catch (e) {
-        // Reset so a transient failure (permission throw, network) retries on
-        // the next render instead of silently dropping push registration for
-        // the session. The early returns above intentionally keep it true.
         registered.current = false;
         if (__DEV__) console.warn("[Notification] registration failed:", e);
       }
@@ -71,11 +66,6 @@ export function useNotifications(options?: UseNotificationsOptions) {
   }, [isAuthenticated, upsertToken]);
 
   useEffect(() => {
-    // Cold-start deep link: the launch tap arrives via the last-response
-    // getter, not the runtime listener below, so handle it once here.
-    // (useLastNotificationResponse would fire for BOTH cold-start and runtime,
-    // double-navigating every runtime tap.) Mount-only so it can't re-fire
-    // before the async clear settles and navigate twice.
     Notifications.getLastNotificationResponseAsync().then((initial) => {
       if (!initial) return;
       handleNotificationResponse(initial);

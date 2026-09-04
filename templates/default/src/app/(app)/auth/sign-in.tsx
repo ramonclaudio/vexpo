@@ -68,12 +68,6 @@ const initialState: SignInState = {};
 
 type SignInMethod = "email" | "username" | "otp";
 
-// Better Auth answers a password sign-in on an unverified account with a 403
-// and nothing else. Its resend path is the link-based `sendVerificationEmail`,
-// which this app doesn't configure because it verifies through the OTP plugin,
-// so no fresh code goes out. Someone who missed the sign-up email and left that
-// screen has no way back to it. Both password paths below watch for this and
-// hand the user a new code.
 const NOT_VERIFIED = "EMAIL_NOT_VERIFIED";
 
 export default function SignInScreen() {
@@ -92,23 +86,12 @@ export default function SignInScreen() {
   const apple = useAppleAuth({ successMessage: "Signed in with Apple" });
   const providers = useQuery(api.auth.getEnabledProviders);
   const showApple = apple.available && providers?.apple === true;
-  // Email features (OTP sign-in, password reset) require the Convex env to
-  // have `REQUIRE_EMAIL_VERIFICATION=true` (set by `npx vexpo full`).
-  // Until then, hide them so users don't hit a code-was-logged-to-console
-  // dead end. Email + password sign-up/sign-in remains available.
   const emailFeatures = providers?.emailFeatures === true;
   const isOtp = signInMethod === "otp";
-  // Already browsing as a guest: this screen is the upgrade path, not the
-  // wall, so it offers a way back to the app instead of a way past it.
   const { isGuest } = useAuthStatus();
   const guest = useGuestSignIn();
   const showGuest = providers?.guest === true && !isGuest;
 
-  /**
-   * Sends a fresh verification code and moves to the OTP screen. Called when a
-   * password sign-in bounces off an unverified account, so the dead end
-   * becomes the next step instead of an error message.
-   */
   const startEmailVerification = async (email: string): Promise<SignInState> => {
     const sent = await authClient.emailOtp.sendVerificationOtp({
       email,
@@ -174,8 +157,6 @@ export default function SignInScreen() {
         if (response.error) {
           haptics.error();
           if (response.error.code === NOT_VERIFIED) {
-            // The username path never learns the address, so it can't send the
-            // code itself. Point at the tab that can.
             return {
               error:
                 "This account still needs its email verified. Sign in with your email address and we'll send a new code.",
@@ -258,10 +239,6 @@ export default function SignInScreen() {
         modifiers={[
           scrollDismissesKeyboard("interactively"),
           tint(colors.primary as string),
-          // Swapping the method toggle hides or shows a whole field group, the
-          // biggest single-tap size change on this screen. Pin the visible
-          // center so the user does not lose the field they were aiming for.
-          // No-op below iOS 18. Ships via upstream expo/expo#43923.
           defaultScrollAnchorForRole("center", "sizeChanges"),
         ]}
       >
@@ -345,7 +322,6 @@ export default function SignInScreen() {
                   modifiers={[
                     keyboardType("email-address"),
                     autocorrectionDisabled(),
-                    // upstream expo/expo#44547 + #44548: keyboard shift + autofill semantics
                     textInputAutocapitalization("never"),
                     textContentType("username"),
                     disabled(isLoading),

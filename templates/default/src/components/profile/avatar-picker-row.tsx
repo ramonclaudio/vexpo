@@ -43,8 +43,6 @@ export function AvatarPickerRow({
   onRemove,
 }: {
   me: { name: string; email: string; avatarUrl: string | null; hasUploadedAvatar: boolean };
-  // A guest's email is a placeholder the anonymous plugin generated. Showing
-  // it reads as an address they can use, and it is 40 characters of noise.
   isGuest: boolean;
   avatarPicker: boolean;
   setAvatarPicker: (v: boolean) => void;
@@ -143,8 +141,6 @@ function AvatarView({ avatarUrl, loading }: { avatarUrl: string | null; loading:
         modifiers={[
           frame({ width: AVATAR_SIZE, height: AVATAR_SIZE }),
           clipShape("circle"),
-          // upstream expo/expo#47426: a dashed round-cap circle stroke keeps
-          // the slot's footprint while the photo gives way to a bare spinner.
           strokeBorder({
             color: colors.mutedForeground as string,
             shape: "circle",

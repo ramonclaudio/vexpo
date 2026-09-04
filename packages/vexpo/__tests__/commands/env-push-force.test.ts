@@ -42,10 +42,6 @@ afterEach(() => {
 });
 
 describe("applyPlan convex overwrite", () => {
-  // The plan + interactive confirm already gate overwrites, so the convex
-  // --from-file batch must pass --force to overwrite, matching the EAS path.
-  // Otherwise re-pushing a changed secret fails the whole convex batch in CI
-  // and on a TTY-confirmed run.
   it("forces the convex --from-file batch", async () => {
     vi.spyOn(console, "log").mockImplementation(() => {});
     await applyPlan(convexUpdatePlan());

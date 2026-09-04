@@ -1,9 +1,3 @@
-/**
- * `vexpo lite` after `eas integrations:convex:connect`: .env.local holds only
- * CONVEX_DEPLOY_KEY, and runConvex must connect to the key's deployment
- * instead of provisioning a fresh project (an EAS-managed team rejects the
- * create with "is managed by oauth:...", or a login prompt kills non-TTY runs).
- */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const store = new Map<string, string>();

@@ -17,9 +17,6 @@ import { useColors } from "@/hooks/use-theme";
 
 type SFSymbol = NonNullable<ComponentProps<typeof Image>["systemName"]>;
 
-// A capsule row with a leading SF Symbol, a medium label, and a trailing native
-// Toggle. The visual label is hidden from VoiceOver since the labeled Toggle
-// already announces it. `a11yLabel` defaults to `label`.
 export function CapsuleToggleRow({
   testID,
   systemImage,

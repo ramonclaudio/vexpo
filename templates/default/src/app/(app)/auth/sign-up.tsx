@@ -66,12 +66,7 @@ import { AppleButton } from "@/components/auth/apple-button";
 type SignUpState = { error?: string };
 const initialState: SignUpState = {};
 
-// Signing up again with the same address is what someone does after missing
-// the first code, and "try a different email" is the wrong answer for it.
 const ALREADY_EXISTS = "USER_ALREADY_EXISTS_USE_ANOTHER_EMAIL";
-// The username plugin checks availability in a `before` hook on
-// /sign-up/email, so it throws ahead of the core email-exists check. Retyping
-// the whole form lands here, not on ALREADY_EXISTS.
 const USERNAME_TAKEN = "USERNAME_IS_ALREADY_TAKEN";
 
 export default function SignUpScreen() {
@@ -80,10 +75,6 @@ export default function SignUpScreen() {
   const brandIcon = useThemedAsset(assets.brandIconLight, assets.brandIconDark);
   const nameFieldState = useNativeState("");
   const [name, setName] = useState("");
-  // A name the guest set on their profile, carried into the form so they don't
-  // retype it. `mergeGuestData` can't do this: the name lives on the Better
-  // Auth user, not the app row, and overwriting whatever they type here with
-  // the old one would be worse than asking.
   const [prefilledName, setPrefilledName] = useState("");
   const usernameState = useNativeState("");
   const [username, setUsername] = useState("");
@@ -93,27 +84,16 @@ export default function SignUpScreen() {
   const apple = useAppleAuth({ successMessage: "Signed up with Apple" });
   const providers = useQuery(api.auth.getEnabledProviders);
   const showApple = apple.available && providers?.apple === true;
-  // When `emailFeatures` is false (minimal-tier setup, no Resend), the
-  // server auto-verifies on sign-up and the user is signed in immediately
-  // no OTP step. When true (testflight tier+), the OTP verification
-  // screen renders after sign-up.
   const emailFeatures = providers?.emailFeatures === true;
-  // Signing up from a guest session links the two accounts and carries the
-  // guest's rows over, so the copy promises that and the wall becomes optional.
   const { isGuest, name: sessionName } = useAuthStatus();
   const guest = useGuestSignIn();
   const showGuest = providers?.guest === true && !isGuest;
 
-  // Bound to ScrollView via `scrollPosition`. Writing a field id scrolls the
-  // form so that field aligns with the top of the viewport.
   const activeField = useNativeState<string | null>(null);
 
   const [usernameAvailable, setUsernameAvailable] = useState<boolean | null>(null);
   const [isCheckingUsername, setIsCheckingUsername] = useState(false);
   const usernameCheckRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  // The candidate the latest keystroke is waiting on. A slow response whose
-  // candidate no longer matches (newer keystroke, or unmount clears it to null)
-  // is dropped so it can't overwrite fresher state or set state after unmount.
   const pendingCandidateRef = useRef<string | null>(null);
 
   const checkUsernameAvailability = useCallback(async (candidate: string) => {
@@ -132,9 +112,6 @@ export default function SignUpScreen() {
 
   const handleUsernameChange = useCallback(
     (value: string) => {
-      // `value` arrives already masked (lowercase, `[a-z0-9._]`) from the
-      // field's worklet, so this only mirrors it and drives the availability
-      // check off the JS thread.
       setUsername(value);
       setUsernameAvailable(null);
       if (usernameCheckRef.current) clearTimeout(usernameCheckRef.current);
@@ -161,8 +138,6 @@ export default function SignUpScreen() {
     [],
   );
 
-  // Key on the resolved boolean, not the status text, so the transient
-  // "Checking..." tick and the per-keystroke null resets don't announce.
   useEffect(() => {
     if (usernameAvailable === true) announce("Username is available");
     else if (usernameAvailable === false) announce("This username is not available");
@@ -176,8 +151,6 @@ export default function SignUpScreen() {
     setName(sessionName);
   }, [isGuest, sessionName, prefilledName, nameFieldState]);
 
-  // The prefilled name is not something the user typed, so it must not arm the
-  // discard-changes dialog on its own.
   const hasInput =
     name !== prefilledName || username.length > 0 || email.length > 0 || password.length > 0;
   const { pendingNavAction, discard, dismiss } = useUnsavedChanges(hasInput && !showVerification);
@@ -192,11 +165,6 @@ export default function SignUpScreen() {
     }
 
     try {
-      // When `emailFeatures` is true (testflight-tier setup +), the server has
-      // `sendVerificationOnSignUp` on and the response triggers an OTP email.
-      // When false (minimal-tier), the server creates a verified account
-      // immediately and Better Auth's `autoSignIn: true` returns a session
-      // token in the same call. no OTP step, the user lands signed in.
       const response = await authClient.signUp.email({
         email: parsed.data.email,
         password: parsed.data.password,
@@ -206,12 +174,6 @@ export default function SignUpScreen() {
 
       if (response.error) {
         if (response.error.code === ALREADY_EXISTS && emailFeatures) {
-          // Better Auth's sendVerificationOtp returns success without sending
-          // for an address it doesn't know, so the OTP screen appears whatever
-          // was typed and only whoever reads that mailbox gets further. An
-          // error here is a rate limit or a dropped request, never a verdict on
-          // the address, so saying so leaks nothing and beats sending the user
-          // to a screen no code will reach.
           const sent = await authClient.emailOtp.sendVerificationOtp({
             email: parsed.data.email,
             type: "email-verification",
@@ -227,9 +189,6 @@ export default function SignUpScreen() {
         }
         haptics.error();
         if (response.error.code === USERNAME_TAKEN) {
-          // Don't route this one to the OTP screen. A username collision is
-          // usually someone else's handle on a fresh address, and the code
-          // would never arrive.
           setNativeValue(activeField, "field-username");
           return {
             error: emailFeatures
@@ -256,8 +215,6 @@ export default function SignUpScreen() {
 
   const isLoading = isPending || apple.isPending || guest.isPending;
   const error = state.error ?? apple.error ?? guest.error;
-  // HIG: pair color with a non-color signal. The status row carries text +
-  // color + an SF Symbol so a colorblind user gets the same answer.
   const usernameStatus: {
     text: string;
     color: string;
@@ -301,9 +258,6 @@ export default function SignUpScreen() {
           scrollDismissesKeyboard("interactively"),
           tint(colors.primary as string),
           scrollPosition(activeField, { anchor: "top" }),
-          // Anchor the visible center on size changes so a username-availability
-          // line appearing or a dynamic-type bump doesn't shift the field the
-          // user is reading. No-op below iOS 18.
           defaultScrollAnchorForRole("center", "sizeChanges"),
         ]}
       >

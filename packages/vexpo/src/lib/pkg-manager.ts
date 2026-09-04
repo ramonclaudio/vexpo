@@ -1,17 +1,3 @@
-/**
- * Detect the package manager (for user-facing instructions) and the
- * runtime (for our own subprocess invocations). Two independent concerns:
- *
- * - Runtime: what's actually executing this script. `bunx` is only safe
- *   to invoke when running under bun. Otherwise use `npx` (universally
- *   available with any node install). This dictates `dlx()`.
- *
- * - Package manager: what the user runs for project deps. Detected from
- *   lockfile presence (bun.lock / pnpm-lock.yaml / yarn.lock /
- *   package-lock.json). Used in printed instructions like "run
- *   `<pm> install`".
- */
-
 import { fileExists } from "./fs.ts";
 
 export type PackageManager = "bun" | "pnpm" | "yarn" | "npm";

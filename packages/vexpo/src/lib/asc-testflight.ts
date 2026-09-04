@@ -1,14 +1,3 @@
-/**
- * App Store Connect API: TestFlight resources.
- *
- * Beta groups, beta testers, invitations, and beta build localizations:
- * what you need to get a first build in front of testers. eas-cli hands a
- * build to TestFlight and stops there.
- *
- * Sits on top of the request/paginatedList primitives exposed by
- * makeAscClient in asc-api.ts.
- */
-
 import type { AscClient } from "./asc-api.ts";
 
 export type BetaGroup = {
@@ -106,9 +95,6 @@ export function testflight(client: AscClient) {
         if (filter?.appId) query["filter[apps]"] = filter.appId;
         return client.paginatedList<BetaTester>("/v1/betaTesters", query);
       },
-      // ASC rejects an `apps` relationship on tester CREATE (409
-      // ENTITY_ERROR.RELATIONSHIP.NOT_ALLOWED); testers reach an app only
-      // through betaGroups, so a group is required.
       async create(args: {
         email: string;
         firstName?: string;
@@ -161,8 +147,6 @@ export function testflight(client: AscClient) {
         locale: string;
         whatsNew: string;
       }): Promise<BetaBuildLocalization> {
-        // The endpoint rejects `filter[locale]` (400 PARAMETER_ERROR.ILLEGAL);
-        // list them all and match the locale here.
         const all = await client.paginatedList<BetaBuildLocalization>(
           `/v1/builds/${args.buildId}/betaBuildLocalizations`,
         );

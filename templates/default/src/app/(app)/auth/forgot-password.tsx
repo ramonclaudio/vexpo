@@ -46,10 +46,6 @@ export default function ForgotPasswordScreen() {
   const [email, setEmail] = useState("");
   const providers = useQuery(api.auth.getEnabledProviders);
 
-  // Password reset requires the email-OTP flow which requires Resend. When
-  // `REQUIRE_EMAIL_VERIFICATION` is unset on the Convex deployment, redirect
-  // away. the sign-in screen also hides the "Forgot password?" link in that
-  // mode, but a deeplinked navigation could still land here.
   useEffect(() => {
     if (providers !== undefined && providers.emailFeatures === false) {
       announce(

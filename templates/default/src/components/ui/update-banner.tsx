@@ -35,7 +35,6 @@ export function UpdateBanner({ testID }: { testID?: string } = {}) {
   const showProgress = updates.isDownloading;
   const showError = !!updates.downloadError;
 
-  // Above the early return: rules of hooks. iOS never auto-announces the banner.
   useEffect(() => {
     if (showError) announce("Update failed. Tap to retry.");
   }, [showError]);
@@ -86,8 +85,6 @@ export function UpdateBanner({ testID }: { testID?: string } = {}) {
               contentShape(shapes.rectangle()),
               disabledModifier(!showError),
               accessibilityLabel(label),
-              // upstream expo/expo#47387: the label re-announces each progress
-              // tick; the static error label shouldn't carry the trait.
               ...(showProgress ? [accessibilityAddTraits(["updatesFrequently"])] : []),
               ...(showError ? [accessibilityHint("Re-attempts the update download")] : []),
             ]}

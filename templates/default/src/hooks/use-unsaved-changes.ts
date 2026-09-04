@@ -3,9 +3,6 @@ import { useNavigation } from "expo-router";
 
 import { haptics } from "@/lib/haptics";
 
-// Guards a dirty form: while `active`, a back/swipe is intercepted and parked in
-// `pendingNavAction` so the paired DiscardChangesDialog can confirm before the
-// input is lost. `discard` replays the parked action; `dismiss` keeps editing.
 export function useUnsavedChanges(active: boolean) {
   const navigation = useNavigation();
   const [pendingNavAction, setPendingNavAction] = useState<

@@ -18,8 +18,6 @@ import { useColors } from "@/hooks/use-theme";
 
 type SFSymbol = NonNullable<ComponentProps<typeof Image>["systemName"]>;
 
-// The capsule settings row: leading SF Symbol, medium label, and a trailing
-// chevron. `role="destructive"` paints the label red and drops the chevron.
 export function CapsuleRowButton({
   testID,
   label,
@@ -70,7 +68,6 @@ export function CapsuleRowButton({
         </Text>
         <Spacer />
         {showChevron ? (
-          // upstream expo/expo#46774: imageScale ties the chevron to the row label's Dynamic Type curve
           <Image
             systemName="chevron.right"
             color={colors.mutedForeground as string}

@@ -31,8 +31,6 @@ type Destination = {
   icon: SFSymbol;
   href: Parameters<typeof router.push>[0];
   keywords: string;
-  // The screen is registered only behind a real account. A guest tapping the
-  // row would land on +not-found, so it is filtered out for them instead.
   accountOnly?: true;
 };
 
@@ -145,8 +143,6 @@ export default function SearchScreen() {
     const trimmed = query.trim();
     if (trimmed.length === 0) return destinations;
     const scored = destinations.map((d) => ({ d, s: score(d, trimmed) })).filter(({ s }) => s > 0);
-    // `.toSorted` is ES2023 and not in Hermes V1 (default in SDK 56); `.sort`
-    // mutates in place, and `.filter` above already returned a fresh array.
     scored.sort((a, b) => b.s - a.s);
     return scored.map(({ d }) => d);
   }, [query, destinations]);
@@ -167,9 +163,6 @@ export default function SearchScreen() {
           modifiers={[
             scrollDismissesKeyboard("interactively"),
             tint(colors.primary as string),
-            // upstream expo/expo#43955: viewAligned settles a flick on row
-            // boundaries so no capsule rests half-clipped at the top; plain
-            // scrolling below iOS 17
             scrollTargetBehavior("viewAligned"),
           ]}
         >

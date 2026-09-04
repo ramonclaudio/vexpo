@@ -6,9 +6,6 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { ENV_FILE, ensureLine, readAll, readOne, removeLines } from "../../src/lib/env-local";
 
-// `env-local.ts` reads/writes `.env.local` in the CURRENT working directory.
-// Tests chdir into a temp dir so each scenario is hermetic.
-
 let workdir: string;
 let originalCwd: string;
 
@@ -86,7 +83,6 @@ describe("readAll", () => {
   });
 
   it("preserves hash characters inside the value when unambiguous", async () => {
-    // No space before `#`, so it's part of the value (per common .env semantics).
     await writeFile(ENV_FILE, "URL=https://example.com/path#fragment\n");
     expect((await readAll()).get("URL")).toBe("https://example.com/path#fragment");
   });
@@ -214,8 +210,6 @@ describe("ensureLine", () => {
   });
 
   it("matches keys with prefix collision correctly (anchors on line start)", async () => {
-    // `MY_API_KEY` shouldn't satisfy `ensureLine("API_KEY", ...)`. the regex
-    // anchors at `^`, so this is a real duplicate.
     await writeFile(ENV_FILE, "MY_API_KEY=value\n");
     await ensureLine("API_KEY", "new");
     const text = await readFile(ENV_FILE, "utf8");
@@ -227,8 +221,6 @@ describe("ensureLine", () => {
 describe("removeLines", () => {
   it("is a no-op when the file is absent, and creates no file", async () => {
     await removeLines(["FOO"]);
-    // Assert the side effect, not just non-throw: a regression that writes a
-    // file on the absent path instead of early-returning would be caught here.
     await expect(readFile(ENV_FILE, "utf8")).rejects.toThrow();
   });
 
@@ -260,9 +252,6 @@ describe("removeLines", () => {
   });
 
   it("collapses three or more blank lines down to one blank between blocks", async () => {
-    // Removing B from between two blank lines leaves three consecutive newlines;
-    // the collapse must reduce them to two. Without it the result would be
-    // "A=1\n\n\nC=3\n", so `.toBe` pins the collapse rather than just its absence.
     await writeFile(ENV_FILE, "A=1\n\nB=2\n\nC=3\n");
     await removeLines(["B"]);
     const text = await readFile(ENV_FILE, "utf8");

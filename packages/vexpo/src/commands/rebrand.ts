@@ -54,7 +54,6 @@ type RebrandInputs = {
   expoOwner?: string;
 };
 
-// Lowercase, strip combining diacritics (NFKD leaves them as separate marks).
 const normalize = (value: string): string =>
   value
     .toLowerCase()
@@ -75,8 +74,6 @@ function bundleSlug(value: string): string {
 }
 
 async function promptInputs(overrides: Partial<RebrandInputs>): Promise<RebrandInputs> {
-  // Every prompt resolves from an override first. A TTY is only needed when a
-  // value is actually missing, so a fully-flagged run works without one.
   const interactive = process.stdin.isTTY === true;
   if (interactive) {
     line();
@@ -98,8 +95,6 @@ async function promptInputs(overrides: Partial<RebrandInputs>): Promise<RebrandI
     (interactive ? (await ask(`  ${BOLD}Your name${RESET} > `)).trim() || "Owner" : "Owner");
 
   const defaultPkg = slug(appName);
-  // Reverse-DNS middle segment is the org, not a repeat of the app. Derive it
-  // from the expo owner or the person's name, with a placeholder fallback.
   const orgSlug = bundleSlug(overrides.expoOwner ?? ownerName) || "example";
   const bundleHint = `com.${orgSlug}.${bundleSlug(defaultPkg)}`;
   const bundleId =
@@ -145,14 +140,6 @@ async function promptInputs(overrides: Partial<RebrandInputs>): Promise<RebrandI
   };
 }
 
-/**
- * The bundle id only lands in app.config.ts as a `??` fallback. If a prior
- * `vexpo lite` already wrote EXPO_PUBLIC_APP_BUNDLE_ID to .env.local, that value
- * shadows the new default forever. So when the new id differs, overwrite the env
- * line (ensureLine alone is a no-op on an existing key) and push it to Convex if
- * a deployment is already wired up. Without one, the next `vexpo convex` carries it
- * (env push routes EXPO_PUBLIC_APP_BUNDLE_ID to EAS only, not Convex).
- */
 async function syncBundleId(bundleId: string): Promise<void> {
   const env = await readAll();
   const current = env.get("EXPO_PUBLIC_APP_BUNDLE_ID");
@@ -184,23 +171,12 @@ async function backup(files: string[], stamp: string): Promise<void> {
   ok(`backups → ${dir}`);
 }
 
-// A TS string literal in either quote form, escape-aware. Rebrand writes
-// names via JSON.stringify (`"E2E \"Smoke\" App"`), and a later format pass
-// may flip that to fewest-escapes single quotes (`'E2E "Smoke" App'`). A plain
-// `"[^"]+"` marker reads neither, which made a --force re-run silently no-op
-// the name rewrite and fail validation.
 const QUOTED = String.raw`(?:"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*')`;
 
 async function rewriteAppConfig(inputs: RebrandInputs): Promise<void> {
   const file = "app.config.ts";
   let text = await readFile(file, "utf8");
 
-  // Function replacers, not replacement strings: a returned $&/$`/$' is inserted
-  // verbatim. JSON.stringify builds a valid double-quoted literal, so a name with
-  // a quote or backslash escapes instead of corrupting the file.
-  // The template ships the backtick `com.example.${pkg.name}` form; a prior
-  // rebrand rewrites it to a double-quoted string. Match either so a --force
-  // re-run still moves the id.
   text = text.replace(
     new RegExp(
       String.raw`const BUNDLE_ID = process\.env\.EXPO_PUBLIC_APP_BUNDLE_ID \?\? (?:\x60[^\x60]*\x60|${QUOTED});`,
@@ -250,9 +226,6 @@ async function rewritePackageJson(inputs: RebrandInputs): Promise<void> {
   ok(`updated ${file} (name=${inputs.packageName}, version=${REBRAND_VERSION})`);
 }
 
-// npm only reconciles the lockfile header on the next install, so without this
-// a fresh rebrand ships a lockfile whose name/version disagree with
-// package.json. Patch the two mirrored fields; npm's own 2-space format holds.
 async function syncPackageLock(inputs: RebrandInputs): Promise<void> {
   const file = "package-lock.json";
   let json: {
@@ -279,10 +252,6 @@ async function syncPackageLock(inputs: RebrandInputs): Promise<void> {
 
 async function rewriteStoreConfig(inputs: RebrandInputs): Promise<void> {
   await rewriteStoreConfigFile("store.config.json", inputs, { required: true });
-  // The working file is gitignored (review-account writes the App Review demo
-  // password into it) and the example is the tracked half a fresh clone
-  // restores from, so both carry the identity or the next clone comes back
-  // branded as the template.
   await rewriteStoreConfigFile("store.config.example.json", inputs, { required: false });
 }
 
@@ -300,8 +269,6 @@ async function rewriteStoreConfigFile(
     throw new Error(`${file} missing or unparseable; restore it from the vexpo template first`);
   }
   const en = json.apple.info["en-US"];
-  // The bare app name: the old `| Convex on Expo` suffix pushed template
-  // branding into the App Store title, which caps at 30 chars anyway.
   en.title = inputs.appName;
   en.marketingUrl = inputs.marketingUrl;
   en.supportUrl = inputs.supportUrl;
@@ -311,10 +278,6 @@ async function rewriteStoreConfigFile(
   json.apple.review.lastName = inputs.reviewLastName;
   json.apple.review.email = inputs.reviewEmail;
   json.apple.review.phone = inputs.reviewPhone;
-  // The template's notes tell the USER to run this wizard, text that would
-  // otherwise ship to Apple's review team. Drop the key only while it's still
-  // the placeholder (an empty string fails `eas metadata:lint`'s minimum
-  // length; absent passes); real notes a user wrote survive a --force re-run.
   const notes = json.apple.review.notes;
   if (typeof notes === "string" && notes.includes("vexpo rebrand")) {
     delete json.apple.review.notes;
@@ -349,10 +312,6 @@ async function readJsonTarget(file: string): Promise<unknown> {
   }
 }
 
-// The rewrites run sequentially with no rollback, so a throw after the first
-// write leaves a half-rebranded project that a later run reports as "nothing to
-// rebrand". Validate every target up front, before backup or any write, so a
-// missing/malformed file fails loudly while the tree is still pristine.
 async function validateTargets(): Promise<void> {
   let cfg: string;
   try {
@@ -404,14 +363,6 @@ async function validateTargets(): Promise<void> {
   }
 }
 
-/**
- * Secondary rewrite targets. Unlike the four core files (hard-validated up
- * front, all-or-nothing), these carry template branding in code comments,
- * docs, and server fallbacks. Each rewrite is best-effort: a missing file or
- * an already-customized one is skipped with a note, never a failure, so a
- * project that diverged from the template still rebrands cleanly.
- */
-
 async function readOrSkip(file: string): Promise<string | null> {
   try {
     return await readFile(file, "utf8");
@@ -421,11 +372,6 @@ async function readOrSkip(file: string): Promise<string | null> {
   }
 }
 
-// convex/env.ts runs server-side where app.config.ts is unreadable, so its
-// SITE_URL / APP_NAME fallbacks carry hardcoded literals ("vexpo://", "Vexpo").
-// The CLI pushes real values to Convex env during setup, but the fresh-checkout
-// fallbacks must still say the right app: SITE_URL's fallback feeds
-// trustedOrigins and APP_NAME's feeds email copy.
 async function rewriteConvexEnv(inputs: RebrandInputs): Promise<void> {
   const file = "convex/env.ts";
   const text = await readOrSkip(file);
@@ -467,10 +413,6 @@ async function rewriteEnvExample(inputs: RebrandInputs): Promise<void> {
   ok(`updated ${file}`);
 }
 
-// The scaffold ships the template's README: a "# vexpo" title and hero shots
-// hotlinked from the template repo. Retitle to the app and drop the template
-// imagery. Anything else in the file is prose the user owns, so a README that
-// no longer opens with the template title is left entirely alone.
 async function rewriteReadme(inputs: RebrandInputs): Promise<void> {
   const file = "README.md";
   const text = await readOrSkip(file);
@@ -489,11 +431,6 @@ async function rewriteReadme(inputs: RebrandInputs): Promise<void> {
   ok(`updated ${file}`);
 }
 
-// JSON.stringify never inlines arrays, but the template's oxfmt does, so a
-// rewritten store.config.json fails the project's own `format:check`. Hand the
-// touched files back to the project formatter; a missing oxfmt is a note, not
-// a failure, since the rebrand itself succeeded. Secondary targets may not
-// exist, so only files actually present are passed.
 async function formatTargets(files: string[]): Promise<void> {
   const present: string[] = [];
   for (const f of files) {
@@ -555,8 +492,6 @@ export async function runRebrand(options: RebrandOptions): Promise<number> {
       return 0;
     }
 
-    // Only the paths that actually rewrite files need the strict preflight; a
-    // re-run that's already customized short-circuits above and stays a no-op.
     await validateTargets();
 
     if (detect.signals.length > 0) {
@@ -598,7 +533,6 @@ export async function runRebrand(options: RebrandOptions): Promise<number> {
     }
 
     const stamp = new Date().toISOString().replace(/[:.]/g, "-");
-    // package-lock.json is regenerable from a plain install, so it skips backup.
     await backup(
       [
         "app.config.ts",
@@ -632,8 +566,6 @@ export async function runRebrand(options: RebrandOptions): Promise<number> {
     ]);
     await syncBundleId(inputs.bundleId);
 
-    // app.config.ts reads `owner` from EXPO_PUBLIC_EXPO_OWNER; persist the slug
-    // so team/org accounts actually get it (env-files.ts routes it to EAS too).
     if (inputs.expoOwner) {
       await ensureLine("EXPO_PUBLIC_EXPO_OWNER", inputs.expoOwner);
       ok(`wrote EXPO_PUBLIC_EXPO_OWNER=${inputs.expoOwner} to .env.local`);

@@ -22,9 +22,6 @@ type Props<T extends string> = {
   value: T;
   options: SegmentedOption<T>[];
   onChange: (value: T) => void;
-  // Group label spoken by VoiceOver before the segments. Required because a
-  // bare segmented Picker reads only the segment labels and would otherwise
-  // leave the user without context for what the group controls.
   accessibilityLabel: string;
   testID?: string;
 };
@@ -44,8 +41,6 @@ export function SegmentedToggle<T extends string>({
         pickerStyle("segmented"),
         controlSize("large"),
         frame({ maxWidth: Infinity, minHeight: ButtonTokens.height }),
-        // upstream expo/expo#46540: the two segments sit side by side and can't
-        // reflow, so cap Dynamic Type before the labels overflow at AX sizes.
         dynamicTypeSize({ max: DynamicType.control }),
         accessibilityLabel(a11yLabel),
       ]}

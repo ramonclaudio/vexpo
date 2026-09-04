@@ -8,7 +8,6 @@ on:
   schedule:
     - cron: "27 6 * * 1"
 
-# Default read-only; the analyze job below elevates to write security findings.
 permissions:
   contents: read
 
@@ -16,18 +15,17 @@ jobs:
   analyze:
     name: analyze (javascript-typescript)
     runs-on: ubuntu-latest
-    # Least privilege: write security findings, read the code and the workflow run.
     permissions:
       security-events: write
       contents: read
       actions: read
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
 
       - name: Initialize CodeQL
-        uses: github/codeql-action/init@ff2f1c621b7f889edc0d3c761ac2e6a3f8cdb0dd # v4
+        uses: github/codeql-action/init@ff2f1c621b7f889edc0d3c761ac2e6a3f8cdb0dd
         with:
           languages: javascript-typescript
 
       - name: Perform CodeQL analysis
-        uses: github/codeql-action/analyze@ff2f1c621b7f889edc0d3c761ac2e6a3f8cdb0dd # v4
+        uses: github/codeql-action/analyze@ff2f1c621b7f889edc0d3c761ac2e6a3f8cdb0dd

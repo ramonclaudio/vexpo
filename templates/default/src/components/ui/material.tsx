@@ -11,31 +11,6 @@ import {
 import { useReduceTransparency } from "@/hooks/use-reduce-transparency";
 import { useColors } from "@/hooks/use-theme";
 
-/**
- * HIG-aware translucent surface. Picks the right backing per OS and
- * accessibility state:
- *
- *   Reduce Transparency on  -> solid `tintColor` background (no blur)
- *   iOS 26+                  -> `GlassView` (true Liquid Glass via UIVisualEffectView)
- *   iOS 16.4-25              -> `BlurView` (UIVisualEffectView blur + tint overlay)
- *   anything else            -> solid `tintColor` fallback
- *
- * iOS 26 `GlassView` honors Reduce Transparency natively, so the explicit
- * check only changes the iOS 16.4-25 path. But we route both through the
- * same solid-fallback for consistency and so the iOS 26 path stays cheap
- * when the user has opted out of blur.
- *
- * Apple's HIG reserves materials for the navigation layer that floats above
- * content: tab bars, navigation bars, toolbars, sheets, popovers, alerts,
- * notification banners. Most of those are already handled by `@expo/ui`'s
- * SwiftUI primitives and `expo-router`'s NativeTabs. Reach for `<Material>`
- * only when you're hand-building floating UI: a custom HUD, a toast, a
- * pill that overlays scrollable content, a custom sheet backdrop.
- *
- * Children render inside the surface unchanged. `tintColor` paints over the
- * blur (semi-transparent so the blur still reads); on iOS 26+ it goes to
- * `GlassView`'s native `tintColor` instead.
- */
 type MaterialVariant = "ultraThin" | "thin" | "regular" | "thick" | "chrome";
 
 const BLUR_INTENSITY: Record<MaterialVariant, number> = {
@@ -83,23 +58,12 @@ export function Material({
 
   if (reduceTransparency) {
     return (
-      <View
-        {...viewProps}
-        // `card`, not a literal. The old fallback was an opaque near-black that
-        // painted under near-black text in light mode the moment Reduce
-        // Transparency was on and the caller passed no tint.
-        style={[viewProps.style, { backgroundColor: tintColor ?? colors.card }]}
-      >
+      <View {...viewProps} style={[viewProps.style, { backgroundColor: tintColor ?? colors.card }]}>
         {children}
       </View>
     );
   }
 
-  // `isLiquidGlassAvailable()` confirms the SDK + Info.plist support Liquid
-  // Glass; `isGlassEffectAPIAvailable()` confirms the runtime device actually
-  // has the API. Some iOS 26 beta builds pass the version check without the
-  // runtime API and crash on GlassView. Both must be true. See
-  // https://github.com/expo/expo/issues/40911.
   if (isLiquidGlassAvailable() && isGlassEffectAPIAvailable()) {
     return (
       <GlassView

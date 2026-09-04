@@ -1,13 +1,4 @@
 #!/usr/bin/env bash
-#
-# E2E suite for the `create-vexpo` scaffolder. Builds the package, then drives
-# the dist binary against temp dirs under /tmp and asserts the scaffold output.
-# Every scaffold runs with -y so prompts never block; most run --no-install so
-# the suite stays fast. One opt-in install case exercises the real npm path.
-#
-# Usage:
-#   __tests__/e2e/run.sh              all tests
-#   __tests__/e2e/run.sh GREP         only tests whose name matches GREP
 
 set -uo pipefail
 
@@ -18,8 +9,6 @@ TMPROOT="$(mktemp -d -t cvx-e2e.XXXXXX)"
 cleanup() { if command -v trash >/dev/null 2>&1; then trash "$TMPROOT"; else rm -rf "$TMPROOT"; fi; }
 trap cleanup EXIT
 
-# Hermetic git identity so the scaffolder's commit works on hosts without one
-# (CI runners) and host gpg-sign configs can't break the suite.
 export GIT_CONFIG_GLOBAL="$TMPROOT/gitconfig"
 git config --file "$GIT_CONFIG_GLOBAL" user.name "cvx-e2e"
 git config --file "$GIT_CONFIG_GLOBAL" user.email "cvx-e2e@localhost"
@@ -36,8 +25,6 @@ if [ ! -f "$CLI" ]; then
   exit 1
 fi
 
-# ─── Helpers ────────────────────────────────────────────────────────────────
-
 C_RED=$'\e[31m'
 C_GREEN=$'\e[32m'
 C_DIM=$'\e[2m'
@@ -52,9 +39,6 @@ skip() { SKIPPED=$((SKIPPED + 1)); printf "  ${C_DIM}–${C_RESET} %s ${C_DIM}(s
 strip_ansi() { sed $'s/\x1b\\[[0-9;]*[a-zA-Z]//g'; }
 match_grep() { [ -z "$GREP" ] || [[ "$1" == *"$GREP"* ]]; }
 
-# Scaffold into a fresh sandbox. Echoes the sandbox path on stdout (last line)
-# and writes the scaffolder's combined output to "$sandbox/.scaffold.log".
-# Usage: sb=$(scaffold <dir-name> [extra flags...])
 scaffold() {
   local dir="$1"
   shift
@@ -64,13 +48,10 @@ scaffold() {
   echo "$sb"
 }
 
-# node one-liner that reads a scaffolded package.json field. Prints the value.
 pkg_field() {
   local proj="$1" field="$2"
   node -e "const p=require('$proj/package.json'); const v=p['$field']; process.stdout.write(v===undefined?'__undef__':String(v));"
 }
-
-# ─── Tests ──────────────────────────────────────────────────────────────────
 
 section "Default scaffold (-y --no-install)"
 
@@ -122,7 +103,6 @@ if match_grep "$n"; then
   for f in .gitignore .env.example .npmrc; do
     [ -f "$proj/$f" ] || miss="$miss $f"
   done
-  # underscore placeholders must be gone, not lingering alongside
   for u in _gitignore _env.example _npmrc; do
     [ -e "$proj/$u" ] && miss="$miss leftover:$u"
   done
@@ -230,7 +210,6 @@ if match_grep "$n"; then
   for u in _gitignore _env.example _npmrc; do
     [ -f "$PKG_ROOT/dist/templates/default/$u" ] || miss="$miss $u"
   done
-  # real dotfiles must NOT be in the tarball payload (npm strips them)
   for d in .gitignore .env.example .npmrc; do
     [ -e "$PKG_ROOT/dist/templates/default/$d" ] && miss="$miss leaked:$d"
   done
@@ -247,21 +226,14 @@ if match_grep "$n"; then
   for f in package-lock.json bun.lock .env.local .env.prod .setup-state.json SETUP.md DESIGN.md LICENSE; do
     [ -e "$dest/$f" ] && bad="$bad $f"
   done
-  # No private key may ever ship, including one staged in credentials/.
   keyleak=$(find "$dest" \( -name '*.p8' -o -name '*.p12' -o -name 'AuthKey_*' \) 2>/dev/null)
   [ -n "$keyleak" ] && bad="$bad keyleak:$keyleak"
-  # The credentials/ staging dir ships its README (dir + guidance travel, keys don't).
   [ -f "$dest/credentials/README.md" ] || bad="$bad missing:credentials/README.md"
   [ -z "$bad" ] && pass "$n" || fail "$n" "leaked:$bad"
 else skip "$n" "filtered"; fi
 
 n="a fresh scaffold passes its own format:check"
 if match_grep "$n"; then
-  # Every file the scaffolder rewrites is a chance to hand the user a project
-  # that fails its own gate on the first command. JSON.stringify never inlines
-  # arrays and oxfmt does, which is how eas.json's `cache.paths` broke, and how
-  # the unsorted vexpo devDependency broke package.json in 0.2.3. The scaffold
-  # has no node_modules yet, so run the monorepo's own oxfmt over it.
   sb=$(scaffold fmt-check -y --no-install --no-git)
   fmt="$PKG_ROOT/../../node_modules/.bin/oxfmt"
   if [ -x "$fmt" ]; then
@@ -274,12 +246,6 @@ else skip "$n" "filtered"; fi
 
 n="dist payload ships a placeholder store.config.json, not the author's"
 if match_grep "$n"; then
-  # `eas submit` needs the file to exist, and the working tree's copy is
-  # gitignored (it holds this repo's real review contact and the App Review demo
-  # password `vexpo review-account` generates). So the payload has to come from
-  # the tracked `store.config.example.json`, copied at build time. Nothing else
-  # catches this: a local build finds the real file on disk and looks fine, while
-  # the release runner's fresh checkout has no file at all.
   dest="$PKG_ROOT/dist/templates/default"
   bad=""
   [ -f "$dest/store.config.json" ] || bad="$bad missing:store.config.json"
@@ -293,12 +259,6 @@ else skip "$n" "filtered"; fi
 
 n="scaffolded eas.json carries nobody else's App Store Connect identity"
 if match_grep "$n"; then
-  # `vexpo asc connect` and `vexpo submit` write a real ascAppId and ASC key id
-  # into eas.json's submit profiles, and the live project shares a directory with
-  # the published template, so one `git add -A` in the wrong moment ships them.
-  # Nothing else here would catch it: the .p8 stays gitignored, so the keyleak
-  # check above passes while every scaffolded project quietly submits to the
-  # template author's app.
   sb=$(scaffold clean-ids -y --no-install)
   found=$(node -e '
     const p = require("'"$sb"'/clean-ids/eas.json").submit ?? {};
@@ -332,8 +292,6 @@ if match_grep "$n"; then
     [ -z "$miss" ] && pass "$n" || fail "$n" "$miss (log: $(tail -3 "$sb/.scaffold.log" | tr '\n' ' '))"
   fi
 else skip "$n" "filtered"; fi
-
-# ─── Summary ────────────────────────────────────────────────────────────────
 
 printf "\n${C_BOLD}${C_PURPLE}Summary${C_RESET} ${C_DIM}─────────────────────────────${C_RESET}\n"
 TOTAL=$((PASSED + FAILED + SKIPPED))

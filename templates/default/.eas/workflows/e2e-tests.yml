@@ -1,30 +1,5 @@
 name: E2E tests
 
-# Builds an iOS Simulator binary and runs Maestro flows against it. Mirrors
-# the canonical EAS workflow at
-# https://docs.expo.dev/eas/workflows/examples/e2e-tests.
-#
-# Maestro flows live under .maestro/ at the repo root. The build profile
-# `development:simulator` already exists in eas.json. it produces a
-# .app bundle the Maestro runner can install on an iOS Simulator.
-#
-# `MAESTRO_APP_ID` resolves to the project's bundle id from the EAS development
-# environment (populated by `vexpo full` or `eas env:create`). The flow
-# yaml at .maestro/launch.yaml reads it as `appId: ${MAESTRO_APP_ID}`.
-#
-# The auth flow (.maestro/auth.yaml) signs a fresh account up against the
-# dev Convex deployment, so `test_creds` mints a unique email per run.
-#
-# Builds `preview:simulator`, not `development:simulator`. The development:*
-# profiles inherit `developmentClient: true`, so the build comes up on the dev
-# client's server picker with no Metro to reach in the cloud, and nothing can
-# get past it. preview:simulator embeds the bundle, so the app boots straight
-# into itself. It also has no dev menu, so the sheet that scripts/e2e.mjs mutes
-# locally never appears here.
-
-# Auto-run on PRs is OFF by default to conserve EAS build credits (each run
-# builds an iOS Simulator binary). Trigger manually, or restore the
-# `pull_request` trigger below to run it on every PR.
 on:
   workflow_dispatch: {}
 
@@ -53,10 +28,6 @@ jobs:
 
   guard_app_id:
     name: Check MAESTRO_APP_ID is set
-    # The maestro job below reads appId from MAESTRO_APP_ID. If
-    # EXPO_PUBLIC_APP_BUNDLE_ID is missing from the development environment it
-    # interpolates to empty and Maestro silently can't find the app. Fail here
-    # instead so the cause is obvious.
     environment: preview
     env:
       MAESTRO_APP_ID: ${{ env.EXPO_PUBLIC_APP_BUNDLE_ID }}
@@ -78,25 +49,6 @@ jobs:
       MAESTRO_TEST_PASSWORD: ${{ needs.test_creds.outputs.password }}
     params:
       build_id: ${{ needs.build_ios_simulator.outputs.build_id }}
-      # Listed one by one, in order. A directory is planned in REVERSE
-      # alphabetical order, which runs auth.yaml last, after the flows that
-      # need the session it creates. Same order as ORDERED_FLOWS in
-      # scripts/e2e.mjs.
-      #
-      # zz-delete-restore.yaml is missing on purpose. The delete is gated on
-      # LocalAuthentication, and the simulator this job provisions has no
-      # enrolled biometric, so the prompt falls back to "Enter iPhone Passcode",
-      # which Maestro cannot drive and no passcode satisfies. Confirmed, not
-      # assumed: run 01a052b4 failed there with that sheet on screen. Locally
-      # scripts/e2e.mjs enrolls a biometric and answers the prompt, but this job
-      # runs Maestro directly, so that never executes, and the job type exposes
-      # no hook to do it. The gate itself is right (see use-delete-account.ts,
-      # Apple 5.1.1(v)) and is not worth weakening for a test, so the
-      # delete -> restore journey stays a local check via `npm run e2e`.
-      # guest.yaml runs first: it wipes state, browses as a guest and discards
-      # the guest session, so it hands auth.yaml the signed-out app it wants.
-      # Its purge has no LocalAuthentication gate (a guest has no identity to
-      # confirm), so unlike zz-delete-restore.yaml it runs fine on this job.
       flow_path:
         - .maestro/guest.yaml
         - .maestro/auth.yaml

@@ -19,7 +19,6 @@ export type ConvexKeyOptions = {
   mint?: boolean;
 };
 
-/** Create-or-update: env:update errors if the var doesn't exist yet, so branch on presence. */
 async function upsert(
   name: string,
   value: string,
@@ -60,11 +59,6 @@ export async function runConvexKey(options: ConvexKeyOptions): Promise<number> {
   const devSel = local.get("CONVEX_DEPLOYMENT");
   const prodSel = prod.get("CONVEX_DEPLOYMENT");
 
-  // The prod deploy key is a secret that belongs on EAS, not in .env.prod (which
-  // carries only the CONVEX_DEPLOYMENT selector). With --mint, create one via the
-  // Platform API instead of reading it off disk, but only if EAS doesn't already
-  // hold it, so re-runs and a prior eas-rotation-secrets don't mint a second key.
-  // Fetched once here and reused as the production presence map below.
   let easProd: Map<string, string> | null = null;
   if (options.mint && !prodKey) {
     easProd = await envList("production");
@@ -132,9 +126,6 @@ export async function runConvexKey(options: ConvexKeyOptions): Promise<number> {
     return 1;
   }
 
-  // One env:list per environment, not one per write. Reuse the production map
-  // from the mint pre-check and bail loud on a read failure rather than treating
-  // every var as absent (which would flip updates into create-existing).
   const envMaps = new Map<EasEnvironment, Map<string, string>>();
   if (easProd) envMaps.set("production", easProd);
   for (const w of writes) {

@@ -15,22 +15,6 @@ import { Spacing } from "@/constants/layout";
 import { useColors } from "@/hooks/use-theme";
 import { useDynamicFont } from "@/lib/dynamic-font";
 
-// Skeleton placeholders for initial query loads. Each root wraps its subtree in
-// `redacted("placeholder")` (upstream expo/expo#47269), the canonical SwiftUI
-// skeleton: SwiftUI draws native gray capsules over the real Texts, each sized
-// to a representative string, so the skeleton tracks the live layout and Dynamic
-// Type for free instead of drifting behind hardcoded bar widths. No animation,
-// and static placeholders satisfy the Reduce Motion accessibility setting
-// trivially (nothing to suppress). The avatar Circle and the field-capsule boxes
-// stay literal muted fills (they stand in for geometry, not text) with a
-// whitespace `Text` forcing the framed VStack to draw its background; each opts
-// out with `unredacted()` so that spacer Text doesn't draw a nub over the fill.
-// Each root collapses to one element with `accessibilityElement("ignore")`
-// (upstream expo/expo#47156) plus an `accessibilityLabel` ("Loading profile" /
-// "Loading sessions"), so VoiceOver speaks a single "Loading" instead of swiping
-// a silent screen; "ignore" keeps the fake children (Jane Appleseed, iPhone 15
-// Pro) unspoken.
-
 function FieldBox() {
   const colors = useColors();
   return (

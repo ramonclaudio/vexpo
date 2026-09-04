@@ -68,16 +68,11 @@ async function main() {
     throw err;
   }
 
-  // True once deps are on disk: either install succeeded, or `--no-install`
-  // means we never tried so there's nothing half-built. Gates the git commit
-  // and the manual-install hint below.
   let depsReady = !flags.install;
 
   if (flags.install) {
     const installSpin = ora(`Installing dependencies with ${kleur.cyan(pm)}`).start();
     try {
-      // Capture stderr instead of discarding it so a failed install can show
-      // why. stdout stays silent to keep the spinner output clean.
       await execa(pm, ["install"], { cwd: target, stdout: "ignore" });
       installSpin.succeed(`Installed with ${pm}`);
       depsReady = true;
@@ -99,16 +94,11 @@ async function main() {
     }
     if (initialized) {
       try {
-        // Don't commit a half-built project. The repo is init'd so the user can
-        // commit once deps land, but skip add/commit when install failed.
         if (!depsReady) {
           gitSpin.warn("Git repo initialized, commit skipped (install failed)");
           console.error(kleur.gray(`  Commit yourself after ${pm} install lands.`));
         } else {
           await execa("git", ["add", "-A"], { cwd: target, stdio: "ignore" });
-          // git commit hard-fails without an identity (fresh machines, CI). It
-          // needs both name and email, so stage everything and let the user
-          // commit once they set one.
           const email = await execa("git", ["config", "user.email"], {
             cwd: target,
             reject: false,
@@ -140,10 +130,6 @@ async function main() {
 const NAME_RE = /^[a-z0-9][a-z0-9-]*$/;
 const NAME_HINT = "lowercase letters, numbers, dashes; must start alphanumeric";
 
-// Validate the LAST path segment of the target. `./my-app`, `/tmp/my-app`, and
-// `my-app` should all pass when the trailing component is a valid name; only
-// reject names that would produce a corrupt `package.json.name` (spaces,
-// unicode, npm scopes, etc.).
 function validateNameSegment(target: string): { ok: true } | { ok: false; reason: string } {
   if (target.startsWith("@")) {
     return { ok: false, reason: "npm scopes are not directories; use a plain directory name" };
@@ -184,7 +170,6 @@ async function resolveName(argDir: string | undefined, yes: boolean): Promise<st
   return res.name as string;
 }
 
-// Restore dotfiles npm strips from published tarballs.
 async function restoreStrippedDotfiles(target: string): Promise<void> {
   for (const to of STRIPPED_DOTFILES) {
     const src = join(target, strippedToUnderscore(to));
@@ -199,13 +184,8 @@ async function rewritePackage(target: string, requestedName: string): Promise<vo
   parsed.name = toPackageName(requestedName);
   parsed.version = "0.0.0";
   parsed.private = true;
-  // Pin the CLI to this scaffolder's own release line. The template can't
-  // hardcode a registry range: it drifts the moment a breaking vexpo ships,
-  // and caret ranges never cross the minor while the major is 0.
   const devDeps = (parsed.devDependencies ?? {}) as Record<string, string>;
   devDeps["@ramonclaudio/vexpo"] = `^${pkg.version}`;
-  // Sorted insert, not append: oxfmt sorts dependency keys, so an appended
-  // entry makes a fresh scaffold fail its own `format:check`.
   parsed.devDependencies = Object.fromEntries(
     Object.entries(devDeps).toSorted(([a], [b]) => (a < b ? -1 : 1)),
   );
@@ -218,16 +198,6 @@ async function rewritePackage(target: string, requestedName: string): Promise<vo
   await writeFile(pkgPath, `${JSON.stringify(parsed, null, 2)}\n`);
 }
 
-/**
- * Strip the template author's App Store Connect identity out of eas.json.
- *
- * `vexpo asc connect` and `vexpo submit` write a real `ascAppId` and ASC key id
- * into the submit profiles, by design: `eas submit` reads them from nowhere
- * else. The template lives in the same directory as a real shipping project, so
- * those values sit in the tracked file whenever that project has been set up,
- * and a scaffold that copied them would point every new app at somebody else's
- * App Store Connect record. `vexpo asc connect` writes the right ones back in.
- */
 async function rewriteEasJson(target: string): Promise<void> {
   const path = join(target, "eas.json");
   if (!existsSync(path)) return;
@@ -243,11 +213,6 @@ async function rewriteEasJson(target: string): Promise<void> {
       }
     }
   }
-  // Only rewrite when there was something to strip. JSON.stringify never inlines
-  // arrays and the template's oxfmt does, so an unconditional write reflows
-  // `cache.paths` and hands every scaffold an eas.json that fails its own
-  // `npm run format:check`. The published payload is built from a clean
-  // checkout, so this is the path every real scaffold takes.
   if (!removed) return;
   await writeFile(path, `${JSON.stringify(parsed, null, 2)}\n`);
 }
@@ -269,8 +234,6 @@ function intro(): void {
   console.log(kleur.bold().cyan("create-vexpo") + kleur.gray(` v${pkg.version}`));
 }
 
-// Pull the stderr off a failed execa subprocess. execa 9 throws an ExecaError
-// carrying the captured stderr; guard the shape so a non-execa throw is safe.
 function installFailureStderr(err: unknown): string {
   if (err && typeof err === "object" && "stderr" in err) {
     const stderr = (err as { stderr?: unknown }).stderr;
@@ -279,7 +242,6 @@ function installFailureStderr(err: unknown): string {
   return "";
 }
 
-// Last `n` lines of a string. Install logs are long; the tail holds the error.
 function tail(text: string, n: number): string {
   return text.split("\n").slice(-n).join("\n");
 }
@@ -289,8 +251,6 @@ function nextSteps(target: string, pm: PM, depsReady: boolean): void {
   console.log();
   console.log(kleur.bold("Next steps:"));
   console.log(kleur.gray("  cd ") + kleur.cyan(cdPath));
-  // Print the manual install whenever deps aren't on disk: either install was
-  // skipped (`--no-install`) or it ran and failed.
   if (!depsReady) console.log(kleur.gray(`  ${pm} install`));
   console.log(
     kleur.gray(`  npx vexpo lite         ${kleur.dim("# provisions Convex and Better Auth")}`),

@@ -104,8 +104,6 @@ describe("poll", () => {
   });
 
   it("defaults to a 30s interval and a 30-minute timeout when unset", async () => {
-    // Fake timers pin the real default values. An immediate-success poll never
-    // reaches the interval/timeout code, so it can't catch a regression in them.
     vi.useFakeTimers();
     try {
       const check = vi.fn(async () => ({ done: false as const }));
@@ -116,20 +114,20 @@ describe("poll", () => {
       });
 
       await vi.advanceTimersByTimeAsync(0);
-      expect(check).toHaveBeenCalledTimes(1); // immediate first attempt
+      expect(check).toHaveBeenCalledTimes(1);
 
       await vi.advanceTimersByTimeAsync(29_999);
-      expect(check).toHaveBeenCalledTimes(1); // no re-check before the 30s default
+      expect(check).toHaveBeenCalledTimes(1);
 
       await vi.advanceTimersByTimeAsync(1);
-      expect(check).toHaveBeenCalledTimes(2); // re-checks at exactly 30s -> pins interval
+      expect(check).toHaveBeenCalledTimes(2);
 
       await vi.advanceTimersByTimeAsync(29 * 60_000);
-      expect(settled).toBe(false); // still polling before the 30-min default timeout
+      expect(settled).toBe(false);
 
       await vi.advanceTimersByTimeAsync(60_000);
       const result = await p;
-      expect(result.done).toBe(false); // times out at the 30-min default
+      expect(result.done).toBe(false);
       expect(settled).toBe(true);
     } finally {
       vi.useRealTimers();
@@ -140,7 +138,7 @@ describe("poll", () => {
 describe("formatElapsed", () => {
   it("formats sub-minute durations as seconds", () => {
     expect(formatElapsed(0)).toBe("0s");
-    expect(formatElapsed(500)).toBe("1s"); // rounds up at 0.5s
+    expect(formatElapsed(500)).toBe("1s");
     expect(formatElapsed(15_000)).toBe("15s");
     expect(formatElapsed(59_000)).toBe("59s");
   });
