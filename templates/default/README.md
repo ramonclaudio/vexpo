@@ -269,7 +269,7 @@ That file holds the original and transformed source of every bundled module, inc
 - Theme switching, haptics, reduced motion, VoiceOver, and Dynamic Type
 - Liquid Glass on iOS 26+, with a `UIVisualEffectView` blur fallback on iOS 16.4 through 25
 - OTA updates code-signed, so only signed bundles install
-- EAS Build, Update, Submit, and Metadata, with eight workflows under `.eas/workflows/`
+- EAS Build, Update, Submit, and Metadata, with nine workflows under `.eas/workflows/`
 
 `runtimeVersion` uses the fingerprint policy with `appVersionSource: "remote"`, and the ASC key is managed by EAS. PR previews, Maestro E2E, and the production deploy are `workflow_dispatch`-only by default. Restore the `pull_request` triggers to build on every PR, or add a `push: main` trigger to deploy on merge.
 
