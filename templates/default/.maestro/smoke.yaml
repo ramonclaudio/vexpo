@@ -1,0 +1,15 @@
+appId: ${MAESTRO_APP_ID}
+---
+- launchApp:
+    clearState: true
+    permissions:
+      notifications: deny
+- waitForAnimationToEnd:
+    timeout: 15000
+
+- extendedWaitUntil:
+    visible:
+      id: "sign-in-screen"
+    timeout: 30000
+- assertVisible: "Enter your credentials.*"
+- takeScreenshot: .maestro/screenshots/smoke
