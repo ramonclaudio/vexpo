@@ -7,7 +7,10 @@ vi.mock("../../src/lib/eas-project.ts", () => ({
   envCreate: vi.fn().mockResolvedValue(undefined),
   envUpdate: vi.fn().mockResolvedValue(undefined),
 }));
-vi.mock("../../src/lib/env-files.ts", () => ({ readEnvFile: vi.fn() }));
+vi.mock("../../src/lib/env-files.ts", async () => ({
+  ...(await vi.importActual("../../src/lib/env-files.ts")),
+  readEnvFile: vi.fn(),
+}));
 vi.mock("node:fs/promises", async () => ({
   ...(await vi.importActual("node:fs/promises")),
   access: vi.fn().mockResolvedValue(undefined),

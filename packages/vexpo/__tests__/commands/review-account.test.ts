@@ -7,7 +7,10 @@ vi.mock("../../src/lib/proc.ts", () => ({
   run: vi.fn().mockResolvedValue({ code: 0, stdout: "", stderr: "" }),
 }));
 vi.mock("../../src/lib/fs.ts", () => ({ fileExists: vi.fn(async () => false) }));
-vi.mock("../../src/lib/env-files.ts", () => ({ readEnvFile: vi.fn(async () => new Map()) }));
+vi.mock("../../src/lib/env-files.ts", async () => ({
+  ...(await vi.importActual("../../src/lib/env-files.ts")),
+  readEnvFile: vi.fn(async () => new Map()),
+}));
 vi.mock("node:fs/promises", () => ({
   readFile: vi.fn(),
   writeFile: vi.fn().mockResolvedValue(undefined),
