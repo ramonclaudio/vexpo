@@ -162,7 +162,7 @@ export default function SearchScreen() {
         <ScrollView
           modifiers={[
             scrollDismissesKeyboard("interactively"),
-            tint(colors.primary as string),
+            tint(colors.primary),
             scrollTargetBehavior("viewAligned"),
           ]}
         >
@@ -188,7 +188,7 @@ export default function SearchScreen() {
                     modifiers={[
                       buttonStyle("plain"),
                       frame({ maxWidth: Infinity }),
-                      background(colors.muted as string),
+                      background(colors.muted),
                       clipShape("capsule"),
                     ]}
                     onPress={() => open(d.href)}
@@ -203,23 +203,20 @@ export default function SearchScreen() {
                     >
                       <Image
                         systemName={d.icon}
-                        color={colors.foreground as string}
+                        color={colors.foreground}
                         modifiers={[dfont({ size: 20 }), accessibilityHidden(true)]}
                       />
                       <VStack alignment="leading" spacing={2}>
                         <Text
                           modifiers={[
                             dfont({ size: 16, weight: "medium" }),
-                            foregroundStyle(colors.foreground as string),
+                            foregroundStyle(colors.foreground),
                           ]}
                         >
                           {d.title}
                         </Text>
                         <Text
-                          modifiers={[
-                            dfont({ size: 13 }),
-                            foregroundStyle(colors.mutedForeground as string),
-                          ]}
+                          modifiers={[dfont({ size: 13 }), foregroundStyle(colors.mutedForeground)]}
                         >
                           {d.subtitle}
                         </Text>
@@ -227,7 +224,7 @@ export default function SearchScreen() {
                       <Spacer />
                       <Image
                         systemName="chevron.right"
-                        color={colors.mutedForeground as string}
+                        color={colors.mutedForeground}
                         modifiers={[
                           dfont({ size: 16 }),
                           imageScale("small"),
@@ -244,7 +241,7 @@ export default function SearchScreen() {
               <Text
                 modifiers={[
                   dfont({ size: 13 }),
-                  foregroundStyle(colors.mutedForeground as string),
+                  foregroundStyle(colors.mutedForeground),
                   padding({ horizontal: 8, top: 4 }),
                 ]}
               >

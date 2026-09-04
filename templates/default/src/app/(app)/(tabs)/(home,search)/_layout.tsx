@@ -19,7 +19,7 @@ export default function SharedLayout({ segment }: { segment: string }) {
     <Stack
       screenOptions={{
         ...motion,
-        headerTintColor: HeaderTint as string,
+        headerTintColor: HeaderTint,
         headerBlurEffect: "none",
         headerShadowVisible: false,
         headerLargeTitleShadowVisible: false,
@@ -34,7 +34,7 @@ export default function SharedLayout({ segment }: { segment: string }) {
           title: isSearch ? "Search" : "Home",
           headerShown: isSearch,
           headerLargeTitle: false,
-          contentStyle: { backgroundColor: colors.background as string },
+          contentStyle: { backgroundColor: colors.background },
         }}
       />
     </Stack>

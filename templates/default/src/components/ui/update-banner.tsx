@@ -41,10 +41,8 @@ export function UpdateBanner({ testID }: { testID?: string } = {}) {
 
   if (!showProgress && !showError) return null;
 
-  const tint = showError ? (colors.destructive as string) : (colors.primary as string);
-  const fg = showError
-    ? (colors.destructiveForeground as string)
-    : (colors.primaryForeground as string);
+  const tint = showError ? colors.destructive : colors.primary;
+  const fg = showError ? colors.destructiveForeground : colors.primaryForeground;
   const pct =
     showProgress && updates.downloadProgress != null
       ? ` ${Math.round(updates.downloadProgress * 100)}%`

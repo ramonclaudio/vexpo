@@ -19,13 +19,10 @@ export function ErrorText({ children, size = 14, testID, attempt }: Props) {
     <HStack spacing={6} alignment="center">
       <Image
         systemName="exclamationmark.triangle.fill"
-        color={colors.destructive as string}
+        color={colors.destructive}
         modifiers={[dfont({ size }), accessibilityHidden(true)]}
       />
-      <Text
-        testID={testID}
-        modifiers={[dfont({ size }), foregroundStyle(colors.destructive as string)]}
-      >
+      <Text testID={testID} modifiers={[dfont({ size }), foregroundStyle(colors.destructive)]}>
         {children}
       </Text>
     </HStack>
@@ -43,13 +40,10 @@ export function SuccessText({ children, size = 14, testID, attempt }: Props) {
     <HStack spacing={6} alignment="center">
       <Image
         systemName="checkmark.circle.fill"
-        color={colors.success as string}
+        color={colors.success}
         modifiers={[dfont({ size }), accessibilityHidden(true)]}
       />
-      <Text
-        testID={testID}
-        modifiers={[dfont({ size }), foregroundStyle(colors.success as string)]}
-      >
+      <Text testID={testID} modifiers={[dfont({ size }), foregroundStyle(colors.success)]}>
         {children}
       </Text>
     </HStack>

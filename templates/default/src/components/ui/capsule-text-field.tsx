@@ -16,7 +16,7 @@ export function CapsuleTextField({ modifiers, ...props }: ComponentProps<typeof 
         textFieldStyle("plain"),
         padding({ horizontal: 16 }),
         frame({ maxWidth: Infinity, minHeight: ButtonTokens.height }),
-        background(colors.muted as string),
+        background(colors.muted),
         clipShape("capsule"),
         dfont({ size: 16 }),
         ...(modifiers ?? []),

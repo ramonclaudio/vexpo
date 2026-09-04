@@ -87,9 +87,7 @@ export default function SettingsScreen() {
       style={{ flex: 1, backgroundColor: colors.background }}
       modifiers={scenePrivacy}
     >
-      <ScrollView
-        modifiers={[scrollDismissesKeyboard("interactively"), tint(colors.primary as string)]}
-      >
+      <ScrollView modifiers={[scrollDismissesKeyboard("interactively"), tint(colors.primary)]}>
         <VStack
           spacing={12}
           alignment="leading"
@@ -101,7 +99,7 @@ export default function SettingsScreen() {
             modifiers={[
               buttonStyle("plain"),
               frame({ maxWidth: Infinity }),
-              background(colors.muted as string),
+              background(colors.muted),
               clipShape("capsule"),
               accessibilityHint("Opens your profile"),
             ]}
@@ -121,7 +119,7 @@ export default function SettingsScreen() {
                   testID="settings-profile-name"
                   modifiers={[
                     dfont({ size: 17, weight: "semibold" }),
-                    foregroundStyle(colors.foreground as string),
+                    foregroundStyle(colors.foreground),
                     lineLimit(2),
                     truncationMode("tail"),
                   ]}
@@ -133,7 +131,7 @@ export default function SettingsScreen() {
                     testID="settings-profile-guest-hint"
                     modifiers={[
                       dfont({ size: 14 }),
-                      foregroundStyle(colors.mutedForeground as string),
+                      foregroundStyle(colors.mutedForeground),
                       lineLimit(2),
                     ]}
                   >
@@ -144,7 +142,7 @@ export default function SettingsScreen() {
                     testID="settings-profile-email"
                     modifiers={[
                       dfont({ size: 14 }),
-                      foregroundStyle(colors.mutedForeground as string),
+                      foregroundStyle(colors.mutedForeground),
                       lineLimit(1),
                       truncationMode("middle"),
                       textSelection(true),
@@ -158,7 +156,7 @@ export default function SettingsScreen() {
               <Spacer />
               <Image
                 systemName="chevron.right"
-                color={colors.mutedForeground as string}
+                color={colors.mutedForeground}
                 modifiers={[dfont({ size: 17 }), imageScale("small"), accessibilityHidden(true)]}
               />
             </HStack>
@@ -331,7 +329,7 @@ export default function SettingsScreen() {
             <Spacer />
             <Text
               testID="settings-version"
-              modifiers={[dfont({ size: 12 }), foregroundStyle(colors.tertiaryLabel as string)]}
+              modifiers={[dfont({ size: 12 }), foregroundStyle(colors.tertiaryLabel)]}
             >
               v{version}
             </Text>
@@ -352,7 +350,7 @@ function ProfileHeaderAvatar({ avatarUrl }: { avatarUrl: string | null }) {
     <Image
       systemName="person.crop.circle.fill"
       size={HEADER_AVATAR_SIZE}
-      color={colors.mutedForeground as string}
+      color={colors.mutedForeground}
       modifiers={[
         frame({ width: HEADER_AVATAR_SIZE, height: HEADER_AVATAR_SIZE }),
         accessibilityHidden(true),

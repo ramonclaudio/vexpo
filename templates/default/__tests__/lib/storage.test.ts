@@ -14,20 +14,20 @@ globalThis.localStorage = {
   length: 0,
 } as Storage;
 
-import { createStorage } from "@/lib/storage";
+import { createStorage, isBoolean, isOneOf } from "@/lib/storage";
 
 beforeEach(() => backing.clear());
 
 describe("createStorage", () => {
   it("returns the default until a value is written", () => {
-    const store = createStorage<boolean>("k", false);
+    const store = createStorage("k", false, isBoolean);
     expect(store.get()).toBe(false);
     store.set(true);
     expect(store.get()).toBe(true);
   });
 
   it("round-trips the boolean format the onboarding gate reads", () => {
-    const store = createStorage<boolean>("onboarding_seen", false);
+    const store = createStorage("onboarding_seen", false, isBoolean);
     store.set(true);
     expect(backing.get("onboarding_seen")).toBe("true");
     expect(store.get()).toBe(true);
@@ -36,8 +36,8 @@ describe("createStorage", () => {
   it("notifies every subscriber on the same key so call sites stay in sync", () => {
     const layout = vi.fn();
     const welcome = vi.fn();
-    const a = createStorage<boolean>("onboarding_seen", false);
-    const b = createStorage<boolean>("onboarding_seen", false);
+    const a = createStorage("onboarding_seen", false, isBoolean);
+    const b = createStorage("onboarding_seen", false, isBoolean);
     a.subscribe(layout);
     b.subscribe(welcome);
 
@@ -51,13 +51,19 @@ describe("createStorage", () => {
 
   it("falls back to the default on malformed json", () => {
     backing.set("k", "{not json");
-    const store = createStorage<string>("k", "fallback");
+    const store = createStorage("k", "fallback", isOneOf("fallback", "stored"));
     expect(store.get()).toBe("fallback");
+  });
+
+  it("falls back to the default when the stored value is no longer legal", () => {
+    backing.set("pref.theme.mode", JSON.stringify("blue"));
+    const store = createStorage("pref.theme.mode", "system", isOneOf("light", "dark", "system"));
+    expect(store.get()).toBe("system");
   });
 
   it("stops notifying after unsubscribe", () => {
     const listener = vi.fn();
-    const store = createStorage<boolean>("k", false);
+    const store = createStorage("k", false, isBoolean);
     const off = store.subscribe(listener);
     off();
     store.set(true);

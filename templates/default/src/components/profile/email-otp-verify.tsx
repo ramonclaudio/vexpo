@@ -84,7 +84,7 @@ export function EmailOtpVerify({
             ...(invalidCode
               ? [
                   strokeBorder({
-                    color: colors.destructive as string,
+                    color: colors.destructive,
                     shape: "capsule",
                     style: { lineWidth: 2 },
                   }),
@@ -110,7 +110,7 @@ export function EmailOtpVerify({
           label="Cancel"
           modifiers={[
             buttonStyle("plain"),
-            foregroundStyle(colors.mutedForeground as string),
+            foregroundStyle(colors.mutedForeground),
             dfont({ size: 14, weight: "semibold" }),
             frame({ minHeight: TouchTarget.min }),
             contentShape(shapes.rectangle()),

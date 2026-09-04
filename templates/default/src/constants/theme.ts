@@ -9,6 +9,10 @@ type Tone = {
   highContrastDark: string;
 };
 
+// SAFETY: DynamicColorIOS returns an OpaqueColorValue that the native side accepts
+// anywhere a color string is accepted. @expo/ui modifiers type their color inputs as
+// string, so the palette is declared as string at this one point instead of at the
+// ~150 call sites. Nothing reads a palette value as text.
 const tone = (t: Tone): string => DynamicColorIOS(t) as unknown as string;
 
 const NEUTRAL = {

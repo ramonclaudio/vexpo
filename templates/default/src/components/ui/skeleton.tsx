@@ -21,7 +21,7 @@ function FieldBox() {
     <VStack
       modifiers={[
         frame({ maxWidth: Infinity, height: 44 }),
-        background(colors.muted as string),
+        background(colors.muted),
         cornerRadius(22),
         unredacted(),
       ]}
@@ -37,7 +37,7 @@ function Circle({ size }: { size: number }) {
     <VStack
       modifiers={[
         frame({ width: size, height: size }),
-        background(colors.muted as string),
+        background(colors.muted),
         clipShape("circle"),
         unredacted(),
       ]}
@@ -113,7 +113,7 @@ function SkeletonSessionRow() {
     <VStack
       alignment="leading"
       spacing={Spacing.md}
-      modifiers={[padding({ all: 16 }), background(colors.card as string), cornerRadius(12)]}
+      modifiers={[padding({ all: 16 }), background(colors.card), cornerRadius(12)]}
     >
       <HStack spacing={Spacing.md}>
         <Text modifiers={[dfont({ size: 16, weight: "semibold" })]}>iPhone 15 Pro</Text>

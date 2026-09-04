@@ -32,7 +32,7 @@ export function ProminentButton({
       modifiers={[
         buttonStyle("plain"),
         frame({ maxWidth: Infinity }),
-        background(colors.primary as string),
+        background(colors.primary),
         clipShape("capsule"),
         disabledModifier(disabled ?? false),
       ]}
@@ -43,7 +43,7 @@ export function ProminentButton({
           frame({ maxWidth: Infinity, minHeight: ButtonTokens.height }),
           multilineTextAlignment("center"),
           dfont({ size: ButtonTokens.fontSize, weight: ButtonTokens.fontWeight }),
-          foregroundStyle(colors.primaryForeground as string),
+          foregroundStyle(colors.primaryForeground),
         ]}
       >
         {label}

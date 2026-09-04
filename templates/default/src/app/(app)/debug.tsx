@@ -67,7 +67,7 @@ function InfoRow({ label, value, valueModifiers, valueColor, testID }: InfoRowPr
   return (
     <LabeledContent
       label={
-        <Text modifiers={[dfont({ size: 15 }), foregroundStyle(colors.mutedForeground as string)]}>
+        <Text modifiers={[dfont({ size: 15 }), foregroundStyle(colors.mutedForeground)]}>
           {label}
         </Text>
       }
@@ -77,7 +77,7 @@ function InfoRow({ label, value, valueModifiers, valueColor, testID }: InfoRowPr
         testID={testID}
         modifiers={[
           dfont({ size: 15, weight: "medium" }),
-          foregroundStyle((valueColor ?? colors.foreground) as string),
+          foregroundStyle(valueColor ?? colors.foreground),
           textSelection(true),
           ...(valueModifiers ?? []),
         ]}
@@ -94,11 +94,7 @@ function InfoCard({ children }: { children: React.ReactNode }) {
     <VStack
       spacing={0}
       alignment="leading"
-      modifiers={[
-        frame({ maxWidth: Infinity }),
-        background(colors.muted as string),
-        cornerRadius(20),
-      ]}
+      modifiers={[frame({ maxWidth: Infinity }), background(colors.muted), cornerRadius(20)]}
     >
       {children}
     </VStack>
@@ -247,7 +243,7 @@ function OtaStatusCard({ updates }: { updates: Updates }) {
           testID="debug-ota-emergency-launch-value"
           label="Emergency launch"
           value={running.emergencyLaunchReason ?? "Unknown error"}
-          valueColor={colors.warning as string}
+          valueColor={colors.warning}
         />
       ) : null}
       {updates.isDownloading ? (
@@ -270,7 +266,7 @@ function OtaStatusCard({ updates }: { updates: Updates }) {
           testID="debug-ota-error"
           label="Error"
           value={error.message ?? "Unknown"}
-          valueColor={colors.destructive as string}
+          valueColor={colors.destructive}
         />
       ) : null}
       {updates.lastCheckForUpdateTimeSinceRestart ? (
@@ -420,16 +416,13 @@ function ShareBuildInfo({ build }: { build: string }) {
         modifiers={[
           frame({ maxWidth: Infinity, minHeight: ButtonTokens.height }),
           padding({ horizontal: 16 }),
-          background(colors.muted as string),
+          background(colors.muted),
           clipShape("capsule"),
         ]}
       >
         <Spacer />
         <Text
-          modifiers={[
-            dfont({ size: 16, weight: "medium" }),
-            foregroundStyle(colors.foreground as string),
-          ]}
+          modifiers={[dfont({ size: 16, weight: "medium" }), foregroundStyle(colors.foreground)]}
         >
           Share build info
         </Text>
@@ -449,7 +442,7 @@ function VersionFooter({ build }: { build: string }) {
         testID="debug-footer-version-value"
         modifiers={[
           dfont({ size: 12 }),
-          foregroundStyle(colors.mutedForeground as string),
+          foregroundStyle(colors.mutedForeground),
           accessibilityHidden(true),
         ]}
       >
@@ -492,9 +485,7 @@ export default function DebugScreen() {
       style={{ flex: 1, backgroundColor: colors.background }}
       modifiers={scenePrivacy}
     >
-      <ScrollView
-        modifiers={[scrollDismissesKeyboard("interactively"), tint(colors.primary as string)]}
-      >
+      <ScrollView modifiers={[scrollDismissesKeyboard("interactively"), tint(colors.primary)]}>
         <VStack
           spacing={20}
           alignment="leading"

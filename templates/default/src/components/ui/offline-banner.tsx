@@ -46,7 +46,7 @@ export function OfflineBanner({ testID }: { testID?: string } = {}) {
         accessibilityRole="alert"
         accessibilityLabel="You're offline"
         variant="chrome"
-        tintColor={colors.destructive as string}
+        tintColor={colors.destructive}
         style={{
           borderRadius: Radius.full,
           overflow: "hidden",
@@ -59,7 +59,7 @@ export function OfflineBanner({ testID }: { testID?: string } = {}) {
           <Text
             modifiers={[
               dfont({ size: FontSize["3xl"], weight: "bold" }),
-              foregroundStyle(colors.destructiveForeground as string),
+              foregroundStyle(colors.destructiveForeground),
             ]}
           >
             You&apos;re offline

@@ -18,9 +18,7 @@ export default function PreferencesScreen() {
 
   return (
     <Host testID="preferences-screen" style={{ flex: 1, backgroundColor: colors.background }}>
-      <ScrollView
-        modifiers={[scrollDismissesKeyboard("interactively"), tint(colors.primary as string)]}
-      >
+      <ScrollView modifiers={[scrollDismissesKeyboard("interactively"), tint(colors.primary)]}>
         <VStack
           spacing={20}
           alignment="leading"

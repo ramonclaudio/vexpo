@@ -11,9 +11,7 @@ export default function NotFoundScreen() {
   return (
     <>
       <Stack.Header>
-        <Stack.Screen.Title
-          style={{ color: colors.foreground as string, fontFamily: FontFamily.semiBold }}
-        >
+        <Stack.Screen.Title style={{ color: colors.foreground, fontFamily: FontFamily.semiBold }}>
           Lost?
         </Stack.Screen.Title>
       </Stack.Header>
@@ -21,7 +19,7 @@ export default function NotFoundScreen() {
         <VStack
           spacing={20}
           alignment="center"
-          modifiers={[padding({ horizontal: 24, vertical: 32 }), tint(colors.primary as string)]}
+          modifiers={[padding({ horizontal: 24, vertical: 32 }), tint(colors.primary)]}
         >
           <Spacer />
           <ContentUnavailable

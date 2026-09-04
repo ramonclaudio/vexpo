@@ -11,7 +11,7 @@ export function SectionLabel({ children }: { children: string }) {
     <Text
       modifiers={[
         dfont({ size: 13, weight: "semibold" }),
-        foregroundStyle(colors.mutedForeground as string),
+        foregroundStyle(colors.mutedForeground),
         padding({ horizontal: 8, top: 4 }),
         accessibilityAddTraits(["isHeader"]),
       ]}

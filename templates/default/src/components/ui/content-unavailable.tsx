@@ -56,7 +56,7 @@ function Fallback({ title, systemImage, description, testID }: Props) {
     >
       <Image
         systemName={systemImage}
-        color={colors.mutedForeground as string}
+        color={colors.mutedForeground}
         modifiers={[
           dfont({ size: 40 }),
           dynamicTypeSize({ max: DynamicType.control }),
@@ -70,7 +70,7 @@ function Fallback({ title, systemImage, description, testID }: Props) {
         <Text
           modifiers={[
             dfont({ size: 14 }),
-            foregroundStyle(colors.mutedForeground as string),
+            foregroundStyle(colors.mutedForeground),
             multilineTextAlignment("center"),
           ]}
         >

@@ -103,7 +103,7 @@ export function PasswordField({
       modifiers={[
         padding({ horizontal: 16 }),
         frame({ maxWidth: Infinity, minHeight: ButtonTokens.height }),
-        background(colors.muted as string),
+        background(colors.muted),
         clipShape("capsule"),
       ]}
     >
@@ -151,7 +151,7 @@ export function PasswordField({
       >
         <Image
           systemName={visible ? "eye.slash" : "eye"}
-          color={colors.mutedForeground as string}
+          color={colors.mutedForeground}
           modifiers={[
             dfont({ size: 18 }),
             dynamicTypeSize({ max: DynamicType.control }),

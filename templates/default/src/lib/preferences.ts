@@ -1,12 +1,16 @@
 import { useSyncExternalStore } from "react";
 
-import { createStorage } from "@/lib/storage";
+import { createStorage, isBoolean, isOneOf } from "@/lib/storage";
 
 type ReduceMotionPref = "system" | "always" | "never";
 
-const hapticsStore = createStorage<boolean>("pref.hapticsEnabled", true);
-const reduceMotionStore = createStorage<ReduceMotionPref>("pref.reduceMotion", "system");
-const debugEnabledStore = createStorage<boolean>("pref.debugEnabled", __DEV__);
+const hapticsStore = createStorage("pref.hapticsEnabled", true, isBoolean);
+const reduceMotionStore = createStorage<ReduceMotionPref>(
+  "pref.reduceMotion",
+  "system",
+  isOneOf("system", "always", "never"),
+);
+const debugEnabledStore = createStorage("pref.debugEnabled", __DEV__, isBoolean);
 
 export const preferences = {
   hapticsEnabled: () => hapticsStore.get(),

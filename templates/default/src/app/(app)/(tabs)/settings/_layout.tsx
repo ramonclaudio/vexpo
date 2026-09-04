@@ -23,15 +23,13 @@ export default function SettingsLayout() {
       screenOptions={{
         ...motion,
         headerShown: false,
-        contentStyle: { backgroundColor: colors.background as string },
+        contentStyle: { backgroundColor: colors.background },
       }}
     >
       <Stack.Screen name="index" />
       <Stack.Screen name="preferences" options={{ headerShown: true }}>
         <Stack.Header transparent />
-        <Stack.Screen.Title
-          style={{ color: HeaderTint as string, fontFamily: FontFamily.semiBold }}
-        >
+        <Stack.Screen.Title style={{ color: HeaderTint, fontFamily: FontFamily.semiBold }}>
           Preferences
         </Stack.Screen.Title>
         <Stack.Screen.BackButton>Settings</Stack.Screen.BackButton>

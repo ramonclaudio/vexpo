@@ -45,12 +45,12 @@ export function AppErrorBoundary({
           modifiers={[
             frame({ maxWidth: Infinity }),
             padding({ horizontal: 24, top: insets.top + 32, bottom: insets.bottom + 32 }),
-            tint(colors.primary as string),
+            tint(colors.primary),
           ]}
         >
           <Image
             systemName="exclamationmark.triangle"
-            color={colors.destructive as string}
+            color={colors.destructive}
             modifiers={[
               dfont({ size: 72 }),
               dynamicTypeSize({ max: DynamicType.control }),
@@ -70,7 +70,7 @@ export function AppErrorBoundary({
             testID={testID}
             modifiers={[
               dfont({ size: 16 }),
-              foregroundStyle(colors.mutedForeground as string),
+              foregroundStyle(colors.mutedForeground),
               multilineTextAlignment("center"),
             ]}
           >
@@ -84,7 +84,7 @@ export function AppErrorBoundary({
               modifiers={[
                 buttonStyle("plain"),
                 dfont({ size: 16, weight: "medium" }),
-                foregroundStyle(colors.mutedForeground as string),
+                foregroundStyle(colors.mutedForeground),
                 frame({ minHeight: TouchTarget.min }),
               ]}
               onPress={() => router.replace("/")}

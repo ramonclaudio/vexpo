@@ -144,7 +144,7 @@ export function OtpVerification({ email, onBack, flow = "verify-email" }: OtpVer
       <ScrollView
         modifiers={[
           scrollDismissesKeyboard("interactively"),
-          tint(colors.primary as string),
+          tint(colors.primary),
           defaultScrollAnchorForRole("center", "sizeChanges"),
         ]}
       >
@@ -183,7 +183,7 @@ export function OtpVerification({ email, onBack, flow = "verify-email" }: OtpVer
             <Text
               modifiers={[
                 dfont({ size: 15 }),
-                foregroundStyle(colors.mutedForeground as string),
+                foregroundStyle(colors.mutedForeground),
                 multilineTextAlignment("center"),
               ]}
             >
@@ -225,7 +225,7 @@ export function OtpVerification({ email, onBack, flow = "verify-email" }: OtpVer
                 ...(invalidCode
                   ? [
                       strokeBorder({
-                        color: colors.destructive as string,
+                        color: colors.destructive,
                         shape: "capsule",
                         style: { lineWidth: 2 },
                       }),
@@ -255,7 +255,7 @@ export function OtpVerification({ email, onBack, flow = "verify-email" }: OtpVer
                   frame({ maxWidth: Infinity, minHeight: ButtonTokens.height }),
                   multilineTextAlignment("center"),
                   dfont({ size: ButtonTokens.fontSize, weight: ButtonTokens.secondaryFontWeight }),
-                  foregroundStyle(colors.primary as string),
+                  foregroundStyle(colors.primary),
                 ]}
               >
                 {isResending ? "Sending..." : "Resend code"}
@@ -264,9 +264,7 @@ export function OtpVerification({ email, onBack, flow = "verify-email" }: OtpVer
           </VStack>
 
           <HStack modifiers={[padding({ top: 8 })]}>
-            <Text
-              modifiers={[dfont({ size: 14 }), foregroundStyle(colors.mutedForeground as string)]}
-            >
+            <Text modifiers={[dfont({ size: 14 }), foregroundStyle(colors.mutedForeground)]}>
               Wrong email?
             </Text>
             <Button

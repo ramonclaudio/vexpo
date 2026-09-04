@@ -100,7 +100,7 @@ export default function WelcomeScreen() {
   const isLast = step === STEPS.length - 1;
 
   return (
-    <Host testID="welcome-screen" style={{ flex: 1 }} modifiers={[tint(colors.primary as string)]}>
+    <Host testID="welcome-screen" style={{ flex: 1 }} modifiers={[tint(colors.primary)]}>
       <VStack spacing={0}>
         <VStack spacing={12} modifiers={[padding({ horizontal: 24, top: 24 })]}>
           <ProgressView
@@ -150,7 +150,7 @@ export default function WelcomeScreen() {
                     {}
                     <Image
                       systemName={s.icon}
-                      color={colors.primary as string}
+                      color={colors.primary}
                       modifiers={[
                         frame({ width: 80, height: 80 }),
                         dfont({ size: 48 }),
@@ -160,7 +160,7 @@ export default function WelcomeScreen() {
                     {}
                     <Image
                       systemName={s.icon}
-                      color={colors.primary as string}
+                      color={colors.primary}
                       modifiers={[
                         dfont({ size: 48 }),
                         dynamicTypeSize({ max: DynamicType.control }),
@@ -186,7 +186,7 @@ export default function WelcomeScreen() {
                   testID={`welcome-step-${s.id}-subtitle`}
                   modifiers={[
                     dfont({ size: 17 }),
-                    foregroundStyle(colors.mutedForeground as string),
+                    foregroundStyle(colors.mutedForeground),
                     multilineTextAlignment("center"),
                   ]}
                 >
@@ -211,7 +211,7 @@ export default function WelcomeScreen() {
               modifiers={[
                 buttonStyle("plain"),
                 dfont({ size: ButtonTokens.fontSize, weight: ButtonTokens.secondaryFontWeight }),
-                foregroundStyle(colors.mutedForeground as string),
+                foregroundStyle(colors.mutedForeground),
                 frame({ minHeight: TouchTarget.min }),
               ]}
               onPress={handleContinue}

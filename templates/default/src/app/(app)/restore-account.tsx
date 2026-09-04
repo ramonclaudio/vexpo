@@ -111,7 +111,7 @@ export default function RestoreAccountScreen() {
               testID="restore-account-title"
               modifiers={[
                 dfont({ size: 24, weight: "bold" }),
-                foregroundStyle(colors.foreground as string),
+                foregroundStyle(colors.foreground),
                 multilineTextAlignment("center"),
                 accessibilityAddTraits(["isHeader"]),
               ]}
@@ -122,7 +122,7 @@ export default function RestoreAccountScreen() {
               testID="restore-account-deletion-date"
               modifiers={[
                 dfont({ size: 15 }),
-                foregroundStyle(colors.mutedForeground as string),
+                foregroundStyle(colors.mutedForeground),
                 multilineTextAlignment("center"),
               ]}
             >
