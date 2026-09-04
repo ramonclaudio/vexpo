@@ -14,6 +14,7 @@
  */
 import { register as registerBetterAuth } from "@convex-dev/better-auth/test";
 import { register as registerRateLimiter } from "@convex-dev/rate-limiter/test";
+import { register as registerResend } from "@convex-dev/resend/test";
 import { convexTest } from "convex-test";
 
 import type { Id } from "@/convex/_generated/dataModel";
@@ -34,11 +35,12 @@ export type AuthedTest = ReturnType<typeof baseConvexTest> & {
   runInComponent: <T>(component: string, fn: (ctx: SeedCtx) => Promise<T>) => Promise<T>;
 };
 
-/** convexTest with the components the authed functions cross (better-auth, rate-limiter). */
+/** convexTest with every component the app's functions cross. */
 export function initConvexTest(): AuthedTest {
   const t = baseConvexTest();
   registerBetterAuth(t);
   registerRateLimiter(t);
+  registerResend(t);
   return t as AuthedTest;
 }
 
@@ -56,11 +58,20 @@ export type SeededUser = {
 /**
  * Seed a Better Auth user + unexpired session and the mirrored app `users` row.
  * Pass `deletedAt` to tombstone the app row, `expiresAt` (in the past) to test
- * an expired session, or `name`/`email` to assert specific identity fields.
+ * an expired session, `name`/`email` to assert specific identity fields, or
+ * `isAnonymous` for a guest (which also stamps `guestSince` on the app row the
+ * way the `user.onCreate` trigger does).
  */
 export async function seedAuthedUser(
   t: AuthedTest,
-  overrides: { deletedAt?: number; name?: string; email?: string; expiresAt?: number } = {},
+  overrides: {
+    deletedAt?: number;
+    name?: string;
+    email?: string;
+    expiresAt?: number;
+    isAnonymous?: boolean;
+    guestSince?: number;
+  } = {},
 ): Promise<SeededUser> {
   const now = Date.now();
   const name = overrides.name ?? "Ada Lovelace";
@@ -70,7 +81,8 @@ export async function seedAuthedUser(
     const userId = await ctx.db.insert("user", {
       name,
       email,
-      emailVerified: true,
+      emailVerified: !overrides.isAnonymous,
+      isAnonymous: overrides.isAnonymous,
       createdAt: now,
       updatedAt: now,
     });
@@ -90,6 +102,7 @@ export async function seedAuthedUser(
       createdAt: now,
       updatedAt: now,
       deletedAt: overrides.deletedAt,
+      guestSince: overrides.isAnonymous ? (overrides.guestSince ?? now) : undefined,
     }),
   );
 
@@ -108,8 +121,16 @@ export async function seedUser(t: AuthedTest) {
   );
 }
 
-/** Active push token owned by `userId`. */
-export async function seedToken(t: AuthedTest, userId: Id<"users">, token: string) {
+/**
+ * Push token owned by `userId`. `revoked` and `updatedAt` are the two fields
+ * `cleanupStale` ranges on, so both are overridable.
+ */
+export async function seedToken(
+  t: AuthedTest,
+  userId: Id<"users">,
+  token: string,
+  overrides: { revoked?: boolean; updatedAt?: number } = {},
+) {
   const now = Date.now();
   return t.run((ctx) =>
     ctx.db.insert("pushTokens", {
@@ -117,9 +138,10 @@ export async function seedToken(t: AuthedTest, userId: Id<"users">, token: strin
       token,
       deviceType: "ios" as const,
       createdAt: now,
-      updatedAt: now,
+      updatedAt: overrides.updatedAt ?? now,
       lastSeenAt: now,
-      revoked: false,
+      revoked: overrides.revoked ?? false,
+      revokedAt: overrides.revoked ? now : undefined,
     }),
   );
 }
