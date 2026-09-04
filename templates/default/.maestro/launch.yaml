@@ -22,9 +22,9 @@
 appId: ${MAESTRO_APP_ID}
 ---
 # No clearState here. The suite runs in the order ORDERED_FLOWS in
-# scripts/e2e.mjs sets (auth -> launch -> tour -> zz-delete-restore), and
-# auth.yaml owns the
-# clean-state reset at the start of the suite. Clearing again mid-suite would
+# scripts/e2e.mjs sets (guest -> auth -> launch -> tour -> zz-delete-restore).
+# guest.yaml and auth.yaml own the clean-state resets, and auth.yaml is the one
+# that leaves the session the flows after it need. Clearing again mid-suite would
 # wipe the onboarding_seen flag while the Better Auth session survives in the
 # keychain, so tour.yaml and zz-delete-restore.yaml would resume authenticated
 # but un-onboarded, stuck behind the welcome modal. Relaunch only.

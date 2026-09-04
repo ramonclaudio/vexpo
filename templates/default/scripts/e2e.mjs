@@ -215,9 +215,11 @@ process.on("exit", stopFaceId);
 // empty plan, so the order is spelled out here instead, where it also documents
 // the dependency.
 const ORDERED_FLOWS = [
+  ".maestro/guest.yaml", // starts from a wiped state and ends signed out
   ".maestro/auth.yaml", // creates the account and the session the rest need
   ".maestro/launch.yaml",
   ".maestro/tour.yaml",
+  ".maestro/screens.yaml", // the screens no other flow reaches; changes nothing
   ".maestro/zz-delete-restore.yaml", // deletes the account, so it goes last
 ];
 
@@ -228,12 +230,16 @@ const env = {
   PATH: `${jdk}/bin:${process.env.PATH}`,
   MAESTRO_APP_ID: appId,
   MAESTRO_TEST_EMAIL: process.env.MAESTRO_TEST_EMAIL ?? `e2e+${Date.now()}@example.com`,
+  // guest.yaml upgrades a guest into its own account, so it needs an address
+  // auth.yaml is not also signing up with.
+  MAESTRO_GUEST_EMAIL: process.env.MAESTRO_GUEST_EMAIL ?? `e2e-guest+${Date.now()}@example.com`,
   MAESTRO_TEST_PASSWORD: process.env.MAESTRO_TEST_PASSWORD ?? "maestro-test-pw",
   MAESTRO_DEV_URL: devUrl(),
 };
 
 console.log(`appId   ${env.MAESTRO_APP_ID}`);
 console.log(`email   ${env.MAESTRO_TEST_EMAIL}`);
+console.log(`guest   ${env.MAESTRO_GUEST_EMAIL}`);
 console.log(`devUrl  ${env.MAESTRO_DEV_URL}`);
 console.log(`jdk     ${jdk}\n`);
 
