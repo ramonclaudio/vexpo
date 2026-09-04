@@ -1,7 +1,7 @@
 import { startTransition, useActionState, useEffect, useState } from "react";
 import * as ImagePicker from "expo-image-picker";
 import { useDeleteAccount } from "@/hooks/use-delete-account";
-import { Stack } from "expo-router";
+import { Stack, router } from "expo-router";
 import { useMutation, useQuery } from "convex/react";
 import { ConvexError } from "convex/values";
 import { Host, ScrollView, VStack, useNativeState } from "@expo/ui/swift-ui";
@@ -18,10 +18,12 @@ import { haptics } from "@/lib/haptics";
 import { setNativeValue } from "@/lib/native-state";
 import {
   firstError,
+  guestProfileSchema,
   profileUpdateOptionalUsernameSchema,
   profileUpdateSchema,
 } from "@/lib/schemas";
 import { validateBio } from "@/convex/validators";
+import { useAuthStatus } from "@/hooks/use-auth-status";
 import { useColors } from "@/hooks/use-theme";
 import { useScenePrivacy } from "@/hooks/use-scene-privacy";
 import { useSignOut } from "@/hooks/use-sign-out";
@@ -32,6 +34,7 @@ import { AvatarPickerRow } from "@/components/profile/avatar-picker-row";
 import { DangerZone } from "@/components/profile/danger-zone";
 import { EmailOtpVerify } from "@/components/profile/email-otp-verify";
 import { ProfileFields } from "@/components/profile/profile-fields";
+import { SecondaryButton } from "@/components/ui/secondary-button";
 import { announce } from "@/lib/a11y";
 
 type SaveState = { error?: string; success?: string; pendingEmail?: string; attempt?: number };
@@ -41,7 +44,10 @@ export default function ProfileScreen() {
   const colors = useColors();
   const scenePrivacy = useScenePrivacy();
   const me = useQuery(api.users.getMe);
-  const hasPasswordResult = useQuery(api.auth.hasPassword);
+  const { isGuest } = useAuthStatus();
+  // An anonymous user has no `account` row at all, so this is a round trip for
+  // a guaranteed false.
+  const hasPasswordResult = useQuery(api.auth.hasPassword, isGuest ? "skip" : {});
   // Email change requires the email-OTP flow which requires Resend. In lite
   // mode (`REQUIRE_EMAIL_VERIFICATION` unset) the email field is read-only
   // no way to send a verification code to the new address.
@@ -95,14 +101,66 @@ export default function ProfileScreen() {
   const [deleteAccountConfirm, setDeleteAccountConfirm] = useState(false);
   const hasChanges =
     !!me &&
-    (name.trim() !== me.name ||
-      username.trim().toLowerCase() !== (me.username ?? "") ||
-      email.trim().toLowerCase() !== me.email.toLowerCase() ||
-      bio.trim() !== (me.bio ?? ""));
+    (isGuest
+      ? name.trim() !== me.name || bio.trim() !== (me.bio ?? "")
+      : name.trim() !== me.name ||
+        username.trim().toLowerCase() !== (me.username ?? "") ||
+        email.trim().toLowerCase() !== me.email.toLowerCase() ||
+        bio.trim() !== (me.bio ?? ""));
+
+  /**
+   * Name and bio only, the two fields the guest form shows.
+   *
+   * The account path would not crash on a guest: their email state mirrors the
+   * address the anonymous plugin generated, so nothing looks changed and
+   * `changeEmail` never fires. That is luck, not design. Once Resend is
+   * configured `emailFeatures` unlocks that field, and a guest editing it
+   * sends a verification code to the placeholder address, which nobody reads,
+   * and the change never lands. So the save touches only what the form showed.
+   */
+  const saveGuest = async (
+    current: NonNullable<typeof me>,
+    attempt: number,
+  ): Promise<SaveState> => {
+    const nextName = name.trim();
+    const parsed = guestProfileSchema.safeParse({ name: nextName });
+    if (!parsed.success) {
+      haptics.error();
+      return { error: firstError(parsed)!, attempt };
+    }
+
+    const trimmedBio = bio.trim();
+    const bioCheck = validateBio(trimmedBio);
+    if (!bioCheck.valid) {
+      haptics.error();
+      return { error: bioCheck.error!, attempt };
+    }
+
+    try {
+      if (nextName !== current.name) {
+        const res = await authClient.updateUser({ name: parsed.data.name });
+        if (res.error) {
+          haptics.error();
+          return { error: res.error.message ?? "Failed to update profile", attempt };
+        }
+      }
+      if (trimmedBio !== (current.bio ?? "")) {
+        await updateProfile({ bio: trimmedBio.length === 0 ? undefined : trimmedBio });
+      }
+      haptics.success();
+      announce("Profile saved");
+      return { success: "Saved" };
+    } catch (err) {
+      haptics.error();
+      return { error: formatError(err), attempt };
+    }
+  };
 
   const [saveState, save, isSaving] = useActionState<SaveState, void>(async (prev) => {
     const attempt = (prev.attempt ?? 0) + 1;
     if (!me) return { error: "Not loaded", attempt };
+
+    if (isGuest) return await saveGuest(me, attempt);
 
     // Accounts without a username must still save name/email/bio; the strict
     // schema would reject the empty username field they never set.
@@ -321,6 +379,7 @@ export default function ProfileScreen() {
           >
             <AvatarPickerRow
               me={me}
+              isGuest={isGuest}
               avatarPicker={avatarPicker}
               setAvatarPicker={setAvatarPicker}
               avatarUpdating={avatarUpdating}
@@ -367,20 +426,34 @@ export default function ProfileScreen() {
                   onBioChange={setBio}
                   isSaving={isSaving}
                   emailFeatures={emailFeatures}
+                  isGuest={isGuest}
                   createdAt={me.createdAt}
                   hasChanges={hasChanges}
                   onSave={() => startTransition(() => save())}
                 />
 
-                <DangerZone
-                  hasPassword={hasPasswordResult}
-                  signOutConfirm={signOutConfirm}
-                  setSignOutConfirm={setSignOutConfirm}
-                  deleteAccountConfirm={deleteAccountConfirm}
-                  setDeleteAccountConfirm={setDeleteAccountConfirm}
-                  onSignOut={handleSignOut}
-                  onDeleteAccount={deleteAccount}
-                />
+                {/* Settings already owns the guest's one destructive action
+                    ("Discard guest data"), and sign-out and delete both mean
+                    the same irreversible thing for a guest. One copy is
+                    enough, so this becomes the way forward instead. */}
+                {isGuest ? (
+                  <SecondaryButton
+                    testID="profile-create-account"
+                    label="Create an account"
+                    onPress={() => router.push("/auth/sign-up")}
+                    inputLabels={["Create an account", "Sign up"]}
+                  />
+                ) : (
+                  <DangerZone
+                    hasPassword={hasPasswordResult}
+                    signOutConfirm={signOutConfirm}
+                    setSignOutConfirm={setSignOutConfirm}
+                    deleteAccountConfirm={deleteAccountConfirm}
+                    setDeleteAccountConfirm={setDeleteAccountConfirm}
+                    onSignOut={handleSignOut}
+                    onDeleteAccount={deleteAccount}
+                  />
+                )}
               </>
             )}
           </VStack>

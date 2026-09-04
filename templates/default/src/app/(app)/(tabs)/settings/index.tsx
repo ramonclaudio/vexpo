@@ -2,6 +2,7 @@ import { useState } from "react";
 import Constants from "expo-constants";
 import * as Clipboard from "expo-clipboard";
 import { useDeleteAccount } from "@/hooks/use-delete-account";
+import { useDiscardGuest } from "@/hooks/use-discard-guest";
 import { router, type Href } from "expo-router";
 import { useQuery } from "convex/react";
 import {
@@ -41,6 +42,7 @@ import { announce } from "@/lib/a11y";
 import { CapsuleRowButton } from "@/components/ui/capsule-row-button";
 import { RemoteAvatar } from "@/components/ui/remote-avatar";
 import { ErrorText } from "@/components/ui/status-text";
+import { useAuthStatus } from "@/hooks/use-auth-status";
 import { useColors } from "@/hooks/use-theme";
 import { useScenePrivacy } from "@/hooks/use-scene-privacy";
 import { useSignOut } from "@/hooks/use-sign-out";
@@ -48,6 +50,7 @@ import { useDebugEnabled } from "@/lib/preferences";
 
 const PROFILE_HREF = "/profile" as Href;
 const DEBUG_HREF = "/debug" as Href;
+const SIGN_UP_HREF = "/auth/sign-up" as Href;
 
 const HEADER_AVATAR_SIZE = 56;
 
@@ -56,11 +59,14 @@ export default function SettingsScreen() {
   const colors = useColors();
   const scenePrivacy = useScenePrivacy();
   const me = useQuery(api.users.getMe);
+  const { isGuest } = useAuthStatus();
   const { deleteAccount, deleteError } = useDeleteAccount();
+  const { discardGuest, discardError } = useDiscardGuest();
   const handleSignOut = useSignOut();
 
   const [showSignOut, setShowSignOut] = useState(false);
   const [showDeleteAccount, setShowDeleteAccount] = useState(false);
+  const [showDiscardGuest, setShowDiscardGuest] = useState(false);
   const [debugOn] = useDebugEnabled();
 
   const navigate = (path: Href) => {
@@ -91,6 +97,9 @@ export default function SettingsScreen() {
           alignment="leading"
           modifiers={[padding({ horizontal: 24, top: 24, bottom: 40 })]}
         >
+          {/* A guest gets the same card: name, photo and bio are theirs to
+              edit and they travel to the account on sign-up. Only the email
+              line goes, because theirs is a throwaway the server generated. */}
           <Button
             testID="settings-profile"
             modifiers={[
@@ -123,7 +132,18 @@ export default function SettingsScreen() {
                 >
                   {me?.name ?? "Loading..."}
                 </Text>
-                {me?.email ? (
+                {isGuest ? (
+                  <Text
+                    testID="settings-profile-guest-hint"
+                    modifiers={[
+                      dfont({ size: 14 }),
+                      foregroundStyle(colors.mutedForeground as string),
+                      lineLimit(2),
+                    ]}
+                  >
+                    Add a name and a photo
+                  </Text>
+                ) : me?.email ? (
                   <Text
                     testID="settings-profile-email"
                     modifiers={[
@@ -149,12 +169,22 @@ export default function SettingsScreen() {
           </Button>
 
           <VStack spacing={8} modifiers={[frame({ maxWidth: Infinity })]}>
-            <CapsuleRowButton
-              testID="settings-sessions"
-              label="Sessions"
-              systemImage="list.bullet.rectangle.portrait"
-              onPress={() => navigate("/sessions")}
-            />
+            {isGuest ? (
+              <CapsuleRowButton
+                testID="settings-create-account"
+                label="Create an account"
+                inputLabels={["Create an account", "Sign up"]}
+                systemImage="person.crop.circle.badge.plus"
+                onPress={() => navigate(SIGN_UP_HREF)}
+              />
+            ) : (
+              <CapsuleRowButton
+                testID="settings-sessions"
+                label="Sessions"
+                systemImage="list.bullet.rectangle.portrait"
+                onPress={() => navigate("/sessions")}
+              />
+            )}
             <CapsuleRowButton
               testID="settings-preferences"
               label="Preferences"
@@ -194,71 +224,115 @@ export default function SettingsScreen() {
           </VStack>
 
           <VStack spacing={8} modifiers={[frame({ maxWidth: Infinity })]}>
-            <ConfirmationDialog
-              title="Sign out?"
-              isPresented={showSignOut}
-              onIsPresentedChange={setShowSignOut}
-              titleVisibility="visible"
-            >
-              <ConfirmationDialog.Trigger>
-                <CapsuleRowButton
-                  testID="settings-sign-out"
-                  label="Sign out"
-                  systemImage="rectangle.portrait.and.arrow.right"
-                  onPress={() => setShowSignOut(true)}
-                  role="destructive"
-                />
-              </ConfirmationDialog.Trigger>
-              <ConfirmationDialog.Actions>
-                <Button
-                  testID="settings-sign-out-confirm"
-                  label="Sign Out"
-                  role="destructive"
-                  onPress={handleSignOut}
-                />
-                <Button testID="settings-sign-out-cancel" label="Cancel" role="cancel" />
-              </ConfirmationDialog.Actions>
-              <ConfirmationDialog.Message>
-                <Text modifiers={[dfont({ size: 16 })]}>
-                  You will need to sign in again to access your account.
-                </Text>
-              </ConfirmationDialog.Message>
-            </ConfirmationDialog>
+            {/* A guest has nothing to sign back in with, so "Sign out" would
+                be a one-way door dressed up as a reversible one, and the
+                30-day restore window in "Delete account" opens onto nothing.
+                One honest destructive action instead. */}
+            {isGuest ? (
+              <Alert
+                title="Discard guest data?"
+                isPresented={showDiscardGuest}
+                onIsPresentedChange={setShowDiscardGuest}
+              >
+                <Alert.Trigger>
+                  <CapsuleRowButton
+                    testID="settings-discard-guest"
+                    label="Discard guest data"
+                    systemImage="trash"
+                    onPress={() => setShowDiscardGuest(true)}
+                    role="destructive"
+                  />
+                </Alert.Trigger>
+                <Alert.Actions>
+                  <Button
+                    testID="settings-discard-guest-confirm"
+                    label="Discard"
+                    role="destructive"
+                    onPress={discardGuest}
+                  />
+                  <Button testID="settings-discard-guest-cancel" label="Cancel" role="cancel" />
+                </Alert.Actions>
+                <Alert.Message>
+                  <Text modifiers={[dfont({ size: 16 })]}>
+                    This deletes everything from this guest session right away. There is no account
+                    to sign back into, so it cannot be undone.
+                  </Text>
+                </Alert.Message>
+              </Alert>
+            ) : null}
 
-            {/* upstream expo/expo#45700: Alert component, SwiftUI .alert(...) on iOS 15+ */}
-            <Alert
-              title="Delete account?"
-              isPresented={showDeleteAccount}
-              onIsPresentedChange={setShowDeleteAccount}
-            >
-              <Alert.Trigger>
-                <CapsuleRowButton
-                  testID="settings-delete-account"
-                  label="Delete account"
-                  systemImage="trash"
-                  onPress={() => setShowDeleteAccount(true)}
-                  role="destructive"
-                />
-              </Alert.Trigger>
-              <Alert.Actions>
-                <Button
-                  testID="settings-delete-account-confirm"
-                  label="Delete Account"
-                  role="destructive"
-                  onPress={deleteAccount}
-                />
-                <Button testID="settings-delete-account-cancel" label="Cancel" role="cancel" />
-              </Alert.Actions>
-              <Alert.Message>
-                <Text modifiers={[dfont({ size: 16 })]}>
-                  Your account is scheduled for permanent deletion in 30 days. Sign in within that
-                  window to restore it.
-                </Text>
-              </Alert.Message>
-            </Alert>
+            {isGuest ? null : (
+              <>
+                <ConfirmationDialog
+                  title="Sign out?"
+                  isPresented={showSignOut}
+                  onIsPresentedChange={setShowSignOut}
+                  titleVisibility="visible"
+                >
+                  <ConfirmationDialog.Trigger>
+                    <CapsuleRowButton
+                      testID="settings-sign-out"
+                      label="Sign out"
+                      systemImage="rectangle.portrait.and.arrow.right"
+                      onPress={() => setShowSignOut(true)}
+                      role="destructive"
+                    />
+                  </ConfirmationDialog.Trigger>
+                  <ConfirmationDialog.Actions>
+                    <Button
+                      testID="settings-sign-out-confirm"
+                      label="Sign Out"
+                      role="destructive"
+                      onPress={handleSignOut}
+                    />
+                    <Button testID="settings-sign-out-cancel" label="Cancel" role="cancel" />
+                  </ConfirmationDialog.Actions>
+                  <ConfirmationDialog.Message>
+                    <Text modifiers={[dfont({ size: 16 })]}>
+                      You will need to sign in again to access your account.
+                    </Text>
+                  </ConfirmationDialog.Message>
+                </ConfirmationDialog>
+
+                {/* upstream expo/expo#45700: Alert component, SwiftUI .alert(...) on iOS 15+ */}
+                <Alert
+                  title="Delete account?"
+                  isPresented={showDeleteAccount}
+                  onIsPresentedChange={setShowDeleteAccount}
+                >
+                  <Alert.Trigger>
+                    <CapsuleRowButton
+                      testID="settings-delete-account"
+                      label="Delete account"
+                      systemImage="trash"
+                      onPress={() => setShowDeleteAccount(true)}
+                      role="destructive"
+                    />
+                  </Alert.Trigger>
+                  <Alert.Actions>
+                    <Button
+                      testID="settings-delete-account-confirm"
+                      label="Delete Account"
+                      role="destructive"
+                      onPress={deleteAccount}
+                    />
+                    <Button testID="settings-delete-account-cancel" label="Cancel" role="cancel" />
+                  </Alert.Actions>
+                  <Alert.Message>
+                    <Text modifiers={[dfont({ size: 16 })]}>
+                      Your account is scheduled for permanent deletion in 30 days. Sign in within
+                      that window to restore it.
+                    </Text>
+                  </Alert.Message>
+                </Alert>
+              </>
+            )}
           </VStack>
 
           {deleteError ? <ErrorText testID="settings-delete-error">{deleteError}</ErrorText> : null}
+          {discardError ? (
+            <ErrorText testID="settings-discard-guest-error">{discardError}</ErrorText>
+          ) : null}
 
           <HStack modifiers={[frame({ maxWidth: Infinity }), padding({ top: 16 })]}>
             <Spacer />

@@ -35,6 +35,7 @@ type AvatarSource = "library" | "camera";
 
 export function AvatarPickerRow({
   me,
+  isGuest,
   avatarPicker,
   setAvatarPicker,
   avatarUpdating,
@@ -42,6 +43,9 @@ export function AvatarPickerRow({
   onRemove,
 }: {
   me: { name: string; email: string; avatarUrl: string | null; hasUploadedAvatar: boolean };
+  // A guest's email is a placeholder the anonymous plugin generated. Showing
+  // it reads as an address they can use, and it is 40 characters of noise.
+  isGuest: boolean;
   avatarPicker: boolean;
   setAvatarPicker: (v: boolean) => void;
   avatarUpdating: boolean;
@@ -87,7 +91,7 @@ export function AvatarPickerRow({
                   privacySensitive(),
                 ]}
               >
-                {me.email}
+                {isGuest ? "Tap to add a photo" : me.email}
               </Text>
             </VStack>
             <Spacer />
