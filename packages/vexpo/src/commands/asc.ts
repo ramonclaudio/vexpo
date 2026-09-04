@@ -2,7 +2,7 @@ import { existsSync } from "node:fs";
 import { readFile, writeFile } from "node:fs/promises";
 import { relative } from "node:path";
 
-import { makeAscClient } from "../lib/asc-api.ts";
+import { makeAscClient, type AscCredentials } from "../lib/asc-api.ts";
 import { loadAscCreds } from "../lib/asc-state.ts";
 import { easSpawn } from "../lib/eas-cli.ts";
 import { ascStatus } from "../lib/eas-integrations.ts";
@@ -137,7 +137,9 @@ async function syncAfterConnect(): Promise<void> {
   await ensureAscApiKeyInEasJson();
 }
 
-type CachedAscKey = { issuerId: string; keyId: string; privateKey: { path: string } };
+type CachedAscKey = AscCredentials & {
+  privateKey: Extract<AscCredentials["privateKey"], { path: string }>;
+};
 
 async function reportCachedAscKey(): Promise<CachedAscKey | null> {
   const asc = await loadAscCreds();

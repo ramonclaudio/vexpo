@@ -219,7 +219,7 @@ function plannedPhases(scope: EffectiveScope): StepName[] {
   return phases;
 }
 
-function printPhase(desc: { label: string; action: string; details: string[] }): boolean {
+function printPhase(desc: PhaseDescription): boolean {
   const willRun = !desc.action.startsWith("skip");
   const prefix = willRun ? `${GREEN}→${RESET}` : `${DIM}-${RESET}`;
   line(`\n  ${prefix} ${BOLD}${desc.label}${RESET}  ${DIM}${desc.action}${RESET}`);
