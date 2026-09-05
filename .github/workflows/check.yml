@@ -132,9 +132,8 @@ jobs:
             ios-derived-${{ hashFiles('templates/default/package-lock.json', 'templates/default/app.config.ts') }}-
       - run: curl -fsSL https://get.maestro.mobile.dev | bash
       - run: npm run smoke
-      - name: Collect maestro output
-        if: failure()
-        run: mkdir -p .maestro/debug && cp -R "$HOME/.maestro/tests/." .maestro/debug/ || true
+      # scripts/e2e.mjs points maestro's --debug-output at .maestro/debug, so the
+      # logs and screenshots are already under the path uploaded below.
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         if: failure()
         with:

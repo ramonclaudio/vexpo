@@ -167,11 +167,19 @@ console.log(`guest   ${env.MAESTRO_GUEST_EMAIL}`);
 console.log(`devUrl  ${env.MAESTRO_DEV_URL}`);
 console.log(`jdk     ${jdk}\n`);
 
-const run = spawnSync(maestro, ["test", ...(flows.length ? flows : ORDERED_FLOWS)], {
-  cwd: PROJECT,
-  stdio: "inherit",
-  env,
-});
+// A `takeScreenshot` path names a file inside the run's own artifact folder, and
+// without --debug-output that folder is thrown away whenever the run passes. So
+// the shots land under .maestro/debug/<flow>/screenshots/ instead, which is
+// gitignored and is the directory CI uploads.
+const args = [
+  "test",
+  "--debug-output",
+  ".maestro/debug",
+  "--flatten-debug-output",
+  ...(flows.length ? flows : ORDERED_FLOWS),
+];
+
+const run = spawnSync(maestro, args, { cwd: PROJECT, stdio: "inherit", env });
 stopFaceId();
 if (run.error) {
   console.error(
