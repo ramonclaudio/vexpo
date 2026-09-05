@@ -324,7 +324,7 @@ export default function SettingsScreen() {
             <Spacer />
             <Text
               testID="settings-version"
-              modifiers={[dfont({ size: 12 }), foregroundStyle(colors.tertiaryLabel)]}
+              modifiers={[dfont({ size: 12 }), foregroundStyle(colors.mutedForeground)]}
             >
               v{version}
             </Text>

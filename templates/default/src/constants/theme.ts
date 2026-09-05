@@ -148,12 +148,6 @@ export const TONES = {
     highContrastLight: NEUTRAL.n400,
     highContrastDark: ALPHA_DARK.inputHC,
   },
-  tertiaryLabel: {
-    light: NEUTRAL.n400,
-    dark: NEUTRAL.n500,
-    highContrastLight: NEUTRAL.n500,
-    highContrastDark: NEUTRAL.n400,
-  },
   success: {
     light: "#15803D",
     dark: "#22C55E",
