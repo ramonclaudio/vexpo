@@ -86,7 +86,7 @@ The scaffold's own README has the long-form version of this prompt.
 - An account is optional. "Continue as guest" gets you into the app with a real session, and signing up later carries the guest's data onto the account. Set `GUEST_MODE=false` on the Convex deployment to require an account instead.
 - Convex reactive queries and storage, plus Resend delivery webhooks.
 - APNs push and Apple Universal Links.
-- EAS builds, updates, submission, and store metadata, with eight workflows under `.eas/workflows/`. None trigger on a push to `main`.
+- EAS builds, updates, submission, and store metadata, with nine workflows under `.eas/workflows/`. None trigger on a push to `main`.
 
 <p align="center">
   <img src=".github/assets/screens.png" width="760" alt="Template screens in light and dark: home, profile, settings">

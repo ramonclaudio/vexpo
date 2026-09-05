@@ -1,0 +1,39 @@
+name: Register iOS device
+
+on:
+  workflow_dispatch: {}
+
+concurrency:
+  cancel_in_progress: false
+  group: ${{ workflow.filename }}
+
+jobs:
+  guard_team_id:
+    name: Check EXPO_PUBLIC_APPLE_TEAM_ID is set
+    environment: development
+    env:
+      APPLE_TEAM_ID: ${{ env.EXPO_PUBLIC_APPLE_TEAM_ID }}
+    steps:
+      - run: |
+          if [ -z "$APPLE_TEAM_ID" ]; then
+            echo "EXPO_PUBLIC_APPLE_TEAM_ID is empty. Set it in the development EAS environment (npx vexpo env push, or eas env:create)."
+            exit 1
+          fi
+
+  register_device:
+    name: Register the device
+    needs: [guard_team_id]
+    type: apple-device-registration-request
+    environment: development
+    params:
+      apple_team_identifier: ${{ env.EXPO_PUBLIC_APPLE_TEAM_ID }}
+
+  build_ios:
+    name: Build a dev client that includes the new device
+    needs: [register_device]
+    type: build
+    environment: development
+    params:
+      platform: ios
+      profile: development:device
+      refresh_ad_hoc_provisioning_profile: true
