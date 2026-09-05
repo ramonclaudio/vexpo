@@ -31,7 +31,7 @@ import { runEnvPush } from "./commands/env/push.ts";
 import { runRebrand } from "./commands/rebrand.ts";
 import { runResend, type ResendOptions } from "./commands/resend.ts";
 import { runReviewAccount } from "./commands/review-account.ts";
-import { runSetup } from "./commands/setup.ts";
+import { runSetup, type SetupOptions } from "./commands/setup.ts";
 import { runSubmit } from "./commands/submit.ts";
 import { bad, errText } from "./lib/output.ts";
 
@@ -39,6 +39,31 @@ const program = new Command()
   .name("vexpo")
   .description("CLI for vexpo projects (Expo + Convex + Better Auth + Resend).")
   .version(pkg.version, "-v, --version");
+
+// commander gives `--no-state` back as `state: false`, so the two setup
+// commands go through one adapter rather than each spelling the mapping out.
+type SetupFlags = {
+  new?: boolean;
+  force?: boolean;
+  fresh?: boolean;
+  local?: boolean;
+  dryRun?: boolean;
+  plan?: boolean;
+  state?: boolean;
+  skipRebrand?: boolean;
+};
+
+const setupOptions = (lite: boolean, o: SetupFlags): SetupOptions => ({
+  lite,
+  isNew: o.new,
+  force: o.force,
+  fresh: o.fresh,
+  local: o.local,
+  dryRun: o.dryRun,
+  plan: o.plan,
+  noState: o.state === false,
+  skipRebrand: o.skipRebrand,
+});
 
 const exitWith = (p: Promise<number>): void => {
   p.then((code) => process.exit(code)).catch((err) => {
@@ -59,30 +84,7 @@ program
   .option("--dry-run", "print what each phase would do, exit without changes", false)
   .option("--plan", "print the full setup journey upfront, exit without changes", false)
   .option("--no-state", "ignore .setup-state.json (CI-friendly)")
-  .action(
-    (options: {
-      new?: boolean;
-      force?: boolean;
-      fresh?: boolean;
-      local?: boolean;
-      dryRun?: boolean;
-      plan?: boolean;
-      state?: boolean;
-    }) => {
-      exitWith(
-        runSetup({
-          lite: true,
-          isNew: options.new,
-          force: options.force,
-          fresh: options.fresh,
-          local: options.local,
-          dryRun: options.dryRun,
-          plan: options.plan,
-          noState: options.state === false,
-        }),
-      );
-    },
-  );
+  .action((options: SetupFlags) => exitWith(runSetup(setupOptions(true, options))));
 
 program
   .command("full")
@@ -97,32 +99,7 @@ program
   .option("--plan", "print the full setup journey upfront, exit without changes", false)
   .option("--no-state", "ignore .setup-state.json (CI-friendly)")
   .option("--skip-rebrand", "skip the rebrand wizard (useful if you've already rebranded)", false)
-  .action(
-    (options: {
-      new?: boolean;
-      force?: boolean;
-      fresh?: boolean;
-      local?: boolean;
-      dryRun?: boolean;
-      plan?: boolean;
-      state?: boolean;
-      skipRebrand?: boolean;
-    }) => {
-      exitWith(
-        runSetup({
-          lite: false,
-          isNew: options.new,
-          force: options.force,
-          fresh: options.fresh,
-          local: options.local,
-          dryRun: options.dryRun,
-          plan: options.plan,
-          noState: options.state === false,
-          skipRebrand: options.skipRebrand,
-        }),
-      );
-    },
-  );
+  .action((options: SetupFlags) => exitWith(runSetup(setupOptions(false, options))));
 
 program
   .command("accounts")
