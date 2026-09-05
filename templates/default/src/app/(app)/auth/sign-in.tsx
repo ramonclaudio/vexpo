@@ -326,7 +326,7 @@ export default function SignInScreen() {
                     disabled(isLoading),
                     submitLabel("next"),
                     accessibilityLabel("Email address"),
-                    accessibilityHint("Enter the email for your account"),
+                    accessibilityHint("Enter the email address for your account"),
                   ]}
                 />
               </LabeledField>
@@ -337,7 +337,6 @@ export default function SignInScreen() {
                   onSubmit={() => startTransition(() => signInWithEmail())}
                   disabled={isLoading}
                   accessibilityLabel="Password"
-                  accessibilityHint="Enter your account password"
                 />
               </LabeledField>
               {emailFeatures && <ForgotPasswordLink testID="sign-in-email-forgot-password" />}
@@ -376,7 +375,6 @@ export default function SignInScreen() {
                   onSubmit={() => startTransition(() => signInWithUsername())}
                   disabled={isLoading}
                   accessibilityLabel="Password"
-                  accessibilityHint="Enter your account password"
                 />
               </LabeledField>
               {emailFeatures && <ForgotPasswordLink testID="sign-in-username-forgot-password" />}

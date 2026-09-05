@@ -79,7 +79,7 @@ export function ProfileFields({
             disabled(isSaving),
             submitLabel("next"),
             accessibilityLabel("Name"),
-            accessibilityHint("Edit the display name on your account"),
+            accessibilityHint("Edit the display name for your account"),
           ]}
         />
       </LabeledField>
@@ -105,7 +105,7 @@ export function ProfileFields({
                 disabled(isSaving),
                 submitLabel("next"),
                 accessibilityLabel("Username"),
-                accessibilityHint("Edit the username for your profile"),
+                accessibilityHint("Edit the username for your account"),
               ]}
             />
             <HelperText>Name and username are visible to other users.</HelperText>

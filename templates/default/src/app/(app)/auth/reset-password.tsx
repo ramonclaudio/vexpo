@@ -272,7 +272,7 @@ export default function ResetPasswordScreen() {
               disabled={isPending}
               submitLabelType="next"
               accessibilityLabel="New password"
-              accessibilityHint="Choose a password with at least 10 characters"
+              accessibilityHint="Choose a new password with at least 10 characters"
             />
             <HelperText>At least 10 characters.</HelperText>
           </LabeledField>

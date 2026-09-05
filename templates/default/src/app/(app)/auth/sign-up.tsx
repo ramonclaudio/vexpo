@@ -324,7 +324,7 @@ export default function SignUpScreen() {
                 disabled(isLoading),
                 submitLabel("next"),
                 accessibilityLabel("Full name"),
-                accessibilityHint("Enter the name to display on your account"),
+                accessibilityHint("Enter the display name for your account"),
               ]}
             />
           </LabeledField>
@@ -380,7 +380,7 @@ export default function SignUpScreen() {
               contentType="newPassword"
               disabled={isLoading}
               accessibilityLabel="Password"
-              accessibilityHint="Enter a password with at least 10 characters"
+              accessibilityHint="Choose a password with at least 10 characters"
             />
             <HelperText>At least 10 characters.</HelperText>
           </LabeledField>

@@ -120,7 +120,7 @@ export default function ForgotPasswordScreen() {
                 disabled(isPending),
                 submitLabel("send"),
                 accessibilityLabel("Email address"),
-                accessibilityHint("Enter the email associated with your account"),
+                accessibilityHint("Enter the email address for your account"),
               ]}
             />
           </LabeledField>

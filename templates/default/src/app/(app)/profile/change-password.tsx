@@ -133,7 +133,7 @@ function ChangePasswordForm({ email }: { email: string }) {
               disabled={isPending}
               submitLabelType="next"
               accessibilityLabel="Current password"
-              accessibilityHint="Enter your existing password"
+              accessibilityHint="Enter your current password"
             />
           </LabeledField>
 
