@@ -7,7 +7,8 @@ PKG_ROOT="$(cd "$HERE/../.." && pwd)"
 CLI="$PKG_ROOT/dist/cli.js"
 FIXTURES="$HERE/fixtures"
 TMPROOT="$(mktemp -d -t vexpo-e2e.XXXXXX)"
-trap 'rm -rf "$TMPROOT"' EXIT
+cleanup() { if command -v trash >/dev/null 2>&1; then trash "$TMPROOT"; else rm -rf "$TMPROOT"; fi; }
+trap cleanup EXIT
 
 GREP="${1:-}"
 PASSED=0
