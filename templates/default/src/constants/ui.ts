@@ -20,9 +20,11 @@ export const toSeconds = (ms: number) => ms / 1000;
 
 // Caps on how far a piece of type may grow. Apple's Larger Text bar is 200%,
 // which iOS reaches at AX3, so anything a user has to read stops no lower than
-// that. `control` sits below it on purpose: it caps decorative glyphs and the
+// that. `control` sits below it on purpose. It caps decorative glyphs and the
 // segmented picker, which Apple's own criteria exempt as controls that cannot
-// reasonably grow.
+// reasonably grow, and the "This device" badge on the sessions list, which
+// Apple says to deprioritise as a repeated secondary marker sitting next to a
+// device name that scales freely.
 export const DynamicType = {
   control: "accessibility1",
   otp: "accessibility3",
