@@ -61,5 +61,3 @@ tsconfig.tsbuildinfo
 
 bun-error.*
 
-!AGENTS.md
-!**/AGENTS.md

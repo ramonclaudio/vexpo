@@ -59,17 +59,17 @@ flowchart TD
 
 ## Start with an AI agent
 
-An agent can run every one of these commands. `rebrand` takes full flags with `-y` for non-TTY runs, and the scaffold ships an [`AGENTS.md`](./templates/default/AGENTS.md) with two playbooks, one for fresh-scaffold setup and one for the ship path, with each step marked human or agent. That file also has pre-approved read-only permissions for Claude Code. Scaffold, open the project in your agent, and paste:
+An agent can run every one of these commands. `rebrand` takes full flags with `-y` for non-TTY runs, and the scaffold's [`README.md`](./templates/default/README.md#setup) carries the setup prompt, the ship path with each step marked human or agent, and the code conventions. Scaffold, open the project in your agent, and paste:
 
 ```text
 Set up this fresh vexpo scaffold as my app. Collect my identity inputs (app
 name, bundle id, my name, Expo slug, review email, URLs), run
 `npx vexpo rebrand -y` with full flags, then `npx vexpo lite`, verify with
-typecheck + lint + format:check + test, and commit. AGENTS.md has the details,
-including the Ship path playbook for when I say ship.
+typecheck + lint + format:check + test, and commit. README.md has the details,
+including the Ship path for when I say ship.
 ```
 
-The scaffold's own [`README.md`](./templates/default/README.md#setup) has the long-form version of this prompt.
+The scaffold's own README has the long-form version of this prompt.
 
 <p align="center">
   <img src=".github/assets/demo-doctor.gif" width="720" alt="vexpo doctor auth-checking every credential against the live services and flagging drift">
