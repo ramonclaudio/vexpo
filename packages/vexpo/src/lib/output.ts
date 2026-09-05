@@ -30,6 +30,13 @@ export const yep = (m: string): void => line(`  ${YELLOW}!!${RESET}   ${m}`);
 export const bad = (m: string): void => line(`  ${RED}xx${RESET}   ${RED}${m}${RESET}`);
 export const note = (m: string): void => line(`       ${DIM}${m}${RESET}`);
 
+// The only writer here that goes to stdout. Everything else is stderr, which is what
+// keeps `--json` output pipeable while the human-readable chatter stays on the terminal.
+export function emitJson(value: unknown): number {
+  process.stdout.write(JSON.stringify(value, null, 2) + "\n");
+  return 0;
+}
+
 export const errText = (err: unknown): string => (err instanceof Error ? err.message : String(err));
 export const plural = (n: number): string => (n === 1 ? "" : "s");
 

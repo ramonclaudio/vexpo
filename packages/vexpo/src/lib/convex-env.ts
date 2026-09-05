@@ -1,6 +1,6 @@
 import { access } from "node:fs/promises";
 
-import { withTempEnvFile } from "./env-files.ts";
+import { parseKeyValueLines, withTempEnvFile } from "./env-files.ts";
 import { dlx } from "./pkg-manager.ts";
 import { run } from "./proc.ts";
 
@@ -38,14 +38,7 @@ export async function envMap(target?: ConvexTarget): Promise<Map<string, string>
   const argv = [dlx(), "convex", "env", "list", ...targetArgs(target)];
   const { code, stdout } = await run(argv);
   if (code !== 0) return null;
-  const out = new Map<string, string>();
-  for (const raw of stdout.split("\n")) {
-    const trimmed = raw.trim();
-    if (!trimmed) continue;
-    const eq = trimmed.indexOf("=");
-    if (eq > 0) out.set(trimmed.slice(0, eq), unquoteEnvValue(trimmed.slice(eq + 1)));
-  }
-  return out;
+  return parseKeyValueLines(stdout, unquoteEnvValue);
 }
 
 export async function envSet(name: string, value: string, target?: ConvexTarget): Promise<void> {

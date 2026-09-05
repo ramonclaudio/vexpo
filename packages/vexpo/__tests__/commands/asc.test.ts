@@ -45,7 +45,7 @@ vi.mock("node:fs", async () => {
   };
 });
 
-import { runAscConnect } from "../../src/commands/asc.ts";
+import { ascKeyEnv, runAscConnect } from "../../src/commands/asc.ts";
 import { loadAscCreds } from "../../src/lib/asc-state.ts";
 import { ascStatus } from "../../src/lib/eas-integrations.ts";
 import { requireBundleId } from "../../src/lib/env-local.ts";
@@ -382,5 +382,29 @@ describe("runAscConnect", () => {
 
     const exit = await runAscConnect({});
     expect(exit).toBe(42);
+  });
+});
+
+describe("ascKeyEnv", () => {
+  it("maps a cached .p8 path to the three EXPO_ASC_* vars", async () => {
+    await expect(ascKeyEnv()).resolves.toEqual({
+      EXPO_ASC_API_KEY_PATH: "/tmp/fake.p8",
+      EXPO_ASC_KEY_ID: "ABCDE12345",
+      EXPO_ASC_ISSUER_ID: "11111111-2222-3333-4444-555555555555",
+    });
+  });
+
+  it("returns null when the cached key is inline contents with no path", async () => {
+    loadAscCredsSpy.mockResolvedValueOnce({
+      issuerId: "11111111-2222-3333-4444-555555555555",
+      keyId: "ABCDE12345",
+      privateKey: { contents: "-----BEGIN PRIVATE KEY-----" },
+    });
+    await expect(ascKeyEnv()).resolves.toBeNull();
+  });
+
+  it("returns null when nothing is cached", async () => {
+    loadAscCredsSpy.mockResolvedValueOnce(null);
+    await expect(ascKeyEnv()).resolves.toBeNull();
   });
 });

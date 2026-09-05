@@ -7,6 +7,7 @@ import {
   version as convexCliVersion,
 } from "../lib/convex-env.ts";
 import {
+  EAS_ROTATION_SECRETS,
   envList as easEnvList,
   resolveProjectId,
   version as easCliVersion,
@@ -228,13 +229,7 @@ async function liveCheckRotationSecrets(): Promise<boolean> {
   const projectId = await resolveProjectId();
   if (!projectId) return false;
   const eas = (await easEnvList("production")) ?? new Map<string, string>();
-  return [
-    "APPLE_P8_PRIVATE_KEY",
-    "APPLE_TEAM_ID",
-    "APPLE_KEY_ID",
-    "APPLE_SERVICES_ID",
-    "CONVEX_DEPLOY_KEY",
-  ].every((k) => eas.has(k));
+  return EAS_ROTATION_SECRETS.every((k) => eas.has(k));
 }
 
 const LOCAL_ENV_LITE_CORE = [

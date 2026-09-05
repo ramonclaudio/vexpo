@@ -19,6 +19,7 @@ import { ascStatus } from "./eas-integrations.ts";
 import { fetchWithTimeout } from "./http-retry.ts";
 import { submitProfilesMissingAscAppId } from "./eas-submit.ts";
 import {
+  EAS_ROTATION_SECRETS,
   envList as easEnvList,
   resolveProjectId,
   projectInfo as easProjectInfo,
@@ -610,14 +611,12 @@ function convexUrlDriftChecks(env: EasEnvName, expected?: string, actual?: strin
 }
 
 function rotationSecretChecks(list: Map<string, string>): Check[] {
-  const missing = [
-    "CONVEX_DEPLOY_KEY",
-    "APPLE_P8_PRIVATE_KEY",
-    "APPLE_TEAM_ID",
-    "APPLE_KEY_ID",
-    "APPLE_SERVICES_ID",
-  ].filter((k) => !list.has(k));
-  if (missing.length === 0) return [ok("eas", "rotation-secrets", "all 5 present (production)")];
+  const missing = EAS_ROTATION_SECRETS.filter((k) => !list.has(k));
+  if (missing.length === 0) {
+    return [
+      ok("eas", "rotation-secrets", `all ${EAS_ROTATION_SECRETS.length} present (production)`),
+    ];
+  }
   return [
     warn(
       "eas",

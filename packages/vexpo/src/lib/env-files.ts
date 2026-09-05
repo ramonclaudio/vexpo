@@ -4,6 +4,22 @@ import { join } from "node:path";
 
 import { fileExists } from "./fs.ts";
 
+// `eq > 0` rather than `>= 0`: a line starting with `=` has no key, and a value
+// may itself contain `=`, so only the first one splits.
+export function parseKeyValueLines(
+  stdout: string,
+  transform: (value: string) => string = (v) => v,
+): Map<string, string> {
+  const out = new Map<string, string>();
+  for (const raw of stdout.split("\n")) {
+    const trimmed = raw.trim();
+    if (!trimmed) continue;
+    const eq = trimmed.indexOf("=");
+    if (eq > 0) out.set(trimmed.slice(0, eq), transform(trimmed.slice(eq + 1)));
+  }
+  return out;
+}
+
 export async function withTempEnvFile<T>(
   lines: string[],
   fn: (path: string) => Promise<T>,

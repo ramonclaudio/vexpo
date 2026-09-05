@@ -1,9 +1,9 @@
 import { bundleIdFallback } from "../../lib/app.ts";
-import { loadAscCreds } from "../../lib/asc-state.ts";
 import { easSpawn } from "../../lib/eas-cli.ts";
 import { envList as easEnvList } from "../../lib/eas-project.ts";
 import { BOLD, RESET, askYesNo, bad, line, nop, note, ok, section, yep } from "../../lib/output.ts";
 import { recordStep } from "../../lib/state.ts";
+import { ascKeyEnvFrom, reportCachedAscKey } from "../asc.ts";
 
 async function resolveBundleId(profile: string): Promise<{
   source: "app.config.ts" | "EAS env" | null;
@@ -34,18 +34,8 @@ export async function runAppleCredentials(options: CredentialsOptions): Promise<
   section("EAS iOS credentials");
 
   const profile = options.profile ?? "production";
-  const asc = await loadAscCreds();
-
-  if (!asc || !("path" in asc.privateKey)) {
-    bad("no cached ASC creds. Run `vexpo apple asc-key` first to validate one.");
-    return 1;
-  }
-  const p8Path = asc.privateKey.path;
-
-  ok(`cached ASC API key found in state.json`);
-  note(`  issuerId: ${BOLD}${asc.issuerId}${RESET}`);
-  note(`  keyId:    ${BOLD}${asc.keyId}${RESET}`);
-  note(`  .p8:      ${BOLD}${p8Path}${RESET}`);
+  const asc = await reportCachedAscKey();
+  if (!asc) return 1;
 
   const bundle = await resolveBundleId(profile);
   if (bundle.templatePlaceholder) {
@@ -88,14 +78,10 @@ export async function runAppleCredentials(options: CredentialsOptions): Promise<
     return 0;
   }
 
-  const env: Record<string, string> = {
-    ...(process.env as Record<string, string>),
-    EXPO_ASC_API_KEY_PATH: p8Path,
-    EXPO_ASC_KEY_ID: asc.keyId,
-    EXPO_ASC_ISSUER_ID: asc.issuerId,
-  };
-
-  const code = await easSpawn(["credentials:configure-build", "-p", "ios", "-e", profile], { env });
+  const env = ascKeyEnvFrom(asc);
+  const code = await easSpawn(["credentials:configure-build", "-p", "ios", "-e", profile], {
+    env,
+  });
   if (code !== 0) {
     bad(`eas credentials exited with code ${code}`);
     return code;

@@ -4,6 +4,7 @@ import {
   envCreate,
   envList,
   envUpdate,
+  explainEnvListFailure,
   resolveProjectId,
   type EasEnvironment,
 } from "../../lib/eas-project.ts";
@@ -54,8 +55,7 @@ async function mintProdKey(
 ): Promise<{ ok: boolean; key?: string; easProd?: Map<string, string> }> {
   const easProd = await envList("production");
   if (easProd === null) {
-    bad("could not list EAS production env");
-    note("run `npx eas-cli login` and `npx eas-cli init` first");
+    explainEnvListFailure("production");
     return { ok: false };
   }
   if (easProd.has("CONVEX_DEPLOY_KEY")) {
@@ -123,8 +123,7 @@ async function presenceMaps(
     if (maps.has(env)) continue;
     const map = await envList(env);
     if (map === null) {
-      bad(`could not list EAS ${env} env`);
-      note("run `npx eas-cli login` and `npx eas-cli init` first");
+      explainEnvListFailure(env);
       return null;
     }
     maps.set(env, map);

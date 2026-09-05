@@ -248,6 +248,18 @@ describe("runRebrand rewrite correctness", () => {
     expect(await readFile("app.config.ts", "utf8")).toContain(`const APP_NAME = "Third App";`);
   });
 
+  it("refuses and leaves app.config.ts alone when a marker it rewrites is gone", async () => {
+    Object.defineProperty(process.stdin, "isTTY", { value: false, configurable: true });
+    const cfg = await readFile("app.config.ts", "utf8");
+    await writeFile(
+      "app.config.ts",
+      cfg.replace('const SCHEME = "vexpo";', "const SCHEME = mystery;"),
+    );
+
+    expect(await runRebrand({ ...FLAGS, appName: "No Scheme", yes: true })).not.toBe(0);
+    expect(await readFile("app.config.ts", "utf8")).toContain("const SCHEME = mystery;");
+  });
+
   it("inserts values containing $& verbatim instead of expanding replacement patterns", async () => {
     Object.defineProperty(process.stdin, "isTTY", { value: false, configurable: true });
 

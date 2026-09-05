@@ -1,6 +1,8 @@
 import { access, readFile } from "node:fs/promises";
 
 import { easJson, easRun, easSpawn, easText } from "./eas-cli.ts";
+import { parseKeyValueLines } from "./env-files.ts";
+import { bad, note } from "./output.ts";
 
 export async function checkCli(): Promise<{ ok: true; version: string } | { ok: false }> {
   const v = await version();
@@ -60,14 +62,7 @@ export async function envList(
     "short",
   ]);
   if (code !== 0) return null;
-  const out = new Map<string, string>();
-  for (const raw of stdout.split("\n")) {
-    const trimmed = raw.trim();
-    if (!trimmed) continue;
-    const eq = trimmed.indexOf("=");
-    if (eq > 0) out.set(trimmed.slice(0, eq), trimmed.slice(eq + 1));
-  }
-  return out;
+  return parseKeyValueLines(stdout);
 }
 
 export type EasEnvironment = "production" | "preview" | "development";
@@ -215,3 +210,19 @@ export async function version(): Promise<string | null> {
   const m = /eas-cli\/([^\s]+)/.exec(text);
   return m?.[1] ?? text;
 }
+
+export function explainEnvListFailure(environment: string): void {
+  bad(`could not list EAS ${environment} env`);
+  note("run `npx eas-cli login` and `npx eas-cli init` first");
+}
+
+// The five EAS production secrets the Apple JWT rotation cron reads. `vexpo apple
+// eas-rotation-secrets` writes them, `vexpo doctor` counts them, and `vexpo setup`
+// probes for them, so the list lives here rather than in each of the three.
+export const EAS_ROTATION_SECRETS = [
+  "APPLE_P8_PRIVATE_KEY",
+  "APPLE_TEAM_ID",
+  "APPLE_KEY_ID",
+  "APPLE_SERVICES_ID",
+  "CONVEX_DEPLOY_KEY",
+] as const;

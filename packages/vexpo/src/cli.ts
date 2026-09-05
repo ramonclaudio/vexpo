@@ -23,13 +23,13 @@ import {
   runTestflightWhatsNew,
 } from "./commands/testflight.ts";
 import { runBetterAuth } from "./commands/better-auth.ts";
-import { runConvex } from "./commands/convex.ts";
+import { runConvex, type ConvexOptions } from "./commands/convex.ts";
 import { runConvexMigrate } from "./commands/convex-migrate.ts";
 import { runDoctor } from "./commands/doctor.ts";
 import { runConvexKey } from "./commands/env/convex-key.ts";
 import { runEnvPush } from "./commands/env/push.ts";
 import { runRebrand } from "./commands/rebrand.ts";
-import { runResend } from "./commands/resend.ts";
+import { runResend, type ResendOptions } from "./commands/resend.ts";
 import { runReviewAccount } from "./commands/review-account.ts";
 import { runSetup } from "./commands/setup.ts";
 import { runSubmit } from "./commands/submit.ts";
@@ -196,15 +196,7 @@ const convex = program
     false,
   )
   .option("--region <region>", "Convex deployment region for --eas, e.g. aws-us-east-1")
-  .action(
-    (options: {
-      fresh?: boolean;
-      local?: boolean;
-      name?: string;
-      eas?: boolean;
-      region?: string;
-    }) => exitWith(runConvex(options)),
-  );
+  .action((options: ConvexOptions) => exitWith(runConvex(options)));
 
 convex
   .command("migrate")
@@ -245,15 +237,7 @@ program
     "--force",
     "with --repoint, recreate the webhook even if it already points at the endpoint",
   )
-  .action(
-    (options: {
-      name?: string;
-      from?: string;
-      repoint?: boolean;
-      prod?: boolean;
-      force?: boolean;
-    }) => exitWith(runResend(options)),
-  );
+  .action((options: ResendOptions) => exitWith(runResend(options)));
 
 const apple = program.command("apple").description("Apple-side provisioning.");
 

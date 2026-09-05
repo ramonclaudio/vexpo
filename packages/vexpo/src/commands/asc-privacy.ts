@@ -2,7 +2,7 @@ import { existsSync, readFileSync } from "node:fs";
 
 import { lintPrivacyConfig } from "../lib/asc-privacy.ts";
 import { runLint } from "../lib/lint.ts";
-import { BOLD, DIM, RESET, bad, errText, line, note, section } from "../lib/output.ts";
+import { BOLD, DIM, RESET, bad, emitJson, errText, line, note, section } from "../lib/output.ts";
 
 const ASC_PRIVACY_URL = "https://appstoreconnect.apple.com";
 
@@ -20,10 +20,7 @@ export async function runPrivacyShow(file: string, opts: { json?: boolean } = {}
     bad(`failed to read ${file}: ${errText(err)}`);
     return 1;
   }
-  if (opts.json) {
-    process.stdout.write(JSON.stringify(parsed, null, 2) + "\n");
-    return 0;
-  }
+  if (opts.json) return emitJson(parsed);
   section(`Privacy details (declared in ${file})`);
   printPrivacyEntries(parsed as PrivacyConfig);
   return 0;

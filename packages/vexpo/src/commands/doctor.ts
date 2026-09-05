@@ -7,6 +7,7 @@ import {
   RESET,
   YELLOW,
   bad,
+  emitJson,
   errText,
   line,
   note,
@@ -82,7 +83,7 @@ export async function runDoctor(options: DoctorOptions): Promise<number> {
     const summary = summarize(checks);
 
     if (options.json) {
-      process.stdout.write(JSON.stringify({ channel, summary, checks }, null, 2) + "\n");
+      emitJson({ channel, summary, checks });
     } else {
       renderDoctor(channel, checks, summary);
     }
