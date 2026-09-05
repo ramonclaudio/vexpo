@@ -81,6 +81,12 @@ npm run ios             # terminal 2
 
 `lite` skips Apple, EAS, and Resend, so sign-up auto-verifies and drops you in with one tap. The flows that need Resend (OTP, password reset, change email) stay hidden.
 
+To install a build without a terminal, use [Orbit](https://github.com/expo/orbit). It is a free menu bar app that installs and launches a local `.app` or an EAS build on a simulator or a connected device in one click.
+
+```bash
+brew install expo-orbit
+```
+
 One team setup needs a different route. If your Convex team is EAS-managed (created through Expo's integration), direct project creation fails with `is managed by oauth:...`, so provision through the integration instead and then adopt the deployment it made:
 
 ```bash
