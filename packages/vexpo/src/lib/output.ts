@@ -1,8 +1,16 @@
 import { createInterface } from "node:readline/promises";
 
-export const RESET = "\x1b[0m";
-export const BOLD = "\x1b[1m";
-export const DIM = "\x1b[2m";
+// Everything here writes to stderr, so stderr decides. `NO_COLOR` is the
+// cross-tool opt-out (any non-empty value), and a pipe or a log file gets no
+// escapes either, which is what a screen reader or a braille display reads.
+// Read once: neither the stream nor the environment changes mid-run.
+const colorEnabled = process.stderr.isTTY === true && !process.env.NO_COLOR;
+
+const code = (seq: string): string => (colorEnabled ? seq : "");
+
+export const RESET = code("\x1b[0m");
+export const BOLD = code("\x1b[1m");
+export const DIM = code("\x1b[2m");
 
 function ansiHex(hex: string): string {
   const m = /^#?([\da-f]{2})([\da-f]{2})([\da-f]{2})$/i.exec(hex);
@@ -10,7 +18,7 @@ function ansiHex(hex: string): string {
   const r = parseInt(m[1], 16);
   const g = parseInt(m[2], 16);
   const b = parseInt(m[3], 16);
-  return `\x1b[38;2;${r};${g};${b}m`;
+  return code(`\x1b[38;2;${r};${g};${b}m`);
 }
 
 export const GREEN = ansiHex("#22c55e");
