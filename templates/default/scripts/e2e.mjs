@@ -176,6 +176,10 @@ const args = [
   "--debug-output",
   ".maestro/debug",
   "--flatten-debug-output",
+  // smoke.mjs boots one simulator and installs the app on that one, so maestro
+  // has to be told which it is. Left off, it picks a device itself and can land
+  // on one the app was never installed on.
+  ...(process.env.MAESTRO_UDID ? ["--udid", process.env.MAESTRO_UDID] : []),
   ...(flows.length ? flows : ORDERED_FLOWS),
 ];
 

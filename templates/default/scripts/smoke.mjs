@@ -149,5 +149,5 @@ run("xcrun", ["simctl", "install", udid, appPath]);
 
 console.log("### smoke flow");
 run("node", [join(PROJECT, "scripts", "e2e.mjs"), ".maestro/smoke.yaml"], {
-  env: { ...process.env, MAESTRO_APP_ID: appId },
+  env: { ...process.env, MAESTRO_APP_ID: appId, MAESTRO_UDID: udid },
 });
