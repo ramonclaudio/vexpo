@@ -39,6 +39,7 @@ import { useDynamicFont } from "@/lib/dynamic-font";
 import { api } from "@/convex/_generated/api";
 import { CapsuleRowButton } from "@/components/ui/capsule-row-button";
 import { RemoteAvatar } from "@/components/ui/remote-avatar";
+import { SectionLabel } from "@/components/ui/section-label";
 import { ErrorText } from "@/components/ui/status-text";
 import { useAuthStatus } from "@/hooks/use-auth-status";
 import { useColors } from "@/hooks/use-theme";
@@ -159,7 +160,8 @@ export default function SettingsScreen() {
             </HStack>
           </Button>
 
-          <VStack spacing={8} modifiers={[frame({ maxWidth: Infinity })]}>
+          <VStack spacing={8} alignment="leading" modifiers={[frame({ maxWidth: Infinity })]}>
+            <SectionLabel>ACCOUNT</SectionLabel>
             {isGuest ? (
               <CapsuleRowButton
                 testID="settings-create-account"
@@ -184,7 +186,8 @@ export default function SettingsScreen() {
             />
           </VStack>
 
-          <VStack spacing={8} modifiers={[frame({ maxWidth: Infinity })]}>
+          <VStack spacing={8} alignment="leading" modifiers={[frame({ maxWidth: Infinity })]}>
+            <SectionLabel>SUPPORT</SectionLabel>
             <CapsuleRowButton
               testID="settings-help"
               label="Help & Feedback"
@@ -214,7 +217,8 @@ export default function SettingsScreen() {
             ) : null}
           </VStack>
 
-          <VStack spacing={8} modifiers={[frame({ maxWidth: Infinity })]}>
+          <VStack spacing={8} alignment="leading" modifiers={[frame({ maxWidth: Infinity })]}>
+            <SectionLabel>DANGER ZONE</SectionLabel>
             {isGuest ? (
               <Alert
                 title="Discard guest data?"
