@@ -41,13 +41,12 @@ import { Button as ButtonTokens, TouchTarget } from "@/constants/layout";
 import { DynamicType } from "@/constants/ui";
 
 import { authClient } from "@/lib/auth-client";
-import { haptics } from "@/lib/haptics";
 import { useColors } from "@/hooks/use-theme";
 import { maskOtp } from "@/lib/masks";
 import { CapsuleTextField } from "@/components/ui/capsule-text-field";
 import { ProminentButton } from "@/components/ui/prominent-button";
 import { ErrorText } from "@/components/ui/status-text";
-import { announce } from "@/lib/a11y";
+import { fail, succeed } from "@/lib/form-result";
 
 export type OtpFlow = "verify-email" | "sign-in";
 
@@ -73,8 +72,7 @@ export function OtpVerification({ email, onBack, flow = "verify-email" }: OtpVer
 
     const code = otpState.value;
     if (code.length !== 6) {
-      haptics.error();
-      return { error: "Please enter the 6-digit code", attempt };
+      return fail("Please enter the 6-digit code", attempt);
     }
 
     try {
@@ -83,21 +81,16 @@ export function OtpVerification({ email, onBack, flow = "verify-email" }: OtpVer
         : await authClient.emailOtp.verifyEmail({ email: email.trim(), otp: code });
 
       if (response.error) {
-        haptics.error();
-        return { error: "Invalid or expired code. Please try again.", attempt };
+        return fail("Invalid or expired code. Please try again.", attempt);
       }
 
-      haptics.success();
-      announce(isSignIn ? "Signed in" : "Email verified");
+      succeed(isSignIn ? "Signed in" : "Email verified");
       return { ok: true };
     } catch {
-      haptics.error();
-      return {
-        error: isSignIn
-          ? "Sign in failed. Please try again."
-          : "Verification failed. Please try again.",
+      return fail(
+        isSignIn ? "Sign in failed. Please try again." : "Verification failed. Please try again.",
         attempt,
-      };
+      );
     }
   }, initialState);
 
@@ -109,15 +102,12 @@ export function OtpVerification({ email, onBack, flow = "verify-email" }: OtpVer
         type: isSignIn ? "sign-in" : "email-verification",
       });
       if (response.error) {
-        haptics.error();
-        return { error: "Failed to send code. Please try again.", attempt };
+        return fail("Failed to send code. Please try again.", attempt);
       }
-      haptics.success();
-      announce("New verification code sent");
+      succeed("New verification code sent");
       return { ok: true };
     } catch {
-      haptics.error();
-      return { error: "Failed to send code. Please try again.", attempt };
+      return fail("Failed to send code. Please try again.", attempt);
     }
   }, initialState);
 

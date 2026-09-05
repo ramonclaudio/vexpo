@@ -33,7 +33,7 @@ import { useDynamicFont } from "@/lib/dynamic-font";
 
 import { authClient } from "@/lib/auth-client";
 import { haptics } from "@/lib/haptics";
-import { announce } from "@/lib/a11y";
+import { succeed } from "@/lib/form-result";
 import { useColors } from "@/hooks/use-theme";
 import { useScenePrivacy } from "@/hooks/use-scene-privacy";
 import { useReducedMotion } from "@/hooks/use-reduced-motion";
@@ -113,8 +113,7 @@ export default function SessionsScreen() {
         setRevokeError(true);
         return;
       }
-      haptics.success();
-      announce("Session revoked");
+      succeed("Session revoked");
       await load();
     } catch {
       haptics.error();

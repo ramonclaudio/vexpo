@@ -2,8 +2,8 @@ import { useActionState, useEffect, useRef } from "react";
 import { router } from "expo-router";
 
 import { authClient } from "@/lib/auth-client";
-import { announce } from "@/lib/a11y";
 import { haptics } from "@/lib/haptics";
+import { fail, succeed } from "@/lib/form-result";
 import { useAuthStatus } from "@/hooks/use-auth-status";
 
 type GuestState = { error?: string };
@@ -30,16 +30,13 @@ export function useGuestSignIn() {
     try {
       const response = await authClient.signIn.anonymous();
       if (response.error) {
-        haptics.error();
-        return { error: guestSignInError(response.error.status) };
+        return fail(guestSignInError(response.error.status));
       }
       startedRef.current = true;
-      haptics.success();
-      announce("Browsing as a guest");
+      succeed("Browsing as a guest");
       return {};
     } catch {
-      haptics.error();
-      return { error: guestSignInError() };
+      return fail(guestSignInError());
     }
   }, initialState);
 

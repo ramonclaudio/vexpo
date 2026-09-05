@@ -56,12 +56,13 @@ import { SegmentedToggle } from "@/components/ui/segmented-toggle";
 import { ProminentButton } from "@/components/ui/prominent-button";
 import { SecondaryButton } from "@/components/ui/secondary-button";
 import { ErrorText } from "@/components/ui/status-text";
-import { announce } from "@/lib/a11y";
+import { UNEXPECTED_ERROR, fail, succeed } from "@/lib/form-result";
 import { useColors, useThemedAsset } from "@/hooks/use-theme";
 import { useAppleAuth } from "@/hooks/use-apple-auth";
 import { useAuthStatus } from "@/hooks/use-auth-status";
 import { dismissAuth, useGuestSignIn } from "@/hooks/use-guest-sign-in";
 import { AppleButton } from "@/components/auth/apple-button";
+import { LabeledField } from "@/components/ui/labeled-field";
 
 type SignInState = { error?: string };
 const initialState: SignInState = {};
@@ -179,14 +180,11 @@ export default function SignInScreen() {
       type: "email-verification",
     });
     if (sent.error) {
-      haptics.error();
-      return {
-        error:
-          "Your email still needs verifying, and the code wouldn't send. Wait a minute and try again.",
-      };
+      return fail(
+        "Your email still needs verifying, and the code wouldn't send. Wait a minute and try again.",
+      );
     }
-    haptics.success();
-    announce("Verification code sent");
+    succeed("Verification code sent");
     setOtpEmail(email);
     setOtpFlow("verify-email");
     setShowOtpVerification(true);
@@ -197,8 +195,7 @@ export default function SignInScreen() {
     async () => {
       const parsed = signInEmailSchema.safeParse({ email: emailValue, password });
       if (!parsed.success) {
-        haptics.error();
-        return { error: firstError(parsed)! };
+        return fail(firstError(parsed)!);
       }
       try {
         const response = await authClient.signIn.email({
@@ -209,15 +206,12 @@ export default function SignInScreen() {
           if (response.error.code === NOT_VERIFIED) {
             return await startEmailVerification(parsed.data.email);
           }
-          haptics.error();
-          return { error: response.error.message ?? "Invalid email or password" };
+          return fail(response.error.message ?? "Invalid email or password");
         }
-        haptics.success();
-        announce("Signed in");
+        succeed("Signed in");
         return {};
       } catch {
-        haptics.error();
-        return { error: "An unexpected error occurred. Please try again." };
+        return fail(UNEXPECTED_ERROR);
       }
     },
     initialState,
@@ -227,8 +221,7 @@ export default function SignInScreen() {
     async () => {
       const parsed = signInUsernameSchema.safeParse({ username: usernameValue, password });
       if (!parsed.success) {
-        haptics.error();
-        return { error: firstError(parsed)! };
+        return fail(firstError(parsed)!);
       }
       try {
         const response = await authClient.signIn.username({
@@ -245,12 +238,10 @@ export default function SignInScreen() {
           }
           return { error: response.error.message ?? "Invalid username or password" };
         }
-        haptics.success();
-        announce("Signed in");
+        succeed("Signed in");
         return {};
       } catch {
-        haptics.error();
-        return { error: "An unexpected error occurred. Please try again." };
+        return fail(UNEXPECTED_ERROR);
       }
     },
     initialState,
@@ -260,8 +251,7 @@ export default function SignInScreen() {
     async () => {
       const parsed = forgotPasswordSchema.safeParse({ email: otpEmail });
       if (!parsed.success) {
-        haptics.error();
-        return { error: firstError(parsed)! };
+        return fail(firstError(parsed)!);
       }
       try {
         const response = await authClient.emailOtp.sendVerificationOtp({
@@ -269,17 +259,14 @@ export default function SignInScreen() {
           type: "sign-in",
         });
         if (response.error) {
-          haptics.error();
-          return { error: response.error.message ?? "Failed to send sign-in code" };
+          return fail(response.error.message ?? "Failed to send sign-in code");
         }
-        haptics.success();
-        announce("Sign-in code sent");
+        succeed("Sign-in code sent");
         setOtpFlow("sign-in");
         setShowOtpVerification(true);
         return {};
       } catch {
-        haptics.error();
-        return { error: "An unexpected error occurred. Please try again." };
+        return fail(UNEXPECTED_ERROR);
       }
     },
     initialState,
@@ -321,8 +308,6 @@ export default function SignInScreen() {
     if (signInMethod === "email") return isEmailPending ? "Signing in..." : "Sign in";
     return isUsernamePending ? "Signing in..." : "Sign in";
   })();
-
-  const labelModifiers = [dfont({ size: 17, weight: "semibold" })];
 
   return (
     <Host testID="sign-in-screen" style={{ flex: 1, backgroundColor: colors.background }}>
@@ -385,8 +370,7 @@ export default function SignInScreen() {
 
           {signInMethod === "email" && (
             <>
-              <VStack spacing={6} alignment="leading" modifiers={[frame({ maxWidth: Infinity })]}>
-                <Text modifiers={labelModifiers}>Email</Text>
+              <LabeledField label="Email">
                 <CapsuleTextField
                   testID="sign-in-email"
                   placeholder="you@example.com"
@@ -402,9 +386,8 @@ export default function SignInScreen() {
                     accessibilityHint("Enter the email for your account"),
                   ]}
                 />
-              </VStack>
-              <VStack spacing={6} alignment="leading" modifiers={[frame({ maxWidth: Infinity })]}>
-                <Text modifiers={labelModifiers}>Password</Text>
+              </LabeledField>
+              <LabeledField label="Password">
                 <PasswordField
                   testID="sign-in-email-password"
                   onTextChange={setPassword}
@@ -413,15 +396,14 @@ export default function SignInScreen() {
                   accessibilityLabel="Password"
                   accessibilityHint="Enter your account password"
                 />
-              </VStack>
+              </LabeledField>
               {emailFeatures && <ForgotPasswordLink testID="sign-in-email-forgot-password" />}
             </>
           )}
 
           {signInMethod === "username" && (
             <>
-              <VStack spacing={6} alignment="leading" modifiers={[frame({ maxWidth: Infinity })]}>
-                <Text modifiers={labelModifiers}>Username</Text>
+              <LabeledField label="Username">
                 <CapsuleTextField
                   testID="sign-in-username"
                   text={usernameFieldState}
@@ -443,9 +425,8 @@ export default function SignInScreen() {
                     accessibilityHint("Enter the username for your account"),
                   ]}
                 />
-              </VStack>
-              <VStack spacing={6} alignment="leading" modifiers={[frame({ maxWidth: Infinity })]}>
-                <Text modifiers={labelModifiers}>Password</Text>
+              </LabeledField>
+              <LabeledField label="Password">
                 <PasswordField
                   testID="sign-in-username-password"
                   onTextChange={setPassword}
@@ -454,14 +435,13 @@ export default function SignInScreen() {
                   accessibilityLabel="Password"
                   accessibilityHint="Enter your account password"
                 />
-              </VStack>
+              </LabeledField>
               {emailFeatures && <ForgotPasswordLink testID="sign-in-username-forgot-password" />}
             </>
           )}
 
           {signInMethod === "otp" && (
-            <VStack spacing={6} alignment="leading" modifiers={[frame({ maxWidth: Infinity })]}>
-              <Text modifiers={labelModifiers}>Email</Text>
+            <LabeledField label="Email">
               <CapsuleTextField
                 testID="sign-in-otp-email"
                 placeholder="you@example.com"
@@ -479,7 +459,7 @@ export default function SignInScreen() {
                 ]}
               />
               <HelperText>We&apos;ll email you a 6-digit code. No password needed.</HelperText>
-            </VStack>
+            </LabeledField>
           )}
 
           <ProminentButton

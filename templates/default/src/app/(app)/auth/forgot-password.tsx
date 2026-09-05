@@ -28,12 +28,12 @@ import { TouchTarget } from "@/constants/layout";
 
 import { authClient } from "@/lib/auth-client";
 import { assets } from "@/lib/assets";
-import { haptics } from "@/lib/haptics";
 import { firstError, forgotPasswordSchema } from "@/lib/schemas";
 import { CapsuleTextField } from "@/components/ui/capsule-text-field";
 import { ProminentButton } from "@/components/ui/prominent-button";
 import { ErrorText } from "@/components/ui/status-text";
 import { announce } from "@/lib/a11y";
+import { UNEXPECTED_ERROR, fail, succeed } from "@/lib/form-result";
 import { useColors, useThemedAsset } from "@/hooks/use-theme";
 
 type ForgotState = { error?: string };
@@ -58,8 +58,7 @@ export default function ForgotPasswordScreen() {
   const [state, submit, isPending] = useActionState<ForgotState, void>(async () => {
     const parsed = forgotPasswordSchema.safeParse({ email });
     if (!parsed.success) {
-      haptics.error();
-      return { error: firstError(parsed)! };
+      return fail(firstError(parsed)!);
     }
 
     try {
@@ -69,16 +68,13 @@ export default function ForgotPasswordScreen() {
       });
 
       if (response.error) {
-        haptics.error();
-        return { error: response.error.message ?? "Failed to send reset code" };
+        return fail(response.error.message ?? "Failed to send reset code");
       }
-      haptics.success();
-      announce("Reset code sent");
+      succeed("Reset code sent");
       router.push({ pathname: "/auth/reset-password", params: { email: parsed.data.email } });
       return {};
     } catch {
-      haptics.error();
-      return { error: "An unexpected error occurred. Please try again." };
+      return fail(UNEXPECTED_ERROR);
     }
   }, initialState);
 

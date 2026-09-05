@@ -1,5 +1,5 @@
 import { type ComponentProps } from "react";
-import { Text, TextField, VStack } from "@expo/ui/swift-ui";
+import { Text, TextField } from "@expo/ui/swift-ui";
 import {
   accessibilityElement,
   accessibilityHint,
@@ -24,6 +24,7 @@ import { scheduleOnRN } from "react-native-worklets";
 import { CapsuleTextField } from "@/components/ui/capsule-text-field";
 import { HelperText } from "@/components/ui/helper-text";
 import { ProminentButton } from "@/components/ui/prominent-button";
+import { LabeledField } from "@/components/ui/labeled-field";
 import { useColors } from "@/hooks/use-theme";
 import { maskUsername } from "@/lib/masks";
 import { useDynamicFont } from "@/lib/dynamic-font";
@@ -63,12 +64,10 @@ export function ProfileFields({
 }) {
   const dfont = useDynamicFont();
   const colors = useColors();
-  const labelModifiers = [dfont({ size: 17, weight: "semibold" })];
 
   return (
     <>
-      <VStack spacing={6} alignment="leading" modifiers={[frame({ maxWidth: Infinity })]}>
-        <Text modifiers={labelModifiers}>Name</Text>
+      <LabeledField label="Name">
         <CapsuleTextField
           testID="profile-name"
           text={nameState}
@@ -83,12 +82,11 @@ export function ProfileFields({
             accessibilityHint("Edit the display name on your account"),
           ]}
         />
-      </VStack>
+      </LabeledField>
 
       {isGuest ? null : (
         <>
-          <VStack spacing={6} alignment="leading" modifiers={[frame({ maxWidth: Infinity })]}>
-            <Text modifiers={labelModifiers}>Username</Text>
+          <LabeledField label="Username">
             <CapsuleTextField
               testID="profile-username"
               text={usernameState}
@@ -111,10 +109,9 @@ export function ProfileFields({
               ]}
             />
             <HelperText>Name and username are visible to other users.</HelperText>
-          </VStack>
+          </LabeledField>
 
-          <VStack spacing={6} alignment="leading" modifiers={[frame({ maxWidth: Infinity })]}>
-            <Text modifiers={labelModifiers}>Email</Text>
+          <LabeledField label="Email">
             <CapsuleTextField
               testID="profile-email"
               text={emailState}
@@ -141,12 +138,11 @@ export function ProfileFields({
                 ? "Changing your email requires verifying the new address with a 6-digit code."
                 : "Email change requires Resend setup. Run `npx vexpo full` to enable."}
             </HelperText>
-          </VStack>
+          </LabeledField>
         </>
       )}
 
-      <VStack spacing={6} alignment="leading" modifiers={[frame({ maxWidth: Infinity })]}>
-        <Text modifiers={labelModifiers}>Bio</Text>
+      <LabeledField label="Bio">
         <TextField
           testID="profile-bio"
           text={bioState}
@@ -172,19 +168,17 @@ export function ProfileFields({
             ? "Up to 500 characters. It comes with you when you create an account."
             : "Up to 500 characters. Visible on your public profile."}
         </HelperText>
-      </VStack>
+      </LabeledField>
 
-      <VStack
+      <LabeledField
         testID="profile-member-since"
-        spacing={6}
-        alignment="leading"
-        modifiers={[frame({ maxWidth: Infinity }), accessibilityElement("combine")]}
+        label={isGuest ? "Browsing since" : "Member since"}
+        modifiers={[accessibilityElement("combine")]}
       >
-        <Text modifiers={labelModifiers}>{isGuest ? "Browsing since" : "Member since"}</Text>
         <Text modifiers={[dfont({ size: 16 }), foregroundStyle(colors.mutedForeground)]}>
           {formatDate(createdAt)}
         </Text>
-      </VStack>
+      </LabeledField>
 
       {hasChanges ? (
         <ProminentButton

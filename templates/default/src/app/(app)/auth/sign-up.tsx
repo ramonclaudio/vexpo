@@ -57,11 +57,13 @@ import { SecondaryButton } from "@/components/ui/secondary-button";
 import { firstError, firstErrorField, signUpSchema } from "@/lib/schemas";
 import { ErrorText } from "@/components/ui/status-text";
 import { announce } from "@/lib/a11y";
+import { UNEXPECTED_ERROR, fail, succeed } from "@/lib/form-result";
 import { useColors, useThemedAsset } from "@/hooks/use-theme";
 import { useAppleAuth } from "@/hooks/use-apple-auth";
 import { useAuthStatus } from "@/hooks/use-auth-status";
 import { dismissAuth, useGuestSignIn } from "@/hooks/use-guest-sign-in";
 import { AppleButton } from "@/components/auth/apple-button";
+import { LabeledField } from "@/components/ui/labeled-field";
 
 type SignUpState = { error?: string };
 const initialState: SignUpState = {};
@@ -255,11 +257,9 @@ export default function SignUpScreen() {
             type: "email-verification",
           });
           if (sent.error) {
-            haptics.error();
-            return { error: "That code wouldn't send. Wait a minute and try again." };
+            return fail("That code wouldn't send. Wait a minute and try again.");
           }
-          haptics.success();
-          announce("Verification code sent");
+          succeed("Verification code sent");
           setShowVerification(true);
           return {};
         }
@@ -284,8 +284,7 @@ export default function SignUpScreen() {
       announce("Account created. You're signed in.");
       return {};
     } catch {
-      haptics.error();
-      return { error: "An unexpected error occurred. Please try again." };
+      return fail(UNEXPECTED_ERROR);
     }
   }, initialState);
 
@@ -320,8 +319,6 @@ export default function SignUpScreen() {
   if (showVerification) {
     return <OtpVerification email={email} onBack={() => setShowVerification(false)} />;
   }
-
-  const labelModifiers = [dfont({ size: 17, weight: "semibold" })];
 
   return (
     <Host testID="sign-up-screen" style={{ flex: 1, backgroundColor: colors.background }}>
@@ -375,12 +372,7 @@ export default function SignUpScreen() {
 
           {error && <ErrorText testID="sign-up-error">{error}</ErrorText>}
 
-          <VStack
-            spacing={6}
-            alignment="leading"
-            modifiers={[frame({ maxWidth: Infinity }), id("field-name")]}
-          >
-            <Text modifiers={labelModifiers}>Name</Text>
+          <LabeledField label="Name" modifiers={[id("field-name")]}>
             <CapsuleTextField
               testID="sign-up-name"
               text={nameFieldState}
@@ -395,14 +387,9 @@ export default function SignUpScreen() {
                 accessibilityHint("Enter the name to display on your account"),
               ]}
             />
-          </VStack>
+          </LabeledField>
 
-          <VStack
-            spacing={6}
-            alignment="leading"
-            modifiers={[frame({ maxWidth: Infinity }), id("field-username")]}
-          >
-            <Text modifiers={labelModifiers}>Username (optional)</Text>
+          <LabeledField label="Username (optional)" modifiers={[id("field-username")]}>
             <CapsuleTextField
               testID="sign-up-username"
               text={usernameState}
@@ -425,14 +412,9 @@ export default function SignUpScreen() {
               ]}
             />
             <UsernameStatusRow status={usernameStatus} />
-          </VStack>
+          </LabeledField>
 
-          <VStack
-            spacing={6}
-            alignment="leading"
-            modifiers={[frame({ maxWidth: Infinity }), id("field-email")]}
-          >
-            <Text modifiers={labelModifiers}>Email</Text>
+          <LabeledField label="Email" modifiers={[id("field-email")]}>
             <CapsuleTextField
               testID="sign-up-email"
               placeholder="you@example.com"
@@ -448,14 +430,9 @@ export default function SignUpScreen() {
                 accessibilityHint("Enter the email address you want to use for your account"),
               ]}
             />
-          </VStack>
+          </LabeledField>
 
-          <VStack
-            spacing={6}
-            alignment="leading"
-            modifiers={[frame({ maxWidth: Infinity }), id("field-password")]}
-          >
-            <Text modifiers={labelModifiers}>Password</Text>
+          <LabeledField label="Password" modifiers={[id("field-password")]}>
             <PasswordField
               testID="sign-up-password"
               onTextChange={setPassword}
@@ -466,7 +443,7 @@ export default function SignUpScreen() {
               accessibilityHint="Enter a password with at least 10 characters"
             />
             <HelperText>At least 10 characters.</HelperText>
-          </VStack>
+          </LabeledField>
 
           <ProminentButton
             testID="sign-up-submit"

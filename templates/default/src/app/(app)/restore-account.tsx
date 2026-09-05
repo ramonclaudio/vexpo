@@ -17,12 +17,12 @@ import { SecondaryButton } from "@/components/ui/secondary-button";
 import { ErrorText } from "@/components/ui/status-text";
 import { api } from "@/convex/_generated/api";
 import { useColors, useThemedAsset } from "@/hooks/use-theme";
-import { announce } from "@/lib/a11y";
 import { assets } from "@/lib/assets";
 import { authClient } from "@/lib/auth-client";
 import { formatError } from "@/lib/convex-error";
 import { useDynamicFont } from "@/lib/dynamic-font";
 import { haptics } from "@/lib/haptics";
+import { fail, succeed } from "@/lib/form-result";
 
 const ACCOUNT_DELETION_GRACE_MS = 30 * 24 * 60 * 60 * 1000;
 
@@ -42,13 +42,11 @@ export default function RestoreAccountScreen() {
     haptics.medium();
     try {
       await restoreMutation();
-      haptics.success();
-      announce("Account restored");
+      succeed("Account restored");
       router.replace("/");
       return {};
     } catch (err) {
-      haptics.error();
-      return { error: formatError(err) };
+      return fail(formatError(err));
     }
   }, initialState);
 

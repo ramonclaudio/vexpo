@@ -37,8 +37,6 @@ import {
 import { useDynamicFont } from "@/lib/dynamic-font";
 
 import { api } from "@/convex/_generated/api";
-import { haptics } from "@/lib/haptics";
-import { announce } from "@/lib/a11y";
 import { CapsuleRowButton } from "@/components/ui/capsule-row-button";
 import { RemoteAvatar } from "@/components/ui/remote-avatar";
 import { ErrorText } from "@/components/ui/status-text";
@@ -47,6 +45,7 @@ import { useColors } from "@/hooks/use-theme";
 import { useScenePrivacy } from "@/hooks/use-scene-privacy";
 import { useSignOut } from "@/hooks/use-sign-out";
 import { useDebugEnabled } from "@/lib/preferences";
+import { succeed } from "@/lib/form-result";
 
 const PROFILE_HREF = "/profile" as Href;
 const DEBUG_HREF = "/debug" as Href;
@@ -77,8 +76,7 @@ export default function SettingsScreen() {
 
   const handleCopyVersion = async () => {
     await Clipboard.setStringAsync(`v${version}`);
-    haptics.success();
-    announce("Version copied");
+    succeed("Version copied");
   };
 
   return (
