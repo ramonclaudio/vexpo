@@ -196,6 +196,12 @@ export async function fetchAccessibilityUrl(
   return res.data?.attributes?.accessibilityUrl ?? null;
 }
 
+/**
+ * Passing null clears the link. Apple's schema types the attribute as a plain
+ * `uri` and says nothing about nullability, so this follows the App Store
+ * Connect convention for clearing an optional attribute. Untested against a
+ * real app.
+ */
 export async function setAccessibilityUrl(
   client: AscClient,
   appId: string,

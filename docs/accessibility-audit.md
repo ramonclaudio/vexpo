@@ -22,14 +22,14 @@ media, which is what Apple's own criteria say to do when there is no content.
 
 Verified against the schema pulled from Apple on 2026-09-05:
 
-| Apple's schema                                                                                           | Where the CLI matches it                                                      |
-| -------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
-| `AccessibilityDeclarationCreateRequest.Data.Attributes` requires `deviceFamily`, takes the nine booleans | `asc-accessibility.ts:154` sends exactly that, plus the app relationship      |
-| `AccessibilityDeclarationUpdateRequest.Data.Attributes` has no `deviceFamily`, adds `publish`            | `asc-accessibility.ts:168` patches flags only, `:178` sends `{publish: true}` |
-| `state` is DRAFT, PUBLISHED or REPLACED, and only a draft is writable                                    | `planAccessibilityPush` blocks anything that is not DRAFT                     |
-| `deviceFamily` is IPHONE, IPAD, APPLE_TV, APPLE_WATCH, MAC, VISION                                       | the same six in `asc-accessibility.ts`                                        |
-| Voice Control is absent on tvOS and watchOS, Larger Text on macOS                                        | the `UNAVAILABLE` map, which the linter enforces                              |
-| `accessibilityUrl` is a `uri` on `PATCH /v1/apps/{id}`                                                   | `vexpo asc accessibility url`, added in this pass                             |
+| Apple's schema                                                                                           | Where the CLI matches it                                                                                                                                                         |
+| -------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `AccessibilityDeclarationCreateRequest.Data.Attributes` requires `deviceFamily`, takes the nine booleans | `asc-accessibility.ts:154` sends exactly that, plus the app relationship                                                                                                         |
+| `AccessibilityDeclarationUpdateRequest.Data.Attributes` has no `deviceFamily`, adds `publish`            | `asc-accessibility.ts:168` patches flags only, `:178` sends `{publish: true}`                                                                                                    |
+| `state` is DRAFT, PUBLISHED or REPLACED, and only a draft is writable                                    | `planAccessibilityPush` blocks anything that is not DRAFT                                                                                                                        |
+| `deviceFamily` is IPHONE, IPAD, APPLE_TV, APPLE_WATCH, MAC, VISION                                       | the same six in `asc-accessibility.ts`                                                                                                                                           |
+| Voice Control is absent on tvOS and watchOS, Larger Text on macOS                                        | the `UNAVAILABLE` map, which the linter enforces                                                                                                                                 |
+| `accessibilityUrl` is a `uri` on `PATCH /v1/apps/{id}`, and `fields[apps]` accepts it                    | `vexpo asc accessibility url`, added in this pass. **Clearing is not verified**: it sends `null`, which is the App Store Connect convention, and Apple's schema says neither way |
 
 ## VoiceOver
 
