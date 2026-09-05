@@ -11,8 +11,12 @@ const StatusWidget = (props: StatusWidgetProps) => {
   "widget";
   return (
     <VStack spacing={4}>
-      <Text modifiers={[font({ weight: "bold", size: 17 })]}>{props.headline}</Text>
-      <Text modifiers={[font({ size: 13 }), foregroundStyle("#8E8E93")]}>{props.detail}</Text>
+      {/* Text styles, not point sizes: a fixed size ignores Larger Text, and
+          body and footnote are the 17 and 13 these two used to hard-code. */}
+      <Text modifiers={[font({ textStyle: "body", weight: "bold" })]}>{props.headline}</Text>
+      <Text modifiers={[font({ textStyle: "footnote" }), foregroundStyle("#8E8E93")]}>
+        {props.detail}
+      </Text>
     </VStack>
   );
 };
