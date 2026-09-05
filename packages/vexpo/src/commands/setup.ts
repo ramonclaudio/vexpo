@@ -187,24 +187,26 @@ async function shouldRun(
   return { step, label: step, status: live ? "live" : "missing" };
 }
 
-async function liveCheckBetterAuth(env?: Map<string, string>): Promise<boolean> {
-  const e = env ?? (await convexEnvMap()) ?? new Map<string, string>();
-  return ["SITE_URL", "BETTER_AUTH_SECRET", "APP_NAME"].every((k) => e.has(k));
-}
+const liveCheckKeys =
+  (keys: string[]) =>
+  async (env?: Map<string, string>): Promise<boolean> => {
+    const e = env ?? (await convexEnvMap()) ?? new Map<string, string>();
+    return keys.every((k) => e.has(k));
+  };
 
-async function liveCheckResend(env?: Map<string, string>): Promise<boolean> {
-  const e = env ?? (await convexEnvMap()) ?? new Map<string, string>();
-  return ["RESEND_API_KEY", "EMAIL_FROM", "RESEND_WEBHOOK_SECRET", "RESEND_TEST_MODE"].every((k) =>
-    e.has(k),
-  );
-}
-
-async function liveCheckApple(env?: Map<string, string>): Promise<boolean> {
-  const e = env ?? (await convexEnvMap()) ?? new Map<string, string>();
-  return ["APPLE_CLIENT_ID", "APPLE_CLIENT_SECRET", "APPLE_TEAM_ID", "APPLE_KEY_ID"].every((k) =>
-    e.has(k),
-  );
-}
+const liveCheckBetterAuth = liveCheckKeys(["SITE_URL", "BETTER_AUTH_SECRET", "APP_NAME"]);
+const liveCheckResend = liveCheckKeys([
+  "RESEND_API_KEY",
+  "EMAIL_FROM",
+  "RESEND_WEBHOOK_SECRET",
+  "RESEND_TEST_MODE",
+]);
+const liveCheckApple = liveCheckKeys([
+  "APPLE_CLIENT_ID",
+  "APPLE_CLIENT_SECRET",
+  "APPLE_TEAM_ID",
+  "APPLE_KEY_ID",
+]);
 
 async function liveCheckEas(): Promise<boolean> {
   const projectId = await resolveProjectId();

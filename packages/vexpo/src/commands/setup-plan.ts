@@ -377,6 +377,16 @@ const JOURNEY: { async: JourneyEntry[]; sync: JourneyEntry[]; auto: JourneyEntry
   ],
 };
 
+function printJourneySection(title: string, entries: JourneyEntry[]): void {
+  line(`  ${title}`);
+  for (const e of entries) {
+    line(`    ${BOLD}${e.label.padEnd(36)}${RESET} ${DIM}${e.cost.padEnd(12)}${RESET}`);
+    note(`      ${e.description}`);
+    if (e.url) note(`      ${BOLD}${e.url}${RESET}`);
+  }
+  line();
+}
+
 export function printJourneyPlan(lite: boolean): void {
   if (lite) {
     section("Setup journey (lite)");
@@ -384,12 +394,10 @@ export function printJourneyPlan(lite: boolean): void {
       `  ${DIM}Lite mode provisions only what the iOS Simulator needs. No Apple Developer account, no domain, no Resend, no EAS account. Then \`npm run ios\`.${RESET}`,
     );
     line();
-    line(`  ${BOLD}${GREEN}Auto${RESET} ${DIM}(CLI does it, no input needed)${RESET}`);
-    for (const e of JOURNEY.auto.filter((j) => LITE_AUTO_LABELS.has(j.label))) {
-      line(`    ${BOLD}${e.label.padEnd(36)}${RESET} ${DIM}${e.cost.padEnd(12)}${RESET}`);
-      note(`      ${e.description}`);
-    }
-    line();
+    printJourneySection(
+      `${BOLD}${GREEN}Auto${RESET} ${DIM}(CLI does it, no input needed)${RESET}`,
+      JOURNEY.auto.filter((j) => LITE_AUTO_LABELS.has(j.label)),
+    );
     section("Next");
     note(
       `run ${BOLD}vexpo lite${RESET} to start (add ${BOLD}--new${RESET} for a Convex signup walkthrough).`,
@@ -407,28 +415,18 @@ export function printJourneyPlan(lite: boolean): void {
   );
   line();
 
-  line(`  ${BOLD}${YELLOW}Async waits${RESET} ${DIM}(wallclock, schedule accordingly)${RESET}`);
-  for (const e of JOURNEY.async) {
-    line(`    ${BOLD}${e.label.padEnd(36)}${RESET} ${DIM}${e.cost.padEnd(12)}${RESET}`);
-    note(`      ${e.description}`);
-    if (e.url) note(`      ${BOLD}${e.url}${RESET}`);
-  }
-  line();
-
-  line(`  ${BOLD}${YELLOW}Sync clicks${RESET} ${DIM}(web UI work, all on you)${RESET}`);
-  for (const e of JOURNEY.sync) {
-    line(`    ${BOLD}${e.label.padEnd(36)}${RESET} ${DIM}${e.cost.padEnd(12)}${RESET}`);
-    note(`      ${e.description}`);
-    if (e.url) note(`      ${BOLD}${e.url}${RESET}`);
-  }
-  line();
-
-  line(`  ${BOLD}${GREEN}Auto${RESET} ${DIM}(CLI does it, no input needed)${RESET}`);
-  for (const e of JOURNEY.auto) {
-    line(`    ${BOLD}${e.label.padEnd(36)}${RESET} ${DIM}${e.cost.padEnd(12)}${RESET}`);
-    note(`      ${e.description}`);
-  }
-  line();
+  printJourneySection(
+    `${BOLD}${YELLOW}Async waits${RESET} ${DIM}(wallclock, schedule accordingly)${RESET}`,
+    JOURNEY.async,
+  );
+  printJourneySection(
+    `${BOLD}${YELLOW}Sync clicks${RESET} ${DIM}(web UI work, all on you)${RESET}`,
+    JOURNEY.sync,
+  );
+  printJourneySection(
+    `${BOLD}${GREEN}Auto${RESET} ${DIM}(CLI does it, no input needed)${RESET}`,
+    JOURNEY.auto,
+  );
 
   section("Next");
   note(

@@ -16,6 +16,7 @@ import {
   yep,
 } from "../lib/output.ts";
 import { envSet as convexEnvSet } from "../lib/convex-env.ts";
+import { fileExists } from "../lib/fs.ts";
 import { ensureLine, readAll, removeLines } from "../lib/env-local.ts";
 import { dlx } from "../lib/pkg-manager.ts";
 import { run } from "../lib/proc.ts";
@@ -200,11 +201,7 @@ async function backup(files: string[], stamp: string): Promise<void> {
   const dir = `.rebrand-backup/${stamp}`;
   await mkdir(dir, { recursive: true });
   for (const f of files) {
-    try {
-      await access(f);
-    } catch {
-      continue;
-    }
+    if (!(await fileExists(f))) continue;
     await writeFile(`${dir}/${f.replace(/\//g, "_")}`, await readFile(f, "utf8"));
   }
   ok(`backups → ${dir}`);
@@ -479,10 +476,7 @@ async function rewriteReadme(inputs: RebrandInputs): Promise<void> {
 async function formatTargets(files: string[]): Promise<void> {
   const present: string[] = [];
   for (const f of files) {
-    try {
-      await access(f);
-      present.push(f);
-    } catch {}
+    if (await fileExists(f)) present.push(f);
   }
   if (present.length === 0) return;
   const { code } = await run([dlx(), "oxfmt", ...present]);
