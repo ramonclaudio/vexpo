@@ -218,7 +218,7 @@ export default function ProfileScreen() {
         if (res.error) {
           return fail(res.error.message ?? "Failed to update email");
         }
-        haptics.success();
+        succeed(`A 6-digit code was sent to ${nextEmail}`);
         setPendingEmail(nextEmail);
         setOtp("");
         return { pendingEmail: nextEmail };

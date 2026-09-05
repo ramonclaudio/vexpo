@@ -30,7 +30,6 @@ import { GUEST_NAME, isReservedUsername, isValidUsernameFormat } from "@/convex/
 import { scheduleOnRN } from "react-native-worklets";
 
 import { authClient } from "@/lib/auth-client";
-import { haptics } from "@/lib/haptics";
 import { maskUsername } from "@/lib/masks";
 import { setNativeValue } from "@/lib/native-state";
 import BrandIcon from "@/components/ui/brand-icon";
@@ -224,13 +223,12 @@ export default function SignUpScreen() {
         return fail("Unable to create account. Please try a different email or username.");
       }
 
-      haptics.success();
       if (emailFeatures) {
-        announce("Account created. Check your email for the verification code.");
+        succeed("Account created. Check your email for the verification code.");
         setShowVerification(true);
         return {};
       }
-      announce("Account created. You're signed in.");
+      succeed("Account created. You're signed in.");
       return {};
     } catch {
       return fail(UNEXPECTED_ERROR);
