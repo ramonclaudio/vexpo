@@ -28,6 +28,7 @@ import { DynamicType, Duration, toSeconds } from "@/constants/ui";
 import { ContentUnavailable } from "@/components/ui/content-unavailable";
 import { SkeletonSessions } from "@/components/ui/skeleton";
 import { ErrorText } from "@/components/ui/status-text";
+import { announce } from "@/lib/a11y";
 import { deviceLabel } from "@/lib/device";
 import { useDynamicFont } from "@/lib/dynamic-font";
 
@@ -104,6 +105,10 @@ export default function SessionsScreen() {
 
   const revoke = async (token: string) => {
     haptics.medium();
+    // The alert has just dismissed and the row is about to go, so VoiceOver
+    // focus is loose. Every other buzz sits on a control that speaks for
+    // itself; this one has nothing to read.
+    announce("Revoking session");
     setRevoking(token);
     setRevokeError(null);
     try {
