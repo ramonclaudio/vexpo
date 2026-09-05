@@ -313,6 +313,18 @@ That job only runs on a PR that touches `templates/default`, and it always runs 
 
 `.eas/workflows/e2e-tests.yml` runs the full set (guest, auth, launch, tour, screens) through the `maestro` job type. That job is not on the EAS free plan, and the auth flow signs up against a live Convex deployment. Keep it if you are on a paid plan, otherwise the smoke job is the free half.
 
+## Accessibility
+
+`app-store/accessibility.config.json` is the App Store Accessibility Nutrition Label, mirrored in the repo because Apple has no write API for it. `npx vexpo asc accessibility lint` checks the shape, and you still enter it by hand in App Store Connect. It ships claiming seven of the nine features, so keep the app honest as you change it:
+
+- Text scales through `useDynamicFont`, which resolves every size to a SwiftUI text style. A hard-coded `size:` with no `textStyle` opts that label out of Larger Text.
+- Colours come from `constants/theme.ts` as four-appearance `DynamicColorIOS` tokens. `__tests__/lib/contrast.test.ts` measures twelve of the pairings the screens actually draw against WCAG AA. Add a pairing when you draw a new one.
+- Form errors and successes go through `fail()` and `succeed()` in `lib/form-result.ts`, which pair the haptic with the VoiceOver announcement. Announcing from there rather than from the row that draws the message is what makes the same error twice get heard twice.
+- `@expo/ui` keeps SwiftUI's default labeling, so a control wrapping a `Text` already announces it. Label icon-only controls, hide decorative symbols with `accessibilityHidden(true)`, and leave the rest alone. A label on a container replaces what its children would have said.
+- An `expo-image` `Image` needs `accessible` alongside `accessibilityLabel`. Without it the view never enters the accessibility hierarchy and the label does nothing.
+- Nothing rests on colour alone. Status rows pair the tone with a symbol and a word.
+- No test can confirm what VoiceOver says: Maestro reads the iOS accessibility hierarchy and an `@expo/ui` `Text` never reaches it. Turn VoiceOver on before you submit.
+
 ## Conventions
 
 For anyone writing code here, agent or human.
