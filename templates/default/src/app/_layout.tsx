@@ -1,4 +1,5 @@
 import { ConvexReactClient } from "convex/react";
+import { ObserveRoot, useObserve } from "expo-observe";
 import { Stack, ThemeProvider as NavigationThemeProvider } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
@@ -37,7 +38,7 @@ SplashScreen.setOptions({ duration: Duration.splash, fade: true });
 setForegroundHandler();
 registerBackgroundTask();
 
-export default function RootLayout() {
+function RootLayout() {
   return (
     <BetterAuthConvexProvider client={convex}>
       <Suspense fallback={<LoadingScreen testID="app-loading" />}>
@@ -47,20 +48,26 @@ export default function RootLayout() {
   );
 }
 
+export default ObserveRoot.wrap(RootLayout);
+
 function RootNavigator() {
   const { isPending } = authClient.useSession();
   const colorScheme = useColorScheme();
   const colors = useColors();
   const motion = useMotionScreenOptions("default");
   const [assets, assetError] = useAssets(assetModules);
+  const { markInteractive } = useObserve();
 
   useNotifications();
   useNavigationTracking();
 
   useEffect(() => {
     if (assetError && __DEV__) console.warn("[assets] failed to load:", assetError);
-    if (!isPending && (assets || assetError)) SplashScreen.hideAsync();
-  }, [isPending, assets, assetError]);
+    if (!isPending && (assets || assetError)) {
+      SplashScreen.hideAsync();
+      markInteractive();
+    }
+  }, [isPending, assets, assetError, markInteractive]);
 
   return (
     <GestureHandlerRootView style={{ flex: 1, backgroundColor: colors.background as string }}>
