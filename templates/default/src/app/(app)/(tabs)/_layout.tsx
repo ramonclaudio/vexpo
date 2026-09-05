@@ -1,6 +1,6 @@
 import { NativeTabs } from "expo-router/unstable-native-tabs";
 
-import { FontFamily, FontSize } from "@/constants/layout";
+import { FontFamily } from "@/constants/layout";
 import { useColors } from "@/hooks/use-theme";
 import { LoadingScreen } from "@/components/ui/loading-screen";
 
@@ -19,10 +19,9 @@ export default function TabLayout() {
         default: colors.tabIconDefault,
         selected: colors.tabIconSelected,
       }}
-      labelStyle={{
-        fontFamily: FontFamily.medium,
-        fontSize: FontSize.xs,
-      }}
+      // No fontSize: UIKit sizes tab labels from the text style, and pinning a
+      // point size opts them out of Larger Text.
+      labelStyle={{ fontFamily: FontFamily.medium }}
       sidebarAdaptable
       minimizeBehavior="automatic"
       shadowColor={colors.separator}
