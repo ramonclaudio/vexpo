@@ -15,12 +15,14 @@ import {
   Animation,
   foregroundStyle,
   buttonStyle,
+  contentShape,
   clipped,
   multilineTextAlignment,
   opacity,
   progressViewStyle,
   frame,
   padding,
+  shapes,
   kerning,
   scaleEffect,
   tint,
@@ -201,6 +203,7 @@ export default function WelcomeScreen() {
                 dfont({ size: ButtonTokens.fontSize, weight: ButtonTokens.secondaryFontWeight }),
                 foregroundStyle(colors.mutedForeground),
                 frame({ minHeight: TouchTarget.min }),
+                contentShape(shapes.rectangle()),
               ]}
               onPress={handleContinue}
             />

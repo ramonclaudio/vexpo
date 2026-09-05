@@ -6,11 +6,13 @@ import {
   accessibilityAddTraits,
   accessibilityLabel,
   buttonStyle,
+  contentShape,
   defaultScrollAnchorForRole,
   disabled,
   foregroundStyle,
   frame,
   padding,
+  shapes,
   scrollDismissesKeyboard,
   textContentType,
   tint,
@@ -178,6 +180,7 @@ function ChangePasswordForm({ email }: { email: string }) {
                 foregroundStyle(colors.mutedForeground),
                 dfont({ size: 14, weight: "semibold" }),
                 frame({ minHeight: TouchTarget.min }),
+                contentShape(shapes.rectangle()),
                 disabled(isPending),
               ]}
               onPress={() => {

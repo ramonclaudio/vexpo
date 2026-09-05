@@ -8,6 +8,7 @@ import {
   autocorrectionDisabled,
   foregroundStyle,
   buttonStyle,
+  contentShape,
   disabled,
   keyboardType,
   onSubmit,
@@ -15,6 +16,7 @@ import {
   textContentType,
   textInputAutocapitalization,
   padding,
+  shapes,
   frame,
   scrollDismissesKeyboard,
   accessibilityAddTraits,
@@ -139,6 +141,7 @@ export default function ForgotPasswordScreen() {
                 foregroundStyle(colors.mutedForeground),
                 dfont({ size: 14, weight: "semibold" }),
                 frame({ minHeight: TouchTarget.min }),
+                contentShape(shapes.rectangle()),
               ]}
               onPress={() => {
                 router.back();
