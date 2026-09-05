@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import Animated from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Host, Text } from "@expo/ui/swift-ui";
@@ -21,8 +21,14 @@ export function OfflineBanner({ testID }: { testID?: string } = {}) {
   const dfont = useDynamicFont();
   const motion = useBannerMotion("top");
 
+  // The banner leaves without a word, so the only way back to knowing the app
+  // works again is to see it gone. The ref is so a first render that is already
+  // online says nothing.
+  const wasOffline = useRef(false);
   useEffect(() => {
     if (isOffline) announce("You're offline");
+    else if (wasOffline.current) announce("Back online");
+    wasOffline.current = isOffline;
   }, [isOffline]);
 
   if (!isOffline) return null;
