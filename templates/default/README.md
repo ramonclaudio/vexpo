@@ -43,6 +43,20 @@ the login, the ASC .p8 download, the Resend key paste, and the one interactive
 first build.
 ```
 
+### Agent tooling
+
+`.mcp.json` points at the [Expo MCP server](https://docs.expo.dev/mcp/), so an agent with project-scoped MCP support picks it up on its own. It is a remote HTTP server on `https://mcp.expo.dev/mcp` and it authenticates with your Expo account the first time you use it. Free plan, fair use.
+
+[Expo Skills](https://docs.expo.dev/skills/) teach the agent how `@expo/ui`, Expo Router, and EAS actually work, which is most of what this template is:
+
+```bash
+claude plugin install expo@claude-plugins-official   # Claude Code
+codex plugin add expo@openai-curated                 # Codex
+npx skills add expo/skills                           # Cursor and everything else
+```
+
+The Claude Code and Codex plugins register the MCP server themselves, so on those two the `.mcp.json` is a duplicate you can delete.
+
 ## Prerequisites
 
 The local tools come down to these two, since `eas-cli` and the `convex` CLI come through the project (npx fetches them) with no global installs:

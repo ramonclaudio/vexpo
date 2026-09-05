@@ -8,6 +8,7 @@ export const STRIPPED_DOTFILES = [
   ".easignore",
   ".fingerprintignore",
   ".npmrc",
+  ".mcp.json",
 ];
 
 export function strippedToUnderscore(name: string): string {
