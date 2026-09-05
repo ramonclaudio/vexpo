@@ -2,6 +2,7 @@ import { type ComponentProps } from "react";
 import { Button, HStack, Image, Spacer, Text } from "@expo/ui/swift-ui";
 import {
   accessibilityHidden,
+  accessibilityHint,
   accessibilityInputLabels,
   background,
   buttonStyle,
@@ -23,6 +24,7 @@ export function CapsuleRowButton({
   label,
   systemImage,
   onPress,
+  hint,
   inputLabels,
   role,
 }: {
@@ -30,6 +32,9 @@ export function CapsuleRowButton({
   label: string;
   systemImage: SFSymbol;
   onPress: () => void;
+  // What the row does when the label alone doesn't say, which is every row
+  // that leaves the app.
+  hint?: string;
   inputLabels?: string[];
   role?: "destructive";
 }) {
@@ -45,6 +50,7 @@ export function CapsuleRowButton({
         frame({ maxWidth: Infinity }),
         background(colors.muted),
         clipShape("capsule"),
+        ...(hint ? [accessibilityHint(hint)] : []),
         ...(inputLabels ? [accessibilityInputLabels(inputLabels)] : []),
       ]}
       onPress={onPress}

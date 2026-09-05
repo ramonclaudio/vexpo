@@ -126,6 +126,7 @@ export default function HelpScreen() {
                   <CapsuleRowButton
                     testID="help-email-support"
                     label="Email Support"
+                    hint="Opens a new message in your email app"
                     systemImage="envelope.fill"
                     onPress={handleOpenEmail}
                   />
@@ -134,6 +135,7 @@ export default function HelpScreen() {
                   <CapsuleRowButton
                     testID="help-report-issue"
                     label="Report an Issue"
+                    hint="Opens the issue tracker in your browser"
                     systemImage="exclamationmark.bubble.fill"
                     onPress={handleOpenIssues}
                   />
