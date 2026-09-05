@@ -35,6 +35,10 @@ export function AppleButton({
           }
           cornerRadius={height / 2}
           style={{ width: "100%", height: "100%", opacity: disabled ? 0.5 : 1 }}
+          // Apple's button has no disabled prop, so the dim and the dead press
+          // are ours. Without this, VoiceOver reads it as an ordinary button
+          // and the tap does nothing with nothing said about why.
+          accessibilityState={{ disabled: disabled ?? false }}
           onPress={disabled ? () => {} : onPress}
         />
       </RNHostView>
