@@ -72,32 +72,34 @@ const exitWith = (p: Promise<number>): void => {
   });
 };
 
-program
-  .command("lite")
-  .description(
-    "Dev-mode setup. Provisions Convex and Better Auth only. The first `npm run ios` native build takes a few minutes on top. No Apple Developer account, no domain, no EAS, no Resend. Sign-up auto-verifies (no OTP). Re-run `vexpo full` later to provision the rest.",
-  )
-  .option("--new", "walk Convex signup before provisioning", false)
-  .option("--force", "re-run every step, ignoring the cache", false)
-  .option("--fresh", "wipe state and reprovision Convex from scratch", false)
-  .option("--local", "self-hosted Convex backend", false)
-  .option("--dry-run", "print what each phase would do, exit without changes", false)
-  .option("--plan", "print the full setup journey upfront, exit without changes", false)
-  .option("--no-state", "ignore .setup-state.json (CI-friendly)")
-  .action((options: SetupFlags) => exitWith(runSetup(setupOptions(true, options))));
+// The flags `lite` and `full` share. `--new` differs in wording, so it stays
+// on each command.
+const withSetupFlags = (cmd: Command): Command =>
+  cmd
+    .option("--force", "re-run every step, ignoring the cache", false)
+    .option("--fresh", "wipe state and reprovision Convex from scratch", false)
+    .option("--local", "self-hosted Convex backend", false)
+    .option("--dry-run", "print what each phase would do, exit without changes", false)
+    .option("--plan", "print the full setup journey upfront, exit without changes", false)
+    .option("--no-state", "ignore .setup-state.json (CI-friendly)");
 
-program
-  .command("full")
-  .description(
-    "Provisions Convex, Better Auth, Resend, Apple Sign In, the ASC API key, EAS init, and rebrand. Assumes you already have Apple, Convex, Expo and Resend accounts and API keys. Pass `--new` to walk every signup first. On completion, prints the `eas build` command to run when you're ready. vexpo doesn't invoke `eas build` itself.",
-  )
-  .option("--new", "walk Apple, Convex, Expo and Resend signups before provisioning", false)
-  .option("--force", "re-run every step, ignoring the cache", false)
-  .option("--fresh", "wipe state and reprovision Convex from scratch", false)
-  .option("--local", "self-hosted Convex backend", false)
-  .option("--dry-run", "print what each phase would do, exit without changes", false)
-  .option("--plan", "print the full setup journey upfront, exit without changes", false)
-  .option("--no-state", "ignore .setup-state.json (CI-friendly)")
+withSetupFlags(
+  program
+    .command("lite")
+    .description(
+      "Dev-mode setup. Provisions Convex and Better Auth only. The first `npm run ios` native build takes a few minutes on top. No Apple Developer account, no domain, no EAS, no Resend. Sign-up auto-verifies (no OTP). Re-run `vexpo full` later to provision the rest.",
+    )
+    .option("--new", "walk Convex signup before provisioning", false),
+).action((options: SetupFlags) => exitWith(runSetup(setupOptions(true, options))));
+
+withSetupFlags(
+  program
+    .command("full")
+    .description(
+      "Provisions Convex, Better Auth, Resend, Apple Sign In, the ASC API key, EAS init, and rebrand. Assumes you already have Apple, Convex, Expo and Resend accounts and API keys. Pass `--new` to walk every signup first. On completion, prints the `eas build` command to run when you're ready. vexpo doesn't invoke `eas build` itself.",
+    )
+    .option("--new", "walk Apple, Convex, Expo and Resend signups before provisioning", false),
+)
   .option("--skip-rebrand", "skip the rebrand wizard (useful if you've already rebranded)", false)
   .action((options: SetupFlags) => exitWith(runSetup(setupOptions(false, options))));
 

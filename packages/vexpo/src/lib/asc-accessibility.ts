@@ -1,6 +1,6 @@
 import type { AscClient } from "./asc-api.ts";
 import { isRecord } from "./json.ts";
-import type { LintIssue } from "./lint.ts";
+import { entriesOf, error, firstSeen, oneOf, warn, type LintIssue } from "./lint.ts";
 
 export type { LintIssue };
 
@@ -15,7 +15,6 @@ const ACCESSIBILITY_FEATURES = [
   "CAPTIONS",
   "AUDIO_DESCRIPTIONS",
 ] as const;
-type AccessibilityFeature = (typeof ACCESSIBILITY_FEATURES)[number];
 
 const ACCESSIBILITY_LEVELS = [
   "FULLY_SUPPORTS",
@@ -23,7 +22,6 @@ const ACCESSIBILITY_LEVELS = [
   "DOES_NOT_SUPPORT",
   "NOT_APPLICABLE",
 ] as const;
-type AccessibilityLevel = (typeof ACCESSIBILITY_LEVELS)[number];
 
 const ACCESSIBILITY_DEVICE_FAMILIES = [
   "IPHONE",
@@ -33,68 +31,45 @@ const ACCESSIBILITY_DEVICE_FAMILIES = [
   "APPLE_WATCH",
   "VISION",
 ] as const;
-type AccessibilityDeviceFamily = (typeof ACCESSIBILITY_DEVICE_FAMILIES)[number];
 
 export function lintAccessibilityConfig(config: unknown): LintIssue[] {
   const issues: LintIssue[] = [];
-  if (!isRecord(config)) {
-    issues.push({ severity: "error", message: "config must be a JSON object" });
-    return issues;
-  }
-  if (!Array.isArray(config.entries)) {
-    issues.push({ severity: "error", message: "`entries` must be an array" });
-    return issues;
-  }
-  if (config.entries.length === 0) {
-    issues.push({
-      severity: "warning",
-      message: "`entries` is empty; declare at least one device family.",
-    });
+  const entries = entriesOf(config, issues);
+  if (!entries) return issues;
+  if (entries.length === 0) {
+    issues.push(warn("`entries` is empty; declare at least one device family."));
   }
 
   const seen = new Set<string>();
-  config.entries.forEach((raw, index) => {
+  entries.forEach((raw, index) => {
+    const at = `entry[${index}]`;
     if (!isRecord(raw)) {
-      issues.push({ severity: "error", message: `entry[${index}] must be an object` });
+      issues.push(error(`${at} must be an object`));
       return;
     }
     const family = raw.deviceFamily;
+    const familyAt = `${at}.deviceFamily`;
     if (
-      typeof family !== "string" ||
-      !ACCESSIBILITY_DEVICE_FAMILIES.includes(family as AccessibilityDeviceFamily)
+      oneOf(issues, familyAt, family, ACCESSIBILITY_DEVICE_FAMILIES, "AccessibilityDeviceFamily")
     ) {
-      issues.push({
-        severity: "error",
-        message: `entry[${index}].deviceFamily '${String(family)}' is not a valid AccessibilityDeviceFamily. Allowed: ${ACCESSIBILITY_DEVICE_FAMILIES.join(", ")}`,
-      });
-    } else if (seen.has(family)) {
-      issues.push({
-        severity: "warning",
-        message: `entry[${index}].deviceFamily '${family}' is duplicated; only the last entry counts.`,
-      });
-    } else {
-      seen.add(family);
+      firstSeen(seen, issues, familyAt, family as string);
     }
     if (!isRecord(raw.features)) {
-      issues.push({ severity: "error", message: `entry[${index}].features must be an object` });
+      issues.push(error(`${at}.features must be an object`));
       return;
     }
     for (const [feature, level] of Object.entries(raw.features)) {
-      if (!ACCESSIBILITY_FEATURES.includes(feature as AccessibilityFeature)) {
-        issues.push({
-          severity: "error",
-          message: `entry[${index}].features['${feature}'] is not a valid AccessibilityFeature. Allowed: ${ACCESSIBILITY_FEATURES.join(", ")}`,
-        });
+      const featureAt = `${at}.features['${feature}']`;
+      // The key is the value here, so the message names it rather than quoting
+      // it after, which is why this one check does not go through `oneOf`.
+      if (!ACCESSIBILITY_FEATURES.includes(feature as (typeof ACCESSIBILITY_FEATURES)[number])) {
+        issues.push(
+          error(
+            `${featureAt} is not a valid AccessibilityFeature. Allowed: ${ACCESSIBILITY_FEATURES.join(", ")}`,
+          ),
+        );
       }
-      if (
-        typeof level !== "string" ||
-        !ACCESSIBILITY_LEVELS.includes(level as AccessibilityLevel)
-      ) {
-        issues.push({
-          severity: "error",
-          message: `entry[${index}].features['${feature}'] level '${String(level)}' is not a valid AccessibilityLevel. Allowed: ${ACCESSIBILITY_LEVELS.join(", ")}`,
-        });
-      }
+      oneOf(issues, `${featureAt} level`, level, ACCESSIBILITY_LEVELS, "AccessibilityLevel");
     }
   });
 
