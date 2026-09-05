@@ -21,11 +21,13 @@ export function useSignOutMutation(
 
   const submit = useCallback(async () => {
     setError(null);
-    haptics.error();
     if (gate) {
       const passed = await gate();
       if (!passed.ok) {
-        if (passed.error) setError(passed.error);
+        if (passed.error) {
+          haptics.error();
+          setError(passed.error);
+        }
         return;
       }
     }
