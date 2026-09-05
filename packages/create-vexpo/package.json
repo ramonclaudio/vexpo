@@ -55,15 +55,10 @@
     "test:e2e": "npm run build && __tests__/e2e/run.sh"
   },
   "dependencies": {
-    "commander": "^15.0.0",
-    "execa": "^10.0.1",
-    "kleur": "^4.1.5",
-    "ora": "^9.4.1",
-    "prompts": "^2.4.2"
+    "commander": "^15.0.0"
   },
   "devDependencies": {
     "@types/node": "^22",
-    "@types/prompts": "^2.4.9",
     "tsup": "^8.5.1",
     "typescript": "^7.0.2"
   },
