@@ -1,5 +1,4 @@
 import { startTransition, useActionState, useEffect, useState } from "react";
-import { Image as ExpoImage } from "expo-image";
 import { router, useLocalSearchParams } from "expo-router";
 import {
   Host,
@@ -9,7 +8,6 @@ import {
   Text,
   Image,
   Spacer,
-  RNHostView,
   useNativeState,
 } from "@expo/ui/swift-ui";
 import {
@@ -42,10 +40,10 @@ import { DynamicType } from "@/constants/ui";
 import { scheduleOnRN } from "react-native-worklets";
 
 import { authClient } from "@/lib/auth-client";
-import { assets } from "@/lib/assets";
 import { haptics } from "@/lib/haptics";
 import { maskOtp } from "@/lib/masks";
 import { firstError, resetPasswordSchema } from "@/lib/schemas";
+import BrandIcon from "@/components/ui/brand-icon";
 import { PasswordField } from "@/components/auth/password-field";
 import { CapsuleTextField } from "@/components/ui/capsule-text-field";
 import { DiscardChangesDialog } from "@/components/ui/discard-changes-dialog";
@@ -56,7 +54,7 @@ import { LabeledField } from "@/components/ui/labeled-field";
 import { useUnsavedChanges } from "@/hooks/use-unsaved-changes";
 import { announce } from "@/lib/a11y";
 import { UNEXPECTED_ERROR, fail, succeed } from "@/lib/form-result";
-import { useColors, useThemedAsset } from "@/hooks/use-theme";
+import { useColors } from "@/hooks/use-theme";
 import { useQuery } from "convex/react";
 
 import { api } from "@/convex/_generated/api";
@@ -67,7 +65,6 @@ const initialState: ResetState = {};
 export default function ResetPasswordScreen() {
   const dfont = useDynamicFont();
   const colors = useColors();
-  const brandIcon = useThemedAsset(assets.brandIconLight, assets.brandIconDark);
   const { email = "" } = useLocalSearchParams<{ email: string }>();
   const providers = useQuery(api.auth.getEnabledProviders);
   useEffect(() => {
@@ -188,14 +185,7 @@ export default function ResetPasswordScreen() {
           alignment="leading"
           modifiers={[padding({ horizontal: 24, top: 60, bottom: 40 })]}
         >
-          <RNHostView matchContents>
-            <ExpoImage
-              source={brandIcon}
-              style={{ width: 56, height: 56 }}
-              accessibilityLabel="App icon"
-              contentFit="contain"
-            />
-          </RNHostView>
+          <BrandIcon />
 
           <VStack spacing={6} alignment="leading">
             <Text

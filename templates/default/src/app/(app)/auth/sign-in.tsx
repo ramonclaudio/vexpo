@@ -1,17 +1,8 @@
 import { startTransition, useActionState, useState } from "react";
 import * as AppleAuthentication from "expo-apple-authentication";
-import { Image as ExpoImage } from "expo-image";
 import { router } from "expo-router";
 import { useQuery } from "convex/react";
-import {
-  Host,
-  ScrollView,
-  VStack,
-  Button,
-  Text,
-  RNHostView,
-  useNativeState,
-} from "@expo/ui/swift-ui";
+import { Host, ScrollView, VStack, Button, Text, useNativeState } from "@expo/ui/swift-ui";
 import { scheduleOnRN } from "react-native-worklets";
 import {
   autocorrectionDisabled,
@@ -39,7 +30,6 @@ import { TouchTarget } from "@/constants/layout";
 
 import { api } from "@/convex/_generated/api";
 import { authClient } from "@/lib/auth-client";
-import { assets } from "@/lib/assets";
 import { haptics } from "@/lib/haptics";
 import { maskUsername } from "@/lib/masks";
 import {
@@ -48,6 +38,7 @@ import {
   signInEmailSchema,
   signInUsernameSchema,
 } from "@/lib/schemas";
+import BrandIcon from "@/components/ui/brand-icon";
 import { ProminentButton } from "@/components/ui/capsule-button";
 import { OtpVerification, type OtpFlow } from "@/components/auth/otp-verification";
 import { CapsuleTextField } from "@/components/ui/capsule-text-field";
@@ -57,7 +48,7 @@ import { PasswordField } from "@/components/auth/password-field";
 import { SegmentedToggle } from "@/components/ui/segmented-toggle";
 import { ErrorText } from "@/components/ui/status-text";
 import { UNEXPECTED_ERROR, fail, succeed } from "@/lib/form-result";
-import { useColors, useThemedAsset } from "@/hooks/use-theme";
+import { useColors } from "@/hooks/use-theme";
 import { useAppleAuth } from "@/hooks/use-apple-auth";
 import { useAuthStatus } from "@/hooks/use-auth-status";
 import { useGuestSignIn } from "@/hooks/use-guest-sign-in";
@@ -118,7 +109,6 @@ function ForgotPasswordLink({ testID }: { testID: string }) {
 export default function SignInScreen() {
   const dfont = useDynamicFont();
   const colors = useColors();
-  const brandIcon = useThemedAsset(assets.brandIconLight, assets.brandIconDark);
 
   const [signInMethod, setSignInMethod] = useState<SignInMethod>("email");
   const [emailValue, setEmailValue] = useState("");
@@ -286,14 +276,7 @@ export default function SignInScreen() {
           alignment="leading"
           modifiers={[padding({ horizontal: 24, top: 60, bottom: 40 })]}
         >
-          <RNHostView matchContents>
-            <ExpoImage
-              source={brandIcon}
-              style={{ width: 56, height: 56 }}
-              accessibilityLabel=""
-              contentFit="contain"
-            />
-          </RNHostView>
+          <BrandIcon />
 
           <VStack spacing={6} alignment="leading">
             <Text

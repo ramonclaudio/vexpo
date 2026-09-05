@@ -1,5 +1,4 @@
 import { useState, useCallback } from "react";
-import { Image as ExpoImage } from "expo-image";
 import { router } from "expo-router";
 import {
   Host,
@@ -9,7 +8,6 @@ import {
   Button,
   Image,
   ProgressView,
-  RNHostView,
   TabView,
 } from "@expo/ui/swift-ui";
 import {
@@ -36,11 +34,11 @@ import {
 import { useDynamicFont } from "@/lib/dynamic-font";
 import { Button as ButtonTokens, TouchTarget } from "@/constants/layout";
 import { DynamicType, Duration, toSeconds } from "@/constants/ui";
+import BrandIcon from "@/components/ui/brand-icon";
 import { ProminentButton } from "@/components/ui/capsule-button";
 
-import { assets } from "@/lib/assets";
 import { haptics } from "@/lib/haptics";
-import { useColors, useThemedAsset } from "@/hooks/use-theme";
+import { useColors } from "@/hooks/use-theme";
 import { useOnboarding } from "@/hooks/use-onboarding";
 import { useReducedMotion } from "@/hooks/use-reduced-motion";
 
@@ -72,7 +70,6 @@ const STEPS: readonly WelcomeStep[] = [
 export default function WelcomeScreen() {
   const dfont = useDynamicFont();
   const colors = useColors();
-  const brandIcon = useThemedAsset(assets.brandIconLight, assets.brandIconDark);
   const [step, setStep] = useState(0);
   const { markSeen } = useOnboarding();
   const reduceMotion = useReducedMotion();
@@ -137,14 +134,7 @@ export default function WelcomeScreen() {
               >
                 <Spacer />
                 {"brand" in s ? (
-                  <RNHostView matchContents>
-                    <ExpoImage
-                      source={brandIcon}
-                      style={{ width: 96, height: 96 }}
-                      contentFit="contain"
-                      accessibilityLabel="App icon"
-                    />
-                  </RNHostView>
+                  <BrandIcon size={96} />
                 ) : (
                   <VStack spacing={0} modifiers={[accessibilityHidden(true)]}>
                     <Image

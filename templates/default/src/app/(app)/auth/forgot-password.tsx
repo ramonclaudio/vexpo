@@ -1,10 +1,9 @@
 import { startTransition, useActionState, useEffect, useState } from "react";
 import { useQuery } from "convex/react";
-import { Image as ExpoImage } from "expo-image";
 import { router } from "expo-router";
 
 import { api } from "@/convex/_generated/api";
-import { Host, ScrollView, VStack, Button, Text, RNHostView } from "@expo/ui/swift-ui";
+import { Host, ScrollView, VStack, Button, Text } from "@expo/ui/swift-ui";
 import {
   autocorrectionDisabled,
   foregroundStyle,
@@ -27,15 +26,15 @@ import { useDynamicFont } from "@/lib/dynamic-font";
 import { TouchTarget } from "@/constants/layout";
 
 import { authClient } from "@/lib/auth-client";
-import { assets } from "@/lib/assets";
 import { firstError, forgotPasswordSchema } from "@/lib/schemas";
+import BrandIcon from "@/components/ui/brand-icon";
 import { CapsuleTextField } from "@/components/ui/capsule-text-field";
 import { ProminentButton } from "@/components/ui/capsule-button";
 import { LabeledField } from "@/components/ui/labeled-field";
 import { ErrorText } from "@/components/ui/status-text";
 import { announce } from "@/lib/a11y";
 import { UNEXPECTED_ERROR, fail, succeed } from "@/lib/form-result";
-import { useColors, useThemedAsset } from "@/hooks/use-theme";
+import { useColors } from "@/hooks/use-theme";
 
 type ForgotState = { error?: string };
 const initialState: ForgotState = {};
@@ -43,7 +42,6 @@ const initialState: ForgotState = {};
 export default function ForgotPasswordScreen() {
   const dfont = useDynamicFont();
   const colors = useColors();
-  const brandIcon = useThemedAsset(assets.brandIconLight, assets.brandIconDark);
   const [email, setEmail] = useState("");
   const providers = useQuery(api.auth.getEnabledProviders);
 
@@ -87,14 +85,7 @@ export default function ForgotPasswordScreen() {
           alignment="leading"
           modifiers={[padding({ horizontal: 24, top: 60, bottom: 40 })]}
         >
-          <RNHostView matchContents>
-            <ExpoImage
-              source={brandIcon}
-              style={{ width: 56, height: 56 }}
-              accessibilityLabel="App icon"
-              contentFit="contain"
-            />
-          </RNHostView>
+          <BrandIcon />
 
           <VStack spacing={6} alignment="leading">
             <Text
