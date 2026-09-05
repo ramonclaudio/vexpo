@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, test } from "vitest";
 
+import { isRecord } from "@/convex/json";
 import { withWebhook } from "@/convex/webhook";
 
 // Stub Convex action context. The webhook factory doesn't use it (the inner
@@ -43,6 +44,12 @@ function makeRequest(opts: {
   });
 }
 
+const anyObject = (value: unknown): Record<string, unknown> | null =>
+  isRecord(value) ? value : null;
+
+const withEvent = (value: unknown): { event: string } | null =>
+  isRecord(value) && typeof value.event === "string" ? { event: value.event } : null;
+
 describe("withWebhook (HMAC signature verification)", () => {
   const SECRET = "test-secret-do-not-rotate";
 
@@ -59,6 +66,7 @@ describe("withWebhook (HMAC signature verification)", () => {
     const handler = withWebhook(
       {
         source: "test",
+        parse: anyObject,
         signatureHeader: "x-signature",
         secretEnv: "TEST_WEBHOOK_SECRET",
         algorithm: "sha256",
@@ -74,6 +82,7 @@ describe("withWebhook (HMAC signature verification)", () => {
     const handler = withWebhook(
       {
         source: "test",
+        parse: anyObject,
         signatureHeader: "x-signature",
         secretEnv: "TEST_WEBHOOK_SECRET",
         algorithm: "sha256",
@@ -90,6 +99,7 @@ describe("withWebhook (HMAC signature verification)", () => {
     const handler = withWebhook(
       {
         source: "test",
+        parse: anyObject,
         signatureHeader: "x-signature",
         secretEnv: "TEST_WEBHOOK_SECRET",
         algorithm: "sha256",
@@ -113,9 +123,10 @@ describe("withWebhook (HMAC signature verification)", () => {
     const body = JSON.stringify({ event: "test.ping" });
     const signature = await sign("sha256", SECRET, body);
     let handlerCalled = false;
-    const handler = withWebhook<{ event: string }>(
+    const handler = withWebhook(
       {
         source: "test",
+        parse: withEvent,
         signatureHeader: "x-signature",
         secretEnv: "TEST_WEBHOOK_SECRET",
         algorithm: "sha256",
@@ -145,6 +156,7 @@ describe("withWebhook (HMAC signature verification)", () => {
     const handler = withWebhook(
       {
         source: "eas-webhook",
+        parse: anyObject,
         signatureHeader: "expo-signature",
         signaturePrefix: "sha1=",
         secretEnv: "TEST_WEBHOOK_SECRET",
@@ -169,6 +181,7 @@ describe("withWebhook (HMAC signature verification)", () => {
     const handler = withWebhook(
       {
         source: "test",
+        parse: anyObject,
         signatureHeader: "x-signature",
         secretEnv: "TEST_WEBHOOK_SECRET",
         algorithm: "sha256",
@@ -190,6 +203,7 @@ describe("withWebhook (HMAC signature verification)", () => {
     const handler = withWebhook(
       {
         source: "test",
+        parse: anyObject,
         signatureHeader: "x-signature",
         secretEnv: "TEST_WEBHOOK_SECRET",
         algorithm: "sha256",
@@ -233,6 +247,7 @@ describe("withWebhook (HMAC signature verification)", () => {
     const handler = withWebhook(
       {
         source: "test",
+        parse: anyObject,
         signatureHeader: "x-signature",
         secretEnv: "TEST_WEBHOOK_SECRET",
         algorithm: "sha256",
@@ -256,6 +271,7 @@ describe("withWebhook (HMAC signature verification)", () => {
     const handler = withWebhook(
       {
         source: "test",
+        parse: anyObject,
         signatureHeader: "x-signature",
         secretEnv: "TEST_WEBHOOK_SECRET",
         algorithm: "sha256",
@@ -282,6 +298,7 @@ describe("withWebhook (HMAC signature verification)", () => {
     const handler = withWebhook(
       {
         source: "test",
+        parse: anyObject,
         signatureHeader: "x-signature",
         secretEnv: "TEST_WEBHOOK_SECRET",
         algorithm: "sha256",
@@ -311,6 +328,7 @@ describe("withWebhook (HMAC signature verification)", () => {
     const handler = withWebhook(
       {
         source: "test",
+        parse: anyObject,
         signatureHeader: "x-signature",
         secretEnv: "TEST_WEBHOOK_SECRET",
         algorithm: "sha256",
@@ -340,6 +358,7 @@ describe("withWebhook (HMAC signature verification)", () => {
     const handler = withWebhook(
       {
         source: "test",
+        parse: anyObject,
         signatureHeader: "x-signature",
         secretEnv: "TEST_WEBHOOK_SECRET",
         algorithm: "sha256",
@@ -368,6 +387,7 @@ describe("withWebhook (HMAC signature verification)", () => {
     const handler = withWebhook(
       {
         source: "test",
+        parse: anyObject,
         signatureHeader: "x-signature",
         secretEnv: "TEST_WEBHOOK_SECRET",
         algorithm: "sha256",
@@ -392,6 +412,7 @@ describe("withWebhook (HMAC signature verification)", () => {
     const handler = withWebhook(
       {
         source: "test",
+        parse: anyObject,
         signatureHeader: "x-signature",
         secretEnv: "TEST_WEBHOOK_SECRET",
         algorithm: "sha256",
@@ -413,5 +434,30 @@ describe("withWebhook (HMAC signature verification)", () => {
     expect(res.status).toBe(500);
     const text = await res.text();
     expect(text).toContain("handler error");
+  });
+  test("400 when the body parses as JSON but not as the expected shape", async () => {
+    let handlerCalled = false;
+    const handler = withWebhook(
+      {
+        source: "test",
+        parse: withEvent,
+        signatureHeader: "x-signature",
+        secretEnv: "TEST_WEBHOOK_SECRET",
+        algorithm: "sha256",
+      },
+      () => {
+        handlerCalled = true;
+        return new Response("ok");
+      },
+    );
+    const body = JSON.stringify({ event: 42 });
+    const signature = await sign("sha256", SECRET, body);
+    const res = await handler(
+      ctx,
+      makeRequest({ body, signatureHeader: "x-signature", signatureValue: signature }),
+    );
+    expect(res.status).toBe(400);
+    expect(handlerCalled).toBe(false);
+    expect(await res.text()).toContain("expected shape");
   });
 });

@@ -4,6 +4,7 @@ import { httpAction } from "./_generated/server";
 import { authComponent, createAuth } from "./auth";
 import { resend } from "./email";
 import { log, newRequestId } from "./log";
+import { isRecord, optionalString } from "./json";
 import { withWebhook } from "./webhook";
 
 const http = httpRouter();
@@ -44,13 +45,29 @@ type EasWebhookPayload = {
   metadata?: { appName?: string };
 };
 
+function parseEasWebhookPayload(value: unknown): EasWebhookPayload | null {
+  if (!isRecord(value)) return null;
+  const metadata = isRecord(value.metadata)
+    ? { appName: optionalString(value.metadata.appName) }
+    : undefined;
+  return {
+    id: optionalString(value.id),
+    status: optionalString(value.status),
+    platform: optionalString(value.platform),
+    buildDetailsPageUrl: optionalString(value.buildDetailsPageUrl),
+    appId: optionalString(value.appId),
+    metadata,
+  };
+}
+
 http.route({
   path: "/eas-webhook",
   method: "POST",
   handler: httpAction(
-    withWebhook<EasWebhookPayload>(
+    withWebhook(
       {
         source: "eas-webhook",
+        parse: parseEasWebhookPayload,
         signatureHeader: "expo-signature",
         signaturePrefix: "sha1=",
         secretEnv: "EAS_WEBHOOK_SECRET",

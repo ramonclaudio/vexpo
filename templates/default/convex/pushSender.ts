@@ -4,6 +4,7 @@ import type { Id } from "./_generated/dataModel";
 import { internal } from "./_generated/api";
 import type { ActionCtx } from "./_generated/server";
 import { internalAction } from "./_generated/server";
+import { isRecord } from "./json";
 
 const EXPO_PUSH_URL = "https://exp.host/--/api/v2/push/send";
 const EXPO_RECEIPTS_URL = "https://exp.host/--/api/v2/push/getReceipts";
@@ -39,16 +40,55 @@ type PushToken = { _id: Id<"pushTokens">; token: string };
 
 type TicketEntry = { ticket: ExpoTicket; token: PushToken };
 
-type ExpoResponse = { data?: ExpoTicket[]; errors?: Array<{ code?: string; message?: string }> };
-
 type ExpoReceipt =
   | { status: "ok" }
   | { status: "error"; message?: string; details?: { error?: string } };
 
-type ExpoReceiptsResponse = {
-  data?: Record<string, ExpoReceipt>;
-  errors?: Array<{ code?: string; message?: string }>;
-};
+function parseErrorDetails(value: unknown): { error?: string } | undefined {
+  if (!isRecord(value) || typeof value.error !== "string") return undefined;
+  return { error: value.error };
+}
+
+function parseTicket(value: unknown): ExpoTicket | null {
+  if (!isRecord(value)) return null;
+  if (value.status === "ok" && typeof value.id === "string") return { status: "ok", id: value.id };
+  if (value.status !== "error") return null;
+  return {
+    status: "error",
+    message: typeof value.message === "string" ? value.message : "",
+    details: parseErrorDetails(value.details),
+  };
+}
+
+function parseReceipt(value: unknown): ExpoReceipt | null {
+  if (!isRecord(value)) return null;
+  if (value.status === "ok") return { status: "ok" };
+  if (value.status !== "error") return null;
+  return {
+    status: "error",
+    message: typeof value.message === "string" ? value.message : undefined,
+    details: parseErrorDetails(value.details),
+  };
+}
+
+function errorsText(value: unknown): string {
+  return isRecord(value) ? JSON.stringify(value.errors) : "";
+}
+
+function parseTickets(value: unknown): ExpoTicket[] {
+  if (!isRecord(value) || !Array.isArray(value.data)) return [];
+  return value.data.map(parseTicket).filter((ticket) => ticket !== null);
+}
+
+function parseReceipts(value: unknown): Record<string, ExpoReceipt> {
+  if (!isRecord(value) || !isRecord(value.data)) return {};
+  const out: Record<string, ExpoReceipt> = {};
+  for (const [id, raw] of Object.entries(value.data)) {
+    const receipt = parseReceipt(raw);
+    if (receipt) out[id] = receipt;
+  }
+  return out;
+}
 
 export const sendToUser = internalAction({
   args: {
@@ -96,12 +136,12 @@ export const sendToUser = internalAction({
           },
           body: JSON.stringify(chunk),
         });
-        const payload = (await res.json()) as ExpoResponse;
+        const payload: unknown = await res.json();
         if (!res.ok) {
-          console.warn(`[push] send non-2xx ${res.status}: ${JSON.stringify(payload?.errors)}`);
+          console.warn(`[push] send non-2xx ${res.status}: ${errorsText(payload)}`);
           continue;
         }
-        (payload?.data ?? []).forEach((ticket, j) => {
+        parseTickets(payload).forEach((ticket, j) => {
           const token = slice[j];
           if (token) entries.push({ ticket, token });
         });
@@ -143,13 +183,11 @@ export const reconcileReceipts = internalAction({
         },
         body: JSON.stringify({ ids: pending.map((p) => p.ticketId) }),
       });
-      const payload = (await res.json()) as ExpoReceiptsResponse;
+      const payload: unknown = await res.json();
       if (!res.ok) {
-        console.warn(
-          `[push] getReceipts non-2xx ${res.status}: ${JSON.stringify(payload?.errors)}`,
-        );
+        console.warn(`[push] getReceipts non-2xx ${res.status}: ${errorsText(payload)}`);
       }
-      receipts = payload?.data ?? {};
+      receipts = parseReceipts(payload);
     } catch (err) {
       console.warn(`[push] getReceipts threw: ${err instanceof Error ? err.message : String(err)}`);
       return { checked: 0, revoked: 0, pruned: 0 };
