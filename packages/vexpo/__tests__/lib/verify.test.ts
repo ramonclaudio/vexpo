@@ -104,38 +104,38 @@ describe("Apple JWT verification", () => {
     });
   }
 
-  const severityOf = (checks: Awaited<ReturnType<typeof verifyAll>>, name: string) =>
+  const checkNamed = (checks: Awaited<ReturnType<typeof verifyAll>>, name: string) =>
     checks.find((c) => c.name === name);
 
   it("ok when JWT claims match Convex env", async () => {
     const checks = await verifyAll(await siwaContext({ expirationDays: 90 }));
     for (const name of ["jwt-expiry", "jwt-kid-matches", "jwt-iss-matches", "jwt-sub-matches"]) {
-      expect(severityOf(checks, name)?.severity, name).toBe("ok");
+      expect(checkNamed(checks, name)?.severity, name).toBe("ok");
     }
   });
 
   it("fails when JWT.kid does not match APPLE_KEY_ID", async () => {
     const checks = await verifyAll(await siwaContext({ keyId: "WRONG12345", expirationDays: 1 }));
-    const kid = severityOf(checks, "jwt-kid-matches");
+    const kid = checkNamed(checks, "jwt-kid-matches");
     expect(kid?.severity).toBe("fail");
     expect(kid?.message).toContain("WRONG12345");
   });
 
   it("fails when JWT is expired", async () => {
     const checks = await verifyAll(await siwaContext({ expirationDays: -1 }));
-    expect(severityOf(checks, "jwt-expiry")?.severity).toBe("fail");
+    expect(checkNamed(checks, "jwt-expiry")?.severity).toBe("fail");
   });
 
   it("warns when JWT expires within 30 days", async () => {
     const checks = await verifyAll(await siwaContext({ expirationDays: 14.5 }));
-    const expiry = severityOf(checks, "jwt-expiry");
+    const expiry = checkNamed(checks, "jwt-expiry");
     expect(expiry?.severity).toBe("warn");
     expect(expiry?.message).toMatch(/14d/);
   });
 
   it("fails when JWT.iss != APPLE_TEAM_ID", async () => {
     const checks = await verifyAll(await siwaContext({ teamId: "WRONGTEAM1", expirationDays: 1 }));
-    expect(severityOf(checks, "jwt-iss-matches")?.severity).toBe("fail");
+    expect(checkNamed(checks, "jwt-iss-matches")?.severity).toBe("fail");
   });
 
   it("fails when JWT.sub != APPLE_CLIENT_ID", async () => {
@@ -145,7 +145,7 @@ describe("Apple JWT verification", () => {
         { servicesId: "com.right.app.signin" },
       ),
     );
-    expect(severityOf(checks, "jwt-sub-matches")?.severity).toBe("fail");
+    expect(checkNamed(checks, "jwt-sub-matches")?.severity).toBe("fail");
   });
 
   it("fails when JWT body is corrupt", async () => {
