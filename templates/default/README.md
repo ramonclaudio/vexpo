@@ -309,6 +309,8 @@ This is an iOS app and `platforms` says so, which rules out an Expo Router `+api
 
 Two test paths, and they cost different things. `.github/workflows/check.yml` has an `ios` job on `macos-latest` that runs `npm run smoke`: a Release simulator build plus one flow that asserts the app boots to the sign-in screen. macOS runners are free on public repos, and the flow never touches Convex, so this one needs no account and no secrets. It catches the thing that actually breaks, a native build that no longer compiles.
 
+That job only runs on a PR that touches `templates/default`, and it always runs on a push to `main`. The Xcode build is the expensive part, so CI caches the native project, the CocoaPods download cache, and the derived data under `.smoke-build`, all keyed on `package-lock.json` and `app.config.ts`. CI also sets `SMOKE_KEEP_NATIVE=1`, which drops the `--clean` from `expo prebuild` so the restored `ios/` survives. Locally the clean still happens, so `npm run smoke` on your machine can't build against a stale native project.
+
 `.eas/workflows/e2e-tests.yml` runs the full set (guest, auth, launch, tour, screens) through the `maestro` job type. That job is not on the EAS free plan, and the auth flow signs up against a live Convex deployment. Keep it if you are on a paid plan, otherwise the smoke job is the free half.
 
 ## Conventions

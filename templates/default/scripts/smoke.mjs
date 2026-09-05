@@ -6,7 +6,8 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const PROJECT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-const PRODUCTS = "ios/build/Build/Products/Release-iphonesimulator";
+const DERIVED = ".smoke-build";
+const PRODUCTS = `${DERIVED}/Build/Products/Release-iphonesimulator`;
 
 function run(cmd, args, opts = {}) {
   const res = spawnSync(cmd, args, { cwd: PROJECT, stdio: "inherit", ...opts });
@@ -92,8 +93,13 @@ function createDevice() {
 
 const udid = bootedDevice();
 
+// --clean deletes ios/ so a stale native project can't survive a config change.
+// On CI the checkout is fresh and the Pods directory comes from a cache, so cleaning
+// only throws that cache away. SMOKE_KEEP_NATIVE=1 skips it.
 console.log("### prebuild");
-run("npx", ["expo", "prebuild", "--clean", "--platform", "ios"]);
+const prebuild = ["expo", "prebuild", "--platform", "ios"];
+if (process.env.SMOKE_KEEP_NATIVE !== "1") prebuild.splice(2, 0, "--clean");
+run("npx", prebuild);
 
 const name = scheme();
 
@@ -108,7 +114,7 @@ run("xcodebuild", [
   "-sdk",
   "iphonesimulator",
   "-derivedDataPath",
-  "ios/build",
+  DERIVED,
   "-destination",
   `id=${udid}`,
   "CODE_SIGN_IDENTITY=-",
@@ -118,6 +124,8 @@ run("xcodebuild", [
   "DEVELOPMENT_TEAM=",
   "PROVISIONING_PROFILE_SPECIFIER=",
   "ONLY_ACTIVE_ARCH=YES",
+  "COMPILER_INDEX_STORE_ENABLE=NO",
+  "DEBUG_INFORMATION_FORMAT=dwarf",
   "build",
 ]);
 
