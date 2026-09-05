@@ -23,7 +23,7 @@ import { scheduleOnRN } from "react-native-worklets";
 
 import { CapsuleTextField } from "@/components/ui/capsule-text-field";
 import { HelperText } from "@/components/ui/helper-text";
-import { ProminentButton } from "@/components/ui/prominent-button";
+import { ProminentButton } from "@/components/ui/capsule-button";
 import { LabeledField } from "@/components/ui/labeled-field";
 import { useColors } from "@/hooks/use-theme";
 import { maskUsername } from "@/lib/masks";

@@ -10,19 +10,11 @@ import {
   multilineTextAlignment,
 } from "@expo/ui/swift-ui/modifiers";
 
-import { useDynamicFont } from "@/lib/dynamic-font";
 import { Button as ButtonTokens } from "@/constants/layout";
 import { useColors } from "@/hooks/use-theme";
+import { useDynamicFont } from "@/lib/dynamic-font";
 
-export function SecondaryButton({
-  label,
-  onPress,
-  testID,
-  disabled,
-  destructive,
-  filled = true,
-  inputLabels,
-}: {
+type CapsuleButtonProps = {
   label: string;
   onPress: () => void;
   testID?: string;
@@ -30,16 +22,29 @@ export function SecondaryButton({
   destructive?: boolean;
   filled?: boolean;
   inputLabels?: string[];
-}) {
+};
+
+function CapsuleButton({
+  variant,
+  label,
+  onPress,
+  testID,
+  disabled,
+  destructive,
+  filled = true,
+  inputLabels,
+}: CapsuleButtonProps & { variant: "prominent" | "secondary" }) {
   const dfont = useDynamicFont();
   const colors = useColors();
+  const prominent = variant === "prominent";
+  const fill = prominent ? colors.primary : colors.muted;
   return (
     <Button
       testID={testID}
       modifiers={[
         buttonStyle("plain"),
         frame({ maxWidth: Infinity }),
-        ...(filled ? [background(colors.muted)] : []),
+        ...(filled ? [background(fill)] : []),
         clipShape("capsule"),
         ...(disabled === undefined ? [] : [disabledModifier(disabled)]),
         ...(inputLabels ? [accessibilityInputLabels(inputLabels)] : []),
@@ -50,8 +55,17 @@ export function SecondaryButton({
         modifiers={[
           frame({ maxWidth: Infinity, minHeight: ButtonTokens.height }),
           multilineTextAlignment("center"),
-          dfont({ size: ButtonTokens.fontSize, weight: ButtonTokens.secondaryFontWeight }),
-          foregroundStyle(destructive ? colors.destructive : colors.foreground),
+          dfont({
+            size: ButtonTokens.fontSize,
+            weight: prominent ? ButtonTokens.fontWeight : ButtonTokens.secondaryFontWeight,
+          }),
+          foregroundStyle(
+            prominent
+              ? colors.primaryForeground
+              : destructive
+                ? colors.destructive
+                : colors.foreground,
+          ),
         ]}
       >
         {label}
@@ -59,3 +73,11 @@ export function SecondaryButton({
     </Button>
   );
 }
+
+export const ProminentButton = (props: CapsuleButtonProps) => (
+  <CapsuleButton variant="prominent" {...props} />
+);
+
+export const SecondaryButton = (props: CapsuleButtonProps) => (
+  <CapsuleButton variant="secondary" {...props} />
+);

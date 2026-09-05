@@ -36,7 +36,7 @@ import {
 import { useDynamicFont } from "@/lib/dynamic-font";
 import { Button as ButtonTokens, TouchTarget } from "@/constants/layout";
 import { DynamicType, Duration, toSeconds } from "@/constants/ui";
-import { ProminentButton } from "@/components/ui/prominent-button";
+import { ProminentButton } from "@/components/ui/capsule-button";
 
 import { assets } from "@/lib/assets";
 import { haptics } from "@/lib/haptics";

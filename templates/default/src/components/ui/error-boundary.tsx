@@ -16,7 +16,7 @@ import {
   tint,
 } from "@expo/ui/swift-ui/modifiers";
 import { useDynamicFont } from "@/lib/dynamic-font";
-import { ProminentButton } from "@/components/ui/prominent-button";
+import { ProminentButton } from "@/components/ui/capsule-button";
 import { useColors } from "@/hooks/use-theme";
 import { TouchTarget } from "@/constants/layout";
 import { DynamicType } from "@/constants/ui";

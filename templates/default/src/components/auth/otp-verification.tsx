@@ -9,42 +9,31 @@ import {
   Image,
   useNativeState,
 } from "@expo/ui/swift-ui";
-import { scheduleOnRN } from "react-native-worklets";
 import {
   foregroundStyle,
   buttonStyle,
   contentShape,
   disabled,
-  keyboardType,
-  monospacedDigit,
-  kerning,
   multilineTextAlignment,
-  onSubmit,
-  submitLabel,
   padding,
   frame,
   shapes,
   accessibilityAddTraits,
   accessibilityElement,
   accessibilityHidden,
-  accessibilityLabel,
-  accessibilityHint,
   defaultScrollAnchorForRole,
   dynamicTypeSize,
   scrollDismissesKeyboard,
-  strokeBorder,
   tint,
-  textContentType,
 } from "@expo/ui/swift-ui/modifiers";
+import { OtpField } from "@/components/ui/otp-field";
 import { useDynamicFont } from "@/lib/dynamic-font";
 import { Button as ButtonTokens, TouchTarget } from "@/constants/layout";
 import { DynamicType } from "@/constants/ui";
 
 import { authClient } from "@/lib/auth-client";
 import { useColors } from "@/hooks/use-theme";
-import { maskOtp } from "@/lib/masks";
-import { CapsuleTextField } from "@/components/ui/capsule-text-field";
-import { ProminentButton } from "@/components/ui/prominent-button";
+import { ProminentButton } from "@/components/ui/capsule-button";
 import { ErrorText } from "@/components/ui/status-text";
 import { fail, succeed } from "@/lib/form-result";
 
@@ -189,39 +178,14 @@ export function OtpVerification({ email, onBack, flow = "verify-email" }: OtpVer
           )}
 
           <VStack spacing={12} modifiers={[frame({ maxWidth: Infinity })]}>
-            <CapsuleTextField
+            <OtpField
               testID="otp-field"
               text={otpState}
-              placeholder="000000"
-              onTextChange={(text) => {
-                "worklet";
-                const digits = maskOtp(text);
-                otpState.value = digits;
-                scheduleOnRN(setOtp, digits);
-              }}
-              autoFocus
-              modifiers={[
-                dfont({ size: 24, design: "monospaced" }),
-                monospacedDigit(),
-                kerning(8),
-                multilineTextAlignment("center"),
-                dynamicTypeSize({ max: DynamicType.otp }),
-                keyboardType("numeric"),
-                textContentType("oneTimeCode"),
-                onSubmit(runVerify),
-                submitLabel("done"),
-                accessibilityLabel("Verification code"),
-                accessibilityHint("Enter the 6 digit code sent to your email"),
-                ...(invalidCode
-                  ? [
-                      strokeBorder({
-                        color: colors.destructive,
-                        shape: "capsule",
-                        style: { lineWidth: 2 },
-                      }),
-                    ]
-                  : []),
-              ]}
+              hint="Enter the 6 digit code sent to your email"
+              onChange={setOtp}
+              onVerify={runVerify}
+              isVerifying={isVerifying}
+              invalidCode={invalidCode}
             />
 
             <ProminentButton

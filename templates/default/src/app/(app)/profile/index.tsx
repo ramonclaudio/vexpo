@@ -34,7 +34,7 @@ import { AvatarPickerRow } from "@/components/profile/avatar-picker-row";
 import { DangerZone } from "@/components/profile/danger-zone";
 import { EmailOtpVerify } from "@/components/profile/email-otp-verify";
 import { ProfileFields } from "@/components/profile/profile-fields";
-import { SecondaryButton } from "@/components/ui/secondary-button";
+import { SecondaryButton } from "@/components/ui/capsule-button";
 import { fail, succeed } from "@/lib/form-result";
 
 type SaveState = { error?: string; success?: string; pendingEmail?: string; attempt?: number };

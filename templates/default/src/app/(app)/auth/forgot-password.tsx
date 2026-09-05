@@ -30,7 +30,7 @@ import { authClient } from "@/lib/auth-client";
 import { assets } from "@/lib/assets";
 import { firstError, forgotPasswordSchema } from "@/lib/schemas";
 import { CapsuleTextField } from "@/components/ui/capsule-text-field";
-import { ProminentButton } from "@/components/ui/prominent-button";
+import { ProminentButton } from "@/components/ui/capsule-button";
 import { ErrorText } from "@/components/ui/status-text";
 import { announce } from "@/lib/a11y";
 import { UNEXPECTED_ERROR, fail, succeed } from "@/lib/form-result";

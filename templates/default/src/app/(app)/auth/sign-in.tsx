@@ -48,13 +48,12 @@ import {
   signInEmailSchema,
   signInUsernameSchema,
 } from "@/lib/schemas";
+import { ProminentButton, SecondaryButton } from "@/components/ui/capsule-button";
 import { OtpVerification, type OtpFlow } from "@/components/auth/otp-verification";
 import { CapsuleTextField } from "@/components/ui/capsule-text-field";
 import { HelperText } from "@/components/ui/helper-text";
 import { PasswordField } from "@/components/auth/password-field";
 import { SegmentedToggle } from "@/components/ui/segmented-toggle";
-import { ProminentButton } from "@/components/ui/prominent-button";
-import { SecondaryButton } from "@/components/ui/secondary-button";
 import { ErrorText } from "@/components/ui/status-text";
 import { UNEXPECTED_ERROR, fail, succeed } from "@/lib/form-result";
 import { useColors, useThemedAsset } from "@/hooks/use-theme";

@@ -1,7 +1,7 @@
 import { router, Stack } from "expo-router";
 import { Host, VStack, Spacer } from "@expo/ui/swift-ui";
 import { padding, tint } from "@expo/ui/swift-ui/modifiers";
-import { ProminentButton } from "@/components/ui/prominent-button";
+import { ProminentButton } from "@/components/ui/capsule-button";
 import { ContentUnavailable } from "@/components/ui/content-unavailable";
 import { useColors } from "@/hooks/use-theme";
 import { FontFamily } from "@/constants/layout";

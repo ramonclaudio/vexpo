@@ -12,8 +12,7 @@ import {
 } from "@expo/ui/swift-ui/modifiers";
 import { useMutation, useQuery } from "convex/react";
 
-import { ProminentButton } from "@/components/ui/prominent-button";
-import { SecondaryButton } from "@/components/ui/secondary-button";
+import { ProminentButton, SecondaryButton } from "@/components/ui/capsule-button";
 import { ErrorText } from "@/components/ui/status-text";
 import { api } from "@/convex/_generated/api";
 import { useColors, useThemedAsset } from "@/hooks/use-theme";

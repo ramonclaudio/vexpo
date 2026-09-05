@@ -1,7 +1,7 @@
 import { router } from "expo-router";
 import { Alert, Button, ConfirmationDialog, Text } from "@expo/ui/swift-ui";
 
-import { SecondaryButton } from "@/components/ui/secondary-button";
+import { SecondaryButton } from "@/components/ui/capsule-button";
 import { useDynamicFont } from "@/lib/dynamic-font";
 import { haptics } from "@/lib/haptics";
 

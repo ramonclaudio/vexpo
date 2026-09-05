@@ -23,7 +23,7 @@ import { PasswordField } from "@/components/auth/password-field";
 import { CapsuleTextField } from "@/components/ui/capsule-text-field";
 import { DiscardChangesDialog } from "@/components/ui/discard-changes-dialog";
 import { HelperText } from "@/components/ui/helper-text";
-import { ProminentButton } from "@/components/ui/prominent-button";
+import { ProminentButton } from "@/components/ui/capsule-button";
 import { ErrorText } from "@/components/ui/status-text";
 import { LoadingScreen } from "@/components/ui/loading-screen";
 import { LabeledField } from "@/components/ui/labeled-field";
