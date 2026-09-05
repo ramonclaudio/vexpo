@@ -9,7 +9,11 @@ import { runAscKey } from "./commands/apple/asc-key.ts";
 import { runEasRotationSecrets } from "./commands/apple/eas-rotation-secrets.ts";
 import { runServicesId } from "./commands/apple/services-id.ts";
 import { runAscConnect } from "./commands/asc.ts";
-import { runAccessibilityLint, runAccessibilityShow } from "./commands/asc-accessibility.ts";
+import {
+  runAccessibilityLint,
+  runAccessibilityPush,
+  runAccessibilityShow,
+} from "./commands/asc-accessibility.ts";
 import { runPrivacyLint, runPrivacyShow } from "./commands/asc-privacy.ts";
 import {
   runTestflightGroupsCreate,
@@ -382,8 +386,17 @@ ascA11y
 
 ascA11y
   .command("lint <file>")
-  .description("Validate a local accessibility.config.json against Apple's enums.")
+  .description("Validate a local accessibility.config.json against Apple's schema.")
   .action((file: string) => exitWith(runAccessibilityLint(file)));
+
+ascA11y
+  .command("push <file>")
+  .description("Send a local accessibility.config.json to App Store Connect.")
+  .option("--publish", "also move the draft onto the App Store page", false)
+  .option("--dry-run", "print what would change and send nothing", false)
+  .action((file: string, options: { publish?: boolean; dryRun?: boolean }) =>
+    exitWith(runAccessibilityPush(file, options)),
+  );
 
 const testflight = program
   .command("testflight")

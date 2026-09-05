@@ -199,12 +199,48 @@ if want "vexpo asc accessibility lint flags an unknown feature"; then
   cat > "$fixture" <<JSON
 {
   "entries": [
-    {"deviceFamily": "IPHONE", "features": {"TELEPATHIC_INPUT": "FULLY_SUPPORTS"}}
+    {"deviceFamily": "IPHONE", "supportsTelepathicInput": true}
   ]
 }
 JSON
   node "$CLI" asc accessibility lint "$fixture" >/dev/null 2>&1; code=$?
   [ $code -ne 0 ] && pass "$n" || fail "$n" "expected non-zero exit, got $code"
+fi
+
+# Apple's model is booleans. The old config shape used a support level, so a
+# file still carrying one has to be rejected rather than pass quietly.
+if want "vexpo asc accessibility lint rejects the old support-level shape"; then
+  fixture="$TMPROOT/level-a11y.json"
+  cat > "$fixture" <<JSON
+{
+  "entries": [
+    {"deviceFamily": "IPHONE", "supportsVoiceover": "FULLY_SUPPORTS"}
+  ]
+}
+JSON
+  out=$(node "$CLI" asc accessibility lint "$fixture" 2>&1 | strip_ansi); code=$?
+  if [ $code -ne 0 ] && [[ "$out" == *"must be true or false"* ]]; then
+    pass "$n"
+  else
+    fail "$n" "expected a boolean complaint, got: $out"
+  fi
+fi
+
+if want "vexpo asc accessibility push --dry-run needs no credentials to lint first"; then
+  fixture="$TMPROOT/push-a11y.json"
+  cat > "$fixture" <<JSON
+{
+  "entries": [
+    {"deviceFamily": "APPLE_WATCH", "supportsVoiceControl": true}
+  ]
+}
+JSON
+  out=$(node "$CLI" asc accessibility push --dry-run "$fixture" 2>&1 | strip_ansi); code=$?
+  if [ $code -ne 0 ] && [[ "$out" == *"accessibility lint"* ]]; then
+    pass "$n"
+  else
+    fail "$n" "expected the lint gate to stop it, got: $out"
+  fi
 fi
 
 printf "\n${C_BOLD}${C_PURPLE}Summary${C_RESET} ${C_DIM}─────────────────────────────${C_RESET}\n"

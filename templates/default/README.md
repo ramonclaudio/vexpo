@@ -315,10 +315,10 @@ That job only runs on a PR that touches `templates/default`, and it always runs 
 
 ## Accessibility
 
-`app-store/accessibility.config.json` is the App Store Accessibility Nutrition Label, mirrored in the repo because Apple has no write API for it. `npx vexpo asc accessibility lint` checks the shape, and you still enter it by hand in App Store Connect. It ships claiming seven of the nine features, so keep the app honest as you change it:
+`app-store/accessibility.config.json` is the App Store Accessibility Nutrition Label: one entry per device family with nine booleans, matching Apple's `AccessibilityDeclaration`. `npx vexpo asc accessibility lint` checks the shape and `npx vexpo asc accessibility push --publish` sends it. Apple's bar is task-based, so first launch, sign in, purchase, settings and the app's primary job all have to be completable with the feature on. It ships claiming seven of the nine, so keep the app honest as you change it:
 
 - Text scales through `useDynamicFont`, which resolves every size to a SwiftUI text style. A hard-coded `size:` with no `textStyle` opts that label out of Larger Text.
-- Colours come from `constants/theme.ts` as four-appearance `DynamicColorIOS` tokens. `__tests__/lib/contrast.test.ts` measures twelve of the pairings the screens actually draw against WCAG AA. Add a pairing when you draw a new one.
+- Colours come from `constants/theme.ts` as four-appearance `DynamicColorIOS` tokens. `__tests__/lib/contrast.test.ts` measures the pairings the screens actually draw: text at 4.5:1, controls and anything whose colour carries a state at 3:1. Add a pairing when you draw a new one.
 - Form errors and successes go through `fail()` and `succeed()` in `lib/form-result.ts`, which pair the haptic with the VoiceOver announcement. Announcing from there rather than from the row that draws the message is what makes the same error twice get heard twice.
 - `@expo/ui` keeps SwiftUI's default labeling, so a control wrapping a `Text` already announces it. Label icon-only controls, hide decorative symbols with `accessibilityHidden(true)`, and leave the rest alone. A label on a container replaces what its children would have said.
 - An `expo-image` `Image` needs `accessible` alongside `accessibilityLabel`. Without it the view never enters the accessibility hierarchy and the label does nothing.
