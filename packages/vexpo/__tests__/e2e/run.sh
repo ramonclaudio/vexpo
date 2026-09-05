@@ -33,6 +33,9 @@ fail() { FAILED=$((FAILED + 1)); FAILS+=("$1: $2"); printf "  ${C_RED}✗${C_RES
 skip() { SKIPPED=$((SKIPPED + 1)); printf "  ${C_DIM}–${C_RESET} %s ${C_DIM}(skipped: %s)${C_RESET}\n" "$1" "$2"; }
 strip_ansi() { sed $'s/\x1b\\[[0-9;]*[a-zA-Z]//g'; }
 match_grep() { [ -z "$GREP" ] || [[ "$1" == *"$GREP"* ]]; }
+# Names the case and sets $n for its body. False when a $GREP filter excludes
+# it, after logging the skip, so `if want ...` is the whole guard.
+want() { n="$1"; match_grep "$n" && return 0; skip "$n" "filtered"; return 1; }
 
 run_cli() {
   local sandbox="$1"
@@ -59,134 +62,119 @@ make_sandbox() {
 
 section "Help + version"
 
-n="vexpo --version returns version"
-if match_grep "$n"; then
+if want "vexpo --version returns version"; then
   out=$(run_cli "" --version)
   if [[ "$out" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then pass "$n"; else fail "$n" "got: $out"; fi
-else skip "$n" "filtered"; fi
+fi
 
-n="vexpo --help lists all subcommands"
-if match_grep "$n"; then
+if want "vexpo --help lists all subcommands"; then
   out=$(run_cli "" --help | strip_ansi)
   miss=""
   for cmd in lite full accounts rebrand review-account doctor convex better-auth resend submit apple env asc testflight; do
     echo "$out" | grep -q "^  $cmd" || miss="$miss $cmd"
   done
   if [ -z "$miss" ]; then pass "$n"; else fail "$n" "missing:$miss"; fi
-else skip "$n" "filtered"; fi
+fi
 
-n="vexpo eas is not a public command (EAS bootstrap is a phase of \`full\`)"
-if match_grep "$n"; then
+if want "vexpo eas is not a public command (EAS bootstrap is a phase of \`full\`)"; then
   out=$(run_cli "" --help | strip_ansi)
   if echo "$out" | grep -q "^  eas"; then fail "$n" "still listed in --help"; else pass "$n"; fi
-else skip "$n" "filtered"; fi
+fi
 
 section "Doctor"
 
-n="vexpo doctor exits cleanly in a fresh sandbox"
-if match_grep "$n"; then
-  sb="$TMPROOT/doctor-$$-$RANDOM"; mkdir -p "$sb"
+if want "vexpo doctor exits cleanly in a fresh sandbox"; then
+  sb=$(make_sandbox doctor)
   out=$(run_cli "$sb" doctor); code=$?
   if [ $code -gt 2 ]; then fail "$n" "exit $code"
   elif [ -z "$(echo "$out" | strip_ansi | tr -d '[:space:]')" ]; then fail "$n" "empty output"
   else pass "$n"; fi
-else skip "$n" "filtered"; fi
+fi
 
-n="vexpo doctor --json serializes a real report inside a project"
-if match_grep "$n"; then
+if want "vexpo doctor --json serializes a real report inside a project"; then
   if ! command -v python3 >/dev/null; then skip "$n" "no python3"
   else
-    sb="$TMPROOT/doctor-json-$$-$RANDOM"; mkdir -p "$sb"
+    sb=$(make_sandbox doctor-json)
     printf 'export default { name: "Vexpo" };\n' > "$sb/app.config.ts"
     out=$(run_cli "$sb" doctor --json)
     if echo "$out" | python3 -c 'import json, sys; r = json.load(sys.stdin); sys.exit(0 if isinstance(r.get("checks"), list) and "summary" in r and "channel" in r else 1)' 2>/dev/null; then pass "$n"
     else fail "$n" "not a doctor report: $out"; fi
   fi
-else skip "$n" "filtered"; fi
+fi
 
 section "Env push"
 
-n="vexpo env push --dry-run reports no source files when sandbox is empty"
-if match_grep "$n"; then
-  sb="$TMPROOT/empty-$$-$RANDOM"; mkdir -p "$sb"
+if want "vexpo env push --dry-run reports no source files when sandbox is empty"; then
+  sb=$(make_sandbox empty)
   out=$(run_cli "$sb" env push --dry-run)
   if echo "$out" | strip_ansi | grep -q "no source files"; then pass "$n"
   else fail "$n" "no expected message"; fi
-else skip "$n" "filtered"; fi
+fi
 
-n="vexpo env push --dry-run with .env.local fixture"
-if match_grep "$n"; then
+if want "vexpo env push --dry-run with .env.local fixture"; then
   sb=$(make_sandbox dev-only)
   out=$(run_cli "$sb" env push --dry-run); code=$?
   if [ $code -ne 0 ]; then fail "$n" "exit $code"
   elif echo "$out" | strip_ansi | grep -qE "EXPO_PUBLIC_CONVEX_URL"; then pass "$n"
   else fail "$n" "no plan"; fi
-else skip "$n" "filtered"; fi
+fi
 
-n="vexpo env push --dry-run is side-effect free"
-if match_grep "$n"; then
+if want "vexpo env push --dry-run is side-effect free"; then
   sb=$(make_sandbox dev-only)
   run_cli "$sb" env push --dry-run > /dev/null
   [ -f "$sb/.setup-state.json" ] && fail "$n" "wrote state" || pass "$n"
-else skip "$n" "filtered"; fi
+fi
 
-n="vexpo env push --dry-run reports unrecognized keys"
-if match_grep "$n"; then
+if want "vexpo env push --dry-run reports unrecognized keys"; then
   sb=$(make_sandbox dev-only)
   echo "BOGUS_UNKNOWN_KEY=hello" >> "$sb/.env.local"
   out=$(run_cli "$sb" env push --dry-run)
   if echo "$out" | strip_ansi | grep -qE "(unrecognized|BOGUS_UNKNOWN_KEY)"; then pass "$n"
   else fail "$n" "didn't report unknown key"; fi
-else skip "$n" "filtered"; fi
+fi
 
 section "Setup orchestrator"
 
-n="vexpo lite --dry-run prints a phase plan"
-if match_grep "$n"; then
-  sb="$TMPROOT/lite-dry-$$-$RANDOM"; mkdir -p "$sb"
+if want "vexpo lite --dry-run prints a phase plan"; then
+  sb=$(make_sandbox lite-dry)
   out=$(run_cli "$sb" lite --dry-run); code=$?
   if [ $code -ne 0 ]; then fail "$n" "exit $code"
   elif echo "$out" | strip_ansi | grep -qE "Dry run plan|Summary|phases would run"; then pass "$n"
   else fail "$n" "no plan in output"; fi
-else skip "$n" "filtered"; fi
+fi
 
-n="vexpo full --dry-run is idempotent"
-if match_grep "$n"; then
-  sb="$TMPROOT/full-idem-$$-$RANDOM"; mkdir -p "$sb"
+if want "vexpo full --dry-run is idempotent"; then
+  sb=$(make_sandbox full-idem)
   o1=$(run_cli "$sb" full --dry-run --skip-rebrand | strip_ansi)
   o2=$(run_cli "$sb" full --dry-run --skip-rebrand | strip_ansi)
   [ "$o1" = "$o2" ] && pass "$n" || fail "$n" "outputs diverged"
-else skip "$n" "filtered"; fi
+fi
 
-n="vexpo lite --plan prints the lite journey"
-if match_grep "$n"; then
-  sb="$TMPROOT/lite-plan-$$-$RANDOM"; mkdir -p "$sb"
+if want "vexpo lite --plan prints the lite journey"; then
+  sb=$(make_sandbox lite-plan)
   out=$(run_cli "$sb" lite --plan | strip_ansi); code=$?
   if [ $code -ne 0 ]; then fail "$n" "exit $code"
   elif echo "$out" | grep -qE "Setup journey \(lite\)"; then pass "$n"
   else fail "$n" "no lite journey"; fi
-else skip "$n" "filtered"; fi
+fi
 
-n="vexpo full --plan prints the full multi-session journey"
-if match_grep "$n"; then
-  sb="$TMPROOT/full-plan-$$-$RANDOM"; mkdir -p "$sb"
+if want "vexpo full --plan prints the full multi-session journey"; then
+  sb=$(make_sandbox full-plan)
   out=$(run_cli "$sb" full --plan | strip_ansi); code=$?
   if [ $code -ne 0 ]; then fail "$n" "exit $code"
   elif echo "$out" | grep -qE "Setup journey" && echo "$out" | grep -qE "Async waits|Sync clicks" && ! echo "$out" | grep -qE "\(lite\)"; then pass "$n"
   else fail "$n" "full journey missing phases"; fi
-else skip "$n" "filtered"; fi
+fi
 
 section "ASC nutrition labels"
 
-n="vexpo asc privacy lint passes on the template scaffold"
-if match_grep "$n"; then
+if want "vexpo asc privacy lint passes on the template scaffold"; then
   out=$(node "$CLI" asc privacy lint "$PKG_ROOT/../../templates/default/app-store/privacy.config.json" 2>&1 | strip_ansi)
   if echo "$out" | grep -q "ok"; then pass "$n"
   else fail "$n" "expected ok, got: $out"; fi
-else skip "$n" "filtered"; fi
+fi
 
-n="vexpo asc privacy lint flags an unknown category"
-if match_grep "$n"; then
+if want "vexpo asc privacy lint flags an unknown category"; then
   fixture="$TMPROOT/bad-privacy.json"
   cat > "$fixture" <<JSON
 {
@@ -198,17 +186,15 @@ if match_grep "$n"; then
 JSON
   node "$CLI" asc privacy lint "$fixture" >/dev/null 2>&1; code=$?
   [ $code -ne 0 ] && pass "$n" || fail "$n" "expected non-zero exit, got $code"
-else skip "$n" "filtered"; fi
+fi
 
-n="vexpo asc accessibility lint passes on the template scaffold"
-if match_grep "$n"; then
+if want "vexpo asc accessibility lint passes on the template scaffold"; then
   out=$(node "$CLI" asc accessibility lint "$PKG_ROOT/../../templates/default/app-store/accessibility.config.json" 2>&1 | strip_ansi)
   if echo "$out" | grep -q "ok"; then pass "$n"
   else fail "$n" "expected ok, got: $out"; fi
-else skip "$n" "filtered"; fi
+fi
 
-n="vexpo asc accessibility lint flags an unknown feature"
-if match_grep "$n"; then
+if want "vexpo asc accessibility lint flags an unknown feature"; then
   fixture="$TMPROOT/bad-a11y.json"
   cat > "$fixture" <<JSON
 {
@@ -219,7 +205,7 @@ if match_grep "$n"; then
 JSON
   node "$CLI" asc accessibility lint "$fixture" >/dev/null 2>&1; code=$?
   [ $code -ne 0 ] && pass "$n" || fail "$n" "expected non-zero exit, got $code"
-else skip "$n" "filtered"; fi
+fi
 
 printf "\n${C_BOLD}${C_PURPLE}Summary${C_RESET} ${C_DIM}─────────────────────────────${C_RESET}\n"
 TOTAL=$((PASSED + FAILED + SKIPPED))
