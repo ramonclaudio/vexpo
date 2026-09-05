@@ -5,16 +5,6 @@ import { internalAction, internalMutation } from "./_generated/server";
 import { createAuth } from "./auth";
 import { rateLimiter, type RateLimitName } from "./rateLimit";
 
-/**
- * Idempotent: if the user already exists, re-asserts emailVerified=true.
- * Pass `reset: true` to also rotate the existing account's password to the
- * given value (hashed through Better Auth's own hasher, so verification
- * matches); without it a re-run keeps the old password.
- *
- * Side effect: triggers a verification OTP email on first run via the normal
- * sign-up flow. The OTP is unused (we flip emailVerified directly via the
- * adapter) and lands in the configured inbox.
- */
 export const createReviewAccount = internalAction({
   args: {
     email: v.string(),
@@ -68,8 +58,6 @@ export const createReviewAccount = internalAction({
       },
     });
 
-    // Rotate the credential-provider password through Better Auth's own
-    // hasher so sign-in verification matches the stored hash.
     let passwordReset = false;
     if (!created && reset) {
       const hash = await (await auth.$context).password.hash(password);
@@ -97,14 +85,6 @@ export const createReviewAccount = internalAction({
   },
 });
 
-/**
- * Manual ops tool, deliberately unwired (no cron, no client caller). Clears a
- * rate-limit bucket so a caller the limiter locked out can act again right
- * away, the support escape-hatch for a user stuck behind `userAction`,
- * `criticalAction`, or `avatarUpload`. Pass `key` (the user id the limit was
- * keyed on) to reset one caller; omit it to clear the whole named limit. Run by
- * hand: `npx convex run admin:resetRateLimit '{"name":"userAction","key":"<userId>"}'`.
- */
 export const resetRateLimit = internalMutation({
   args: { name: v.string(), key: v.optional(v.string()) },
   returns: v.object({

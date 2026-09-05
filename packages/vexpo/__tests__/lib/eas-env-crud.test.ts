@@ -25,7 +25,6 @@ describe("envUpdate argv", () => {
     const e = argv.indexOf("--variable-environment");
     expect(e).toBeGreaterThan(-1);
     expect(argv[e + 1]).toBe("production");
-    // plain --environment would rewrite the var's env links — must not be sent.
     expect(argv).not.toContain("--environment");
     expect(argv).toContain("--non-interactive");
   });

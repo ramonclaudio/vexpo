@@ -27,9 +27,7 @@ describe("ensureIdentity", () => {
   it("syncs the existing .env.local bundle id to Convex without rewriting the env line", async () => {
     await ensureIdentity(new Map([["EXPO_PUBLIC_APP_BUNDLE_ID", "com.acme.foobar"]]));
 
-    // pushes the value that actually lives in .env.local
     expect(envSetSpy).toHaveBeenCalledWith("APP_BUNDLE_ID", "com.acme.foobar");
-    // does not overwrite the env line it just read
     const bundleWrite = ensureLineSpy.mock.calls.find((c) => c[0] === "EXPO_PUBLIC_APP_BUNDLE_ID");
     expect(bundleWrite).toBeUndefined();
   });

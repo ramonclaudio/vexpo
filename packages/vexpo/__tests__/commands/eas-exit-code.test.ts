@@ -51,7 +51,6 @@ describe("runEas exit code", () => {
   });
 
   it("exits nonzero when the prod env push fails", async () => {
-    // .env.local absent, .env.prod present so only the --with-prod path runs.
     fileExistsSpy.mockImplementation((p: string) => Promise.resolve(p === ".env.prod"));
     envPushSpy.mockRejectedValue(new Error("eas env:push failed"));
     const exit = await runEas({ withProd: true });

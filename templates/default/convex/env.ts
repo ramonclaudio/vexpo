@@ -16,10 +16,6 @@ export const env = {
   get convexSiteUrl() {
     return required("CONVEX_SITE_URL");
   },
-  // The app's deep-link origin. `vexpo convex` sets SITE_URL from the
-  // app.config.ts scheme, so production and rebranded apps resolve the right
-  // value here and `auth.ts` derives `trustedOrigins` from it. The literal is
-  // only a fresh-checkout fallback before the CLI pushes SITE_URL.
   siteUrl: optional("SITE_URL", "vexpo://"),
   appName: optional("APP_NAME", "Vexpo"),
   email: {
@@ -28,9 +24,5 @@ export const env = {
     },
   },
   requireEmailVerification: bool("REQUIRE_EMAIL_VERIFICATION", false),
-  // Guest browsing. On by default so a fresh scaffold satisfies App Store
-  // guideline 5.1.1 out of the box: the sign-in screen offers "Continue as
-  // guest" and the app is usable without an account. Set GUEST_MODE=false on
-  // the Convex deployment for an app where an account really is the product.
   guestMode: bool("GUEST_MODE", true),
 } as const;

@@ -23,9 +23,6 @@ const usernameSchema = z
   .regex(USERNAME_FORMAT_REGEX, { error: "Letters, numbers, dots, and underscores only" })
   .refine((value) => !isReservedUsername(value), { error: "That username is reserved" });
 
-// Same rules as `usernameSchema`, but an empty field is allowed (accounts can
-// exist without a username). Trim and lowercase first so a whitespace-only
-// entry collapses to "" and passes, then require either "" or a valid username.
 const optionalUsernameSchema = z
   .string()
   .trim()
@@ -97,23 +94,12 @@ export const profileUpdateSchema = z.object({
   email: emailSchema,
 });
 
-// Accounts can exist without a username (the column is nullable), and the
-// profile field shows "" for them. The strict `usernameSchema` rejects ""
-// (min length 3), which would block those users from saving name/email/bio
-// they never touched. This variant accepts "" so the username stays untouched
-// while the other fields update, mirroring how `signUpSchema` treats it.
 export const profileUpdateOptionalUsernameSchema = z.object({
   name: nameSchema,
   username: optionalUsernameSchema,
   email: emailSchema,
 });
 
-// The guest profile form is name and bio only, so this parses name and nothing
-// else. The account variants above require an email, and a guest's is a
-// placeholder the anonymous plugin generated. It passes an email check (the
-// exact shape moves between Better Auth releases) but nobody reads it, and
-// parsing a field the form never showed is how a hidden value reaches a
-// mutation.
 export const guestProfileSchema = z.object({
   name: nameSchema,
 });

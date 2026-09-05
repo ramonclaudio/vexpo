@@ -1,20 +1,7 @@
-// SDK 56 bans application-code imports from @react-navigation/* in favor of
-// the expo-router re-exports. Theme types come from expo-router/react-navigation,
-// DefaultTheme from expo-router itself. Don't add @react-navigation/native back.
 import { DefaultTheme as RNDefaultTheme } from "expo-router";
 import type { Theme as RNTheme } from "expo-router/react-navigation";
 import { DynamicColorIOS } from "react-native";
 
-// `DynamicColorIOS` returns an `OpaqueColorValue`. React Native's StyleSheet
-// processor resolves it natively, but several @expo/ui props and our own
-// `as string` call-sites expect a string. The runtime payload behaves like
-// any other ColorValue for RN, so we cast at the boundary instead of
-// littering every call-site with `as unknown as string`.
-
-// Each token carries a light + dark variant plus a high-contrast pair for the
-// iOS Increase Contrast accessibility setting (HIG: "If you define a custom
-// color, make sure to supply light and dark variants, and an increased
-// contrast option for each variant.").
 type Tone = {
   light: string;
   dark: string;
@@ -43,8 +30,6 @@ const NEUTRAL = {
 } as const;
 
 const DESTRUCTIVE = {
-  // Light darkened from #E7000B to clear WCAG AA (4.5:1) for sub-17pt text on
-  // the muted (n100) capsule fill, not just on the white page background.
   light: "#B30009",
   dark: "#FF6467",
   hcLight: "#990007",
@@ -58,9 +43,6 @@ const WARNING = {
   hcDark: "#FCD34D",
 } as const;
 
-// shadcn dark `border` is `oklch(1 0 0 / 10%)`, `input` is `15%`. These need
-// the alpha to hover over translucent layers. iOS DynamicColorIOS accepts
-// 8-digit hex, so we encode RGBA inline.
 const ALPHA_DARK = {
   border: "#FFFFFF1A",
   borderHC: "#FFFFFF40",
@@ -118,8 +100,6 @@ const t = {
     highContrastDark: NEUTRAL.n850,
   }),
   mutedForeground: tone({
-    // n500 -> n600 so secondary text clears 4.5:1 on the muted card by default,
-    // not only under Increase Contrast.
     light: NEUTRAL.n600,
     dark: NEUTRAL.n400,
     highContrastLight: NEUTRAL.n700,
@@ -198,8 +178,6 @@ export const Colors = {
   }),
 
   success: tone({
-    // Light darkened from #16A34A (~3.3:1 on white) to clear WCAG AA for the
-    // sub-17pt success copy in SuccessText and the username-available row.
     light: "#15803D",
     dark: "#22C55E",
     highContrastLight: "#166534",
@@ -218,10 +196,6 @@ export const HeaderTint = Colors.foreground;
 
 export type ColorPalette = typeof Colors;
 
-// React Navigation `Theme` consumers (NavigationThemeProvider, header tint,
-// back chevron, screen background) read flat color strings, not
-// DynamicColorIOS values. We export one theme per appearance and pick at
-// the root layout based on `useColorScheme()`.
 export const NavigationLight: RNTheme = {
   dark: false,
   colors: {

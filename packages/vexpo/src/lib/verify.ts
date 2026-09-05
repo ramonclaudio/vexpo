@@ -45,9 +45,6 @@ export type VerifyContext = {
   channel: Channel;
   envLocal: Map<string, string>;
   envProd: Map<string, string>;
-  // null means the read itself failed (auth/CLI), which is not "every var
-  // unset": doctor must warn "unreadable" instead of failing checks that are
-  // merely unverifiable (the prod deploy-key path hit exactly this).
   convexEnv: Map<string, string> | null;
   convexProdEnv: Map<string, string> | null;
   appConfig: AppConfigFacts;
@@ -129,9 +126,8 @@ function deploymentSlugFromHost(host: string): string | null {
 async function fetchOk(url: string, timeoutMs = 5000): Promise<{ ok: boolean; status: number }> {
   try {
     const res = await fetchWithTimeout(url, { method: "HEAD" }, timeoutMs);
-    return { ok: res.ok || res.status === 405, status: res.status }; // 405 = HEAD not allowed but server is up
+    return { ok: res.ok || res.status === 405, status: res.status };
   } catch {
-    // TimeoutError or a network failure both mean "not reachable".
     return { ok: false, status: 0 };
   }
 }
@@ -145,8 +141,6 @@ async function verifyConvex(ctx: VerifyContext): Promise<Check[]> {
   const env = convexEnvFor(ctx);
   const local = ctx.channel === "prod" ? ctx.envProd : ctx.envLocal;
 
-  // Login freshness, gated on a configured deployment so lite/offline stays fast.
-  // A present-but-expired token is the confusing case the file-stat can't catch.
   if (local.get("CONVEX_DEPLOYMENT")) {
     const status = await checkToken();
     if (status === "unauthorized") {
@@ -226,10 +220,6 @@ async function verifyConvex(ctx: VerifyContext): Promise<Check[]> {
     }
   }
 
-  // Enumerate the project's deployments via the Platform API to catch a
-  // duplicate dev deployment (the EAS Convex integration spins up a second one
-  // alongside a personal `convex dev` deployment). Skips silently when the
-  // management token isn't available (offline / not logged in).
   const deploymentName = deploymentSlug(local.get("CONVEX_DEPLOYMENT"));
   if (deploymentName) {
     const deployments = await listProjectDeployments(deploymentName);
@@ -268,8 +258,6 @@ async function verifyResend(ctx: VerifyContext): Promise<Check[]> {
   const expectedSiteUrl = local.get("EXPO_PUBLIC_CONVEX_SITE_URL");
 
   if (!apiKey) {
-    // Lite mode marker: `REQUIRE_EMAIL_VERIFICATION` is unset, sign-up
-    // auto-verifies, no Resend needed. Skip rather than fail.
     const requireEmailVerification = env.get("REQUIRE_EMAIL_VERIFICATION");
     if (!requireEmailVerification || requireEmailVerification === "false") {
       checks.push(skip("resend", "api-key-set", "lite mode (run `npx vexpo full` to provision)"));
@@ -362,10 +350,6 @@ async function verifyResend(ctx: VerifyContext): Promise<Check[]> {
     const match = webhooks.find((w) => w.endpoint === expectedEndpoint);
     if (!match) {
       const others = webhooks.map((w) => w.endpoint);
-      // The key's account has resend-webhooks for OTHER convex.site deployments but
-      // none for this one. That's the classic post-migration drift: the deployment
-      // slug changed and the webhook didn't follow. The fix is to repoint, not to
-      // swap keys. (Only suspect the wrong account if the domain check also fails.)
       const staleConvex = others.filter(
         (e) => e.includes(".convex.site") && e.endsWith("/resend-webhook"),
       );
@@ -425,8 +409,6 @@ async function verifyApple(ctx: VerifyContext): Promise<Check[]> {
   const jwt = env?.get("APPLE_CLIENT_SECRET");
 
   if (env === null) {
-    // The ASC-key checks below run on local creds, so only the env-derived
-    // checks go quiet.
     checks.push(
       skip("apple", "convex-env", `Convex env unreadable on ${ctx.channel}; env checks skipped`),
     );
@@ -441,8 +423,6 @@ async function verifyApple(ctx: VerifyContext): Promise<Check[]> {
     checks.push(warn("apple", "services-id-format", `APPLE_SERVICES_ID looks malformed`));
 
   if (env === null) {
-    // jwt is unknowable with the env unreadable; the convex-env skip above
-    // already says why, so don't mislabel it "Apple Sign In disabled".
   } else if (jwt) {
     const decoded = decodeJwt(jwt);
     if (!decoded) {
@@ -506,9 +486,6 @@ async function verifyApple(ctx: VerifyContext): Promise<Check[]> {
 
       if (servicesId) {
         try {
-          // Apple rejects `filter[platform]=SERVICES` on POST/list now.
-          // Filter by identifier only; the result already uniquely identifies
-          // the Services ID since identifiers are globally unique.
           const matches = await client.bundleIds.list({ identifier: servicesId });
           if (matches.length > 0)
             checks.push(ok("apple", "services-id-exists", `${servicesId} found in ASC`));
@@ -549,13 +526,8 @@ async function verifyEas(ctx: VerifyContext): Promise<Check[]> {
   let projectId: string | null = null;
   try {
     projectId = await resolveProjectId();
-  } catch {
-    // leave null; we still probe EAS env below before deciding lite vs fail
-  }
+  } catch {}
 
-  // Lite mode (no projectId AND no sign of provisioning) skips before any EAS
-  // shell-out, so the read path stays fast and offline-safe. REQUIRE_EMAIL_VERIFICATION
-  // unset on Convex is the lite-setup marker.
   if (!projectId) {
     const rev = convexEnvFor(ctx)?.get("REQUIRE_EMAIL_VERIFICATION");
     if (!rev || rev === "false") {
@@ -564,9 +536,6 @@ async function verifyEas(ctx: VerifyContext): Promise<Check[]> {
     }
   }
 
-  // Account-level, needs no projectId: a logged-out eas-cli fails every later
-  // EAS phase non-interactively, so say it first. Runs after the lite-mode
-  // return so lite doctor stays free of EAS shell-outs.
   let signedIn = false;
   try {
     const who = await easWhoami();
@@ -580,9 +549,6 @@ async function verifyEas(ctx: VerifyContext): Promise<Check[]> {
     checks.push(skip("eas", "signed-in", "eas CLI not available"));
   }
 
-  // Fetch all three EAS env maps once. eas-cli resolves the project itself, so
-  // this can succeed even when vexpo's projectId resolution returns null (a
-  // stubbed app.json with EAS_PROJECT_ID only in the shell).
   const envNames = ["production", "preview", "development"] as const;
   const envMaps = new Map<(typeof envNames)[number], Map<string, string> | null>();
   for (const e of envNames) envMaps.set(e, await easEnvList(e));
@@ -591,9 +557,6 @@ async function verifyEas(ctx: VerifyContext): Promise<Check[]> {
   if (projectId) {
     checks.push(ok("eas", "project-id", projectId));
   } else if (provisioned) {
-    // Provisioned but unresolved: don't skip the whole group. A stubbed app.json
-    // with no EAS_PROJECT_ID is how stale EAS env + a missing ASC link stayed
-    // hidden, so run the env + integration checks anyway.
     checks.push(
       warn(
         "eas",
@@ -609,8 +572,6 @@ async function verifyEas(ctx: VerifyContext): Promise<Check[]> {
     return checks;
   }
 
-  // project-info needs a resolved projectId; best-effort,
-  // never short-circuit the env + integration checks below.
   if (projectId) {
     try {
       const info = await easProjectInfo();
@@ -624,11 +585,7 @@ async function verifyEas(ctx: VerifyContext): Promise<Check[]> {
             "run `eas init` to re-link (or `vexpo full`)",
           ),
         );
-      else if (!signedIn)
-        // Every EAS call fails the same way when logged out. Guessing at a
-        // deleted project here sent a real run hunting for a project that was
-        // fine, so defer to the check above instead.
-        checks.push(skip("eas", "project-info", "not signed in"));
+      else if (!signedIn) checks.push(skip("eas", "project-info", "not signed in"));
       else
         checks.push(
           warn("eas", "project-info", "eas project:info failed (project deleted or transferred?)"),
@@ -657,9 +614,6 @@ async function verifyEas(ctx: VerifyContext): Promise<Check[]> {
         ),
       );
 
-    // Value drift, not just presence: does the EAS-stored Convex URL point at the
-    // same deployment the local env file does? Presence alone passed green while
-    // EAS still pointed at the OLD project after a migration.
     const expected = (env === "development" ? ctx.envLocal : ctx.envProd).get(
       "EXPO_PUBLIC_CONVEX_URL",
     );
@@ -681,9 +635,6 @@ async function verifyEas(ctx: VerifyContext): Promise<Check[]> {
       }
     }
 
-    // The JWT rotation cron + the deploy_convex step in deploy-production.yml
-    // both read these from EAS env (production, secret visibility). Names appear
-    // in `eas env:list` even when the value is masked, so presence is checkable.
     if (env === "production") {
       const rotationSecrets = [
         "CONVEX_DEPLOY_KEY",
@@ -707,16 +658,12 @@ async function verifyEas(ctx: VerifyContext): Promise<Check[]> {
     }
   }
 
-  // ASC integration: lets `eas submit` resolve the app interactively. warn (not
-  // fail) since not every project ships.
   try {
     const status = await ascStatus();
     if (status.status === "connected") {
       checks.push(
         ok("eas", "asc-integration", status.appStoreConnectApp?.bundleIdentifier ?? "connected"),
       );
-      // Non-interactive submit (CI) reads the app id only from eas.json's submit
-      // profile, the integration doesn't satisfy it. Nudge if a profile lacks it.
       const missing = existsSync("eas.json")
         ? submitProfilesMissingAscAppId(readFileSync("eas.json", "utf8"))
         : [];
@@ -751,8 +698,6 @@ async function verifyEas(ctx: VerifyContext): Promise<Check[]> {
 
 function verifyCoherence(ctx: VerifyContext): Check[] {
   const checks: Check[] = [];
-  // Every coherence check needs both sides present before it emits anything,
-  // so an unreadable env (null) degrades to "no cross-checks", never a fail.
   const env = convexEnvFor(ctx) ?? new Map<string, string>();
   const local = ctx.channel === "prod" ? ctx.envProd : ctx.envLocal;
 
@@ -806,9 +751,6 @@ function verifyCoherence(ctx: VerifyContext): Check[] {
   else if (localServices && convexServices)
     checks.push(ok("coherence", "services-id-match", localServices));
 
-  // SITE_URL on Convex is the *app* URL (e.g. vexpo://), a different thing from
-  // the deployment site URL. Worth a note only when it also doesn't match the
-  // local app scheme (EXPO_PUBLIC_SITE_URL).
   const expoSite = local.get("EXPO_PUBLIC_CONVEX_SITE_URL");
   const convexSite = env.get("SITE_URL");
   const localSite = local.get("EXPO_PUBLIC_SITE_URL");
@@ -830,9 +772,6 @@ function verifyCoherence(ctx: VerifyContext): Check[] {
 
   if (ctx.appConfig.name) {
     const convexName = env.get("APP_NAME");
-    // app.config.ts is evaluated without APP_VARIANT set, so the name reflects
-    // the prod variant. On dev, accept the prod name OR the prod name with a
-    // " (Dev)" / " Dev" suffix, since templates branch with `IS_DEV ? "X (Dev)" : "X"`.
     const expected = ctx.appConfig.name;
     const matches =
       convexName === expected ||
@@ -885,11 +824,6 @@ function verifyFiles(ctx: VerifyContext): Check[] {
 }
 
 export async function readContext(channel: Channel): Promise<VerifyContext> {
-  // A dev CONVEX_DEPLOY_KEY in .env.local shadows `--prod`, so reading prod env
-  // via bare `--prod` silently returns the DEV deployment. Point the Convex CLI
-  // at the prod env file (it carries the prod deploy key) so prod checks hit the
-  // real prod deployment. With no prod file we can't reach prod, so the map stays
-  // empty rather than masquerading dev env as prod (mirrors env push readRemoteState).
   const prodEnvFile = existsSync(".env.prod")
     ? ".env.prod"
     : existsSync(".env.production")
@@ -899,8 +833,6 @@ export async function readContext(channel: Channel): Promise<VerifyContext> {
     [
       readEnvFile(".env.local"),
       readEnvFile(".env.prod").then(async (m) => (m.size > 0 ? m : readEnvFile(".env.production"))),
-      // A null from envMap means the read failed; keep it null so checks
-      // report "unreadable" instead of failing every var as unset.
       convexEnvMap().catch(() => null),
       prodEnvFile
         ? convexEnvMap({ prod: true, envFile: prodEnvFile } satisfies ConvexTarget).catch(

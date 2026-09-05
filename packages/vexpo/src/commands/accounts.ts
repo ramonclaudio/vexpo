@@ -156,8 +156,6 @@ async function walkDomain(): Promise<{ ready: boolean }> {
   return { ready };
 }
 
-// Returns the final auth status so the caller records the post-login snapshot
-// without re-spawning the CLI.
 async function walkConvex(): Promise<AccountStatus> {
   if ((await statusConvex()).status === "ok") {
     ok("Convex CLI logged in");
@@ -193,8 +191,6 @@ async function walkConvex(): Promise<AccountStatus> {
   return "missing";
 }
 
-// Returns the final auth status so the caller records the post-login snapshot
-// without re-spawning eas whoami.
 async function walkExpo(): Promise<AccountStatus> {
   const cur = await statusExpo();
   if (cur.status === "ok") {

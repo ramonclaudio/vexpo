@@ -1,10 +1,3 @@
-/**
- * We do not create the key in App Store Connect. That has no API path. You
- * create it once in the ASC web UI; we validate from there. We also don't
- * upload the key to EAS (that's `eas credentials`): the key being valid here
- * doesn't mean EAS knows about it.
- */
-
 import { validate as validateAsc, type AscCredentials } from "../../lib/asc-api.ts";
 import { loadAscCreds } from "../../lib/asc-state.ts";
 import { fileExists } from "../../lib/fs.ts";
@@ -85,7 +78,6 @@ async function promptCredsInteractive(): Promise<AscCredentials | null> {
   return { issuerId, keyId, privateKey: { path: p8Path } };
 }
 
-// Env override lets a CI run point at a key without writing setup state.
 export function ascCredsFromEnv(): AscCredentials | null {
   const issuerId = process.env.APPLE_ASC_ISSUER_ID;
   const keyId = process.env.APPLE_ASC_KEY_ID;

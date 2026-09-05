@@ -29,27 +29,12 @@ afterEach(() => {
   vi.clearAllMocks();
 });
 
-// Fixtures match the OBSERVED `eas integrations:asc:status --json` output
-// at eas-cli v19.0.0, captured 2026-05-19 by running the command against
-// this project. Differs from `buildJsonOutput`'s return shape because
-// `sanitizeValue` strips `null` fields before stdout. Locking the contract
-// here catches schema drift the moment an eas-cli release changes either
-// the source shape or the sanitizer's behavior.
-
-// Empirical capture (2026-05-19, eas-cli@19.0.0, ramonclaudio/vexpo):
-//   { "action": "status",
-//     "project": "@ramonclaudio/vexpo",
-//     "status": "not-connected" }
-// Note: `appStoreConnectApp` is absent, not `null`.
 const disconnectedFixture: AscStatus = {
   action: "status",
   project: "@testuser/testapp",
   status: "not-connected",
 };
 
-// Synthesized from `buildJsonOutput` plus `sanitizeValue`'s null-stripping
-// behavior. `name` and `bundleIdentifier` are present when Apple returns
-// them non-null (the common case for any real app).
 const connectedFixture: AscStatus = {
   action: "status",
   project: "@testuser/testapp",
@@ -63,9 +48,6 @@ const connectedFixture: AscStatus = {
   },
 };
 
-// Invalid = revoked or rejected ASC API key. Shape mirrors disconnected
-// since `buildInvalidJsonOutput` also passes `appStoreConnectApp: null`
-// which the sanitizer strips.
 const invalidFixture: AscStatus = {
   action: "status",
   project: "test-project-id",

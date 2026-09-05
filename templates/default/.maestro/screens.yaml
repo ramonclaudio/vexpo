@@ -1,47 +1,3 @@
-# The screens the other flows never reach: help, debug, and change-password.
-#
-# Runs after tour and before zz-delete-restore, so it inherits the account
-# auth.yaml created and leaves it alone. It changes nothing: change-password is
-# opened and cancelled, and help's two rows open the system mail composer, so
-# they are asserted rather than tapped.
-#
-# Three screens are deliberately NOT here, and none of them can be driven from
-# a dev-client build:
-#
-#   - `linked` has no route into it from the UI at all. It is the deep-link
-#     demo screen.
-#   - `forgot-password` and `reset-password` redirect to sign-in on mount in
-#     lite mode (`REQUIRE_EMAIL_VERIFICATION` unset), and the sign-in screen
-#     hides the link that reaches them, so a deep link is the only way in.
-#
-# `openLink` cannot get to any of them here. expo-dev-launcher claims the app's
-# scheme on a development build, so `vexpo://linked` opens the launcher and
-# raises an "Open in Vexpo?" SpringBoard alert, which sits outside the
-# accessibility tree Maestro queries: it cannot see or tap the buttons, and
-# every step after it fails with the app apparently on the home screen.
-# Verified, not assumed. On a release build the scheme routes straight in, so
-# these three are reachable from `.eas/workflows/e2e-tests.yml`, which builds
-# `preview:simulator`. Until then `__tests__/lib/deep-link.test.ts` covers the
-# path validation and the query reattach directly.
-#
-# `+not-found` is unreachable by design: `+native-intent.tsx` rewrites every
-# unknown path to `/` before the router sees it. Same unit test covers that.
-#
-# Native tab taps report COMPLETED without switching often enough to matter
-# (launch.yaml says the same), so every hop back to settings here retries until
-# the screen is actually up rather than tapping once and asserting.
-#
-# Everything asserted below is a real control. In `@expo/ui`, a `testID` on a
-# `Text` never reaches Maestro's hierarchy: Host roots, Button, TextField and
-# DisclosureGroup surface theirs, a `Text` inside any of them does not. So
-# `debug-version-value` and `help-faq-heading` are unassertable by id or by
-# copy, and this flow asserts the components around them instead.
-#
-# Run locally (needs a signed-in simulator session):
-#   npm run e2e -- .maestro/screens.yaml
-#   Or the whole suite in order, which seeds that session first:
-#   npm run e2e
-# Run on EAS: via `.eas/workflows/e2e-tests.yml` (workflow_dispatch only).
 appId: ${MAESTRO_APP_ID}
 ---
 - launchApp
@@ -50,8 +6,6 @@ appId: ${MAESTRO_APP_ID}
 - extendedWaitUntil:
     visible: "Home"
     timeout: 30000
-# A genuinely missing session leaves us on sign-in. Checked after the guard
-# settles, so a failure here means "run auth.yaml first".
 - assertNotVisible:
     id: "sign-in-screen"
 - repeat:
@@ -63,33 +17,22 @@ appId: ${MAESTRO_APP_ID}
       - tapOn: "Settings"
       - waitForAnimationToEnd:
           timeout: 5000
-# The loop re-checks its condition the moment the tap lands, so give the screen
-# its own settle window rather than asserting on that same frame.
 - extendedWaitUntil:
     visible:
       id: "settings-screen"
     timeout: 20000
 
-# --- Help ----------------------------------------------------------------
-# Capsule row, tap by text. The two support rows open the system mail composer
-# and the browser, neither of which Maestro can drive, and both are conditional
-# on `extra.support` being filled in, so this stays on the FAQ.
 - tapOn: "Help & Feedback"
 - extendedWaitUntil:
     visible:
       id: "help-screen"
     timeout: 15000
-# The FAQ is the only part that always renders. The two support rows are
-# conditional on `extra.support` in app.config.ts, which a fresh scaffold
-# leaves empty, so asserting them would fail on the template's own defaults.
 - assertVisible:
     id: "help-faq-delete-account"
 - assertVisible:
     id: "help-faq-notifications"
 - assertNotVisible:
     id: "help-link-error"
-# A DisclosureGroup publishes its own state as a child node, so opening one is
-# assertable where its answer copy is not.
 - assertVisible:
     id: "collapsed"
 - tapOn:
@@ -108,21 +51,12 @@ appId: ${MAESTRO_APP_ID}
       - tapOn: "Settings"
       - waitForAnimationToEnd:
           timeout: 5000
-# The loop re-checks its condition the moment the tap lands, so give the screen
-# its own settle window rather than asserting on that same frame.
 - extendedWaitUntil:
     visible:
       id: "settings-screen"
     timeout: 20000
 
-# --- Debug ---------------------------------------------------------------
-# The row only renders while the debug preference is on, which is the template
-# default. It reads build and device facts, so nothing here writes.
 - tapOn: "Debug"
-# The screen root is the whole assertable surface: every row is an InfoRow,
-# which puts its testID on an inner Text. Rendering at all is the real check
-# here, because the rows read Constants, Device, Application and Updates, and a
-# throw in any of them takes the screen down.
 - extendedWaitUntil:
     visible:
       id: "debug-screen"
@@ -137,18 +71,11 @@ appId: ${MAESTRO_APP_ID}
       - tapOn: "Settings"
       - waitForAnimationToEnd:
           timeout: 5000
-# The loop re-checks its condition the moment the tap lands, so give the screen
-# its own settle window rather than asserting on that same frame.
 - extendedWaitUntil:
     visible:
       id: "settings-screen"
     timeout: 20000
 
-# --- Change password -----------------------------------------------------
-# Reached from the profile danger zone, and only rendered when the account has
-# a credential provider (`auth.hasPassword`). auth.yaml signs up with email and
-# password, so it does. Opened and cancelled: changing it would break the
-# sign-in in zz-delete-restore.
 - tapOn:
     id: "settings-profile"
 - extendedWaitUntil:
@@ -185,14 +112,11 @@ appId: ${MAESTRO_APP_ID}
       - tapOn: "Settings"
       - waitForAnimationToEnd:
           timeout: 5000
-# The loop re-checks its condition the moment the tap lands, so give the screen
-# its own settle window rather than asserting on that same frame.
 - extendedWaitUntil:
     visible:
       id: "settings-screen"
     timeout: 20000
 
-# Back to settings so zz-delete-restore starts where it expects.
 - repeat:
     times: 5
     while:
@@ -202,8 +126,6 @@ appId: ${MAESTRO_APP_ID}
       - tapOn: "Settings"
       - waitForAnimationToEnd:
           timeout: 5000
-# The loop re-checks its condition the moment the tap lands, so give the screen
-# its own settle window rather than asserting on that same frame.
 - extendedWaitUntil:
     visible:
       id: "settings-screen"

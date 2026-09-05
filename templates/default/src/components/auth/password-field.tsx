@@ -45,12 +45,6 @@ type Props = {
   onTextChange: (next: string) => void;
   onSubmit?: () => void;
   submitLabelType?: SubmitLabel;
-  /**
-   * iOS text content type. `"password"` (default) hooks into keychain
-   * autofill for existing credentials. `"newPassword"` triggers Strong
-   * Password generation and saves the new credential on success. Use it
-   * for the sign-up and reset flows.
-   */
   contentType?: ContentType;
   disabled?: boolean;
   accessibilityLabel?: string;
@@ -58,14 +52,6 @@ type Props = {
   testID?: string;
 };
 
-/**
- * Password input with an inline eye toggle to reveal what was typed.
- *
- * The toggle swaps between SecureField (masked) and TextField (visible), two
- * different native views. Both bind to the same `useNativeState`, so the native
- * value survives the swap. Without it, React unmounts one and mounts the other
- * and the new field starts empty.
- */
 export function PasswordField({
   placeholder = "••••••••",
   onTextChange,
@@ -87,10 +73,6 @@ export function PasswordField({
   const pendingRefocus = useRef(false);
   const didMount = useRef(false);
 
-  // The eye toggle swaps SecureField <-> TextField, two different native views.
-  // React unmounts the focused one and mounts the other, so iOS drops the
-  // keyboard and caret. When the field was focused at the tap, refocus the
-  // now-active field after the swap so typing isn't interrupted.
   useEffect(() => {
     if (!didMount.current) {
       didMount.current = true;

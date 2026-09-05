@@ -14,16 +14,6 @@ import { useColors } from "@/hooks/use-theme";
 import { announce } from "@/lib/a11y";
 import { useDynamicFont } from "@/lib/dynamic-font";
 
-// HIG: notification banners overlay the navigation layer with a translucent
-// material so context behind the alert remains visible. `Material` carries
-// positioning and the chrome surface. VoiceOver on iOS gets the appearance
-// announcement from `announce()`. The Android live region is the fallback.
-// The visible label renders through `Host` so it uses SwiftUI's text system
-// and respects Dynamic Type.
-//
-// The wrapper carries position and the enter/exit motion. It has to be an RN
-// view for that: a SwiftUI subtree inside `Host` can't animate its own
-// insertion, since `@expo/ui` exposes no `transition` modifier.
 export function OfflineBanner({ testID }: { testID?: string } = {}) {
   const { isOffline } = useNetwork();
   const insets = useSafeAreaInsets();
@@ -31,7 +21,6 @@ export function OfflineBanner({ testID }: { testID?: string } = {}) {
   const dfont = useDynamicFont();
   const motion = useBannerMotion("top");
 
-  // Above the early return so the hook runs unconditionally (rules of hooks).
   useEffect(() => {
     if (isOffline) announce("You're offline");
   }, [isOffline]);

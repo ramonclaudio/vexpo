@@ -38,11 +38,6 @@ export function resolveTeamIdInput(raw: string, fromConfig: string | null): Team
   return { kind: "ok", value };
 }
 
-/**
- * `--local` on `convex dev` is a deprecated option that crashes (convex 1.39+),
- * so a local target is selected the supported way: `--dev-deployment local` when
- * provisioning fresh, or a prior `convex deployment select local` for an existing one.
- */
 export function planConvexDev(
   options: { local?: boolean },
   needsProvisioning: boolean,
@@ -52,20 +47,12 @@ export function planConvexDev(
   const devArgs = ["convex", "dev", "--once", "--tail-logs", "disable"];
   if (needsProvisioning) {
     devArgs.push("--configure", "new", "--project", projectName);
-    // `--team` is the documented way to skip the interactive team picker that
-    // `convex dev --configure new` shows for multi-team accounts. Without it a
-    // non-TTY run (CI, `vexpo lite` from a script) dies on the `(Team:)` prompt.
     if (team) devArgs.push("--team", team);
     devArgs.push("--dev-deployment", options.local ? "local" : "cloud");
   }
   return { selectLocalFirst: !!options.local && !needsProvisioning, devArgs };
 }
 
-/**
- * A local deployment serves on 127.0.0.1 (api on 3210, http actions on 3211),
- * not a `*.convex.cloud`/`*.convex.site` host. Writing the cloud URLs for a
- * `--local` run points the app at a deployment that doesn't exist.
- */
 export function convexUrls(slug: string, local: boolean): { url: string; siteUrl: string } {
   if (local) return { url: "http://127.0.0.1:3210", siteUrl: "http://127.0.0.1:3211" };
   return { url: `https://${slug}.convex.cloud`, siteUrl: `https://${slug}.convex.site` };
@@ -99,10 +86,6 @@ export async function runConvex(options: ConvexOptions): Promise<number> {
     ]);
     existing = undefined;
   } else if (!existing) {
-    // eas-cli 21's `integrations:convex:connect` leaves only CONVEX_DEPLOY_KEY
-    // behind. The key names its deployment, so connect to it instead of
-    // provisioning a fresh project, which an EAS-managed team rejects with
-    // "is managed by oauth:..." (or a login prompt in non-TTY runs).
     const derived = deploymentRefFromDeployKey(localEnv.get("CONVEX_DEPLOY_KEY"));
     if (derived?.startsWith("dev:")) {
       await ensureLine("CONVEX_DEPLOYMENT", derived);
@@ -113,7 +96,6 @@ export async function runConvex(options: ConvexOptions): Promise<number> {
 
   const needsProvisioning = !existing;
   const projectName = options.name ?? (await pkgName());
-  // Skip the interactive team picker when CONVEX_TEAM is set (CI / scripts).
   const team = (process.env.CONVEX_TEAM ?? localEnv.get("CONVEX_TEAM"))?.trim() || undefined;
 
   const plan = planConvexDev(options, needsProvisioning, projectName, team);
@@ -234,8 +216,6 @@ export async function ensureIdentity(localEnv: Map<string, string>): Promise<voi
       ok(`wrote EXPO_PUBLIC_APP_BUNDLE_ID=${bundleId}`);
     }
   } else {
-    // The value in .env.local is the one we push below. Say so instead of a
-    // bare "already set" that hides which id actually lands on Convex.
     ok(`EXPO_PUBLIC_APP_BUNDLE_ID=${bundleId} (from .env.local); syncing to Convex`);
   }
 

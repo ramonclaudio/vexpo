@@ -1,17 +1,3 @@
-/**
- * Real e2e against the live Convex Platform API. Opt-in and reversible: skips
- * unless you're logged in (~/.convex/config.json) AND set VEXPO_E2E_CONVEX=1 AND
- * VEXPO_E2E_DEPLOYMENT=<a dev deployment slug>. It also needs `templates/default`
- * to have its dependencies installed, because that is the project the Convex CLI
- * runs from. The enumerate test is read-only and the env probe reverses itself in
- * a finally. Never point it at a prod slug.
- *
- * The slug is the bare name, not what `.env.local` holds: `CONVEX_DEPLOYMENT`
- * there is `dev:<slug>` followed by a `#` comment naming the team and project.
- *
- *   VEXPO_E2E_CONVEX=1 VEXPO_E2E_DEPLOYMENT=happy-otter-123 npx vitest run e2e
- */
-
 import {
   existsSync,
   mkdirSync,
@@ -46,13 +32,6 @@ function loggedIn(): boolean {
   }
 }
 
-// Two constraints decide where `convex env` can run from, and they rule out
-// both obvious answers. The CLI refuses to run outside a project that declares
-// `convex`, so not the package. And `--deployment` resolves through the Platform
-// API on the user login, which a project holding a CONVEX_DEPLOY_KEY in
-// `.env.local` never reaches (it authenticates as the key instead), so not the
-// template scaffold either. What is left is a throwaway project that declares
-// the dependency and borrows the template's installed copy.
 const TEMPLATE = join(import.meta.dirname, "..", "..", "..", "..", "templates", "default");
 const installed = existsSync(join(TEMPLATE, "node_modules", "convex"));
 
@@ -97,9 +76,6 @@ describe.skipIf(!RUN)("convex platform API (real)", () => {
     expect(prod === null || typeof prod === "string").toBe(true);
   });
 
-  // The `convex env` set/list/remove path is what `vexpo better-auth` and every
-  // env-push step drives. Set a probe var on the dev deployment, read it back,
-  // then remove it (reversible in a finally).
   it("sets then removes a Convex env var (reversible)", async () => {
     const target = { deployment: DEPLOYMENT };
     const name = "VEXPO_E2E_PROBE";

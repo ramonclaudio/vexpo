@@ -1,20 +1,3 @@
-/**
- * App Store Connect REST client. Covers the endpoints vexpo provisions
- * outside of EAS: the Sign In with Apple Services ID (a `BundleId` resource
- * with `platform === "SERVICES"`) and the `APPLE_ID_AUTH` capability bound
- * to the App's primary BundleId.
- *
- * Token lifetime is memoized in-process and re-signed at exp - 60s.
- * Errors come back from ASC as `{errors: [{status, code, title, detail, source}]}`,
- * which we parse into AscApiError so callers can branch on `.code`.
- *
- * Retry: 5 attempts on 429/502/503/504, honoring Retry-After. 401 forces
- * a single re-sign in case of clock skew, then bails. Other 4xx are
- * deterministic and never retried.
- *
- * https://developer.apple.com/documentation/appstoreconnectapi
- */
-
 import { signAscToken, type AscJwtArgs } from "./asc-jwt.ts";
 import {
   REQUEST_TIMEOUT_MS,
@@ -159,9 +142,6 @@ export function makeAscClient(creds: AscCredentials) {
         lastStatus = res.status;
         lastText = await res.text();
         const delay = retryDelay(res, attempt);
-        // Bail with the real error when the Retry-After is over cap (would hang
-        // the CLI for minutes) or this was the last attempt (nothing left to
-        // wait for). Otherwise sleep and retry.
         if (delay === null || attempt === 4) break;
         await sleep(delay);
         continue;
@@ -239,11 +219,6 @@ export function makeAscClient(creds: AscCredentials) {
 
     bundleIdCapabilities: {
       async list(bundleIdResourceId: string): Promise<AscBundleIdCapability[]> {
-        // This relationship endpoint rejects a `limit` query param (Apple
-        // tightened the validation), so fetch direct instead of via
-        // paginatedList. The paginated top-level list endpoints
-        // (betaGroups/betaTesters, builds/betaBuildLocalizations, bundleIds,
-        // apps) still accept and want `limit`.
         const res = await request<{ data: AscBundleIdCapability[] }>(
           "GET",
           `/v1/bundleIds/${bundleIdResourceId}/bundleIdCapabilities`,
@@ -299,10 +274,6 @@ export async function validate(creds: AscCredentials): Promise<ValidateResult> {
     return { ok: true, appCount: apps.length };
   } catch (err) {
     if (err instanceof AscApiError) {
-      // A 403 is "authenticated but forbidden" and has several causes; surface
-      // Apple's actual code rather than guessing. A missing/expired agreement
-      // (common after Apple updates the Developer Program License Agreement)
-      // returns 403 for every endpoint regardless of key role.
       const reason =
         err.status === 401
           ? "invalid token (check keyId, issuerId, and .p8)"

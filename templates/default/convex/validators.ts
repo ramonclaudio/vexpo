@@ -1,7 +1,6 @@
 import { literals } from "convex-helpers/validators";
 import { v } from "convex/values";
 
-// Name changes go through Better Auth (authClient.updateUser) directly.
 export const userProfileUpdateFields = {
   bio: v.optional(v.string()),
 };

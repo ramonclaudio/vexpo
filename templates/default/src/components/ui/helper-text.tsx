@@ -5,8 +5,6 @@ import { foregroundStyle } from "@expo/ui/swift-ui/modifiers";
 import { useDynamicFont } from "@/lib/dynamic-font";
 import { useColors } from "@/hooks/use-theme";
 
-// The muted 13pt caption under a form field. Base modifiers come first so
-// callers can append their own (e.g. padding to align under a section).
 export function HelperText({
   children,
   modifiers,

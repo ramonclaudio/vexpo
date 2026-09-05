@@ -15,7 +15,7 @@ function entryFor(key: string, value: string, channel: "dev" | "prod" = "dev") {
 
 describe("planRowValue", () => {
   it("never prints raw convex-routed secret values, even short ones", () => {
-    const secret = "fake-resend-key-000000aa"; // 24-char fixture, under shortValue's 60; gitleaks:allow
+    const secret = "fake-resend-key-000000aa";
     const rendered = planRowValue(entryFor("RESEND_API_KEY", secret));
     expect(rendered).not.toContain(secret);
     expect(rendered).toContain("fp:");

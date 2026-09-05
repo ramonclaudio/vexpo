@@ -1,64 +1,16 @@
-# Signed-in app tour: walk the authenticated surface without mutating auth.
-# Search -> Settings -> Preferences (appearance + haptics) -> Privacy
-# (analytics toggle) -> Profile (edit + save bio) -> Sessions, then screenshot.
-#
-# Requires an existing signed-in session: this flow launches WITHOUT clearState
-# and asserts the home tab. It does NOT sign in. Run `auth.yaml` first to seed a
-# session. Order comes from ORDERED_FLOWS in scripts/e2e.mjs, not from the
-# filename: Maestro plans a folder in REVERSE alphabetical order, so the old
-# `tour.yaml` ('t' > 'a') rename put this BEFORE auth.yaml, not after, and it
-# failed on every run. As a safety net the flow fails fast with a clear message
-# if it lands on the sign-in screen instead of the tabs.
-#
-# @expo/ui SwiftUI driving notes (same as auth.yaml/launch.yaml):
-#   - Inner SwiftUI Text testIDs do NOT surface to Maestro; only Host roots and
-#     real controls (TextField, Button, Toggle, Picker) do. Assert screens by
-#     their Host `id`, assert static copy by `text`.
-#   - Capsule list rows hold a Spacer in the middle, so tap them by label TEXT,
-#     not id. ProminentButtons and full-content Buttons hold content in the
-#     center, so tap those by `id`.
-#   - Segmented Picker segments put their label in the middle: tap by label TEXT
-#     (`tapOn: "Dark"`), not by the inner Text testID.
-#   - Toggles are real controls: tap by `id`.
-#   - The keyboard covers lower fields. Forms use
-#     scrollDismissesKeyboard("interactively"), so a downward swipe dismisses it
-#     (hideKeyboard is flaky on iOS, don't use it).
-#   - waitForAnimationToEnd between navigations; assert-then-tap for tab bars;
-#     extendedWaitUntil with generous timeouts after anything that hits Convex.
-#
-# Env vars:
-#   MAESTRO_APP_ID   bundle id (EAS injects from EXPO_PUBLIC_APP_BUNDLE_ID)
-#
-# Run locally (needs a signed-in simulator session):
-#   npm run e2e -- .maestro/tour.yaml
-#   Or the whole suite in order, which seeds that session first:
-#   npm run e2e
-# Run on EAS: via `.eas/workflows/e2e-tests.yml` (workflow_dispatch only).
 appId: ${MAESTRO_APP_ID}
 ---
-# Resume on whatever was last open (no clearState). Give the JS bundle and the
-# auth guard time to settle.
 - launchApp
 - waitForAnimationToEnd:
     timeout: 15000
 
-# The session rehydrates from the keychain on relaunch, so the auth guard is
-# still resolving on the first frame and can render sign-in for a beat before it
-# swaps to the tabs. Wait for the tab bar before deciding anything, or the
-# safety net below races the guard and fails on a session that is about to
-# arrive.
 - extendedWaitUntil:
     visible: "Home"
     timeout: 30000
 
-# Safety net: a genuinely missing session leaves us on sign-in. Checked after the
-# guard settles, so a failure here means "run auth.yaml first", not "we looked
-# too early".
 - assertNotVisible:
     id: "sign-in-screen"
 
-# launchApp may resume on a nested screen. Get back to the tabs root via the
-# Home tab, then assert the home Host id.
 - tapOn: "Home"
 - waitForAnimationToEnd:
     timeout: 5000
@@ -67,9 +19,6 @@ appId: ${MAESTRO_APP_ID}
       id: "home-screen"
     timeout: 30000
 
-# --- 1. Search tab -------------------------------------------------------
-# Search is a native large-title Stack.SearchBar above a Host list. Tap the tab,
-# assert the screen root, then drive the search field by its placeholder.
 - assertVisible: "Search"
 - tapOn: "Search"
 - waitForAnimationToEnd:
@@ -79,8 +28,6 @@ appId: ${MAESTRO_APP_ID}
       id: "search-screen"
     timeout: 15000
 
-# Tap the native search field (matched by its placeholder), type a query, then
-# swipe-dismiss the keyboard. The list filters live; assert the screen survives.
 - tapOn: "Search screens"
 - inputText: "privacy"
 - swipe:
@@ -90,19 +37,12 @@ appId: ${MAESTRO_APP_ID}
     timeout: 3000
 - assertVisible:
     id: "search-screen"
-# A result for "privacy" should rank. The result row carries a stable id.
 - assertVisible:
     id: "search-result-privacy"
-# Active search replaces the tab bar, so dismiss it before navigating on.
-# `Stack.SearchBar` renders UIKit's own dismiss button and its label is not
-# ours: it reads "Close" on the local simulator and "Cancel" on the one EAS
-# provisions, so match either. There is no testID to aim at, the button belongs
-# to UIKit rather than the screen.
 - tapOn: "Cancel|Close"
 - waitForAnimationToEnd:
     timeout: 3000
 
-# --- 2. Settings tab -----------------------------------------------------
 - assertVisible: "Settings"
 - tapOn: "Settings"
 - waitForAnimationToEnd:
@@ -112,8 +52,6 @@ appId: ${MAESTRO_APP_ID}
       id: "settings-screen"
     timeout: 15000
 
-# --- 3. Preferences ------------------------------------------------------
-# Open via the settings row. Capsule row with a Spacer, so tap by label text.
 - assertVisible: "Preferences"
 - tapOn: "Preferences"
 - waitForAnimationToEnd:
@@ -124,8 +62,6 @@ appId: ${MAESTRO_APP_ID}
     timeout: 15000
 - assertVisible: "APPEARANCE"
 
-# Appearance is a segmented Picker. Segment labels live in the middle of each
-# segment, so tap by text: System -> Dark -> back to System.
 - tapOn: "Dark"
 - waitForAnimationToEnd:
     timeout: 3000
@@ -133,8 +69,6 @@ appId: ${MAESTRO_APP_ID}
 - waitForAnimationToEnd:
     timeout: 3000
 
-# Haptics is a real Toggle in a capsule row, so tap by id. Toggle off, toggle
-# back on. The screen redraws under it but the Host id stays stable.
 - assertVisible: "HAPTICS"
 - tapOn:
     id: "preferences-haptics"
@@ -145,11 +79,6 @@ appId: ${MAESTRO_APP_ID}
 - waitForAnimationToEnd:
     timeout: 2000
 
-# Back to Settings. Tap the Settings tab rather than edge-swiping: the swipe
-# registers on the local simulator and not on the one EAS provisions, which is
-# where this flow used to die. Both the header back button and the tab read
-# "Settings", and either lands on the settings root, so the ambiguity is
-# harmless.
 - tapOn: "Settings"
 - waitForAnimationToEnd:
     timeout: 5000
@@ -158,8 +87,6 @@ appId: ${MAESTRO_APP_ID}
       id: "settings-screen"
     timeout: 15000
 
-# --- 4. Privacy ----------------------------------------------------------
-# Open via the settings row (capsule, tap by text).
 - assertVisible: "Privacy"
 - tapOn: "Privacy"
 - waitForAnimationToEnd:
@@ -169,20 +96,11 @@ appId: ${MAESTRO_APP_ID}
       id: "privacy-screen"
     timeout: 15000
 
-# The privacy screen is disclosure plus a link out to System Settings. Nothing
-# on it is a toggle, so there is no state for the tour to leave behind. The
-# rows are the whole assertable surface here: the disclaimer under them is a
-# HelperText, and an inner Text reaches the hierarchy by neither id nor copy.
 - assertVisible:
     id: "privacy-camera-photos"
 - assertVisible:
     id: "privacy-system-settings"
 
-# Back to Settings. Tap the Settings tab rather than edge-swiping: the swipe
-# registers on the local simulator and not on the one EAS provisions, which is
-# where this flow used to die. Both the header back button and the tab read
-# "Settings", and either lands on the settings root, so the ambiguity is
-# harmless.
 - tapOn: "Settings"
 - waitForAnimationToEnd:
     timeout: 5000
@@ -191,8 +109,6 @@ appId: ${MAESTRO_APP_ID}
       id: "settings-screen"
     timeout: 15000
 
-# --- 5. Profile ----------------------------------------------------------
-# Open via the settings profile row. Full-content Button, so tap by id.
 - tapOn:
     id: "settings-profile"
 - waitForAnimationToEnd:
@@ -202,10 +118,6 @@ appId: ${MAESTRO_APP_ID}
       id: "profile-screen"
     timeout: 15000
 
-# Edit the Bio field. It is a plain TextField (no newPassword autofill, no eye
-# toggle needed). Tap to focus, append text so `hasChanges` flips true, then
-# swipe-dismiss the keyboard. The avatar button exists but the image picker
-# opens a system sheet Maestro can't drive, so it is left untouched.
 - tapOn:
     id: "profile-bio"
 - inputText: " e2e tour"
@@ -215,9 +127,6 @@ appId: ${MAESTRO_APP_ID}
 - waitForAnimationToEnd:
     timeout: 3000
 
-# Save. The inline Save button only renders once `hasChanges` is true and holds
-# its label in the center, so tap by id. (A toolbar Save button also exists, but
-# the inline ProminentButton is the reliable target.)
 - scrollUntilVisible:
     element:
       id: "profile-save"
@@ -225,9 +134,6 @@ appId: ${MAESTRO_APP_ID}
 - tapOn:
     id: "profile-save"
 
-# updateProfile hits Convex. SuccessText is an inner Text (no id surface), so
-# prove the save landed structurally: the inline Save button only renders while
-# hasChanges is true, so it disappears after a successful save.
 - extendedWaitUntil:
     notVisible:
       id: "profile-save"
@@ -235,11 +141,6 @@ appId: ${MAESTRO_APP_ID}
 - assertVisible: ".*e2e tour.*"
 - assertVisible: "Saved"
 
-# Back to Settings. Tap the Settings tab rather than edge-swiping: the swipe
-# registers on the local simulator and not on the one EAS provisions, which is
-# where this flow used to die. Both the header back button and the tab read
-# "Settings", and either lands on the settings root, so the ambiguity is
-# harmless.
 - tapOn: "Settings"
 - waitForAnimationToEnd:
     timeout: 5000
@@ -248,28 +149,19 @@ appId: ${MAESTRO_APP_ID}
       id: "settings-screen"
     timeout: 15000
 
-# --- 6. Sessions ---------------------------------------------------------
-# Open via the settings row (capsule, tap by text).
 - assertVisible: "Sessions"
 - tapOn: "Sessions"
 - waitForAnimationToEnd:
     timeout: 5000
 
-# listSessions hits Convex; the list renders after the network round-trip.
 - extendedWaitUntil:
     visible:
       id: "sessions-screen"
     timeout: 20000
-# The signed-in device row carries a "This device" badge (text surfaces).
 - extendedWaitUntil:
     visible: "This device"
     timeout: 20000
 
-# Back to Settings. Tap the Settings tab rather than edge-swiping: the swipe
-# registers on the local simulator and not on the one EAS provisions, which is
-# where this flow used to die. Both the header back button and the tab read
-# "Settings", and either lands on the settings root, so the ambiguity is
-# harmless.
 - tapOn: "Settings"
 - waitForAnimationToEnd:
     timeout: 5000

@@ -22,7 +22,6 @@ afterEach(async () => {
 
 describe("touchVerifyAt (live-check refresh)", () => {
   it("bumps verifyAt without wiping cached outputs", async () => {
-    // jwt.ts records the IDs apple jwt --rotate + eas-rotation-secrets read back.
     await recordStep("apple-sign-in", {
       servicesId: "com.example.signin",
       teamId: "ABCDE12345",
@@ -31,7 +30,6 @@ describe("touchVerifyAt (live-check refresh)", () => {
     });
     const before = (await load()).steps["apple-sign-in"];
 
-    // A re-run of `vexpo full` past the 24h TTL whose live-check passes.
     await touchVerifyAt("apple-sign-in");
 
     const after = (await load()).steps["apple-sign-in"];

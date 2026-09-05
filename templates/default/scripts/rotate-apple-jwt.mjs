@@ -1,22 +1,4 @@
 #!/usr/bin/env node
-/**
- * Re-sign the Apple Sign In `client_secret` JWT and push it to a Convex
- * deployment. Designed for CI: reads everything from env vars, no disk IO,
- * no prompts.
- *
- * Required env:
- *   APPLE_P8_PRIVATE_KEY   PEM contents of the Sign In with Apple .p8
- *   APPLE_TEAM_ID          10-char Apple Team id
- *   APPLE_KEY_ID           10-char Sign In with Apple key id
- *   APPLE_SERVICES_ID      Services id (e.g. com.you.app.signin)
- *   CONVEX_DEPLOY_KEY      Convex deploy key for the target deployment
- *   CONVEX_DEPLOYMENT      (optional) name of the target deployment; defaults to whatever the deploy key is bound to
- *
- * Used by `.eas/workflows/rotate-apple-jwt.yml` on a 90-day cadence so Apple's
- * 180-day JWT cap never bites you. Runs on EAS infrastructure with env vars
- * read from EAS env (production, secret visibility). no GitHub repo secrets
- * needed.
- */
 
 import { createSign } from "node:crypto";
 import { spawnSync } from "node:child_process";
@@ -64,10 +46,6 @@ console.log(
   `Signed JWT for ${servicesId} (expires ${new Date((now + 180 * 86400) * 1000).toISOString()})`,
 );
 
-// The signed JWT is a live 180-day Apple credential, so it never lands on argv
-// where any process on the runner could read it from the process table. Write
-// all four vars to a 0600 file in a fresh 0700 mkdtemp dir and pass it via
-// `--from-file`, mirroring the CLI's `envSetFromFile`.
 const vars = {
   APPLE_CLIENT_ID: servicesId,
   APPLE_TEAM_ID: teamId,

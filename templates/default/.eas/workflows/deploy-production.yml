@@ -1,11 +1,6 @@
 name: Deploy to production
 
 on:
-  # Manual trigger only. A push:main trigger here deploys Convex prod, builds
-  # iOS, and submits to the App Store on every merge, including docs/CI commits.
-  # Ship intentionally: `eas workflow:run .eas/workflows/deploy-production.yml`.
-  # This is the only workflow that runs `convex deploy`; release.yml's `v*` tag
-  # builds and submits but does NOT deploy Convex, so deploy here first.
   workflow_dispatch: {}
 
 concurrency:
@@ -32,11 +27,6 @@ jobs:
     needs: [precheck]
     type: custom
     runs_on: linux-medium
-    # `production` env pulls CONVEX_DEPLOY_KEY (a production deploy key, set
-    # at secret visibility) into the job. `convex deploy` is non-interactive
-    # whenever CONVEX_DEPLOY_KEY is present. no --yes / --auto-accept flag.
-    # https://docs.convex.dev/cli#deploy-convex-functions-to-production
-    # https://docs.convex.dev/cli/deploy-key-types
     environment: production
     steps:
       - uses: eas/checkout
@@ -84,22 +74,8 @@ jobs:
     params:
       platform: ios
       branch: production
-      # End-to-end code signing for the OTA bundle. `EAS_UPDATE_PRIVATE_KEY`
-      # is the matching private key for `templates/default/certs/certificate.pem`,
-      # stored as a production file-type secret:
-      #   eas env:create --environment production --visibility secret \
-      #     --type file --name EAS_UPDATE_PRIVATE_KEY \
-      #     --value ../keys/private-key.pem
-      # When the env var is unset (no cert generated yet), `eas update`
-      # skips signing without erroring. Run `npm run updates:gen-cert` once
-      # to wire both halves.
-      # https://docs.expo.dev/eas-update/code-signing/
       private_key_path: "$EAS_UPDATE_PRIVATE_KEY"
 
-  # `print_insights` prints `update:insights` JSON to the workflow logs so you
-  # can audit adoption metrics (rollout %, crash-free %, unique users) directly.
-  # `update_ios` exposes `first_update_group_id`
-  # (https://docs.expo.dev/eas/workflows/pre-packaged-jobs/#update-outputs).
   print_insights:
     name: Capture update:insights output
     needs: [update_ios]

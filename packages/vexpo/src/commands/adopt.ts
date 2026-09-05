@@ -1,18 +1,3 @@
-/**
- * `vexpo adopt`. Finishes a Convex project that Expo's
- * `eas integrations:convex:connect` created. The integration makes the project +
- * dev deployment, writes .env.local, and sets EXPO_PUBLIC_CONVEX_URL on EAS, but
- * leaves the rest: the site URLs, server-side env, a prod deployment, and the
- * Apple/Resend/ASC legs. This adopts the EXISTING deployment (never a fresh
- * project), runs the safe idempotent dev steps, surfaces the deployment topology
- * (catching the duplicate dev deployment the integration tends to leave), and
- * prints the exact, tailored commands to finish.
- *
- * It deliberately does NOT run the prod / Apple / Resend legs automatically:
- * those need credentials + prompts and mutate prod, so they're emitted as a
- * runbook instead of fired blind.
- */
-
 import { runBetterAuth } from "./better-auth.ts";
 import { runConvex } from "./convex.ts";
 import { deploymentRefFromDeployKey, deploymentSlug, envMap } from "../lib/convex-env.ts";
@@ -47,9 +32,6 @@ export function buildFinishRunbook(s: RunbookState): Array<{ cmd: string; desc: 
     steps.push({ cmd: "vexpo asc connect", desc: "link EAS to App Store Connect for submit" });
   }
   if (!s.hasProd) {
-    // The cleared key matters: .env.local carries a dev-scoped
-    // CONVEX_DEPLOY_KEY after the EAS integration, and a bare `convex deploy`
-    // would silently land on the key's dev deployment (--prod doesn't beat it).
     steps.push({
       cmd: "CONVEX_DEPLOY_KEY= npx convex deploy",
       desc: "provision + push to the prod deployment (cleared key: user auth targets prod)",
@@ -76,9 +58,6 @@ export async function runAdopt(options: AdoptOptions): Promise<number> {
   const localEnv = await readAll();
   let deploymentRef = localEnv.get("CONVEX_DEPLOYMENT");
   if (!deploymentRef) {
-    // eas-cli 21's `integrations:convex:connect` writes only CONVEX_DEPLOY_KEY.
-    // The key names its deployment, so recover the ref and persist it where
-    // `convex dev` and every later step expect it.
     const derived = deploymentRefFromDeployKey(localEnv.get("CONVEX_DEPLOY_KEY"));
     if (derived?.startsWith("dev:")) {
       await ensureLine("CONVEX_DEPLOYMENT", derived);

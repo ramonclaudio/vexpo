@@ -14,8 +14,6 @@ export async function readOne(key: string): Promise<string | undefined> {
   return (await readAll()).get(key);
 }
 
-// Bundle id is the prerequisite for every Apple/EAS step. `vexpo convex` writes
-// it; if it's missing the user skipped that step, so bail with the pointer.
 export async function requireBundleId(): Promise<string | undefined> {
   const bundleId = await readOne("EXPO_PUBLIC_APP_BUNDLE_ID");
   if (bundleId) return bundleId;

@@ -24,8 +24,6 @@ import { Duration } from "@/constants/ui";
 import { NavigationDark, NavigationLight } from "@/constants/theme";
 import { setForegroundHandler, registerBackgroundTask } from "@/lib/notifications";
 
-// No `expectAuth: true`. The app has public pre-auth queries (sign-in shows
-// enabled providers), so the socket must run before auth resolves.
 const convex = new ConvexReactClient(env.convexUrl, {
   unsavedChangesWarning: false,
 });
@@ -50,8 +48,6 @@ export default function RootLayout() {
 }
 
 function RootNavigator() {
-  // Splash gates on both auth resolution and asset load. Auth gating itself
-  // lives in `(app)/_layout.tsx` so `(app)` stays mounted under the auth modal.
   const { isPending } = authClient.useSession();
   const colorScheme = useColorScheme();
   const colors = useColors();
@@ -62,10 +58,6 @@ function RootNavigator() {
   useNavigationTracking();
 
   useEffect(() => {
-    // Dismiss once auth resolves and assets either load or fail. Gating on
-    // `assets` alone hangs on the native splash forever if a bundled asset
-    // fails, since `useAssets` then returns `[undefined, error]` and never an
-    // asset array.
     if (assetError && __DEV__) console.warn("[assets] failed to load:", assetError);
     if (!isPending && (assets || assetError)) SplashScreen.hideAsync();
   }, [isPending, assets, assetError]);

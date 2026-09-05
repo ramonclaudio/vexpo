@@ -98,8 +98,6 @@ describe("currentRuntime + currentRuntimeVersion", () => {
   });
 
   it("returns the actual runtime version (bun's or node's)", () => {
-    // Pin the real selection, not just non-empty: a regression returning some
-    // other process.versions.* (v8, openssl) would pass a truthy/not-"?" check.
     expect(currentRuntimeVersion()).toBe(process.versions.bun ?? process.versions.node ?? "?");
   });
 });

@@ -1,9 +1,3 @@
-/**
- * These have to be set manually because they're secret-visibility EAS env vars:
- * `eas env:push` doesn't accept a visibility flag, and we don't push real
- * secrets at default visibility.
- */
-
 import { access } from "node:fs/promises";
 
 import { deploymentSlug } from "../../lib/convex-env.ts";
@@ -30,9 +24,6 @@ export async function runEasRotationSecrets(options: RotationSecretsOptions): Pr
     return 1;
   }
 
-  // jwt.ts records identity to the apple-sign-in step and writes APPLE_TEAM_ID/
-  // APPLE_KEY_ID to Convex, never bare to .env.local. Read from state, only
-  // teamId has a .env.local mirror (EXPO_PUBLIC_APPLE_TEAM_ID) to fall back to.
   const state = await loadState();
   const teamId =
     lookupOutput(state, ["apple-sign-in"], "teamId") ??
@@ -65,9 +56,6 @@ export async function runEasRotationSecrets(options: RotationSecretsOptions): Pr
     return 1;
   }
 
-  // APPLE_P8_PRIVATE_KEY pushes as `--type file`. eas env:create/update treat a
-  // file-type value as a filesystem PATH (the CLI reads + base64-encodes it), so
-  // pass p8Path, NOT the file contents. Other rotation values are plain strings.
   const apple: Array<{ name: string; value: string; type?: "file" | "string" }> = [
     { name: "APPLE_P8_PRIVATE_KEY", value: p8Path, type: "file" },
     { name: "APPLE_TEAM_ID", value: teamId },

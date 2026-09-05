@@ -30,10 +30,6 @@ export function AppErrorBoundary({
   const colors = useColors();
   const insets = useSafeAreaInsets();
 
-  // VoiceOver users won't notice the visual change to a destructive surface
-  // unless we explicitly announce. Fires once on mount per crash. Logging the
-  // error here too keeps it off the render path: a mounted boundary re-renders
-  // on theme/fontScale changes, and a render-body log would re-fire each time.
   useEffect(() => {
     if (__DEV__) console.error("[ErrorBoundary]", error);
     AccessibilityInfo.announceForAccessibility("Error: something went wrong");

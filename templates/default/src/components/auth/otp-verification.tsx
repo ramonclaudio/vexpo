@@ -54,13 +54,6 @@ export type OtpFlow = "verify-email" | "sign-in";
 type OtpVerificationProps = {
   email: string;
   onBack: () => void;
-  /**
-   * "verify-email" (default) confirms a fresh sign-up via
-   * `authClient.emailOtp.verifyEmail` - the server has
-   * `autoSignInAfterVerification: true` so a successful verify mints the
-   * session inline. "sign-in" hits `authClient.signIn.emailOtp` to log a
-   * returning user in passwordlessly.
-   */
   flow?: OtpFlow;
 };
 
@@ -78,9 +71,6 @@ export function OtpVerification({ email, onBack, flow = "verify-email" }: OtpVer
   const [verifyState, verify, isVerifying] = useActionState<OtpState, void>(async (prev) => {
     const attempt = (prev.attempt ?? 0) + 1;
 
-    // Read the native field value, not the JS `otp` mirror: submitting via the
-    // keyboard "done" key on the same frame the sixth digit lands can see a
-    // stale five-char `otp` because `scheduleOnRN(setOtp, ...)` trails a frame behind.
     const code = otpState.value;
     if (code.length !== 6) {
       haptics.error();
@@ -118,9 +108,6 @@ export function OtpVerification({ email, onBack, flow = "verify-email" }: OtpVer
         email: email.trim(),
         type: isSignIn ? "sign-in" : "email-verification",
       });
-      // Better Auth surfaces a 429 (the send-verification-otp rate limit) as a
-      // returned error, not a throw, so announcing success unconditionally
-      // would tell the user a code was sent when none was.
       if (response.error) {
         haptics.error();
         return { error: "Failed to send code. Please try again.", attempt };
@@ -143,13 +130,8 @@ export function OtpVerification({ email, onBack, flow = "verify-email" }: OtpVer
     startTransition(() => resend());
   };
 
-  // Show the error from the action the user last ran. A plain
-  // `verifyState.error ?? resendState.error` keeps a stale verify error on
-  // screen after a successful resend, since resend never clears verifyState.
   const error = lastAction === "resend" ? resendState.error : verifyState.error;
   const attempt = lastAction === "resend" ? resendState.attempt : verifyState.attempt;
-  // The ring gates on the verify action's own error, so a resend failure
-  // never flags the field.
   const invalidCode = lastAction === "verify" && !!verifyState.error;
 
   const verifyLabel = (() => {
@@ -163,10 +145,6 @@ export function OtpVerification({ email, onBack, flow = "verify-email" }: OtpVer
         modifiers={[
           scrollDismissesKeyboard("interactively"),
           tint(colors.primary as string),
-          // The autoFocus OTP field keeps the keyboard up, and at AX sizes the
-          // uncapped title and buttons overflow the remaining space. Scroll
-          // like the sibling auth forms, keyboard reflow pinned to the visible
-          // center. Anchor is a no-op below iOS 18, plain scroll on the floor.
           defaultScrollAnchorForRole("center", "sizeChanges"),
         ]}
       >
@@ -200,7 +178,6 @@ export function OtpVerification({ email, onBack, flow = "verify-email" }: OtpVer
             testID="otp-email-value"
             spacing={4}
             alignment="center"
-            // upstream expo/expo#47156: combine the instruction and email into one VoiceOver stop; child testID moves to this root since combine collapses child ids
             modifiers={[accessibilityElement("combine")]}
           >
             <Text
@@ -238,8 +215,6 @@ export function OtpVerification({ email, onBack, flow = "verify-email" }: OtpVer
                 monospacedDigit(),
                 kerning(8),
                 multilineTextAlignment("center"),
-                // upstream expo/expo#46540: cap Dynamic Type on the fixed-height
-                // capsule so six 24pt monospaced glyphs can't scale past the box.
                 dynamicTypeSize({ max: DynamicType.otp }),
                 keyboardType("numeric"),
                 textContentType("oneTimeCode"),
@@ -247,9 +222,6 @@ export function OtpVerification({ email, onBack, flow = "verify-email" }: OtpVer
                 submitLabel("done"),
                 accessibilityLabel("Verification code"),
                 accessibilityHint("Enter the 6 digit code sent to your email"),
-                // upstream expo/expo#47426: the invalid-code ring. strokeBorder
-                // hugs the capsule, where the border modifier only draws a
-                // rectangle.
                 ...(invalidCode
                   ? [
                       strokeBorder({

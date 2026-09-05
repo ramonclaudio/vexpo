@@ -88,9 +88,6 @@ export default function WelcomeScreen() {
     setStep((s) => Math.min(s + 1, STEPS.length - 1));
   }, []);
 
-  // TabView page style drives selection by the step's id; a swipe reports the
-  // new id here and we mirror it back into `step` so the progress bar and the
-  // Next/Get Started button stay in sync.
   const handlePageChange = useCallback((nextID: string) => {
     const idx = STEPS.findIndex((s) => s.id === nextID);
     if (idx < 0) return;
@@ -103,8 +100,6 @@ export default function WelcomeScreen() {
   const isLast = step === STEPS.length - 1;
 
   return (
-    // upstream expo/expo#45872: Host modifiers now apply, so the accent tint
-    // cascades from the Host into the ProgressView and buttons below.
     <Host testID="welcome-screen" style={{ flex: 1 }} modifiers={[tint(colors.primary as string)]}>
       <VStack spacing={0}>
         <VStack spacing={12} modifiers={[padding({ horizontal: 24, top: 24 })]}>
@@ -113,14 +108,6 @@ export default function WelcomeScreen() {
             value={(step + 1) / STEPS.length}
             modifiers={[
               progressViewStyle("linear"),
-              // The page slides under a bar that was jumping. Ease-out so the
-              // fill leads the swipe rather than trailing it. A filling bar is
-              // travel, so Reduce Motion gets the jump back.
-              //
-              // The modifier is what turns the jump into a fill, but ProgressView
-              // runs the fill on its own clock: measured on a simulator, 3s and
-              // 0.2s both render in about 0.6s. The duration here is nominal, so
-              // read it as "matches the other transitions", not as 200ms.
               ...(reduceMotion
                 ? []
                 : [animation(Animation.easeOut({ duration: toSeconds(Duration.normal) }), step)]),
@@ -160,10 +147,7 @@ export default function WelcomeScreen() {
                   </RNHostView>
                 ) : (
                   <VStack spacing={0} modifiers={[accessibilityHidden(true)]}>
-                    {/* upstream expo/expo#46714: <Image systemName> honors
-                        font/dynamicTypeSize natively, so the SF Symbol scales on
-                        the Dynamic Type curve and clamps in the SwiftUI
-                        environment instead of the old JS useSymbolSize multiply */}
+                    {}
                     <Image
                       systemName={s.icon}
                       color={colors.primary as string}
@@ -173,8 +157,7 @@ export default function WelcomeScreen() {
                         dynamicTypeSize({ max: DynamicType.control }),
                       ]}
                     />
-                    {/* upstream expo/expo#43228: per-axis scaleEffect flips the
-                        glyph vertically for the reflection under the hero */}
+                    {}
                     <Image
                       systemName={s.icon}
                       color={colors.primary as string}

@@ -22,15 +22,9 @@ export async function pkgName(): Promise<string> {
   return typeof pkg?.name === "string" && pkg.name ? pkg.name : "app";
 }
 
-// The name a literal in app.config.ts, or undefined when none is declared (a
-// computed/missing name). Distinct from `appName`'s pkg-slug fallback so callers
-// like verify's coherence check don't treat a guessed name as authoritative.
 export async function declaredAppName(): Promise<string | undefined> {
   const text = await readTextOrNull("app.config.ts");
   if (!text) return undefined;
-  // The template (and `rebrand`) write the display name as a dev/prod ternary:
-  // `name: IS_DEV ? "Foo (Dev)" : "Foo"`. Match that first (same shape verify.ts
-  // parses), then a plain `name: "Foo"`.
   const ternary = /name:\s*IS_DEV\s*\?\s*"[^"]+"\s*:\s*"([^"]+)"/.exec(text)?.[1];
   if (ternary) return ternary;
   return /\bname:\s*["']([^"']+)["']/.exec(text)?.[1];
@@ -55,8 +49,6 @@ export async function scheme(): Promise<string> {
 export async function bundleIdFallback(): Promise<string | null> {
   const text = await readTextOrNull("app.config.ts");
   if (!text) return null;
-  // The template commits the backtick form `com.example.${pkg.name}`; rebrand
-  // rewrites it to a plain double-quoted string. Match either.
   return /EXPO_PUBLIC_APP_BUNDLE_ID\s*\?\?\s*["`]([^"`]+)["`]/.exec(text)?.[1] ?? null;
 }
 

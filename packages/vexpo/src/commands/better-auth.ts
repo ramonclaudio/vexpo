@@ -18,8 +18,6 @@ function base64Secret(): string {
 export async function runBetterAuth(options: BetterAuthOptions): Promise<number> {
   section("Better Auth env");
 
-  // A failed read coalesces to empty; the envSet calls below hit the same
-  // auth/CLI error and fail loud through the CLI's error boundary.
   const env = (await envMap()) ?? new Map<string, string>();
 
   const siteUrl = options.siteUrl ?? `${await scheme()}://`;

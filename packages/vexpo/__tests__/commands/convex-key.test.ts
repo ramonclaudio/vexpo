@@ -25,7 +25,6 @@ const readEnvFileSpy = readEnvFile as unknown as ReturnType<typeof vi.fn>;
 
 beforeEach(() => {
   vi.clearAllMocks();
-  // .env.local has the dev key + selector; .env.prod has only the selector (no secret key).
   readEnvFileSpy.mockImplementation((p: string) =>
     Promise.resolve(
       p.includes("prod")

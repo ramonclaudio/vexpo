@@ -3,9 +3,6 @@ import { frame } from "@expo/ui/swift-ui/modifiers";
 
 import { useDynamicFont } from "@/lib/dynamic-font";
 
-// The "Discard changes?" sheet paired with useUnsavedChanges. The hidden
-// zero-size Spacer is the required Trigger anchor; presentation is driven by
-// `pendingNavAction` instead of a tap.
 export function DiscardChangesDialog({
   testIDPrefix,
   message,

@@ -56,9 +56,6 @@ export function ProfileFields({
   onBioChange: (v: string) => void;
   isSaving: boolean;
   emailFeatures: boolean;
-  // A guest's username is unset and their email is a throwaway the server
-  // generated, so neither field has anything to edit. Name, photo and bio do,
-  // and those are what `mergeGuestData` carries onto the account.
   isGuest: boolean;
   createdAt: number;
   hasChanges: boolean;

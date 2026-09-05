@@ -73,18 +73,13 @@ describe("runSubmit", () => {
     ]);
     expect(opts.env.EXPO_ASC_KEY_ID).toBe("ABCDE12345");
     expect(opts.env.EXPO_ASC_API_KEY_PATH).toBe("/tmp/fake.p8");
-    // the .env.local identity is forwarded so eas-cli resolves the real app,
-    // not the com.example.* placeholder, but secrets are not
     expect(opts.env.EXPO_PUBLIC_APP_BUNDLE_ID).toBe("com.vexpo.vexpo");
     expect(opts.env.EAS_PROJECT_ID).toBe("pid-123");
     expect(opts.env.BETTER_AUTH_SECRET).toBeUndefined();
-    // process.env is forwarded too (PATH etc.), not replaced
     expect(opts.env.PATH ?? opts.env.Path).toBeDefined();
   });
 
   it("lands the ASC key in eas.json submit profiles before spawning eas submit", async () => {
-    // `eas submit` has no env-var key source; only the eas.json fields beat a
-    // stale EAS-stored key. The write must happen before the spawn.
     const order: string[] = [];
     (ensureAscApiKeyInEasJson as unknown as ReturnType<typeof vi.fn>).mockImplementation(
       async () => {

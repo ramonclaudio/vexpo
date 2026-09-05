@@ -57,10 +57,6 @@ describe("envSetFromFile", () => {
     expect(argv).toContain("happy-frog-12");
   });
 
-  // The flag resolves through the platform API, which needs the user's login,
-  // so passing it for the ambient deployment breaks deploy-key auth on
-  // integration-created deployments. Flagless, the convex CLI reads
-  // CONVEX_DEPLOYMENT / CONVEX_DEPLOY_KEY from .env.local itself.
   it("never passes --deployment for the ambient CONVEX_DEPLOYMENT", async () => {
     process.env.CONVEX_DEPLOYMENT = "dev:happy-frog-12";
     await envSetFromFile("/tmp/env.txt");
@@ -137,9 +133,6 @@ describe("envSet", () => {
     expect(argv).not.toContain("ABCDE12345");
   });
 
-  // Mirrors dotenv@16's parse, which is what `convex env set --from-file` runs
-  // on the written file: outer quotes strip, ONLY double quotes expand \n/\r,
-  // single/backtick-quoted values stay fully literal.
   function dotenvParse(src: string): Map<string, string> {
     const LINE =
       /(?:^|^)\s*(?:export\s+)?([\w.-]+)(?:\s*=\s*?|:\s+?)(\s*'(?:\\'|[^'])*'|\s*"(?:\\"|[^"])*"|\s*`(?:\\`|[^`])*`|[^#\r\n]+)?\s*(?:#.*)?(?:$|$)/gm;

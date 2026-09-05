@@ -1,11 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-// Orchestration test for `runSetup` (the `vexpo lite` / `vexpo full` engine).
-// We mock the 13 `run*` step modules + the probe's lib deps so the test asserts
-// WHICH steps run (and in what order) for lite vs full, without touching any
-// external service. `--force` makes `shouldRun` return "missing" before any
-// live-check (setup.ts:193), so the probe is side-effect-free here.
-
 const h = vi.hoisted(() => {
   const calls: string[] = [];
   const r = (name: string) =>
@@ -49,9 +43,6 @@ vi.mock("../../src/commands/apple/jwt.ts", () => ({ runAppleJwt: h.runAppleJwt }
 vi.mock("../../src/commands/apple/services-id.ts", () => ({ runServicesId: h.runServicesId }));
 vi.mock("../../src/commands/asc.ts", () => ({ runAscConnect: h.runAscConnect }));
 
-// Probe + prerequisite lib deps: benign values so the probe reports "missing"
-// and nothing shells out. `access` resolves so node_modules reads as present
-// (skips the install step); `proc` no-ops so xcode/expo-doctor checks are inert.
 vi.mock("../../src/lib/proc.ts", () => ({
   run: vi.fn(async () => ({ code: 1, stdout: "", stderr: "" })),
   spawn: vi.fn(() => ({
@@ -88,7 +79,6 @@ vi.mock("../../src/lib/pkg-manager.ts", () => ({
 }));
 vi.mock("../../src/lib/state.ts", async (orig) => ({
   ...((await orig()) as Record<string, unknown>),
-  // setup imports `load as loadState`, so the export to override is `load`.
   load: vi.fn(async () => ({ schemaVersion: 1, steps: {}, audit: [] })),
   checkConcurrentRun: vi.fn(() => ({ active: false })),
   clearAll: vi.fn(async () => {}),
@@ -110,7 +100,6 @@ import { computeScope, runSetup } from "../../src/commands/setup.ts";
 beforeEach(() => {
   h.calls.length = 0;
   vi.clearAllMocks();
-  // maybeRunStep skips without a TTY; pretend we have one so prompts "answer" yes.
   Object.defineProperty(process.stdin, "isTTY", { value: true, configurable: true });
 });
 
@@ -212,7 +201,6 @@ describe("runSetup execution (--force, mocked steps)", () => {
     });
     const code = await runSetup({ lite: false, force: true });
     expect(code).toBe(1);
-    // convex failed early; nothing after it ran
     expect(h.runBetterAuth).not.toHaveBeenCalled();
     expect(h.runEas).not.toHaveBeenCalled();
   });

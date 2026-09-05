@@ -1,19 +1,4 @@
 #!/usr/bin/env node
-/**
- * vexpo clean script.
- *
- * Never wiped (user data / secrets):
- * - .env / .env.* (auth values)
- * - .p8 / .p12 / AuthKey_* / SubscriptionKey_* (Apple keys)
- * - store.config.json (rebrand work; setup recreates from .example if missing)
- * - .vexpo-manual-setup/ / .rebrand-backup/
- * - .setup-state.json (opt-in via --state)
- *
- * Kept by default so reinstall is deterministic (opt in via --all):
- * - package-lock.json / bun.lock / yarn.lock (lockfile; `npm ci` or
- *   `<pm> install --frozen-lockfile` when present)
- * - convex/_generated/ (regenerated via `npx convex codegen` after --all)
- */
 
 import { spawn as nodeSpawn } from "node:child_process";
 import { readdir, readFile, rm, stat } from "node:fs/promises";
@@ -38,8 +23,6 @@ function spawn(argv, opts = {}) {
     }),
     exited: new Promise((resolve) => {
       proc.on("close", (code) => resolve(code ?? 1));
-      // ENOENT (command not found) emits 'error' without 'close'. Treat as
-      // the standard shell "not found" exit so callers can `if (code === 0)`.
       proc.on("error", () => resolve(127));
     }),
   };
@@ -47,11 +30,6 @@ function spawn(argv, opts = {}) {
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-/**
- * Find PIDs whose full command line matches `pattern` (extended regex, via
- * `pgrep -f`). Excludes our own PID and PPID so the script never kills its
- * own bash parent or itself.
- */
 async function pgrepF(pattern) {
   const buf = await spawn(["pgrep", "-f", pattern], {
     stdin: "ignore",
@@ -74,7 +52,6 @@ async function trySignal(pids, signal) {
   }).exited;
 }
 
-// Capture which PM ran this script BEFORE any wipes: --all wipes the lockfile.
 async function detectPackageManager() {
   const execpath = (process.env.npm_execpath ?? "").toLowerCase();
   if (execpath.includes("bun")) return "bun";
@@ -89,7 +66,6 @@ async function detectPackageManager() {
 
 function installCmdFor(pm, frozen) {
   if (!frozen) return `${pm} install`;
-  // npm uses `ci` for frozen installs, every other PM has `--frozen-lockfile`.
   if (pm === "npm") return "npm ci";
   return `${pm} install --frozen-lockfile`;
 }
@@ -232,9 +208,6 @@ const PROJECT_TARGETS = [
   "expo-env.d.ts",
 ];
 
-// Wiped only with --all. Default leaves these alone: the lockfile stays the
-// source of truth (frozen install) and convex/_generated needs a deployment
-// round-trip via `npx convex codegen` to come back.
 const PROJECT_TARGETS_ALL = [
   "bun.lock",
   "package-lock.json",
@@ -247,14 +220,9 @@ const PROJECT_GLOBS = ["bun-error.*", "*.log"];
 
 const TMP_GLOBS = ["metro-*", "haste-map-*", "react-*", "node-compile-cache", "expo-*", "RN*"];
 
-/**
- * Stop bundlers before wiping their caches, or a live Metro/expo process
- * repopulates them mid-delete and restarts onto stale state.
- */
 async function stepStopBundlers() {
   section("Stop bundlers");
 
-  // Order: kill the parent CLI first so it can tear down its child Metro.
   const targets = [
     { pattern: "node .*\\.bin/expo (run:|start)", name: "expo CLI" },
     { pattern: "node .*@expo/cli/build/bin/cli", name: "expo CLI (forked)" },
@@ -282,7 +250,6 @@ async function stepStopBundlers() {
   if (killed === 0) {
     nop("no bundlers running");
   } else {
-    // Drain SIGTERM, then SIGKILL stragglers so the wipe can't race them.
     await sleep(500);
     for (const { pattern } of targets) {
       const pids = await pgrepF(pattern);
@@ -329,10 +296,6 @@ async function stepProjectArtifacts(all) {
   for (const t of existing) ok(`removed ${t.replace(REPO + "/", "")}`);
 }
 
-/**
- * Wipe `.eas/` per-project CLI state but keep `.eas/workflows/` (tracked YAML).
- * EAS regenerates everything else on its next invocation.
- */
 async function stepEasState() {
   section(".eas state");
   const easDir = `${REPO}/.eas`;
@@ -399,10 +362,6 @@ async function stepXcodeDerivedData(pkgName) {
     nop("DerivedData not present");
     return;
   }
-  // Match folders whose name starts with the project's pkg name, case-
-  // insensitively: prebuild derives the Xcode project from the display name
-  // ("Foobar", "FoobarDev"), while pkg.name is lowercase ("foobar"). The
-  // prefix filter still never touches other projects' caches.
   const prefix = pkgName.toLowerCase();
   const matches = (await readdir(root))
     .filter((e) => e.toLowerCase().startsWith(prefix))
@@ -439,8 +398,6 @@ async function stepSetupState() {
 
 async function stepInstall(pm) {
   section("Reinstall");
-  // Frozen install when a lockfile is on disk: deterministic, no transitive drift.
-  // After --all the lockfile is gone and bun resolves fresh.
   const frozen = await pathExists(`${REPO}/${lockfileFor(pm)}`);
   const cmd = installCmdFor(pm, frozen).split(" ");
   const proc = spawn(cmd, { stdio: ["inherit", "inherit", "inherit"] });
@@ -462,9 +419,6 @@ async function stepConvexCodegen() {
     nop("convex/_generated/ present (skipped)");
     return;
   }
-  // No bun.lock or convex/_generated on disk after --all. `convex codegen`
-  // talks to the deployment to rebuild the TypeScript bindings; skip and warn
-  // if the env isn't wired so this never blocks a clean.
   const cmd = ["npx", "convex", "codegen"];
   const proc = spawn(cmd, { stdio: ["inherit", "inherit", "inherit"] });
   const code = await proc.exited;
@@ -481,7 +435,6 @@ try {
     await stepStopBundlers();
     await stepMetroCachesOnly();
   } else {
-    // Capture PM BEFORE any wipes; --all wipes the lockfile.
     const pm = await detectPackageManager();
     const pkgName = await readPkgName();
     const all = args.all === true;

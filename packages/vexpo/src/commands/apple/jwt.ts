@@ -1,17 +1,3 @@
-/**
- * `vexpo apple jwt`. signs an ES256 client_secret JWT from a SIWA `.p8` file
- * and writes APPLE_CLIENT_ID, APPLE_TEAM_ID, APPLE_KEY_ID, APPLE_CLIENT_SECRET
- * to the current Convex deployment.
- *
- * Apple JWTs expire every 180 days. Re-run this with `--rotate` to renew.
- *
- * Env (skip prompts when provided):
- *   APPLE_P8_PATH        path to .p8 private key
- *   APPLE_TEAM_ID        10-char team ID (iss)
- *   APPLE_KEY_ID         10-char key ID (kid)
- *   APPLE_SERVICES_ID    Services ID, e.g. com.you.app.signin (sub)
- */
-
 import { signClientSecret } from "../../lib/apple-jwt.ts";
 import { deploymentSlug, envMap, envSet } from "../../lib/convex-env.ts";
 import { readOne } from "../../lib/env-local.ts";
@@ -50,8 +36,6 @@ const APPLE_ENV_KEYS = [
   "APPLE_CLIENT_SECRET",
 ] as const;
 
-// Write `key` to the current deployment only when it differs from `env`.
-// Returns whether a write happened so the caller logs the right line.
 async function setIfChanged(
   env: Map<string, string>,
   key: string,
@@ -62,13 +46,6 @@ async function setIfChanged(
   return true;
 }
 
-/**
- * Copy the Apple Sign In env from another deployment onto the current one. The
- * client_secret JWT and key id live on the deployment, not in any .env file, so
- * env push can't migrate them. This pulls them off `from` (a deployment slug in
- * your account) and sets them here. No .p8 and no TTY needed. The copied JWT
- * keeps the source's expiry, so re-sign with `vexpo apple jwt` before it lapses.
- */
 async function copyAppleEnv(from: string): Promise<number> {
   section("Apple Sign In");
   const slug = deploymentSlug(from) ?? from;
@@ -97,11 +74,6 @@ async function copyAppleEnv(from: string): Promise<number> {
   return 0;
 }
 
-/**
- * Resolve the SIWA `.p8` path: APPLE_P8_PATH env wins, else prompt (offering the
- * cached/staged path as the default), else the cached path non-interactively.
- * Shared by `vexpo apple jwt` and `vexpo apple eas-rotation-secrets`.
- */
 export async function resolveSiwaP8Path(state: SetupState): Promise<string> {
   const cachedP8 = (await lookupCachedPath(state, ["apple-sign-in"], "p8Path")) ?? stagedP8();
   const rawP8 =

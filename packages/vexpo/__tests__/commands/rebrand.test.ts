@@ -20,12 +20,8 @@ import { run } from "../../src/lib/proc.ts";
 
 const runSpy = run as unknown as ReturnType<typeof vi.fn>;
 
-// envSet routes the value through a `--from-file` temp file (never argv), so
-// capture that file's contents to assert on the value that reaches Convex.
 const fromFileWrites: string[] = [];
 
-// app.config.ts must carry the exact template lines rewriteAppConfig and
-// detectTemplateDefaults match against.
 const APP_CONFIG = `const pkg = { name: "vexpo" };
 const BUNDLE_ID = process.env.EXPO_PUBLIC_APP_BUNDLE_ID ?? \`com.example.\${pkg.name}\`;
 export default {
@@ -146,7 +142,6 @@ describe("runRebrand non-TTY", () => {
     const exit = await runRebrand({ yes: true });
     expect(exit).toBe(1);
 
-    // nothing rewritten
     const pkg = JSON.parse(await readFile("package.json", "utf8")) as { name: string };
     expect(pkg.name).toBe("vexpo");
   });
@@ -176,9 +171,6 @@ describe("runRebrand bundle id sync", () => {
       return argv.includes("set") && argv.includes("--from-file");
     });
     expect(setCall).toBeDefined();
-    // Flagless on purpose: the convex CLI reads CONVEX_DEPLOYMENT /
-    // CONVEX_DEPLOY_KEY from .env.local itself, and --deployment would break
-    // deploy-key auth on integration-created deployments.
     expect(setCall![0] as string[]).not.toContain("--deployment");
     expect(fromFileWrites.some((c) => c.includes("APP_BUNDLE_ID=com.acme.foobar"))).toBe(true);
     expect(fromFileWrites.every((c) => !c.includes("com.old.stale"))).toBe(true);
@@ -206,7 +198,6 @@ describe("runRebrand rewrite correctness", () => {
     Object.defineProperty(process.stdin, "isTTY", { value: false, configurable: true });
 
     expect(await runRebrand({ ...FLAGS, yes: true })).toBe(0);
-    // app.config.ts now carries the double-quote form `?? "com.acme.foobar"`.
     expect(
       await runRebrand({ ...FLAGS, bundleId: "com.acme.second", force: true, yes: true }),
     ).toBe(0);
@@ -221,7 +212,6 @@ describe("runRebrand rewrite correctness", () => {
     const first = 'E2E "Smoke" App';
 
     expect(await runRebrand({ ...FLAGS, appName: first, yes: true })).toBe(0);
-    // The escaped literal must still satisfy validation and get rewritten.
     expect(
       await runRebrand({
         ...FLAGS,
@@ -242,8 +232,6 @@ describe("runRebrand rewrite correctness", () => {
     Object.defineProperty(process.stdin, "isTTY", { value: false, configurable: true });
 
     expect(await runRebrand({ ...FLAGS, appName: 'E2E "Smoke" App', yes: true })).toBe(0);
-    // A fewest-escapes format pass flips the escaped double-quoted literal to
-    // single quotes; markers must still read it.
     const cfg = await readFile("app.config.ts", "utf8");
     await writeFile(
       "app.config.ts",
@@ -383,7 +371,6 @@ describe("runRebrand secondary targets", () => {
       apple: { info: Record<string, { title: string }>; review: { notes?: string } };
     };
     expect(store.apple.info["en-US"]!.title).toBe("Foobar");
-    // Absent, not empty: `eas metadata:lint` rejects an empty notes string.
     expect("notes" in store.apple.review).toBe(false);
   });
 
@@ -448,10 +435,10 @@ describe("runRebrand derived defaults", () => {
   it("derives the bundle id org from the owner, not a repeat of the app", async () => {
     Object.defineProperty(process.stdin, "isTTY", { value: true, configurable: true });
     vi.mocked(ask)
-      .mockResolvedValueOnce("Foo Bar") // app name
-      .mockResolvedValueOnce("Ada Lovelace") // your name
-      .mockResolvedValueOnce("") // bundle id -> falls back to the hint
-      .mockResolvedValueOnce("ada@example.com"); // review email
+      .mockResolvedValueOnce("Foo Bar")
+      .mockResolvedValueOnce("Ada Lovelace")
+      .mockResolvedValueOnce("")
+      .mockResolvedValueOnce("ada@example.com");
 
     expect(await runRebrand({ yes: true })).toBe(0);
 
@@ -464,8 +451,6 @@ describe("runRebrand derived defaults", () => {
 describe("runRebrand preflight atomicity", () => {
   it("leaves every target untouched when store.config.json has the wrong shape", async () => {
     Object.defineProperty(process.stdin, "isTTY", { value: false, configurable: true });
-    // apple.info has no en-US, so the (sequential) store rewrite throws only
-    // after app.config.ts / app.json / package.json were already rewritten.
     await writeFile(
       "store.config.json",
       JSON.stringify({ configVersion: 0, apple: { info: {}, review: {} } }),
@@ -474,8 +459,6 @@ describe("runRebrand preflight atomicity", () => {
     const exit = await runRebrand({ ...FLAGS, yes: true });
     expect(exit).toBe(1);
 
-    // Nothing should have been mutated: a half-rebrand leaves the project in a
-    // state where a re-run reports "nothing to rebrand".
     const cfg = await readFile("app.config.ts", "utf8");
     expect(cfg).toContain(`slug: "vexpo"`);
     expect(cfg).not.toContain("com.acme.foobar");

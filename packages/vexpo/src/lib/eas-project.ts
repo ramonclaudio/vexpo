@@ -31,11 +31,6 @@ export async function resolveProjectId(): Promise<string | null> {
     const { readOne } = await import("./env-local.ts");
     const fromFile = await readOne("EAS_PROJECT_ID");
     if (fromFile && fromFile.length > 0) {
-      // Export to `process.env` so subprocess invocations of `eas-cli`
-      // (e.g. `eas project:info`, `eas env:list`) inherit the value when
-      // they evaluate the project's `app.config.ts`. Without this, the
-      // resolution chain only helps vexpo's own state — subprocesses spawn
-      // with the parent shell's env and miss the `.env.local` source.
       process.env.EAS_PROJECT_ID = fromFile;
       return fromFile;
     }
@@ -44,12 +39,6 @@ export async function resolveProjectId(): Promise<string | null> {
   return null;
 }
 
-/**
- * Returns null on a non-zero `eas env:list` (not logged in, transient GraphQL
- * failure, unreachable) so callers can tell "failed to read" from "genuinely
- * empty". Treating a failure as an empty map makes every remote var look absent,
- * which turns an env push into a blind overwrite. Mirrors convex-env's envMap.
- */
 export async function envList(
   environment: "production" | "preview" | "development" = "production",
 ): Promise<Map<string, string> | null> {
@@ -82,10 +71,6 @@ export async function envCreate(
   environments: readonly EasEnvironment[] = ["production", "preview", "development"],
   opts?: { type?: EasEnvType },
 ): Promise<void> {
-  // eas-cli takes the value only via --value argv; its only file channel is
-  // `--type file`, which stores a different (FileBase64) variable type, not a
-  // plaintext string. No stdin, so a string secret can't stay off the process
-  // table here the way convex-env.envSet keeps it.
   await easRun([
     "env:create",
     "--name",
@@ -107,12 +92,6 @@ export async function envUpdate(
   environments: readonly EasEnvironment[] = ["production", "preview", "development"],
   opts?: { type?: EasEnvType },
 ): Promise<void> {
-  // `env:update` identifies the existing variable by name + its CURRENT
-  // environment (--variable-environment). Without it, a name that exists in
-  // several environments is ambiguous and eas-cli prompts "Select variable",
-  // which a --non-interactive run can't answer. We deliberately do NOT pass
-  // --environment (the "new environments"): omitting it leaves the var's
-  // existing env links unchanged, we only want to change the value.
   await easRun([
     "env:update",
     "--variable-name",
@@ -132,8 +111,6 @@ export async function envPush(opts: {
   environments: readonly EasEnvironment[];
   force?: boolean;
 }): Promise<void> {
-  // eas-cli rejects multiple --environment flags in one `env:push` (fails with
-  // "GraphQL request failed"), so push to each environment in its own call.
   for (const env of opts.environments) {
     await easRun([
       "env:push",
@@ -157,8 +134,6 @@ export async function init(): Promise<{ ok: boolean; projectId?: string }> {
 }
 
 async function listChannels(): Promise<string[]> {
-  // easJson throws on a garbled zero-exit response instead of reading it as "no
-  // channels" — that footgun would make ensureChannels re-create existing names.
   const parsed = await easJson<{ currentPage?: Array<{ name?: string }> }>([
     "channel:list",
     "--limit",
@@ -172,8 +147,6 @@ async function createChannel(name: string): Promise<boolean> {
   return code === 0;
 }
 
-// Idempotency is ours, not EAS's: list first, create only the missing names, and
-// throw on a real create failure so the caller can't read it as "already exists".
 export async function ensureChannels(names: readonly string[]): Promise<string[]> {
   const existing = new Set(await listChannels());
   const created: string[] = [];

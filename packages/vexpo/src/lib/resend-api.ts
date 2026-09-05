@@ -58,8 +58,6 @@ async function call<T>(method: string, path: string, key: string, body?: unknown
     }
     if (res.status === 429) {
       const delay = retryDelay(res, attempt);
-      // Over-cap Retry-After or the last attempt: stop sleeping and surface the
-      // 429 so an oversized Retry-After can't freeze the CLI for minutes.
       if (delay === null || attempt === 5) break;
       await sleep(delay);
       continue;
@@ -74,10 +72,6 @@ async function call<T>(method: string, path: string, key: string, body?: unknown
 }
 
 export async function probeAccess(key: string): Promise<"full" | "sending" | "invalid"> {
-  // Can't route through `call`: it throws on non-2xx, but we need the 4xx body
-  // to tell a restricted (sending-only) key from an invalid one. Only 401/403
-  // means invalid; 429 retries and 5xx throws so a transient blip never reads
-  // as a bad key.
   for (let attempt = 0; attempt < 6; attempt++) {
     const res = await fetchWithTimeout(
       `${BASE}/api-keys`,
@@ -173,11 +167,6 @@ export async function provisionSendingKey(
   return created.token;
 }
 
-/**
- * Deletes any existing webhook pointing at this endpoint, then creates a fresh
- * one. Returns the new webhook id + signing secret; the id lets callers record
- * which webhook the stored RESEND_WEBHOOK_SECRET belongs to for drift detection.
- */
 export async function provisionWebhook(
   fullKey: string,
   endpoint: string,

@@ -68,8 +68,6 @@ export default function ResetPasswordScreen() {
   const brandIcon = useThemedAsset(assets.brandIconLight, assets.brandIconDark);
   const { email = "" } = useLocalSearchParams<{ email: string }>();
   const providers = useQuery(api.auth.getEnabledProviders);
-  // Reset requires the email-OTP flow which requires Resend. Redirect away
-  // in lite mode (`REQUIRE_EMAIL_VERIFICATION` unset).
   useEffect(() => {
     if (providers !== undefined && providers.emailFeatures === false) {
       announce(
@@ -83,8 +81,6 @@ export default function ResetPasswordScreen() {
   const [otp, setOtp] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  // Hidden carrier so iOS keychain pairs the new password with this email
-  // when Strong Password offers a suggestion and the user accepts.
   const emailIdentityState = useNativeState(email);
 
   const [state, submit, isPending] = useActionState<ResetState, void>(async () => {
@@ -188,9 +184,6 @@ export default function ResetPasswordScreen() {
         modifiers={[
           scrollDismissesKeyboard("interactively"),
           tint(colors.primary as string),
-          // An invalid-code error appears between the account row and the OTP
-          // field, pushing the password fields down. Pin the visible center so
-          // the user stays on the field they were filling. No-op below iOS 18.
           defaultScrollAnchorForRole("center", "sizeChanges"),
         ]}
       >
@@ -280,8 +273,6 @@ export default function ResetPasswordScreen() {
                 monospacedDigit(),
                 kerning(8),
                 multilineTextAlignment("center"),
-                // upstream expo/expo#46540: six monospaced glyphs in a capsule
-                // that can't wrap, cap Dynamic Type so they don't overflow.
                 dynamicTypeSize({ max: DynamicType.otp }),
                 submitLabel("next"),
                 disabled(isPending),

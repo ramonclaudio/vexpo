@@ -52,10 +52,6 @@ async function resolveFullKey(): Promise<string | null> {
   return pasted || null;
 }
 
-/**
- * The prod deployment is its own Resend channel: same scoped sending key, but
- * its own webhook (per-endpoint signing secret) and its own copy of the env.
- */
 async function prodChannel(): Promise<{ envFile: string; siteUrl: string } | null> {
   const envFile = (await fileExists(".env.prod"))
     ? ".env.prod"
@@ -133,9 +129,7 @@ export async function runResend(options: ResendOptions): Promise<number> {
       check: async () => {
         try {
           await verifyDomain(fullKey, target.id);
-        } catch {
-          // Resend returns 422 while DNS isn't ready; ignore and re-check.
-        }
+        } catch {}
         const refreshed = await getDomain(fullKey, target.id);
         if (refreshed.status === "verified") {
           return {
@@ -199,9 +193,6 @@ export async function runResend(options: ResendOptions): Promise<number> {
   await envSet("REQUIRE_EMAIL_VERIFICATION", "true");
   ok("REQUIRE_EMAIL_VERIFICATION=true (sign-up now requires OTP)");
 
-  // Prod channel, wired in the same run so the two deployments never drift:
-  // the sending key is shared (its token only exists right now), the webhook
-  // and its signing secret are per-deployment.
   const prod = await prodChannel();
   let prodWebhook: { id: string; endpoint: string } | undefined;
   if (!prod) {
@@ -246,12 +237,6 @@ export async function runResend(options: ResendOptions): Promise<number> {
   return 0;
 }
 
-/**
- * Moving the webhook to a new endpoint recreates it with a fresh signing secret,
- * which we write onto the deployment atomically so signature verification keeps
- * working. Resend's management API can read a secret back now, but recreate gives
- * us one known, current value without reconciling.
- */
 async function runResendRepoint(options: ResendOptions): Promise<number> {
   const channel = options.prod ? "prod" : "dev";
   section(`Resend repoint (${channel})`);
@@ -284,9 +269,6 @@ async function runResendRepoint(options: ResendOptions): Promise<number> {
     return 1;
   }
 
-  // The sibling channel's live webhook is not stale: dev and prod each keep
-  // their own endpoint, so a prod repoint must never retire the dev hook (and
-  // vice versa).
   const siblingSite = options.prod
     ? await readOne("EXPO_PUBLIC_CONVEX_SITE_URL")
     : (await prodChannel())?.siteUrl;

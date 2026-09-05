@@ -1,12 +1,4 @@
 #!/usr/bin/env bash
-#
-# E2E suite for the `vexpo` CLI. Builds the package, invokes the dist binary
-# against real shell semantics. Safe to run anywhere — every path uses
-# --dry-run / --help so nothing mutates external services or local state.
-#
-# Usage:
-#   __tests__/e2e/run.sh              all tests
-#   __tests__/e2e/run.sh GREP         only tests whose name matches GREP
 
 set -uo pipefail
 
@@ -27,8 +19,6 @@ if [ ! -f "$CLI" ]; then
   echo "build vexpo first: npm run build -w @ramonclaudio/vexpo" >&2
   exit 1
 fi
-
-# ─── Helpers ────────────────────────────────────────────────────────────────
 
 C_RED=$'\e[31m'
 C_GREEN=$'\e[32m'
@@ -66,8 +56,6 @@ make_sandbox() {
   fi
   echo "$d"
 }
-
-# ─── Tests ──────────────────────────────────────────────────────────────────
 
 section "Help + version"
 
@@ -232,8 +220,6 @@ JSON
   node "$CLI" asc accessibility lint "$fixture" >/dev/null 2>&1; code=$?
   [ $code -ne 0 ] && pass "$n" || fail "$n" "expected non-zero exit, got $code"
 else skip "$n" "filtered"; fi
-
-# ─── Summary ────────────────────────────────────────────────────────────────
 
 printf "\n${C_BOLD}${C_PURPLE}Summary${C_RESET} ${C_DIM}─────────────────────────────${C_RESET}\n"
 TOTAL=$((PASSED + FAILED + SKIPPED))

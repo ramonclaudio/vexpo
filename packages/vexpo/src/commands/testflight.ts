@@ -28,8 +28,6 @@ export async function runTestflightGroupsList(opts: { json?: boolean } = {}): Pr
   for (const g of groups) {
     const internal = g.attributes.isInternalGroup ? "internal" : "external";
     const name = g.attributes.name ?? "(unnamed)";
-    // Full id, not a prefix. `groups view`, `groups delete` and `invite --group`
-    // all take this value straight from here, and Apple 404s a shortened one.
     line(`  ${BOLD}${g.id}${RESET}  ${name}  ${DIM}${internal}${RESET}`);
   }
   return 0;
@@ -116,9 +114,6 @@ export async function runTestflightInvite(opts: {
 }): Promise<number> {
   const { tf, ascAppId } = await bootstrap();
 
-  // A tester only reaches an app through a beta group (ASC forbids an `apps`
-  // relationship on tester creation), so resolve one up front: the flag, or
-  // the app's single internal group.
   const groups = await tf.betaGroups.list({ appId: ascAppId });
   const internal = groups.find((g) => g.attributes.isInternalGroup);
   const autoResolved = !opts.groupId;
@@ -136,7 +131,6 @@ export async function runTestflightInvite(opts: {
     const existing = await tf.betaTesters.list({ email: opts.email, appId: ascAppId });
     if (existing[0]) {
       ok(`tester ${opts.email} already exists (${existing[0].id})`);
-      // Re-adding a member 409s (STATE_ERROR), so check membership first.
       const members = await tf.betaGroups.listTesters(gid);
       if (members.some((m) => m.id === existing[0]!.id)) {
         nop("already in the group");
@@ -159,10 +153,6 @@ export async function runTestflightInvite(opts: {
   try {
     testerId = await assign(groupId);
   } catch (err) {
-    // Internal groups only take App Store Connect TEAM MEMBERS; an outside
-    // email fails the assignment with STATE_ERROR "Tester(s) cannot be
-    // assigned". When we picked the internal group ourselves, fall through to
-    // the external group; an explicit --group gets the explanation instead.
     const stateError = err instanceof AscApiError && err.code?.startsWith("STATE_ERROR");
     const external = groups.find((g) => !g.attributes.isInternalGroup);
     const blockedByInternal = stateError && groupId === internal?.id;
@@ -183,9 +173,6 @@ export async function runTestflightInvite(opts: {
     const inv = await tf.betaTesterInvitations.create({ appId: ascAppId, testerId });
     ok(`invitation ${inv.id}`);
   } catch (err) {
-    // The tester is durably in the group; Apple just can't send the email
-    // until the group has an installable build (external groups wait on beta
-    // review). Not a failure: access flows automatically once a build clears.
     if (err instanceof AscApiError && err.code?.includes("NO_INSTALLABLE_BUILDS")) {
       ok("tester is in the group; the invite email sends once a build is installable");
       note("external groups wait on Beta App Review for their first build");

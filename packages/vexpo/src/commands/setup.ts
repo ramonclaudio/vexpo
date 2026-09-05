@@ -70,11 +70,6 @@ export type SetupOptions = {
   plan?: boolean;
   noState?: boolean;
   lite?: boolean;
-  /**
-   * An Apple Developer Program membership is always required for TestFlight
-   * because Apple has no API to create one. `--new` includes a pause and
-   * `helpAndWait` if the user isn't enrolled.
-   */
   isNew?: boolean;
   skipRebrand?: boolean;
 };
@@ -154,17 +149,9 @@ const STEP_TTL_HOURS: Record<StepName, number> = {
   "asc-key": 24,
   "apple-services-id": 24,
   "apple-sign-in": 24,
-  // EAS credentials don't drift; once configured, they stay until you rotate.
   "apple-credentials": Infinity,
-  // ASC project link via `eas integrations:asc:connect`. Live-checked through
-  // `eas integrations:asc:status` so cache TTL is short. Drift would mean
-  // someone disconnected via the EAS dashboard.
   "apple-asc-link": 24,
-  // No cache for the rotation secrets phase. EAS env state is the source of
-  // truth, and the secrets list query takes ~1s.
   "apple-eas-rotation-secrets": 0,
-  // eas: 0, no cache, always probe live via `eas env:list`. eas-cli is the
-  // source of truth here and our wrapper is too thin to be worth caching.
   eas: 0,
   "review-account": Infinity,
 };
@@ -193,10 +180,6 @@ async function shouldRun(
   }
   const live = await liveCheck();
   if (live && !options.dryRun && !options.plan && !options.noState) {
-    // Gated on !dryRun + !plan + !noState because those modes are explicitly
-    // read-only previews; mutating state.json from a preview would be a surprise.
-    // Only bump verifyAt: replacing the record would wipe cached outputs that
-    // downstream commands (apple jwt --rotate, eas-rotation-secrets) read back.
     await touchVerifyAt(step);
   }
   return { step, label: step, status: live ? "live" : "missing" };
@@ -253,9 +236,6 @@ async function liveCheckRotationSecrets(): Promise<boolean> {
   ].every((k) => eas.has(k));
 }
 
-// The lite core is everything `vexpo lite` writes to .env.local. Team id is
-// legitimately absent after lite (convex.ts treats it as optional for lite), so
-// it lives outside the core and gets its own state.
 const LOCAL_ENV_LITE_CORE = [
   "CONVEX_DEPLOYMENT",
   "EXPO_PUBLIC_CONVEX_URL",
@@ -268,8 +248,6 @@ const LOCAL_ENV_TEAM_ID = "EXPO_PUBLIC_APPLE_TEAM_ID";
 
 export type LocalEnvState = "ok" | "partial" | "missing";
 
-// "ok" = full core + team id. "partial" = lite core present, team id missing
-// (a healthy lite deployment). "missing" = lite core incomplete.
 export function classifyLocalEnv(env: Map<string, string>): LocalEnvState {
   if (!LOCAL_ENV_LITE_CORE.every((k) => env.has(k))) return "missing";
   return env.has(LOCAL_ENV_TEAM_ID) ? "ok" : "partial";
@@ -296,8 +274,6 @@ async function stepPrerequisites(): Promise<void> {
   if (await convexIsLoggedIn()) ok("Convex auth detected");
   else yep("not signed in to Convex (`npx vexpo accounts` will prompt)");
 
-  // Surface a logged-out eas-cli at the very first section: the EAS phases
-  // bail non-interactively much later, which cost a live 0→1 run a detour.
   const who = await easWhoami();
   if (who) ok(`Expo auth: signed in as ${who}`);
   else yep("not signed in to Expo (run `npx eas-cli login` before `vexpo full`)");
@@ -328,8 +304,6 @@ async function stepProbe(ctx: RunContext): Promise<{
 
   const installOk = await nodeModulesPresent();
   const localEnvState = await liveCheckLocalEnv();
-  // The convex step is live once the lite core is present; it doesn't depend on
-  // the team id (which lite skips). "partial" still means a connected deployment.
   const convexLive = localEnvState !== "missing";
   const convex = (convexLive ? await convexEnvMap() : null) ?? new Map<string, string>();
 
@@ -397,10 +371,6 @@ async function stepProbe(ctx: RunContext): Promise<{
 
 export function isComplete(result: { needs: Map<string, boolean>; install: boolean }): boolean {
   if (result.install) return false;
-  // Every phase that `vexpo full` invokes in default scope (i.e. excluding
-  // `accounts` and `review-account`, which are opt-in / standalone) must appear
-  // here, otherwise a step missing from the cache will exit early through the
-  // "everything is configured" gate.
   for (const required of [
     "rebrand",
     "convex",
@@ -548,8 +518,6 @@ export async function runSetup(opts: SetupOptions): Promise<number> {
       await clearAll();
     }
 
-    // Warn but don't block on a concurrent run: the state file's atomic rename
-    // and per-step idempotency handle the race.
     if (!options.dryRun && !options.plan && !options.noState) {
       const existing = await loadState();
       const concurrent = checkConcurrentRun(existing);
@@ -713,8 +681,6 @@ export async function runSetup(opts: SetupOptions): Promise<number> {
         nop("vexpo apple services-id cached");
       }
       const status = probe.rows.get("apple-sign-in")?.status;
-      // A healthy configured JWT shouldn't default to a rotation. Render [y/N]
-      // for the rotate prompt; keep [Y/n] for the fresh sign prompt.
       const healthy = status === "live" || status === "cached";
       const prompt = healthy
         ? "Apple Sign In is configured, rotate the JWT now?"
@@ -763,9 +729,6 @@ export async function runSetup(opts: SetupOptions): Promise<number> {
     }
     return 1;
   } finally {
-    // Skip the audit on read-only modes: mutating .setup-state.json from a
-    // preview would break CI workflows that rely on the cache staying stable
-    // across dry-run validations.
     const skipAudit = options.dryRun === true || options.plan === true || options.noState === true;
     if (!skipAudit) {
       try {
@@ -781,9 +744,7 @@ export async function runSetup(opts: SetupOptions): Promise<number> {
             ? { failed: { step: ctx.failedStep ?? "unknown", message: failureMessage } }
             : {}),
         });
-      } catch {
-        // never let audit logging hide a real error
-      }
+      } catch {}
     }
   }
   return 0;

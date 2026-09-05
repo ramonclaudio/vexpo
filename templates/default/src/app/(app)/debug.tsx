@@ -157,8 +157,6 @@ export default function DebugScreen() {
   const updates = useAppUpdates();
   const updateLog = useUpdateLogEntries(updates.isUpdatePending, updates.restartCount);
 
-  // OTA status rows render silently; announce check outcomes to VoiceOver.
-  // Download errors/progress stay unannounced here, the global UpdateBanner owns them.
   const wasCheckingRef = useRef(false);
   useEffect(() => {
     if (updates.checkError) announce(`Update check failed: ${updates.checkError.message}`);
@@ -182,8 +180,6 @@ export default function DebugScreen() {
     <Host
       testID="debug-screen"
       style={{ flex: 1, backgroundColor: colors.background }}
-      // upstream expo/expo#47269: raises redacted("privacy") when the app
-      // resigns, hiding privacySensitive leaves in the app-switcher snapshot
       modifiers={scenePrivacy}
     >
       <ScrollView
@@ -238,9 +234,6 @@ export default function DebugScreen() {
               alignment="leading"
               modifiers={[
                 frame({ maxWidth: Infinity }),
-                // upstream expo/expo#47269: while a check is in flight the shown
-                // status is possibly stale, so raise the invalidated reason; it
-                // redacts only the invalidatableContent-marked Status value.
                 ...(updates.isChecking ? [redacted("invalidated")] : []),
               ]}
             >
@@ -342,8 +335,6 @@ export default function DebugScreen() {
                 />
               ) : null}
               {updateLog.length > 0 ? (
-                // upstream expo/expo#43914: defaultScrollAnchor("bottom") anchors
-                // the log view to the newest entry, the standard log-tail UX.
                 <ScrollView modifiers={[frame({ height: 240 }), defaultScrollAnchor("bottom")]}>
                   <InfoCard>
                     {updateLog.map((entry) => (
@@ -447,9 +438,6 @@ export default function DebugScreen() {
             <Spacer />
             <Text
               testID="debug-footer-version-value"
-              // upstream expo/expo#46579: duplicates the BUILD > Version row
-              // above, so hide the footer stamp from VoiceOver instead of
-              // announcing the version twice.
               modifiers={[
                 dfont({ size: 12 }),
                 foregroundStyle(colors.mutedForeground as string),

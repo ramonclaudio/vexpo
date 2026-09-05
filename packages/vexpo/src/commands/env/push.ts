@@ -54,10 +54,6 @@ function shortValue(v: string): string {
   return `${v.slice(0, 30)}…${v.slice(-12)} ${DIM}(${v.length}b)${RESET}`;
 }
 
-// Convex-routed keys carry secrets (BETTER_AUTH_SECRET, RESEND_API_KEY, etc.)
-// that fit under shortValue's 60-char threshold and would otherwise print
-// verbatim in the plan, including on --dry-run. Render a fingerprint + length
-// for them instead of the raw value. EAS routes here are all EXPO_PUBLIC_*.
 export function planRowValue(entry: SyncEntry): string {
   if (entry.destinations.some((d) => d.type === "convex")) {
     return `fp: ${fingerprint(entry.value)} ${DIM}(${entry.value.length}b)${RESET}`;
@@ -71,9 +67,6 @@ function describeDest(d: Destination): string {
 }
 
 type RemoteState = {
-  // null = the convex env read failed (auth/CLI). Kept distinct from an empty
-  // map so resolveDestination blocks the write instead of treating every var as
-  // absent and blindly creating it.
   convexDev: Map<string, string> | null;
   convexProd: Map<string, string> | null;
   easByEnv: Record<EasEnvironment, Map<string, string>>;
@@ -248,10 +241,6 @@ export async function applyPlan(plan: FilePlan): Promise<{ applied: number; fail
       await withTempEnvFile(
         entries.map(([k, v]) => `${k}=${v}`),
         (tmp) =>
-          // The plan and the interactive confirm already gate overwrites, so
-          // force the overwrite to match the EAS path. Without --force the
-          // Convex CLI rejects the whole batch when a secret already exists (a
-          // TTY user who confirms still carries no opts.force, and CI has none).
           convexEnvSetFromFile(
             tmp,
             channel === "prod" ? { prod: true, envFile: plan.sourceFile } : undefined,
@@ -289,8 +278,6 @@ export async function applyPlan(plan: FilePlan): Promise<{ applied: number; fail
 export async function runEnvPush(options: EnvPushOptions): Promise<number> {
   section("Env push");
 
-  // Fail loud on an expired/revoked Convex login before the Convex env writes
-  // hit a cryptic auth error. "no-token" is left alone (CI may use a deploy key).
   if ((await checkToken()) === "unauthorized") {
     bad("Convex login expired or revoked");
     note("run `npx convex login` to refresh, then re-run");
@@ -335,9 +322,6 @@ export async function runEnvPush(options: EnvPushOptions): Promise<number> {
   const remote = await readRemoteState(prodEnvFile);
   if (!remote.hasEasProject) yep("no EAS projectId in app.json. EAS env routes will be blocked");
 
-  // Detect any MANUAL_EAS_SECRETS in ANY source (dev or prod). they need an
-  // explicit `eas env:create --visibility secret`, not bulk push. A dev-file
-  // hit (e.g. CONVEX_DEPLOY_KEY in .env.local) is just as silently dropped.
   const manualHits: Array<{ key: string; file: string }> = [];
   for (const s of sources) {
     for (const k of Object.keys(MANUAL_EAS_SECRETS)) {
@@ -397,11 +381,6 @@ export async function runEnvPush(options: EnvPushOptions): Promise<number> {
     return 0;
   }
 
-  // Prod Convex writes go through `convex env set --env-file <prod source>` so
-  // the prod deploy key in that file selects the prod deployment. If the prod
-  // source carries no prod-scoped CONVEX_DEPLOY_KEY/CONVEX_DEPLOYMENT, the CLI
-  // falls back to the dev key in .env.local and the writes silently land on dev.
-  // Refuse rather than shadow.
   const prodConvexWrites = entries.some(
     (e) => e.channel === "prod" && e.destinations.some((d) => d.type === "convex"),
   );

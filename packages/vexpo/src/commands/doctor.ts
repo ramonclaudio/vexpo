@@ -11,9 +11,7 @@ async function isInVexpoProject(): Promise<boolean> {
     try {
       await access(sentinel);
       return true;
-    } catch {
-      // continue
-    }
+    } catch {}
   }
   return false;
 }

@@ -1,26 +1,5 @@
 name: Rollback
 
-# Manually trigger a rollback on any branch. Two flavors, matching the
-# canonical eas-cli surface:
-#
-#   "previous"  → republish an earlier update group on the same branch.
-#                 Requires the `group` input (the update-group ID): the
-#                 workflow runner has no TTY, and `update:republish --branch`
-#                 only works interactively, so `--group` is mandatory under
-#                 `--non-interactive`. Use this when a recent OTA broke
-#                 something users on previous builds didn't see.
-#                 Maps to `eas update:republish`.
-#                 https://docs.expo.dev/eas-update/rollbacks/
-#
-#   "embedded"  → roll back to the build's embedded bundle (the JS that
-#                 shipped with the .ipa). Requires the `runtime_version` input
-#                 (`--runtime-version` is mandatory under `--non-interactive`).
-#                 Effectively makes the next-OTA-check ignore the current
-#                 rollout and serve the binary as-is. Use this when a broken
-#                 OTA shouldn't ship to ANYONE on that build.
-#                 Maps to `eas update:roll-back-to-embedded`.
-#                 https://docs.expo.dev/eas-update/rollbacks/
-
 on:
   workflow_dispatch:
     inputs:
@@ -49,19 +28,11 @@ on:
         type: string
         required: false
 
-# No concurrency block on purpose. EAS only accepts `cancel_in_progress: true`
-# (and no custom group yet), but cancelling a half-applied rollback is worse than
-# letting two idempotent runs finish, so the no-block default (don't cancel) is
-# the correct behaviour here.
-
 jobs:
   rollback:
     name: Roll back ${{ inputs.branch }} (${{ inputs.type }})
     environment: ${{ inputs.branch == 'production' && 'production' || 'development' }}
     runs_on: linux-medium
-    # Inputs reach the script ONLY as env vars, never interpolated into the
-    # script body, so a branch/message containing shell metacharacters is treated
-    # as data, not code. argv is built as an array; no eval.
     env:
       ROLLBACK_BRANCH: ${{ inputs.branch }}
       ROLLBACK_TYPE: ${{ inputs.type }}
@@ -74,8 +45,6 @@ jobs:
       - name: Roll back
         run: |
           if [ "$ROLLBACK_TYPE" = "embedded" ]; then
-            # --runtime-version and --message are both required in non-interactive
-            # mode; the interactive runtime picker never runs on a TTY-less runner.
             if [ -z "$ROLLBACK_RUNTIME" ]; then
               echo "embedded rollback requires a 'runtime_version' input (the build's runtimeVersion)" >&2
               exit 1
@@ -84,8 +53,6 @@ jobs:
             args=(--branch "$ROLLBACK_BRANCH" --platform ios --runtime-version "$ROLLBACK_RUNTIME" --message "$msg" --non-interactive)
             npx eas-cli update:roll-back-to-embedded "${args[@]}"
           else
-            # update:republish --branch is interactive-only; a TTY-less runner
-            # must pass the update-group ID via --group.
             if [ -z "$ROLLBACK_GROUP" ]; then
               echo "previous rollback requires a 'group' input (the update-group ID to republish)" >&2
               exit 1

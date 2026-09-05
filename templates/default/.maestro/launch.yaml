@@ -1,40 +1,9 @@
-# Smoke test: the app cold-starts and renders without crashing, plus a screenshot.
-#
-# The UI is @expo/ui SwiftUI. `testID` props map to the native accessibilityIdentifier
-# and DO surface to Maestro as `resource-id`, so `assertVisible: { id: "..." }` resolves
-# against any tagged control or screen. Every interactive control and screen root
-# carries a stable id (grep `testID=` under src/), so real id-based flows are viable,
-# not just this no-crash smoke test.
-#
-# Driving note: Maestro taps an element's center. Buttons whose center holds content
-# (the profile card, the ProminentButton submits) tap fine by `id`. The capsule list
-# rows put a Spacer in the middle, so tap those by their label text (`tapOn: "Debug"`),
-# not by `id`, or the tap lands on empty space. Native tab-bar taps can be flaky;
-# assert-then-tap or retry.
-#
-# `appId` reads ${MAESTRO_APP_ID}. EAS injects it from EXPO_PUBLIC_APP_BUNDLE_ID
-# (see .eas/workflows/e2e-tests.yml), so the same flow runs against any fork's
-# bundle id without edits. Locally, pass it from .env.local (needs a JDK on PATH):
-#
-# Run locally: `npm run e2e -- .maestro/launch.yaml` (scripts/e2e.mjs finds the
-# JDK, reads the bundle id out of .env.local and resets the simulator keychain).
-# Run on EAS:  via `.eas/workflows/e2e-tests.yml` (workflow_dispatch only).
 appId: ${MAESTRO_APP_ID}
 ---
-# No clearState here. The suite runs in the order ORDERED_FLOWS in
-# scripts/e2e.mjs sets (guest -> auth -> launch -> tour -> zz-delete-restore).
-# guest.yaml and auth.yaml own the clean-state resets, and auth.yaml is the one
-# that leaves the session the flows after it need. Clearing again mid-suite would
-# wipe the onboarding_seen flag while the Better Auth session survives in the
-# keychain, so tour.yaml and zz-delete-restore.yaml would resume authenticated
-# but un-onboarded, stuck behind the welcome modal. Relaunch only.
 - launchApp
 - waitForAnimationToEnd:
     timeout: 15000
 
-# auth.yaml runs first and leaves a session, so a healthy cold start lands on
-# the tabs. Assert it: a screenshot alone passes even when the app never
-# rendered.
 - extendedWaitUntil:
     visible:
       id: "home-screen"

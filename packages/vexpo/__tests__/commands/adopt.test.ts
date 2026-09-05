@@ -1,8 +1,3 @@
-/**
- * eas-cli 21's `integrations:convex:connect` writes only CONVEX_DEPLOY_KEY to
- * .env.local (no CONVEX_DEPLOYMENT line), so adopt must recover the deployment
- * ref from the key instead of bailing with "nothing to adopt".
- */
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("../../src/commands/convex.ts", () => ({ runConvex: vi.fn().mockResolvedValue(0) }));

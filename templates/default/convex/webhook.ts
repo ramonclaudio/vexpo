@@ -8,9 +8,7 @@ export type WithWebhookOptions = {
   source: string;
   signatureHeader: string;
   secretEnv: string;
-  /** HMAC algorithm. EAS signs with SHA-1. */
   algorithm: SignatureAlgorithm;
-  /** Prefix before the hex digest. EAS sends `sha1=<hex>`. Default `""`. */
   signaturePrefix?: string;
   maxBodyBytes?: number;
   replay?: {
@@ -135,8 +133,6 @@ function jsonError(status: number, message: string, requestId: string): Response
   });
 }
 
-// Read the body while enforcing the byte cap, aborting the stream past the
-// limit so an oversized or content-length-lying client never buffers fully.
 async function readCappedBody(req: Request, maxBytes: number): Promise<string | null> {
   const reader = req.body?.getReader();
   if (!reader) {

@@ -37,11 +37,6 @@ function resolveFamily(weight: Weight | undefined, design: Design | undefined): 
   return GEIST_BY_WEIGHT[w];
 }
 
-// upstream expo/expo#46007: passing the `font` modifier a `textStyle` scales the
-// Geist family with iOS Dynamic Type natively (Apple's Larger Text path) instead
-// of a JS-side `fontScale` multiply. `textStyleForSize` picks the style from the
-// declared size, which stays the base, so default-size rendering is unchanged
-// and SwiftUI rescales without a JS re-render.
 export function useDynamicFont() {
   return useCallback((params: FontParams) => {
     const family = params.family ?? resolveFamily(params.weight, params.design);

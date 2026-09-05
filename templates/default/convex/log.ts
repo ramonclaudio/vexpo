@@ -23,8 +23,6 @@ function emit(level: LogLevel, fields: LogFields): void {
   }
 }
 
-// JSON.stringify replacer: Errors don't serialize by default. Pull
-// `message`, `name`, and (only in development) `stack`.
 function replacer(_key: string, value: unknown): unknown {
   if (value instanceof Error) {
     return {
@@ -48,7 +46,6 @@ export const log = {
   },
 };
 
-// Web crypto is available in Convex's runtime. 9 bytes → 12-char base64url.
 export function newRequestId(): string {
   const bytes = new Uint8Array(9);
   crypto.getRandomValues(bytes);

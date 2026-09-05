@@ -76,15 +76,11 @@ export function EmailOtpVerify({
             monospacedDigit(),
             kerning(8),
             multilineTextAlignment("center"),
-            // upstream expo/expo#46540: six monospaced glyphs in a
-            // capsule that can't wrap, cap Dynamic Type so they fit.
             dynamicTypeSize({ max: DynamicType.otp }),
             submitLabel("done"),
             disabled(isVerifying),
             accessibilityLabel("Verification code"),
             accessibilityHint("Enter the 6 digit code sent to your new email"),
-            // upstream expo/expo#47426: the invalid-code ring, same treatment
-            // as the auth OTP field.
             ...(invalidCode
               ? [
                   strokeBorder({

@@ -117,7 +117,6 @@ describe("state load/save round-trip", () => {
 
   it("handles a state file that is a symlink to /dev/null", async () => {
     await symlink("/dev/null", STATE_FILE);
-    // /dev/null reads as empty → JSON.parse fails → wrapped with "invalid JSON".
     await expect(load()).rejects.toThrow(/invalid JSON/);
   });
 });
@@ -238,10 +237,6 @@ describe("checkConcurrentRun", () => {
   });
 
   it("reports active=false when lastPid is undefined (corrupted state)", () => {
-    // Regression: an older vexpo run wrote a state with lastPid missing.
-    // checkConcurrentRun used to treat `undefined !== 0 && undefined !== pid`
-    // as truthy and returned `otherPid: undefined`, which the consumer then
-    // interpolated as the string "undefined" in the warning message.
     const state: SetupState = {
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),

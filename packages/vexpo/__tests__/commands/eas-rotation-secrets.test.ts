@@ -34,8 +34,6 @@ const lookupOutputSpy = lookupOutput as unknown as ReturnType<typeof vi.fn>;
 
 const P8 = "/tmp/AuthKey_ABC.p8";
 
-// jwt.ts records Apple identity to the apple-sign-in step outputs (it only
-// writes bare APPLE_TEAM_ID/APPLE_KEY_ID to Convex, never to .env.local).
 const APPLE_STATE = {
   steps: {
     "apple-sign-in": {
@@ -53,7 +51,7 @@ const APPLE_STATE = {
 beforeEach(() => {
   vi.clearAllMocks();
   process.env.APPLE_P8_PATH = P8;
-  envListSpy.mockResolvedValue(new Map()); // nothing on EAS yet -> all creates
+  envListSpy.mockResolvedValue(new Map());
   readOneSpy.mockImplementation((k: string) =>
     Promise.resolve(({ CONVEX_DEPLOYMENT: "dev:merry-otter-1" } as Record<string, string>)[k]),
   );
@@ -76,7 +74,7 @@ describe("runEasRotationSecrets", () => {
 
     const p8Call = envCreateSpy.mock.calls.find((c) => c[0] === "APPLE_P8_PRIVATE_KEY");
     expect(p8Call).toBeDefined();
-    expect(p8Call![1]).toBe(P8); // value is the PATH, the regression guard
+    expect(p8Call![1]).toBe(P8);
     expect(p8Call![2]).toBe("secret");
     expect(p8Call![3]).toEqual(["production"]);
     expect(p8Call![4]).toEqual({ type: "file" });
@@ -91,9 +89,6 @@ describe("runEasRotationSecrets", () => {
   });
 
   it("sources Apple identity from apple-sign-in state, not bare .env.local keys", async () => {
-    // .env.local never holds bare APPLE_TEAM_ID/APPLE_KEY_ID/APPLE_SERVICES_ID;
-    // jwt.ts writes those to Convex + state. Reading them via readOne returns
-    // undefined, so the command must pull them from the apple-sign-in step.
     const exit = await runEasRotationSecrets({});
     expect(exit).toBe(0);
 

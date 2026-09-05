@@ -45,12 +45,7 @@ export default function ProfileScreen() {
   const scenePrivacy = useScenePrivacy();
   const me = useQuery(api.users.getMe);
   const { isGuest } = useAuthStatus();
-  // An anonymous user has no `account` row at all, so this is a round trip for
-  // a guaranteed false.
   const hasPasswordResult = useQuery(api.auth.hasPassword, isGuest ? "skip" : {});
-  // Email change requires the email-OTP flow which requires Resend. In lite
-  // mode (`REQUIRE_EMAIL_VERIFICATION` unset) the email field is read-only
-  // no way to send a verification code to the new address.
   const providers = useQuery(api.auth.getEnabledProviders);
   const emailFeatures = providers?.emailFeatures === true;
   const updateProfile = useMutation(api.users.updateProfile);
@@ -60,11 +55,6 @@ export default function ProfileScreen() {
   const { deleteAccount, deleteError } = useDeleteAccount();
   const handleSignOut = useSignOut();
 
-  // SwiftUI source of truth via useNativeState; mirrored to React state via
-  // onTextChange so derived values like `hasChanges` stay reactive. Username
-  // and the email-OTP field add a "worklet" onTextChange so the mask
-  // (lowercase / digits-only) rewrites the field synchronously on the UI
-  // thread; name, email, and bio need no masking so they keep a plain mirror.
   const nameState = useNativeState(me?.name ?? "");
   const usernameState = useNativeState(me?.username ?? "");
   const emailState = useNativeState(me?.email ?? "");
@@ -74,11 +64,6 @@ export default function ProfileScreen() {
   const [email, setEmail] = useState(me?.email ?? "");
   const [bio, setBio] = useState(me?.bio ?? "");
 
-  // `currentKey` collapses `(me._id, me.updatedAt)` into one stable dep so the
-  // effect re-runs only when the row actually changes, not on every render
-  // where `me` is a new object reference. Every read inside the effect is
-  // derived from `me`, so depending on `me` itself would cause unwanted resets
-  // when other render-triggered fields (e.g. unrelated query refetches) change.
   const currentKey = me ? `${me._id}:${me.updatedAt}` : null;
   useEffect(() => {
     if (!me) return;
@@ -108,16 +93,6 @@ export default function ProfileScreen() {
         email.trim().toLowerCase() !== me.email.toLowerCase() ||
         bio.trim() !== (me.bio ?? ""));
 
-  /**
-   * Name and bio only, the two fields the guest form shows.
-   *
-   * The account path would not crash on a guest: their email state mirrors the
-   * address the anonymous plugin generated, so nothing looks changed and
-   * `changeEmail` never fires. That is luck, not design. Once Resend is
-   * configured `emailFeatures` unlocks that field, and a guest editing it
-   * sends a verification code to the placeholder address, which nobody reads,
-   * and the change never lands. So the save touches only what the form showed.
-   */
   const saveGuest = async (
     current: NonNullable<typeof me>,
     attempt: number,
@@ -162,8 +137,6 @@ export default function ProfileScreen() {
 
     if (isGuest) return await saveGuest(me, attempt);
 
-    // Accounts without a username must still save name/email/bio; the strict
-    // schema would reject the empty username field they never set.
     const schema = me.username ? profileUpdateSchema : profileUpdateOptionalUsernameSchema;
     const parsed = schema.safeParse({ name, username, email });
     if (!parsed.success) {
@@ -223,9 +196,6 @@ export default function ProfileScreen() {
 
   const [otpState, verifyOtp, isVerifying] = useActionState<OtpState, void>(async (prev) => {
     const attempt = (prev.attempt ?? 0) + 1;
-    // Read the native field, not the JS `otp` mirror: submitting via the
-    // keyboard "done" key on the same frame the sixth digit lands can see a
-    // stale five-char `otp` because `scheduleOnRN(setOtp, ...)` trails a frame behind.
     const code = otpCodeState.value;
     if (!pendingEmail || code.length !== 6) {
       haptics.error();
@@ -253,8 +223,6 @@ export default function ProfileScreen() {
 
   const pickAvatar = async (source: "library" | "camera") => {
     setAvatarPicker(false);
-    // Let the avatar picker sheet finish dismissing before presenting the
-    // image picker. iOS drops a present that starts while a sheet is animating out.
     await new Promise((r) => setTimeout(r, 350));
     const perm =
       source === "camera"
@@ -284,10 +252,6 @@ export default function ProfileScreen() {
       setAvatarError(null);
       setAvatarUpdating(true);
       const uploadUrl = await generateAvatarUploadUrl();
-      // Raw bytes, not a Blob: expo/fetch (the global fetch since SDK 56)
-      // replaces an explicit Content-Type header with the blob's own type,
-      // which is empty for a file:// read, and Convex rejects an empty
-      // Content-Type value with 400 BadHeader.
       const read = await fetch(asset.uri);
       if (!read.ok) {
         throw new ConvexError({ message: "Couldn't read that photo. Please try another one." });
@@ -297,9 +261,6 @@ export default function ProfileScreen() {
         headers: { "Content-Type": asset.mimeType ?? "image/jpeg" },
         body: await read.arrayBuffer(),
       });
-      // A ConvexError carries a message formatError will show. A plain Error
-      // would surface as the generic line, and "Upload failed: 413" is not
-      // something a user reads.
       if (!upload.ok) {
         throw new ConvexError({ message: "Couldn't upload that photo. Please try another one." });
       }
@@ -358,17 +319,12 @@ export default function ProfileScreen() {
       <Host
         testID="profile-screen"
         style={{ flex: 1, backgroundColor: colors.background }}
-        // upstream expo/expo#47269: raises redacted("privacy") when the app
-        // resigns, hiding privacySensitive leaves in the app-switcher snapshot
         modifiers={scenePrivacy}
       >
         <ScrollView
           modifiers={[
             scrollDismissesKeyboard("interactively"),
             tint(colors.primary as string),
-            // Keep the visible center pinned when an inline error or the avatar
-            // sheet expands the form so the user doesn't jump to a new section.
-            // No-op below iOS 18.
             defaultScrollAnchorForRole("center", "sizeChanges"),
           ]}
         >
@@ -432,10 +388,7 @@ export default function ProfileScreen() {
                   onSave={() => startTransition(() => save())}
                 />
 
-                {/* Settings already owns the guest's one destructive action
-                    ("Discard guest data"), and sign-out and delete both mean
-                    the same irreversible thing for a guest. One copy is
-                    enough, so this becomes the way forward instead. */}
+                {}
                 {isGuest ? (
                   <SecondaryButton
                     testID="profile-create-account"

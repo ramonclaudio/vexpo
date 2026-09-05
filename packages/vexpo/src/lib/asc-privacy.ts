@@ -1,23 +1,8 @@
-/**
- * App Store Connect privacy nutrition label helpers.
- *
- * Apple's public ASC REST API exposes NO privacy resource: the `App`
- * resource has no privacy/data-usage relationship, and the questionnaire
- * is filled only in the App Store Connect dashboard. So there's nothing to
- * fetch; this module is a local lint that validates a declared
- * `app-store/privacy.config.json` against Apple's published enum lists, so a
- * stale or misspelled category gets caught before submission.
- *
- * https://developer.apple.com/app-store/app-privacy-details/
- */
-
 import { isRecord } from "./json.ts";
 import type { LintIssue } from "./lint.ts";
 
 export type { LintIssue };
 
-// Apple's published data categories. Source: App Privacy Details guide.
-// Strings match the keys ASC uses for `AppPrivacyDataCategory`.
 const PRIVACY_DATA_TYPES = [
   "CONTACT_INFO",
   "HEALTH_FITNESS",

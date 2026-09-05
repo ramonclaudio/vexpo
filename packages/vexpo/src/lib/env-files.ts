@@ -4,13 +4,6 @@ import { join } from "node:path";
 
 import { fileExists } from "./fs.ts";
 
-/**
- * Write env `lines` to a 0600 file in a fresh 0700 mkdtemp dir, run `fn` with
- * its path, then remove both in finally. Plaintext secrets (BETTER_AUTH_SECRET,
- * RESEND_API_KEY, APPLE_CLIENT_SECRET, ...) never land on a predictable path or
- * in the process table, and never outlive the call. Callers pass secrets via
- * the file, never as an argv element.
- */
 export async function withTempEnvFile<T>(
   lines: string[],
   fn: (path: string) => Promise<T>,
@@ -37,9 +30,6 @@ export type Destination =
     };
 
 type RoutingEntry = {
-  /**
-   * `channel` placeholder gets filled in based on which file the key was read from.
-   */
   routes: (channel: Channel) => Destination[];
 };
 
@@ -72,9 +62,6 @@ export const ROUTING: Record<string, RoutingEntry> = {
   BETTER_AUTH_SECRET: {
     routes: (c) => [{ type: "convex", key: "BETTER_AUTH_SECRET", channel: c }],
   },
-  // Versioned form (e.g. `2:newbase64,1:oldbase64`, highest version active) for
-  // rotating the auth secret without invalidating live sessions. Better Auth
-  // reads either; prefer this once you need to rotate.
   BETTER_AUTH_SECRETS: {
     routes: (c) => [{ type: "convex", key: "BETTER_AUTH_SECRETS", channel: c }],
   },
@@ -90,9 +77,6 @@ export const ROUTING: Record<string, RoutingEntry> = {
   REQUIRE_EMAIL_VERIFICATION: {
     routes: (c) => [{ type: "convex", key: "REQUIRE_EMAIL_VERIFICATION", channel: c }],
   },
-  // Guest browsing, on unless the deployment says otherwise. Nothing writes
-  // this key: it is here so setting GUEST_MODE=false by hand in .env.local or
-  // .env.prod reaches the deployment on the next push instead of going quiet.
   GUEST_MODE: {
     routes: (c) => [{ type: "convex", key: "GUEST_MODE", channel: c }],
   },
@@ -102,7 +86,6 @@ export const ROUTING: Record<string, RoutingEntry> = {
     routes: (c) => [{ type: "convex", key: "APPLE_CLIENT_SECRET", channel: c }],
   },
 
-  // Apple identity vars. Better Auth reads these from Convex env at runtime
   APPLE_TEAM_ID: {
     routes: (c) => [{ type: "convex", key: "APPLE_TEAM_ID", channel: c }],
   },
@@ -110,26 +93,13 @@ export const ROUTING: Record<string, RoutingEntry> = {
     routes: (c) => [{ type: "convex", key: "APPLE_KEY_ID", channel: c }],
   },
 
-  // Cross-named: APPLE_SERVICES_ID locally → APPLE_CLIENT_ID on Convex (Better Auth's expected key name)
   APPLE_SERVICES_ID: {
     routes: (c) => [{ type: "convex", key: "APPLE_CLIENT_ID", channel: c }],
   },
 };
 
-/**
- * Keys that lite mode does NOT sync. They're either file-local pointers used
- * by the CLI themselves, or they belong on a destination that needs explicit
- * handling (`eas env:create --visibility secret`) and we don't want to push
- * them with default visibility by accident.
- */
 const IGNORED_KEYS = new Set(["CONVEX_DEPLOYMENT"]);
 
-/**
- * Keys that should be set manually as secret-visibility EAS env vars. Lite
- * mode flags them with explicit guidance instead of dropping them silently or
- * pushing them to the wrong place. Only relevant for production; consumers
- * are EAS Workflows (the JWT rotation cron and the Convex deploy step).
- */
 export const MANUAL_EAS_SECRETS: Record<string, string> = {
   APPLE_P8_PRIVATE_KEY:
     "eas env:create --name APPLE_P8_PRIVATE_KEY --value-file <path>.p8 --environment production --visibility secret",
@@ -174,8 +144,6 @@ export async function readEnvFile(path: string): Promise<Map<string, string>> {
     if (opensQuote) {
       const quote = opensQuote[1] as '"' | "'";
       const rest = opensQuote[2];
-      // A close quote later on the same line ends the value (anything trailing,
-      // like a display name, is dropped). Only an unclosed quote spans lines.
       const closeIdx = rest.indexOf(quote);
       if (closeIdx >= 0) {
         out.set(key, rest.slice(0, closeIdx));
@@ -190,8 +158,6 @@ export async function readEnvFile(path: string): Promise<Map<string, string>> {
     if (hashAt >= 0) value = value.slice(0, hashAt).trim();
     out.set(key, value);
   }
-  // A quote opened but never closed before EOF keeps the partial value (matching
-  // the pre-dedup parser) instead of dropping this key and every key after it.
   if (pendingKey) out.set(pendingKey, buffer);
   return out;
 }

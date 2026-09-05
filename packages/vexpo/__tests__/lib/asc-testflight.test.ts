@@ -1,9 +1,3 @@
-/**
- * Request shapes verified against live App Store Connect responses from the
- * live run: tester CREATE rejects an `apps` relationship with 409
- * ENTITY_ERROR.RELATIONSHIP.NOT_ALLOWED, and the build's betaBuildLocalizations
- * endpoint rejects `filter[locale]` with 400 PARAMETER_ERROR.ILLEGAL.
- */
 import { describe, expect, it, vi } from "vitest";
 
 import type { AscClient } from "../../src/lib/asc-api.ts";

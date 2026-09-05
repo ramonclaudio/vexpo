@@ -7,15 +7,6 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import { signClientSecret } from "../../src/lib/apple-jwt";
 
-// Apple's `client_secret` for Sign In with Apple is an ES256 JWT signed with the
-// developer's `.p8` private key. Apple caps the lifetime at 180 days. Verify:
-//   1. The header is `{ alg: "ES256", kid: <keyId> }`
-//   2. The payload is `{ iss: teamId, iat, exp, aud: appleid.apple.com, sub: servicesId }`
-//   3. The signature verifies against the matching public key
-//   4. Path-based and contents-based key inputs produce equivalent tokens
-//   5. Missing files surface a clear error
-//   6. Expiration clamps to the requested duration
-
 let workdir: string;
 let pemPath: string;
 let pemContents: string;
@@ -78,7 +69,6 @@ describe("signClientSecret", () => {
     const exp = payload.exp as number;
     expect(iat).toBeGreaterThanOrEqual(before);
     expect(iat).toBeLessThanOrEqual(after);
-    // Default 180 days.
     expect(exp - iat).toBe(180 * 86400);
   });
 
@@ -129,7 +119,6 @@ describe("signClientSecret", () => {
     const a = decodeJwt(fromContents);
     const b = decodeJwt(fromPath);
     expect(a.header).toEqual(b.header);
-    // Payloads differ only in `iat` (timing). same other claims.
     expect((a.payload as Record<string, unknown>).iss).toBe(
       (b.payload as Record<string, unknown>).iss,
     );
@@ -142,9 +131,6 @@ describe("signClientSecret", () => {
   });
 
   it("expands a tilde-prefixed path to the home dir before reading", async () => {
-    // The error must carry the EXPANDED path (homedir-prefixed), not a literal
-    // `~/...`. If tilde expansion is ever dropped, the message would contain
-    // `~/` and this assertion fails, where a bare /p8 file not found/ would not.
     await expect(
       signClientSecret({
         privateKey: { path: "~/does-not-exist-vexpo-test.p8" },
@@ -217,7 +203,6 @@ describe("signClientSecret", () => {
       servicesId: "com.example.signin",
     });
     const { signature } = decodeJwt(token);
-    // IEEE P1363 encoding for P-256 is exactly 64 bytes (32 r + 32 s).
     expect(signature.length).toBe(64);
   });
 });

@@ -8,21 +8,8 @@ import { withWebhook } from "./webhook";
 
 const http = httpRouter();
 
-// Register Better Auth routes lazily so Better Auth is not initialized at
-// module load. Reduces http.ts memory footprint during `convex deploy`.
 authComponent.registerRoutesLazy(http, createAuth);
 
-// Resend delivery events webhook. `@convex-dev/resend` ships its own Svix
-// signature verification + idempotency, so we just forward the raw request.
-// Configure the Resend dashboard webhook at
-// https://<your-deployment>.convex.site/resend-webhook and set
-// RESEND_WEBHOOK_SECRET on the Convex deployment.
-// `@convex-dev/resend`'s `handleResendEventWebhook` throws if
-// `RESEND_WEBHOOK_SECRET` is unset, and Convex's default error handling
-// serializes the stack trace into the 503 body (including absolute-ish
-// module paths). Wrap to short-circuit with a clean 503 before the library
-// runs, and wrap the library call itself so its other internal errors don't
-// leak source paths either.
 http.route({
   path: "/resend-webhook",
   method: "POST",
@@ -48,17 +35,6 @@ http.route({
   }),
 });
 
-// EAS Build / Submit webhook receiver.
-//
-// Wire it up once with:
-//   npx eas webhook:create --event BUILD  --url https://<your-deployment>.convex.site/eas-webhook --secret <strong-secret>
-//   npx eas webhook:create --event SUBMIT --url https://<your-deployment>.convex.site/eas-webhook --secret <strong-secret>
-//   npx convex env set EAS_WEBHOOK_SECRET <strong-secret>
-//
-// Per https://docs.expo.dev/eas/webhooks/, EAS signs every POST with
-// HMAC-SHA1 in `expo-signature: sha1=<hex>`. The factory below handles
-// the signature + body cap + structured access log; the handler here just
-// dispatches on payload shape.
 type EasWebhookPayload = {
   id?: string;
   status?: string;
@@ -99,19 +75,6 @@ http.route({
   ),
 });
 
-// Apple universal link association file.
-//
-// Served on every cold-launch of every installed copy of the app. high
-// fanout, fully static body, cheapest possible payload wins. We:
-//   1. Construct the body deterministically from env so the ETag is stable.
-//   2. Cache for 1h with `must-revalidate` so a bundle-id change still
-//      converges within that window. Apple itself caches AASA aggressively
-//      on-device; the public CDN cache is the only tier that matters for
-//      first-install latency.
-//   3. Honor conditional GETs (`If-None-Match`) with 304s so warm callers
-//      pay only the round-trip.
-// `appID` is `<APPLE_TEAM_ID>.<BUNDLE_ID>`. Both env vars are pushed to
-// the Convex deployment by `setup:convex` (or `setup:apple`).
 http.route({
   path: "/.well-known/apple-app-site-association",
   method: "GET",

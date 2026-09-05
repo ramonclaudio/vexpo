@@ -1,8 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-// Exercise the REAL asc.ts so the resolveAscApp -> ensureAscAppId -> submit path
-// runs end to end. Only the lowest layers are mocked: cached creds present (so
-// ascKeyEnv passes) and an apps.list that throws (a transient ASC lookup error).
 vi.mock("../../src/lib/asc-state.ts", () => ({
   loadAscCreds: vi.fn(),
 }));
@@ -53,7 +50,6 @@ beforeEach(() => {
     keyId: "ABCDE12345",
     privateKey: { path: "/tmp/fake.p8" },
   });
-  // the ASC apps lookup itself fails (network / API down), NOT a zero-apps result
   appsListSpy.mockRejectedValue(new Error("ASC network down"));
   requireBundleIdSpy.mockResolvedValue("com.vexpo.vexpo");
   readAllSpy.mockResolvedValue(new Map([["EXPO_PUBLIC_APP_BUNDLE_ID", "com.vexpo.vexpo"]]));
@@ -72,7 +68,6 @@ describe("runSubmit on a transient ASC lookup error", () => {
 
     expect(exit).toBe(1);
     expect(easSpawnSpy).not.toHaveBeenCalled();
-    // the creds are proven present, so this can only be a lookup failure
     expect(out).not.toContain("no App Store Connect app record");
     expect(out).toContain("ASC network down");
   });

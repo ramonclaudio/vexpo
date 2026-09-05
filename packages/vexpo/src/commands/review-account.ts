@@ -23,8 +23,6 @@ type StoreConfig = {
 
 const PLACEHOLDER = "REPLACE_BEFORE_SUBMIT";
 
-// base64url without lookalikes; 16 bytes clears signUpSchema's 10-char floor
-// with room to spare after stripping.
 function generatePassword(): string {
   return `rv-${randomBytes(16)
     .toString("base64url")
@@ -32,16 +30,6 @@ function generatePassword(): string {
 }
 
 async function seed(payload: string, envFile?: string): Promise<boolean> {
-  // admin:createReviewAccount is an app-root internalAction, so a plain
-  // `convex run admin:createReviewAccount <json>` reaches it (no --component).
-  // Drain stdout/stderr concurrently with exit (via run()); awaiting exited
-  // before reading the pipes deadlocks on >64KB of convex output and can lose
-  // the error text the command exists to surface.
-  //
-  // The demo password rides in the argv JSON token: `convex run` has no
-  // file/stdin channel for args. This is a low-value Apple-review demo login
-  // (usually already committed in store.config.json), so argv exposure is
-  // accepted here rather than standing up an HTTP function-run path for it.
   const argv = [dlx(), "convex", "run", "admin:createReviewAccount", payload];
   if (envFile) argv.push("--env-file", envFile);
   const { code, stdout, stderr } = await run(argv, { stdin: "ignore" });
@@ -55,8 +43,6 @@ async function seed(payload: string, envFile?: string): Promise<boolean> {
   return true;
 }
 
-// store.config.json is what `eas metadata:push` sends to Apple, so the seeded
-// credentials and the file must never drift apart.
 async function writeBack(config: StoreConfig, email: string, password: string): Promise<void> {
   const review = config.apple?.review;
   if (!review || (review.demoUsername === email && review.demoPassword === password)) return;
@@ -67,12 +53,6 @@ async function writeBack(config: StoreConfig, email: string, password: string): 
   ok("wrote the demo credentials into store.config.json (review section)");
 }
 
-/**
- * The prod deployment needs the same account: App Review signs into the
- * TestFlight/production build, which talks to prod. Only reachable through a
- * prod-scoped env file; a dev CONVEX_DEPLOY_KEY in .env.local silently wins
- * over --prod, so bare forms are never used.
- */
 async function prodEnvFile(): Promise<string | null> {
   const file = (await fileExists(".env.prod"))
     ? ".env.prod"
@@ -99,8 +79,6 @@ export async function runReviewAccount(options: ReviewAccountOptions): Promise<n
     return 1;
   }
 
-  // The template ships a placeholder password; never seed it (a guessable
-  // login on the deployment). Mint a real one instead of hard-failing.
   let password = options.password ?? configured;
   if (!password || password === PLACEHOLDER) {
     password = generatePassword();
@@ -109,9 +87,6 @@ export async function runReviewAccount(options: ReviewAccountOptions): Promise<n
 
   ok(`email: ${email}`);
 
-  // `reset: true` rotates an existing account's password to this value, so a
-  // regenerated or corrected credential converges instead of silently keeping
-  // the old one.
   const payload = JSON.stringify({
     email,
     password,

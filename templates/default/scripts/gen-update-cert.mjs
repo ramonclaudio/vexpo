@@ -1,31 +1,4 @@
 #!/usr/bin/env node
-/**
- * One-shot setup for OTA update code signing.
- *
- *   npm run updates:gen-cert -- --name "Acme Inc."
- *
- * Wraps `npx expo-updates codesigning:generate` with vexpo's conventions:
- *   - cert goes to `./certs/certificate.pem` (committed; verified on-device)
- *   - private key goes to `../keys/private-key.pem` (NOT committed; lives
- *     as an EAS file-type env var in CI)
- *   - validity duration: 10 years (long enough to outlive most apps)
- *
- * Once the cert exists, `app.config.ts` automatically wires the
- * `codeSigningCertificate` / `codeSigningMetadata` block. No manual edits.
- *
- * Two more steps, printed at the end, finish CI wiring:
- *   1. `eas env:create --environment production --visibility secret \
- *        --type file --name EAS_UPDATE_PRIVATE_KEY \
- *        --value <path-to-private-key.pem>`
- *   2. Confirm `.eas/workflows/deploy-production.yml`'s `update_ios` job
- *      passes `private_key_path: "$EAS_UPDATE_PRIVATE_KEY"` (ships wired).
- *
- * After that every OTA bundle is signed locally during `eas update` and
- * verified on-device before install. A compromised EAS account or CDN
- * cannot ship arbitrary JS.
- *
- * https://docs.expo.dev/eas-update/code-signing/
- */
 
 import { existsSync } from "node:fs";
 import { resolve, dirname } from "node:path";

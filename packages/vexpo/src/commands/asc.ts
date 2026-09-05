@@ -1,49 +1,3 @@
-/**
- * `vexpo asc connect`. Also run as a step by `vexpo full`. Spawns
- * `eas integrations:asc:connect --bundle-id <bundle>` with `EXPO_ASC_API_KEY_*`
- * env vars pre-set from the cached `asc-key` state.
- *
- * Why not pass `--api-key-id`: that flag is the Apple-side 10-char key id
- * (e.g. "ABCDE12345"), and eas-cli looks it up against its *uploaded* key
- * resources. Passing the cached id when no key is uploaded fails with
- * `No App Store Connect API key found with Apple key identifier ...`, which
- * is the common case on a fresh project. Dropping the flag lets the wizard
- * generate-or-pick a key itself.
- *
- * What the env vars actually do: `AppStoreApi` in eas-cli reads
- * `hasAscEnvVars()` in its constructor and sets `defaultAuthenticationMode`
- * to `API_KEY` when set, `USER` otherwise. So with the env vars set, when
- * the wizard reaches `generateAscApiKeyAsync` and needs to authenticate to
- * Apple to create a new ASC API key, it uses our cached key for that auth
- * instead of prompting for Apple ID + password. The env vars do NOT auto-
- * fill the wizard's manual paste prompts (path / keyId / issuerId) -
- * those are only reached if the user declines the auto-generate offer.
- *
- * The wizard branches on EAS's credential store:
- *   - Zero uploaded keys: "Generate a new App Store Connect API Key?" -> Y
- *     (default), then ADMIN role (default), maybe "Select app" (rare).
- *   - Stored keys exist: a PICKER of the stored keys, ending with a
- *     create-or-upload entry. A stored key that was deleted at Apple fails
- *     the wizard's discover-apps call with a 401 ("rejected this API key
- *     with status 401") and exits 1 — the escape is the create-or-upload
- *     entry, which mints a fresh EAS-managed key or takes an existing .p8.
- *
- * Side effect: creates a SECOND ASC API key on Apple, separate from the
- * "master" key cached in vexpo state. This is intentional separation: the
- * master key stays out of EAS's control (used for direct ASC API calls in
- * `vexpo apple services-id`, `vexpo apple jwt`, etc.), the EAS-managed key
- * is owned by EAS for build/submit/metadata.
- *
- * Idempotency: skips entirely when `eas integrations:asc:status` already
- * reports `status === "connected"`. Status type mirrors `buildJsonOutput`
- * in `expo/eas-cli` (`packages/eas-cli/src/integrations/asc/utils.ts`).
- *
- * Defer: a brand-new bundle id has no ASC `apps` record until the first
- * `eas submit`, and the wizard would die on eas-cli's raw "Found 0 app(s)".
- * `ascAppExists` pre-checks with our cached creds and returns 0 with loud
- * guidance to run `eas build --auto-submit-with-profile testflight` first.
- */
-
 import { existsSync } from "node:fs";
 import { readFile, writeFile } from "node:fs/promises";
 import { relative } from "node:path";
@@ -63,16 +17,6 @@ export type AscAppResolution =
   | { kind: "error"; error: unknown }
   | { kind: "unknown" };
 
-/**
- * Resolve the ASC app for a bundle id with the cached creds, carrying its
- * ascAppId (the App Store Connect numeric app id) when one exists. On a
- * brand-new bundle id no `apps` resource exists until the first `eas submit`,
- * so the wizard would die with eas-cli's raw "Found 0 app(s)". Outcomes:
- *   "found"    at least one app matches -> carries the ascAppId
- *   "defer"    cached creds + zero apps -> guide, don't spawn
- *   "error"    creds present but the lookup itself threw -> spawn the wizard
- *   "unknown"  no cached creds -> spawn the wizard
- */
 async function resolveAscApp(bundleId: string): Promise<AscAppResolution> {
   const creds = await loadAscCreds();
   if (!creds) return { kind: "unknown" };
@@ -84,10 +28,6 @@ async function resolveAscApp(bundleId: string): Promise<AscAppResolution> {
   }
 }
 
-// Write the resolved ascAppId into eas.json submit profiles. `eas submit`
-// reads the app id only from the submit profile (no flag, no env var), so the
-// integration alone doesn't satisfy a non-interactive submit (CI, scripts).
-// The upstream template ships generic; this fills the fork's id, like rebrand.
 async function syncAscAppIdToEasJson(ascAppId: string | undefined): Promise<void> {
   if (!ascAppId || !existsSync("eas.json")) return;
   try {
@@ -106,26 +46,12 @@ async function syncAscAppIdToEasJson(ascAppId: string | undefined): Promise<void
   }
 }
 
-/**
- * Resolve the ASC app for a bundle id and, when found, write its id into
- * eas.json's submit profiles. Returns the full resolution so `submit` can tell
- * a genuine zero-apps defer (build first) apart from a transient lookup error.
- */
 export async function ensureAscAppId(bundleId: string): Promise<AscAppResolution> {
   const resolved = await resolveAscApp(bundleId);
   if (resolved.kind === "found") await syncAscAppIdToEasJson(resolved.ascAppId);
   return resolved;
 }
 
-/**
- * Write the cached ASC key's path/id/issuer into eas.json's submit profiles.
- * `eas submit` resolves its key ONLY from these fields, a prompt, or the EAS
- * credential store — never from `EXPO_ASC_*` env — so a stale stored key wins
- * silently without them (a deleted key failed a live submit with altool
- * -26000). Only written when the .p8 lives inside the repo: eas.json is
- * committed, and a machine-specific absolute path (or a path CI can't have)
- * would break every other environment's submit.
- */
 export async function ensureAscApiKeyInEasJson(): Promise<void> {
   if (!existsSync("eas.json")) return;
   const asc = await loadAscCreds();
@@ -151,12 +77,6 @@ export async function ensureAscApiKeyInEasJson(): Promise<void> {
   }
 }
 
-/**
- * The `EXPO_ASC_*` env eas-cli reads for build-credentials and `eas metadata`
- * auth, or null when no key is cached. NOT consulted by `eas submit`'s key
- * resolver — that reads only eas.json's ascApiKey* fields, a prompt, or the
- * EAS credential store (see ensureAscApiKeyInEasJson).
- */
 export async function ascKeyEnv(): Promise<Record<string, string> | null> {
   const asc = await loadAscCreds();
   if (!asc || !("path" in asc.privateKey)) return null;
@@ -183,8 +103,6 @@ export async function runAscConnect(opts: { force?: boolean } = {}): Promise<num
           bundleId: status.appStoreConnectApp.bundleIdentifier,
           connectedAt: new Date().toISOString(),
         });
-        // Already-connected still needs the eas.json fill: doctor's
-        // asc-submit-id warn points here, so skipping it would loop the user.
         await syncAscAppIdToEasJson(status.appStoreConnectApp.ascAppIdentifier);
         await ensureAscApiKeyInEasJson();
         return 0;
@@ -207,10 +125,6 @@ export async function runAscConnect(opts: { force?: boolean } = {}): Promise<num
   if (!bundleId) return 1;
   ok(`bundle id: ${BOLD}${bundleId}${RESET}`);
 
-  // No ASC `apps` resource exists for a brand-new bundle id until the first
-  // `eas submit`. Spawning the wizard now just dies on eas-cli's raw
-  // "Found 0 app(s)". Pre-check with our cached creds and defer loudly when
-  // there's nothing to link yet.
   const resolved = await resolveAscApp(bundleId);
   if (resolved.kind === "defer") {
     yep("no App Store Connect app record for this bundle id yet, NOT connected");
@@ -222,13 +136,6 @@ export async function runAscConnect(opts: { force?: boolean } = {}): Promise<num
     return 0;
   }
 
-  // The EAS↔ASC integration wizard needs a TTY (it can't generate a key headless
-  // and `--non-interactive` hard-requires --api-key-id + --asc-app-id). But a
-  // non-interactive submit only needs `ascAppId` in eas.json: eas-cli reads the
-  // app id from the submit profile, never a flag or env var. So when we can
-  // resolve it from the ASC API, land it headless instead of failing, so CI and
-  // non-interactive `vexpo full` runs aren't blocked on the wizard. The
-  // server-side link (cloud submits) still wants a later interactive run.
   if (!process.stdin.isTTY) {
     if (resolved.kind === "found") {
       ok(`resolved ascAppId ${BOLD}${resolved.ascAppId}${RESET} from App Store Connect`);

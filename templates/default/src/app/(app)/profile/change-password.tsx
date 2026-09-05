@@ -47,10 +47,6 @@ function ChangePasswordForm({ email }: { email: string }) {
   const [current, setCurrent] = useState("");
   const [next, setNext] = useState("");
   const [confirm, setConfirm] = useState("");
-  // Hidden username carrier. iOS keychain pairs `username` + `newPassword` to
-  // save the credential and to associate Strong Password suggestions with this
-  // account. Without it the suggestion sheet may not fire and a saved password
-  // would land orphaned in iCloud Keychain.
   const emailState = useNativeState(email);
 
   const [state, submit, isPending] = useActionState<ChangePasswordState, void>(async (prev) => {
@@ -101,9 +97,6 @@ function ChangePasswordForm({ email }: { email: string }) {
         modifiers={[
           scrollDismissesKeyboard("interactively"),
           tint(colors.primary as string),
-          // A wrong-current-password error appears below the confirm field and
-          // pushes the Update button down. Pin the visible center so the user
-          // does not lose the field they just submitted. No-op below iOS 18.
           defaultScrollAnchorForRole("center", "sizeChanges"),
         ]}
       >

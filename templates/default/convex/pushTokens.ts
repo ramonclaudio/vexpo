@@ -22,9 +22,6 @@ export const upsert = authMutation({
       .unique();
 
     if (existing) {
-      // Same user: refresh timestamps and clear any prior revocation. The
-      // client only re-upserts after `getExpoPushTokenAsync` succeeds, so
-      // if we get here the token is alive again.
       if (existing.userId === ctx.user._id) {
         await ctx.db.patch(existing._id, {
           updatedAt: now,
@@ -107,17 +104,6 @@ export const listActiveByUser = internalQuery({
   },
 });
 
-/**
- * Tombstone tokens whose Expo Push receipts came back with a permanent
- * error. The row sticks around for 30 days so a transient client retry
- * doesn't resurrect a dead device, then `cleanupStale` drops it.
- *
- * `errorCode` is one of Expo's documented values: `DeviceNotRegistered`,
- * `InvalidCredentials`, `MismatchSenderId`, etc. Only the permanent codes
- * are passed here; transient errors stay active.
- *
- * https://docs.expo.dev/push-notifications/sending-notifications/#individual-push-notification-errors
- */
 export const markRevoked = internalMutation({
   args: {
     tokenIds: v.array(v.id("pushTokens")),
@@ -142,11 +128,6 @@ export const markRevoked = internalMutation({
   },
 });
 
-/**
- * Park ok ticket ids returned by a send so `reconcileReceipts` can poll
- * Expo for their receipts later. One row per ticket, keyed to the token it
- * was sent to.
- */
 export const recordReceipts = internalMutation({
   args: {
     receipts: v.array(v.object({ ticketId: v.string(), tokenId: v.id("pushTokens") })),
@@ -165,7 +146,6 @@ export const recordReceipts = internalMutation({
   },
 });
 
-/** Oldest-first page of pending receipt rows for the next getReceipts batch. */
 export const listPendingReceipts = internalQuery({
   args: { limit: v.number() },
   returns: v.array(
@@ -191,7 +171,6 @@ export const listPendingReceipts = internalQuery({
   },
 });
 
-/** Drop receipt rows once reconciled (or aged out). */
 export const deleteReceipts = internalMutation({
   args: { ids: v.array(v.id("pushReceipts")) },
   returns: v.number(),
@@ -207,15 +186,6 @@ export const deleteReceipts = internalMutation({
   },
 });
 
-/**
- * Daily cleanup. Drops revoked rows older than 30 days and stale rows
- * never re-upserted in 90 days. Bounded batches; reschedules when more
- * rows remain so we never load an unbounded set into memory.
- *
- * The old behavior keyed on `_creationTime`, which deleted long-lived
- * rows even when the device was active. The correct signal is
- * `updatedAt`, which the client touches on every successful re-upsert.
- */
 export const cleanupStale = internalMutation({
   args: {},
   returns: v.number(),
@@ -224,11 +194,6 @@ export const cleanupStale = internalMutation({
     const revokedCutoff = now - THIRTY_DAYS_MS;
     const staleCutoff = now - NINETY_DAYS_MS;
 
-    // The index is [revoked, updatedAt] and Convex orders `false < true`, so an
-    // unbounded ascending scan returns every active row before any tombstone;
-    // at scale the revoked rows would never be reached. Range each partition
-    // explicitly. Active rows are always written with `revoked: false`, so the
-    // two ranges together cover every row.
     const revoked = await ctx.db
       .query("pushTokens")
       .withIndex("by_revoked_and_updatedAt", (q) =>

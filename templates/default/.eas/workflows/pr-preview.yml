@@ -1,20 +1,5 @@
 name: PR preview
 
-# Mirrors the canonical EAS workflow pattern at
-# https://docs.expo.dev/eas/workflows/pre-packaged-jobs/#github-comment.
-#
-# Either path publishes an update so a) the PR is always testable via a QR
-# scan and b) `pr-<n>` is a real EAS branch from the first commit, not the
-# second. Uses development:simulator (subscribed to the `development`
-# channel). vexpo doesn't ship a separate `preview` build profile.
-
-# Auto-build on PRs is OFF by default to conserve EAS build credits: a full
-# iOS build + update on every PR adds up fast. Ships manual-only. To restore
-# automatic previews, swap the trigger back to:
-#
-#   on:
-#     pull_request:
-#       branches: ["main"]
 on:
   workflow_dispatch:
     inputs:

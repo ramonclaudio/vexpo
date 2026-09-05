@@ -1,18 +1,3 @@
-/**
- * App Store Connect Accessibility Nutrition Labels helpers.
- *
- * Apple launched Accessibility Nutrition Labels at WWDC25 (iOS / iPadOS /
- * macOS / tvOS / visionOS / watchOS 26+). Voluntary at launch, trending
- * mandatory for new submissions over the next year.
- *
- * This module covers read (`fetchAccessibilityDeclarations`) and local
- * lint (`lintAccessibilityConfig`). The write endpoints exist in the
- * App Store Connect API surface but the schema is still in flux; push
- * is left to the operator via the dashboard until the API stabilizes.
- *
- * https://developer.apple.com/help/app-store-connect/manage-app-accessibility/overview-of-accessibility-nutrition-labels/
- */
-
 import type { AscClient } from "./asc-api.ts";
 import { isRecord } from "./json.ts";
 import type { LintIssue } from "./lint.ts";
@@ -32,8 +17,6 @@ const ACCESSIBILITY_FEATURES = [
 ] as const;
 type AccessibilityFeature = (typeof ACCESSIBILITY_FEATURES)[number];
 
-// "PARTIAL" is included for the schema even though the dashboard collapses
-// it into "Yes" with a caveat note.
 const ACCESSIBILITY_LEVELS = [
   "FULLY_SUPPORTS",
   "PARTIAL",

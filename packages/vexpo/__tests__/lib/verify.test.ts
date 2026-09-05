@@ -29,8 +29,6 @@ beforeAll(() => {
   p8Pem = privateKey.export({ format: "pem", type: "pkcs8" }).toString();
 });
 
-// Sign through the exact production path so fixtures always match what the app
-// emits. A negative expirationDays yields a cleanly past exp for the expiry cases.
 function signSiwaJwt(opts: {
   teamId: string;
   keyId: string;
@@ -157,8 +155,6 @@ describe("Apple JWT verification", () => {
       teamId: "ABCDE12345",
       keyId: "FGHIJ67890",
       servicesId: "com.x.app.signin",
-      // Half a day past the boundary: an exact 14 floors to 13d whenever a
-      // second ticks between signing and the check.
       expirationDays: 14.5,
     });
     const ctx = emptyContext({
@@ -378,9 +374,6 @@ describe("Convex deployment checks", () => {
   });
 });
 
-// A null env map means the read itself failed (deploy-key auth, offline).
-// Doctor must say "unreadable", never fail vars as unset: a live prod
-// channel showed `better-auth-secret not set` for a secret that was set.
 describe("unreadable Convex env", () => {
   beforeEach(() => {
     globalThis.fetch = vi
@@ -480,9 +473,6 @@ describe("Resend checks", () => {
 
 describe("readAppConfigFacts", () => {
   it("leaves name unset when app.config.ts declares no parseable name", async () => {
-    // A customized config that computes its name dynamically declares no literal
-    // name. Falling back to the title-cased pkg slug here would make the coherence
-    // check warn on a name verify never actually read from app.config.ts.
     await writeFile("package.json", JSON.stringify({ name: "my-cool-app" }));
     await writeFile("app.config.ts", `export default { name: pkg.displayName };`);
     const facts = await readAppConfigFacts();

@@ -1,30 +1,3 @@
-// vexpo CLI surface. Deliberately small.
-//
-// Scope test: every command must help an empty directory become a first
-// shipped, authenticated, backed iOS app. If it only matters once you have
-// live users (customer reviews, IAP sandbox testing, release management),
-// it's out: that's `eas` and App Store Connect, not vexpo. "eas-cli doesn't
-// expose this ASC endpoint" is not a reason to add a command.
-//
-// Design principle: don't reinvent EAS. If `eas <subcommand>` already does
-// the job, vexpo doesn't wrap it. Users should reach for `eas` for the
-// canonical platform surface (init, build, update, submit, deploy, channel,
-// branch, webhook, workflow, fingerprint, device, account, credentials,
-// integrations:asc, etc.) and use `vexpo` only for the things `eas` doesn't do:
-//
-//   1. Setup orchestration (probe state, run missing phases, idempotency)
-//   2. Cross-source drift detection (`vexpo doctor`)
-//   3. Apple SIWA JWT signing + Services ID flow (no eas-cli equivalent)
-//   4. The last ASC mile to a first ship: TestFlight delivery (beta groups,
-//      testers, invites) plus the privacy + accessibility labels Apple
-//      requires before a submission clears review
-//   5. Multi-destination env sync (Convex + EAS together)
-//
-// Everything else: use `npx eas-cli <subcommand>` directly. The README
-// documents the canonical eas-cli flow for build / update / submit /
-// deploy / channel / branch / webhook / workflow / fingerprint / metadata
-// / credentials / integrations:asc.
-
 import { Command } from "commander";
 
 import pkg from "../package.json" with { type: "json" };

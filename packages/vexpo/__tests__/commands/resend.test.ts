@@ -1,9 +1,3 @@
-/**
- * Dev and prod are separate Resend channels: the scoped sending key is shared,
- * each deployment gets its own webhook and env copy. The full flow wires both
- * in one run (the old `--prod` flag was silently ignored outside `--repoint`),
- * and a repoint never retires the sibling channel's live webhook.
- */
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const localEnv = new Map<string, string>();
@@ -68,14 +62,12 @@ describe("runResend full flow", () => {
     const endpoints = provisionWebhookSpy.mock.calls.map((c) => c[1] as string);
     expect(endpoints).toEqual([`${DEV_SITE}/resend-webhook`, `${PROD_SITE}/resend-webhook`]);
 
-    // Same scoped key on both deployments, prod writes through the env file.
     const keyWrites = envSetSpy.mock.calls.filter((c) => c[0] === "RESEND_API_KEY");
     expect(keyWrites).toHaveLength(2);
     expect(keyWrites[0]![1]).toBe("re_scoped_token");
     expect(keyWrites[1]![1]).toBe("re_scoped_token");
     expect(keyWrites[1]![2]).toEqual({ prod: true, envFile: ".env.prod" });
 
-    // Each channel keeps its own webhook secret.
     const secretWrites = envSetSpy.mock.calls.filter((c) => c[0] === "RESEND_WEBHOOK_SECRET");
     expect(secretWrites[0]![1]).not.toBe(secretWrites[1]![1]);
   });
