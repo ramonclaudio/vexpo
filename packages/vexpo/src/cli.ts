@@ -14,6 +14,8 @@ import { runPrivacyLint, runPrivacyShow } from "./commands/asc-privacy.ts";
 import {
   runTestflightGroupsCreate,
   runTestflightGroupsDelete,
+  runTestflightCrashes,
+  runTestflightFeedback,
   runTestflightGroupsList,
   runTestflightGroupsView,
   runTestflightInvite,
@@ -460,6 +462,25 @@ testflight
       }),
     ),
   );
+
+const feedbackAction =
+  (run: (o: { limit: number; json?: boolean }) => Promise<number>) =>
+  (options: { limit: string; json?: boolean }) =>
+    exitWith(run({ limit: Number(options.limit), json: options.json }));
+
+testflight
+  .command("feedback")
+  .description("Recent tester screenshot feedback, newest first.")
+  .option("--limit <n>", "how many to show (max 200)", "20")
+  .option("--json", "JSON output", false)
+  .action(feedbackAction(runTestflightFeedback));
+
+testflight
+  .command("crashes")
+  .description("Recent tester crash reports, newest first.")
+  .option("--limit <n>", "how many to show (max 200)", "20")
+  .option("--json", "JSON output", false)
+  .action(feedbackAction(runTestflightCrashes));
 
 testflight
   .command("whats-new <buildId> <text>")

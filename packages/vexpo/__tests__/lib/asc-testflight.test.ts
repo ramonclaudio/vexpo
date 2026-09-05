@@ -76,3 +76,16 @@ describe("betaBuildLocalizations.upsert", () => {
     expect(data.attributes).toEqual({ whatsNew: "Initial release.", locale: "en-US" });
   });
 });
+
+describe("betaFeedback", () => {
+  it("asks for the newest submissions first and caps limit at 200", async () => {
+    const client = fakeClient({ request: vi.fn(async () => ({ data: [] })) });
+    await testflight(client).betaFeedback.screenshots("app-1", 500);
+    await testflight(client).betaFeedback.crashes("app-1", 5);
+
+    expect(client.request.mock.calls.map((c) => c[1])).toEqual([
+      "/v1/apps/app-1/betaFeedbackScreenshotSubmissions?sort=-createdDate&limit=200",
+      "/v1/apps/app-1/betaFeedbackCrashSubmissions?sort=-createdDate&limit=5",
+    ]);
+  });
+});

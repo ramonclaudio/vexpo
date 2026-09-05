@@ -106,6 +106,44 @@ export async function runTestflightTestersList(opts: {
   return 0;
 }
 
+type TestflightClient = Awaited<ReturnType<typeof bootstrap>>["tf"];
+type BetaGroup = Awaited<ReturnType<TestflightClient["betaGroups"]["list"]>>[number];
+
+async function resolveBetaGroup(
+  tf: TestflightClient,
+  ascAppId: string,
+  requested: string | undefined,
+): Promise<{ groupId: string; groups: BetaGroup[]; internal?: BetaGroup; autoResolved: boolean }> {
+  const groups = await tf.betaGroups.list({ appId: ascAppId });
+  const internal = groups.find((g) => g.attributes.isInternalGroup);
+  const groupId = requested ?? (internal ?? groups[0])?.id;
+  if (!groupId) {
+    throw new Error(
+      'no beta group to invite into; create one first: `vexpo testflight groups create "Internal"`',
+    );
+  }
+  const autoResolved = !requested;
+  if (autoResolved) {
+    nop(`no --group given; using ${internal ? "internal group" : "group"} ${groupId}`);
+  }
+  return { groupId, groups, internal, autoResolved };
+}
+
+async function sendInvitation(
+  tf: TestflightClient,
+  ascAppId: string,
+  testerId: string,
+): Promise<void> {
+  try {
+    const inv = await tf.betaTesterInvitations.create({ appId: ascAppId, testerId });
+    ok(`invitation ${inv.id}`);
+  } catch (err) {
+    if (!(err instanceof AscApiError) || !err.code?.includes("NO_INSTALLABLE_BUILDS")) throw err;
+    ok("tester is in the group; the invite email sends once a build is installable");
+    note("external groups wait on Beta App Review for their first build");
+  }
+}
+
 export async function runTestflightInvite(opts: {
   email: string;
   firstName?: string;
@@ -113,19 +151,12 @@ export async function runTestflightInvite(opts: {
   groupId?: string;
 }): Promise<number> {
   const { tf, ascAppId } = await bootstrap();
-
-  const groups = await tf.betaGroups.list({ appId: ascAppId });
-  const internal = groups.find((g) => g.attributes.isInternalGroup);
-  const autoResolved = !opts.groupId;
-  let groupId = opts.groupId ?? (internal ?? groups[0])?.id;
-  if (!groupId) {
-    throw new Error(
-      'no beta group to invite into; create one first: `vexpo testflight groups create "Internal"`',
-    );
-  }
-  if (autoResolved) {
-    nop(`no --group given; using ${internal ? "internal group" : "group"} ${groupId}`);
-  }
+  const { groups, internal, autoResolved, ...resolved } = await resolveBetaGroup(
+    tf,
+    ascAppId,
+    opts.groupId,
+  );
+  let groupId = resolved.groupId;
 
   const assign = async (gid: string): Promise<string> => {
     const existing = await tf.betaTesters.list({ email: opts.email, appId: ascAppId });
@@ -169,17 +200,7 @@ export async function runTestflightInvite(opts: {
   }
 
   section(`Invited ${opts.email}`);
-  try {
-    const inv = await tf.betaTesterInvitations.create({ appId: ascAppId, testerId });
-    ok(`invitation ${inv.id}`);
-  } catch (err) {
-    if (err instanceof AscApiError && err.code?.includes("NO_INSTALLABLE_BUILDS")) {
-      ok("tester is in the group; the invite email sends once a build is installable");
-      note("external groups wait on Beta App Review for their first build");
-    } else {
-      throw err;
-    }
-  }
+  await sendInvitation(tf, ascAppId, testerId);
   return 0;
 }
 
@@ -196,5 +217,59 @@ export async function runTestflightWhatsNew(opts: {
   });
   section(`What's new for build ${opts.buildId}`);
   ok(`upserted (${loc.attributes.locale})`);
+  return 0;
+}
+
+type FeedbackOpts = { limit: number; json?: boolean };
+
+function feedbackLine(a: {
+  createdDate?: string;
+  email?: string;
+  deviceModel?: string;
+  osVersion?: string;
+  comment?: string;
+}): void {
+  const when = a.createdDate?.slice(0, 16).replace("T", " ") ?? "";
+  const who = a.email ?? "(anonymous)";
+  const device = [a.deviceModel, a.osVersion].filter(Boolean).join(" ");
+  line(`  ${BOLD}${when}${RESET}  ${who}  ${DIM}${device}${RESET}`);
+  for (const l of (a.comment ?? "").split("\n").filter(Boolean)) line(`    ${l}`);
+}
+
+export async function runTestflightFeedback(opts: FeedbackOpts): Promise<number> {
+  const { tf, ascAppId } = await bootstrap();
+  const items = await tf.betaFeedback.screenshots(ascAppId, opts.limit);
+  if (opts.json) {
+    process.stdout.write(JSON.stringify(items, null, 2) + "\n");
+    return 0;
+  }
+  section("TestFlight feedback");
+  if (items.length === 0) {
+    nop("no screenshot feedback yet");
+    return 0;
+  }
+  for (const item of items) {
+    feedbackLine(item.attributes);
+    for (const shot of item.attributes.screenshots ?? []) {
+      if (shot.url) note(`    ${shot.url}`);
+    }
+  }
+  return 0;
+}
+
+export async function runTestflightCrashes(opts: FeedbackOpts): Promise<number> {
+  const { tf, ascAppId } = await bootstrap();
+  const items = await tf.betaFeedback.crashes(ascAppId, opts.limit);
+  if (opts.json) {
+    process.stdout.write(JSON.stringify(items, null, 2) + "\n");
+    return 0;
+  }
+  section("TestFlight crashes");
+  if (items.length === 0) {
+    nop("no crash reports yet");
+    return 0;
+  }
+  for (const item of items) feedbackLine(item.attributes);
+  note("full crash logs live in App Store Connect > TestFlight > Crashes");
   return 0;
 }
