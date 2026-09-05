@@ -81,13 +81,21 @@ function installCmdFor(pm, frozen) {
 const REPO = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 process.chdir(REPO);
 
-const RESET = "\x1b[0m";
-const BOLD = "\x1b[1m";
-const DIM = "\x1b[2m";
+// Everything here writes to stderr, so stderr decides. `NO_COLOR` is the
+// cross-tool opt-out (any non-empty value), `TERM=dumb` is what a terminal that
+// cannot handle escapes reports, and a pipe or a log file gets none either.
+// That last one is what a screen reader or a braille display reads.
+const colorEnabled =
+  process.stderr.isTTY === true && !process.env.NO_COLOR && process.env.TERM !== "dumb";
+const code = (seq) => (colorEnabled ? seq : "");
+
+const RESET = code("\x1b[0m");
+const BOLD = code("\x1b[1m");
+const DIM = code("\x1b[2m");
 function ansiHex(hex) {
   const m = /^#?([\da-f]{2})([\da-f]{2})([\da-f]{2})$/i.exec(hex);
   if (!m) return "";
-  return `\x1b[38;2;${parseInt(m[1], 16)};${parseInt(m[2], 16)};${parseInt(m[3], 16)}m`;
+  return code(`\x1b[38;2;${parseInt(m[1], 16)};${parseInt(m[2], 16)};${parseInt(m[3], 16)}m`);
 }
 const GREEN = ansiHex("#22c55e");
 const YELLOW = ansiHex("#f59e0b");
@@ -104,7 +112,13 @@ function stringWidth(s) {
   return [...s].length;
 }
 
+// The rule after the title is decoration, and seventy box-drawing dashes read
+// back one at a time is noise. Without colour the title goes out alone.
 function section(title) {
+  if (!colorEnabled) {
+    line(`\n${title}`);
+    return;
+  }
   const w = process.stderr.columns ?? process.stdout.columns ?? 80;
   const fill = "─".repeat(Math.max(0, w - stringWidth(title) - 3));
   line(`\n${BOLD}${VIOLET}${title}${RESET} ${DIM}${fill}${RESET}`);
