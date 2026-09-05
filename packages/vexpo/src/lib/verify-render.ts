@@ -3,16 +3,20 @@ import type { Category, Check, Severity } from "./verify.ts";
 
 const RENDER_ORDER: Category[] = ["files", "convex", "resend", "apple", "eas", "coherence"];
 
+// The same two-character tags the rest of the CLI uses. A check mark and a
+// ballot x are outside most screen readers' symbol dictionaries, so at default
+// punctuation they are read as nothing at all and a passing check and a failing
+// one come out identical. Colour cannot carry it either.
 function glyph(severity: Severity): string {
   switch (severity) {
     case "ok":
-      return `${GREEN}✓${RESET}`;
+      return `${GREEN}ok${RESET}`;
     case "warn":
-      return `${YELLOW}⚠${RESET}`;
+      return `${YELLOW}!!${RESET}`;
     case "fail":
-      return `${RED}✗${RESET}`;
+      return `${RED}xx${RESET}`;
     case "skip":
-      return `${DIM}-${RESET}`;
+      return `${DIM}--${RESET}`;
   }
 }
 
