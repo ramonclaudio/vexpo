@@ -151,6 +151,9 @@ jobs:
           node-version: "22"
           cache: npm
       - run: npm ci
+      - name: Install template dependencies
+        run: npm ci
+        working-directory: templates/default
       - run: npm run knip
 
   dependency-review:
