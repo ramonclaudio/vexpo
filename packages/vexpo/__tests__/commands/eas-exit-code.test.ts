@@ -21,7 +21,7 @@ vi.mock("../../src/lib/eas-project.ts", () => ({
 import { runEas } from "../../src/commands/eas.ts";
 import { envPush } from "../../src/lib/eas-project.ts";
 
-const envPushSpy = envPush as unknown as ReturnType<typeof vi.fn>;
+const envPushSpy = vi.mocked(envPush);
 
 useTmpCwd("eas-exit-code-");
 

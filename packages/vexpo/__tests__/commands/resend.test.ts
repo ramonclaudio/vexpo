@@ -26,10 +26,10 @@ import { runResend } from "../../src/commands/resend.ts";
 import { envSet } from "../../src/lib/convex-env.ts";
 import { deleteWebhook, listWebhooks, provisionWebhook } from "../../src/lib/resend-api.ts";
 
-const envSetSpy = envSet as unknown as ReturnType<typeof vi.fn>;
-const provisionWebhookSpy = provisionWebhook as unknown as ReturnType<typeof vi.fn>;
-const listWebhooksSpy = listWebhooks as unknown as ReturnType<typeof vi.fn>;
-const deleteWebhookSpy = deleteWebhook as unknown as ReturnType<typeof vi.fn>;
+const envSetSpy = vi.mocked(envSet);
+const provisionWebhookSpy = vi.mocked(provisionWebhook);
+const listWebhooksSpy = vi.mocked(listWebhooks);
+const deleteWebhookSpy = vi.mocked(deleteWebhook);
 
 const DEV_SITE = "https://dev-site.convex.site";
 const PROD_SITE = "https://prod-site.convex.site";

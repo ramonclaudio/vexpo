@@ -34,7 +34,7 @@ describe("checkToken", () => {
   });
 
   it("returns 'no-token' without any fetch when config has no accessToken", async () => {
-    (readFile as unknown as ReturnType<typeof vi.fn>).mockResolvedValueOnce("{}");
+    vi.mocked(readFile).mockResolvedValueOnce("{}");
     const fetchMock = vi.fn();
     vi.stubGlobal("fetch", fetchMock);
     expect(await checkToken()).toBe("no-token");

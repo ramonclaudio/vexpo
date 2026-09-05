@@ -19,7 +19,7 @@ vi.mock("../../src/lib/pkg-manager.ts", () => ({
 import { ascStatus, convexProjectLink, type AscStatus } from "../../src/lib/eas-integrations.ts";
 import { run } from "../../src/lib/proc.ts";
 
-const runSpy = run as unknown as ReturnType<typeof vi.fn>;
+const runSpy = vi.mocked(run);
 
 beforeEach(() => {
   runSpy.mockReset();

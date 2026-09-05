@@ -50,10 +50,10 @@ import { requireBundleId } from "../../src/lib/env-local.ts";
 import { spawn } from "../../src/lib/proc.ts";
 import { save } from "../../src/lib/state.ts";
 
-const ascStatusSpy = ascStatus as unknown as ReturnType<typeof vi.fn>;
-const requireBundleIdSpy = requireBundleId as unknown as ReturnType<typeof vi.fn>;
-const spawnSpy = spawn as unknown as ReturnType<typeof vi.fn>;
-const loadAscCredsSpy = loadAscCreds as unknown as ReturnType<typeof vi.fn>;
+const ascStatusSpy = vi.mocked(ascStatus);
+const requireBundleIdSpy = vi.mocked(requireBundleId);
+const spawnSpy = vi.mocked(spawn);
+const loadAscCredsSpy = vi.mocked(loadAscCreds);
 
 useTmpCwd("asc-connect-test-");
 
@@ -211,7 +211,7 @@ describe("runAscConnect", () => {
       },
     });
     const fs = await import("node:fs");
-    const existsSpy = fs.existsSync as unknown as ReturnType<typeof vi.fn>;
+    const existsSpy = vi.mocked(fs.existsSync);
     existsSpy.mockImplementation(() => true);
     fs.writeFileSync("eas.json", JSON.stringify({ submit: { production: { ios: {} } } }, null, 2));
 
@@ -258,7 +258,7 @@ describe("runAscConnect", () => {
       { type: "apps", id: "1234567890", attributes: { bundleId: "com.vexpo.vexpo" } },
     ]);
     const fs = await import("node:fs");
-    const existsSpy = fs.existsSync as unknown as ReturnType<typeof vi.fn>;
+    const existsSpy = vi.mocked(fs.existsSync);
     existsSpy.mockImplementation(() => true);
     fs.writeFileSync(
       "eas.json",

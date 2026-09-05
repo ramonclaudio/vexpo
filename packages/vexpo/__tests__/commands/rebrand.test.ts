@@ -18,7 +18,7 @@ import { readAll } from "../../src/lib/env-local.ts";
 import { ask } from "../../src/lib/output.ts";
 import { run } from "../../src/lib/proc.ts";
 
-const runSpy = run as unknown as ReturnType<typeof vi.fn>;
+const runSpy = vi.mocked(run);
 
 const fromFileWrites: string[] = [];
 

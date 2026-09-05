@@ -19,8 +19,8 @@ vi.mock("../../src/lib/pkg-manager.ts", () => ({
 import { easJson, easSpawn, easText } from "../../src/lib/eas-cli.ts";
 import { run, spawn } from "../../src/lib/proc.ts";
 
-const runSpy = run as unknown as ReturnType<typeof vi.fn>;
-const spawnSpy = spawn as unknown as ReturnType<typeof vi.fn>;
+const runSpy = vi.mocked(run);
+const spawnSpy = vi.mocked(spawn);
 
 beforeEach(() => {
   runSpy.mockReset();

@@ -18,9 +18,9 @@ import { runConvexKey } from "../../src/commands/env/convex-key.ts";
 import { mintProdDeployKey } from "../../src/lib/convex-management.ts";
 import { envCreate, envList } from "../../src/lib/eas-project.ts";
 
-const mintProdSpy = mintProdDeployKey as unknown as ReturnType<typeof vi.fn>;
-const envListSpy = envList as unknown as ReturnType<typeof vi.fn>;
-const envCreateSpy = envCreate as unknown as ReturnType<typeof vi.fn>;
+const mintProdSpy = vi.mocked(mintProdDeployKey);
+const envListSpy = vi.mocked(envList);
+const envCreateSpy = vi.mocked(envCreate);
 
 useTmpCwd("convex-key-");
 

@@ -15,7 +15,7 @@ import { applyPlan, type FilePlan } from "../../src/commands/env/push.ts";
 import { envSetFromFile } from "../../src/lib/convex-env.ts";
 import { buildPlan, type EnvSource } from "../../src/lib/env-files.ts";
 
-const setFromFileSpy = envSetFromFile as unknown as ReturnType<typeof vi.fn>;
+const setFromFileSpy = vi.mocked(envSetFromFile);
 
 function convexUpdatePlan(): FilePlan {
   const source: EnvSource = {

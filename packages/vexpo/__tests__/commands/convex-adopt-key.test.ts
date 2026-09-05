@@ -33,8 +33,8 @@ import { runConvex } from "../../src/commands/convex.ts";
 import { ensureLine } from "../../src/lib/env-local.ts";
 import { spawn } from "../../src/lib/proc.ts";
 
-const spawnSpy = spawn as unknown as ReturnType<typeof vi.fn>;
-const ensureLineSpy = ensureLine as unknown as ReturnType<typeof vi.fn>;
+const spawnSpy = vi.mocked(spawn);
+const ensureLineSpy = vi.mocked(ensureLine);
 
 beforeEach(() => {
   vi.clearAllMocks();

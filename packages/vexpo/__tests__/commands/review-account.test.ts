@@ -15,7 +15,7 @@ vi.mock("../../src/lib/proc.ts", () => ({
 import { runReviewAccount } from "../../src/commands/review-account.ts";
 import { run } from "../../src/lib/proc.ts";
 
-const runSpy = run as unknown as ReturnType<typeof vi.fn>;
+const runSpy = vi.mocked(run);
 
 const storeConfig = (demoPassword: string) =>
   JSON.stringify({ apple: { review: { demoUsername: "review@example.com", demoPassword } } });

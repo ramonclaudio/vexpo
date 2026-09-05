@@ -6,8 +6,8 @@ import { existsSync, readFileSync } from "node:fs";
 
 import { runPrivacyShow } from "../../src/commands/asc-privacy.ts";
 
-const existsSpy = existsSync as unknown as ReturnType<typeof vi.fn>;
-const readSpy = readFileSync as unknown as ReturnType<typeof vi.fn>;
+const existsSpy = vi.mocked(existsSync);
+const readSpy = vi.mocked(readFileSync);
 
 afterEach(() => vi.clearAllMocks());
 

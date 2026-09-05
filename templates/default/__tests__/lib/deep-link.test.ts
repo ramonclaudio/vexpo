@@ -26,7 +26,7 @@ import { parse } from "expo-linking";
 import { redirectSystemPath } from "@/app/+native-intent";
 import { resolveDeepLink } from "@/lib/deep-link";
 
-const parseMock = parse as unknown as ReturnType<typeof vi.fn>;
+const parseMock = vi.mocked(parse);
 
 const redirect = (path: string) => redirectSystemPath!({ path, initial: false });
 
@@ -81,12 +81,13 @@ describe("resolveDeepLink", () => {
   it("drops nullish query values and joins array values", () => {
     // URLSearchParams only yields strings, so the real source's `value == null`
     // skip and `Array.isArray` join branches are unreachable through a real URL.
-    // Drive them directly via the parse mock.
+    // Drive them directly via the parse mock. `undefined` takes the same `== null`
+    // branch as null and is the shape expo-linking's own QueryParams type allows.
     parseMock.mockReturnValueOnce({
       scheme: "test",
       hostname: "app",
       path: "/linked",
-      queryParams: { a: "1", b: null, tags: ["x", "y"] },
+      queryParams: { a: "1", b: undefined, tags: ["x", "y"] },
     });
     const result = resolveDeepLink("test://app/linked");
     expect(result.params).toEqual({ a: "1", tags: "x,y" });
