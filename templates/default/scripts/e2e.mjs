@@ -66,10 +66,11 @@ const maestro = existsSync(`${process.env.HOME}/.maestro/bin/maestro`)
 
 function devUrl() {
   if (process.env.MAESTRO_DEV_URL) return process.env.MAESTRO_DEV_URL;
-  const scheme =
+  const base =
     readFileSync(resolve(PROJECT, "app.config.ts"), "utf8").match(
-      /scheme:\s*["']([^"']+)["']/,
+      /const SCHEME = ["']([^"']+)["'];/,
     )?.[1] ?? "exp";
+  const scheme = `${base}dev`;
   const port = process.env.EXPO_PACKAGER_PORT ?? process.env.RCT_METRO_PORT ?? "8081";
   const host = process.env.MAESTRO_DEV_HOST ?? "localhost";
   const target = encodeURIComponent(`http://${host}:${port}`);

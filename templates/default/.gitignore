@@ -58,3 +58,4 @@ coverage/
 .vitest-cache/
 
 tsconfig.tsbuildinfo
+.maestro/debug/

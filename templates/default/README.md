@@ -221,6 +221,8 @@ npm run test                   vitest run
 npm run test:watch             vitest
 npm run e2e                    Maestro flows on the simulator (one flow: npm run e2e -- .maestro/guest.yaml)
                                .maestro/guest-mode-off.yaml is opt-in. Its header has the two env commands
+npm run smoke                  Release simulator build, then one flow that stops at the sign-in screen
+                               No backend, no Metro. This is what CI runs on macos-latest
 npm run fp                     Print Expo fingerprint hash
 npm run atlas                  Bundle explorer at /_expo/atlas, served in production mode
 npm run atlas:export           Export the iOS bundle and open the report offline
@@ -271,6 +273,10 @@ That file holds the original and transformed source of every bundled module, inc
 
 `runtimeVersion` uses the fingerprint policy with `appVersionSource: "remote"`, and the ASC key is managed by EAS. PR previews, Maestro E2E, and the production deploy are `workflow_dispatch`-only by default. Restore the `pull_request` triggers to build on every PR, or add a `push: main` trigger to deploy on merge.
 
+Two test paths, and they cost different things. `.github/workflows/check.yml` has an `ios` job on `macos-latest` that runs `npm run smoke`: a Release simulator build plus one flow that asserts the app boots to the sign-in screen. macOS runners are free on public repos, and the flow never touches Convex, so this one needs no account and no secrets. It catches the thing that actually breaks, a native build that no longer compiles.
+
+`.eas/workflows/e2e-tests.yml` runs the full set (guest, auth, launch, tour, screens) through the `maestro` job type. That job is not on the EAS free plan, and the auth flow signs up against a live Convex deployment. Keep it if you are on a paid plan, otherwise the smoke job is the free half.
+
 ## Conventions
 
 For anyone writing code here, agent or human.
@@ -313,11 +319,13 @@ plugins/
   with-auto-signing.js            CODE_SIGN_STYLE=Automatic + DEVELOPMENT_TEAM
   with-pod-deployment-target.js   Forces every pod to iOS 16.4
 .eas/workflows/                   9 EAS Workflow YAML files
-.github/workflows/check.yml       Typecheck, lint, format, tests
+.github/workflows/check.yml       Typecheck, lint, format, tests, and the iOS smoke build
 .maestro/                         Maestro e2e flows, run with `npm run e2e`
+  smoke.yaml                      Boots to sign-in, no backend. What CI runs
 scripts/
   dev.mjs                         Metro launcher behind dev/start/ios
   e2e.mjs                         Maestro runner behind `npm run e2e`
+  smoke.mjs                       Release build + install + smoke flow, behind `npm run smoke`
   clean.mjs                       Trash + reinstall
   gen-update-cert.mjs             OTA code-signing keypair, run once
   rotate-apple-jwt.mjs            CI: re-sign JWT from env vars
