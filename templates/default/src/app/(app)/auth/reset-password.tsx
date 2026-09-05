@@ -135,7 +135,7 @@ export default function ResetPasswordScreen() {
         <VStack
           spacing={16}
           alignment="center"
-          modifiers={[padding({ horizontal: 24 }), tint(colors.primary as string)]}
+          modifiers={[padding({ horizontal: 24 }), tint(colors.primary)]}
         >
           <Spacer />
           <Image
@@ -157,7 +157,7 @@ export default function ResetPasswordScreen() {
           <Text
             modifiers={[
               dfont({ size: 15 }),
-              foregroundStyle(colors.mutedForeground as string),
+              foregroundStyle(colors.mutedForeground),
               multilineTextAlignment("center"),
             ]}
           >
@@ -183,7 +183,7 @@ export default function ResetPasswordScreen() {
       <ScrollView
         modifiers={[
           scrollDismissesKeyboard("interactively"),
-          tint(colors.primary as string),
+          tint(colors.primary),
           defaultScrollAnchorForRole("center", "sizeChanges"),
         ]}
       >
@@ -211,9 +211,7 @@ export default function ResetPasswordScreen() {
             >
               Reset password
             </Text>
-            <Text
-              modifiers={[dfont({ size: 16 }), foregroundStyle(colors.mutedForeground as string)]}
-            >
+            <Text modifiers={[dfont({ size: 16 }), foregroundStyle(colors.mutedForeground)]}>
               Enter the 6-digit code sent to {email} and choose a new password.
             </Text>
           </VStack>
@@ -224,7 +222,7 @@ export default function ResetPasswordScreen() {
               testID="reset-password-account"
               text={emailIdentityState}
               modifiers={[
-                foregroundStyle(colors.mutedForeground as string),
+                foregroundStyle(colors.mutedForeground),
                 textContentType("username"),
                 disabled(true),
                 accessibilityLabel("Account email"),
@@ -322,7 +320,7 @@ export default function ResetPasswordScreen() {
               label="Back to sign in"
               modifiers={[
                 buttonStyle("plain"),
-                foregroundStyle(colors.mutedForeground as string),
+                foregroundStyle(colors.mutedForeground),
                 dfont({ size: 14, weight: "semibold" }),
                 frame({ minHeight: TouchTarget.min }),
                 contentShape(shapes.rectangle()),

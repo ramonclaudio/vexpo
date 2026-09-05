@@ -84,9 +84,7 @@ function Subtitle({ isGuest, emailFeatures }: { isGuest: boolean; emailFeatures:
       ? "A verification code will be sent to confirm your email."
       : "Sign up and you're in. No email to confirm.";
   return (
-    <Text modifiers={[dfont({ size: 16 }), foregroundStyle(colors.mutedForeground as string)]}>
-      {text}
-    </Text>
+    <Text modifiers={[dfont({ size: 16 }), foregroundStyle(colors.mutedForeground)]}>{text}</Text>
   );
 }
 
@@ -102,7 +100,7 @@ function UsernameStatusRow({ status }: { status: UsernameStatus | null }) {
       />
       <Text
         testID="sign-up-username-status"
-        modifiers={[dfont({ size: 13 }), foregroundStyle(status.color as string)]}
+        modifiers={[dfont({ size: 13 }), foregroundStyle(status.color)]}
       >
         {status.text}
       </Text>
@@ -298,21 +296,21 @@ export default function SignUpScreen() {
     if (isCheckingUsername) {
       return {
         text: "Checking availability...",
-        color: colors.mutedForeground as string,
+        color: colors.mutedForeground,
         icon: "ellipsis.circle",
       };
     }
     if (usernameAvailable === true) {
       return {
         text: "Username is available",
-        color: colors.success as string,
+        color: colors.success,
         icon: "checkmark.circle.fill",
       };
     }
     if (usernameAvailable === false) {
       return {
         text: "This username is not available",
-        color: colors.destructive as string,
+        color: colors.destructive,
         icon: "exclamationmark.circle.fill",
       };
     }
@@ -330,7 +328,7 @@ export default function SignUpScreen() {
       <ScrollView
         modifiers={[
           scrollDismissesKeyboard("interactively"),
-          tint(colors.primary as string),
+          tint(colors.primary),
           scrollPosition(activeField, { anchor: "top" }),
           defaultScrollAnchorForRole("center", "sizeChanges"),
         ]}

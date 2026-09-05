@@ -25,9 +25,7 @@ export default function LinkedScreen() {
 
   return (
     <Host testID="linked-screen" style={{ flex: 1, backgroundColor: colors.background }}>
-      <ScrollView
-        modifiers={[scrollDismissesKeyboard("interactively"), tint(colors.primary as string)]}
-      >
+      <ScrollView modifiers={[scrollDismissesKeyboard("interactively"), tint(colors.primary)]}>
         <VStack
           spacing={20}
           alignment="leading"
@@ -43,9 +41,7 @@ export default function LinkedScreen() {
             >
               You got here via a deep link
             </Text>
-            <Text
-              modifiers={[dfont({ size: 14 }), foregroundStyle(colors.mutedForeground as string)]}
-            >
+            <Text modifiers={[dfont({ size: 14 }), foregroundStyle(colors.mutedForeground)]}>
               Parameters parsed from the URL are listed below.
             </Text>
           </VStack>
@@ -55,7 +51,7 @@ export default function LinkedScreen() {
               <Text
                 modifiers={[
                   dfont({ size: 13, weight: "semibold" }),
-                  foregroundStyle(colors.mutedForeground as string),
+                  foregroundStyle(colors.mutedForeground),
                   padding({ horizontal: 8 }),
                   accessibilityAddTraits(["isHeader"]),
                 ]}
@@ -67,7 +63,7 @@ export default function LinkedScreen() {
                 alignment="leading"
                 modifiers={[
                   frame({ maxWidth: Infinity }),
-                  background(colors.muted as string),
+                  background(colors.muted),
                   cornerRadius(20),
                 ]}
               >
@@ -76,10 +72,7 @@ export default function LinkedScreen() {
                     key={key}
                     label={
                       <Text
-                        modifiers={[
-                          dfont({ size: 15 }),
-                          foregroundStyle(colors.mutedForeground as string),
-                        ]}
+                        modifiers={[dfont({ size: 15 }), foregroundStyle(colors.mutedForeground)]}
                       >
                         {key}
                       </Text>
@@ -93,7 +86,7 @@ export default function LinkedScreen() {
                       testID={`linked-param-${key}`}
                       modifiers={[
                         dfont({ size: 13, design: "monospaced" }),
-                        foregroundStyle(colors.foreground as string),
+                        foregroundStyle(colors.foreground),
                         textSelection(true),
                       ]}
                     >

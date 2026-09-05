@@ -96,7 +96,7 @@ function ChangePasswordForm({ email }: { email: string }) {
       <ScrollView
         modifiers={[
           scrollDismissesKeyboard("interactively"),
-          tint(colors.primary as string),
+          tint(colors.primary),
           defaultScrollAnchorForRole("center", "sizeChanges"),
         ]}
       >
@@ -115,9 +115,7 @@ function ChangePasswordForm({ email }: { email: string }) {
             >
               Change password
             </Text>
-            <Text
-              modifiers={[dfont({ size: 14 }), foregroundStyle(colors.mutedForeground as string)]}
-            >
+            <Text modifiers={[dfont({ size: 14 }), foregroundStyle(colors.mutedForeground)]}>
               Other devices will be signed out.
             </Text>
           </VStack>
@@ -128,7 +126,7 @@ function ChangePasswordForm({ email }: { email: string }) {
               testID="change-password-account"
               text={emailState}
               modifiers={[
-                foregroundStyle(colors.mutedForeground as string),
+                foregroundStyle(colors.mutedForeground),
                 textContentType("username"),
                 disabled(true),
                 accessibilityLabel("Account email"),
@@ -194,7 +192,7 @@ function ChangePasswordForm({ email }: { email: string }) {
               label="Cancel"
               modifiers={[
                 buttonStyle("plain"),
-                foregroundStyle(colors.mutedForeground as string),
+                foregroundStyle(colors.mutedForeground),
                 dfont({ size: 14, weight: "semibold" }),
                 frame({ minHeight: TouchTarget.min }),
                 disabled(isPending),

@@ -89,9 +89,7 @@ function Subtitle({ isGuest, isOtp }: { isGuest: boolean; isOtp: boolean }) {
       ? "We'll email you a 6-digit code. No password needed."
       : "Enter your credentials to access your account.";
   return (
-    <Text modifiers={[dfont({ size: 16 }), foregroundStyle(colors.mutedForeground as string)]}>
-      {text}
-    </Text>
+    <Text modifiers={[dfont({ size: 16 }), foregroundStyle(colors.mutedForeground)]}>{text}</Text>
   );
 }
 
@@ -104,7 +102,7 @@ function ForgotPasswordLink({ testID }: { testID: string }) {
       label="Forgot password?"
       modifiers={[
         buttonStyle("plain"),
-        foregroundStyle(colors.mutedForeground as string),
+        foregroundStyle(colors.mutedForeground),
         dfont({ size: 13 }),
         frame({ minHeight: TouchTarget.min }),
         contentShape(shapes.rectangle()),
@@ -331,7 +329,7 @@ export default function SignInScreen() {
       <ScrollView
         modifiers={[
           scrollDismissesKeyboard("interactively"),
-          tint(colors.primary as string),
+          tint(colors.primary),
           defaultScrollAnchorForRole("center", "sizeChanges"),
         ]}
       >

@@ -156,7 +156,7 @@ export default function SessionsScreen() {
           description="You have no other active sessions."
         />
       ) : (
-        <ScrollView modifiers={[tint(colors.primary as string), refreshable(load)]}>
+        <ScrollView modifiers={[tint(colors.primary), refreshable(load)]}>
           <VStack
             spacing={12}
             alignment="leading"
@@ -176,7 +176,7 @@ export default function SessionsScreen() {
               testID="sessions-heading"
               modifiers={[
                 dfont({ size: 13, weight: "semibold" }),
-                foregroundStyle(colors.mutedForeground as string),
+                foregroundStyle(colors.mutedForeground),
                 accessibilityAddTraits(["isHeader"]),
               ]}
             >
@@ -193,7 +193,7 @@ export default function SessionsScreen() {
                   modifiers={[
                     frame({ maxWidth: Infinity }),
                     padding({ horizontal: 20, vertical: 14 }),
-                    background(colors.muted as string),
+                    background(colors.muted),
                     cornerRadius(20),
                   ]}
                 >
@@ -215,9 +215,9 @@ export default function SessionsScreen() {
                           testID={`session-current-badge-${s.token}`}
                           modifiers={[
                             dfont({ size: 11, weight: "semibold" }),
-                            foregroundStyle(colors.primaryForeground as string),
+                            foregroundStyle(colors.primaryForeground),
                             padding({ horizontal: 8, vertical: 2 }),
-                            background(colors.primary as string),
+                            background(colors.primary),
                             cornerRadius(8),
                             dynamicTypeSize({ max: DynamicType.control }),
                           ]}
@@ -230,7 +230,7 @@ export default function SessionsScreen() {
                       testID={`session-meta-${s.token}`}
                       modifiers={[
                         dfont({ size: 13 }),
-                        foregroundStyle(colors.mutedForeground as string),
+                        foregroundStyle(colors.mutedForeground),
                         textSelection(true),
                         privacySensitive(),
                       ]}
@@ -263,7 +263,7 @@ export default function SessionsScreen() {
                           <Text
                             modifiers={[
                               dfont({ size: 14, weight: "medium" }),
-                              foregroundStyle(colors.destructive as string),
+                              foregroundStyle(colors.destructive),
                             ]}
                           >
                             Revoke
@@ -302,7 +302,7 @@ export default function SessionsScreen() {
                 testID="sessions-revoking"
                 modifiers={[
                   dfont({ size: 13 }),
-                  foregroundStyle(colors.mutedForeground as string),
+                  foregroundStyle(colors.mutedForeground),
                   multilineTextAlignment("center"),
                   frame({ maxWidth: Infinity }),
                 ]}

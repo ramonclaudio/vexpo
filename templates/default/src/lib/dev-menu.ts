@@ -12,11 +12,9 @@ import { reloadApp } from "./app";
 const rawScheme = Constants.expoConfig?.scheme;
 const scheme = Array.isArray(rawScheme) ? rawScheme[0] : rawScheme;
 
-type SessionResponse = { data?: { session?: { id?: string } } | null };
-
 async function copyAuthSessionId() {
   try {
-    const res = (await authClient.getSession()) as SessionResponse;
+    const res = await authClient.getSession();
     const id = res?.data?.session?.id;
     if (!id) {
       console.log("[DevMenu] No active auth session");

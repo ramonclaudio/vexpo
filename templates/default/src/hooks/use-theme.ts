@@ -1,12 +1,16 @@
 import { useSyncExternalStore } from "react";
 import { Appearance, useColorScheme as useRNColorScheme } from "react-native";
 
-import { createStorage } from "@/lib/storage";
+import { createStorage, isOneOf } from "@/lib/storage";
 import { Colors, type ColorPalette } from "@/constants/theme";
 
 type ThemeMode = "light" | "dark" | "system";
 
-const store = createStorage<ThemeMode>("pref.theme.mode", "system");
+const store = createStorage<ThemeMode>(
+  "pref.theme.mode",
+  "system",
+  isOneOf("light", "dark", "system"),
+);
 
 function applyToWindow(mode: ThemeMode) {
   Appearance.setColorScheme(mode === "system" ? "unspecified" : mode);

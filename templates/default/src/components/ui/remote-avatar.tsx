@@ -12,7 +12,7 @@ export function RemoteAvatar({ url, size }: { url: string; size: number }) {
       <Image
         systemName="person.crop.circle.fill"
         size={size}
-        color={colors.mutedForeground as string}
+        color={colors.mutedForeground}
         modifiers={[frame({ width: size, height: size }), accessibilityHidden(true)]}
       />
     );

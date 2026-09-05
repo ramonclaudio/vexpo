@@ -157,7 +157,7 @@ export function ProfileFields({
             textFieldStyle("plain"),
             padding({ horizontal: 16, vertical: 12 }),
             frame({ maxWidth: Infinity }),
-            background(colors.muted as string),
+            background(colors.muted),
             cornerRadius(20),
             dfont({ size: 16 }),
             lineLimit({ min: 1, max: 4 }),
@@ -181,7 +181,7 @@ export function ProfileFields({
         modifiers={[frame({ maxWidth: Infinity }), accessibilityElement("combine")]}
       >
         <Text modifiers={labelModifiers}>{isGuest ? "Browsing since" : "Member since"}</Text>
-        <Text modifiers={[dfont({ size: 16 }), foregroundStyle(colors.mutedForeground as string)]}>
+        <Text modifiers={[dfont({ size: 16 }), foregroundStyle(colors.mutedForeground)]}>
           {formatDate(createdAt)}
         </Text>
       </VStack>

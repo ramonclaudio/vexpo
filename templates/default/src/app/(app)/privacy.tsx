@@ -15,7 +15,7 @@ export default function PrivacyScreen() {
 
   return (
     <Host testID="privacy-screen" style={{ flex: 1, backgroundColor: colors.background }}>
-      <ScrollView modifiers={[tint(colors.primary as string)]}>
+      <ScrollView modifiers={[tint(colors.primary)]}>
         <VStack
           spacing={12}
           alignment="leading"

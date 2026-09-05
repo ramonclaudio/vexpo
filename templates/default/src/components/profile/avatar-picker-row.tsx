@@ -85,7 +85,7 @@ export function AvatarPickerRow({
                 testID="profile-email-value"
                 modifiers={[
                   dfont({ size: 14 }),
-                  foregroundStyle(colors.mutedForeground as string),
+                  foregroundStyle(colors.mutedForeground),
                   privacySensitive(),
                 ]}
               >
@@ -95,7 +95,7 @@ export function AvatarPickerRow({
             <Spacer />
             <Image
               systemName="camera.circle.fill"
-              color={colors.primary as string}
+              color={colors.primary}
               modifiers={[
                 dfont({ size: 28 }),
                 dynamicTypeSize({ max: DynamicType.control }),
@@ -142,7 +142,7 @@ function AvatarView({ avatarUrl, loading }: { avatarUrl: string | null; loading:
           frame({ width: AVATAR_SIZE, height: AVATAR_SIZE }),
           clipShape("circle"),
           strokeBorder({
-            color: colors.mutedForeground as string,
+            color: colors.mutedForeground,
             shape: "circle",
             style: { lineWidth: 2, lineCap: "round", dash: [4, 6] },
           }),
@@ -161,7 +161,7 @@ function AvatarView({ avatarUrl, loading }: { avatarUrl: string | null; loading:
     <Image
       systemName="person.crop.circle.fill"
       size={AVATAR_SIZE}
-      color={colors.mutedForeground as string}
+      color={colors.mutedForeground}
       modifiers={[frame({ width: AVATAR_SIZE, height: AVATAR_SIZE }), accessibilityHidden(true)]}
     />
   );

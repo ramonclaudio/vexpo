@@ -41,19 +41,19 @@ export function CapsuleToggleRow({
       modifiers={[
         frame({ maxWidth: Infinity, minHeight: ButtonTokens.height }),
         padding({ horizontal: 16 }),
-        background(colors.muted as string),
+        background(colors.muted),
         clipShape("capsule"),
       ]}
     >
       <Image
         systemName={systemImage}
-        color={colors.foreground as string}
+        color={colors.foreground}
         modifiers={[dfont({ size: 18 }), accessibilityHidden(true)]}
       />
       <Text
         modifiers={[
           dfont({ size: 16, weight: "medium" }),
-          foregroundStyle(colors.foreground as string),
+          foregroundStyle(colors.foreground),
           accessibilityHidden(true),
         ]}
       >
@@ -64,7 +64,7 @@ export function CapsuleToggleRow({
         testID={testID}
         isOn={value}
         onIsOnChange={onChange}
-        modifiers={[tint(colors.primary as string), accessibilityLabel(a11yLabel ?? label)]}
+        modifiers={[tint(colors.primary), accessibilityLabel(a11yLabel ?? label)]}
       />
     </HStack>
   );

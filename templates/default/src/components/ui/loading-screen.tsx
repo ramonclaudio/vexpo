@@ -11,10 +11,10 @@ export function LoadingScreen({ testID }: { testID?: string } = {}) {
   return (
     <Host
       testID={testID}
-      style={{ flex: 1, backgroundColor: colors.background as string }}
+      style={{ flex: 1, backgroundColor: colors.background }}
       useViewportSizeMeasurement
     >
-      <VStack alignment="center" spacing={20} modifiers={[tint(colors.primary as string)]}>
+      <VStack alignment="center" spacing={20} modifiers={[tint(colors.primary)]}>
         <Spacer />
         <RNHostView matchContents>
           <ExpoImage

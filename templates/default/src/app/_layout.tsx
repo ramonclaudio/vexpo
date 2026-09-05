@@ -72,14 +72,14 @@ function RootNavigator() {
   }, [isPending, assets, assetError, markInteractive]);
 
   return (
-    <GestureHandlerRootView style={{ flex: 1, backgroundColor: colors.background as string }}>
+    <GestureHandlerRootView style={{ flex: 1, backgroundColor: colors.background }}>
       <KeyboardProvider>
         <NavigationThemeProvider value={colorScheme === "dark" ? NavigationDark : NavigationLight}>
           <Stack
             screenOptions={{
               ...motion,
               headerShown: false,
-              contentStyle: { backgroundColor: colors.background as string },
+              contentStyle: { backgroundColor: colors.background },
             }}
           >
             <Stack.Screen name="(app)" />

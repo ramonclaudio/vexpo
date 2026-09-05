@@ -1,13 +1,11 @@
 import { ConvexError } from "convex/values";
 
 export function formatError(err: unknown): string {
-  if (err instanceof ConvexError) {
-    const data = err.data as unknown;
-    if (typeof data === "object" && data !== null && "message" in data) {
-      const msg = (data as { message?: unknown }).message;
-      if (typeof msg === "string" && msg.length > 0) return msg;
-    }
-    return err.message;
+  if (!(err instanceof ConvexError)) return "Something went wrong. Please try again.";
+  const data: unknown = err.data;
+  if (typeof data === "object" && data !== null && "message" in data) {
+    const message = data.message;
+    if (typeof message === "string" && message.length > 0) return message;
   }
-  return "Something went wrong. Please try again.";
+  return err.message;
 }

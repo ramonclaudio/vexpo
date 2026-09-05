@@ -30,7 +30,7 @@ export default function HomeScreen() {
 
   return (
     <Host testID="home-screen" style={{ flex: 1 }}>
-      <ScrollView modifiers={[tint(colors.primary as string), refreshable(onRefresh)]}>
+      <ScrollView modifiers={[tint(colors.primary), refreshable(onRefresh)]}>
         <VStack
           spacing={24}
           alignment="leading"
@@ -43,7 +43,7 @@ export default function HomeScreen() {
           >
             <Text
               testID="home-date"
-              modifiers={[dfont({ size: 14 }), foregroundStyle(colors.mutedForeground as string)]}
+              modifiers={[dfont({ size: 14 }), foregroundStyle(colors.mutedForeground)]}
             >
               <Text date={now} dateStyle="date" />
             </Text>

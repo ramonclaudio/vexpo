@@ -39,7 +39,7 @@ export function SecondaryButton({
       modifiers={[
         buttonStyle("plain"),
         frame({ maxWidth: Infinity }),
-        ...(filled ? [background(colors.muted as string)] : []),
+        ...(filled ? [background(colors.muted)] : []),
         clipShape("capsule"),
         ...(disabled === undefined ? [] : [disabledModifier(disabled)]),
         ...(inputLabels ? [accessibilityInputLabels(inputLabels)] : []),
@@ -51,7 +51,7 @@ export function SecondaryButton({
           frame({ maxWidth: Infinity, minHeight: ButtonTokens.height }),
           multilineTextAlignment("center"),
           dfont({ size: ButtonTokens.fontSize, weight: ButtonTokens.secondaryFontWeight }),
-          foregroundStyle((destructive ? colors.destructive : colors.foreground) as string),
+          foregroundStyle(destructive ? colors.destructive : colors.foreground),
         ]}
       >
         {label}

@@ -108,7 +108,7 @@ export default function HelpScreen() {
         </Stack.Toolbar>
       ) : null}
       <Host testID="help-screen" style={{ flex: 1, backgroundColor: colors.background }}>
-        <ScrollView modifiers={[tint(colors.primary as string)]}>
+        <ScrollView modifiers={[tint(colors.primary)]}>
           <VStack
             spacing={12}
             alignment="leading"
@@ -150,7 +150,7 @@ export default function HelpScreen() {
                   testID="help-faq-heading"
                   modifiers={[
                     dfont({ size: 13, weight: "semibold" }),
-                    foregroundStyle(colors.mutedForeground as string),
+                    foregroundStyle(colors.mutedForeground),
                     padding({ horizontal: 8, top: 4 }),
                     accessibilityAddTraits(["isHeader"]),
                   ]}
@@ -164,7 +164,7 @@ export default function HelpScreen() {
                     modifiers={[
                       frame({ maxWidth: Infinity }),
                       padding({ horizontal: 20, vertical: 4 }),
-                      background(colors.muted as string),
+                      background(colors.muted),
                       cornerRadius(20),
                     ]}
                   >
@@ -181,7 +181,7 @@ export default function HelpScreen() {
                       <Text
                         modifiers={[
                           dfont({ size: 14 }),
-                          foregroundStyle(colors.mutedForeground as string),
+                          foregroundStyle(colors.mutedForeground),
                           padding({ vertical: 8 }),
                         ]}
                       >

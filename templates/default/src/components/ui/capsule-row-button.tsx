@@ -35,8 +35,7 @@ export function CapsuleRowButton({
 }) {
   const dfont = useDynamicFont();
   const colors = useColors();
-  const labelColor =
-    role === "destructive" ? (colors.destructive as string) : (colors.foreground as string);
+  const labelColor = role === "destructive" ? colors.destructive : colors.foreground;
   const showChevron = role !== "destructive";
   return (
     <Button
@@ -44,7 +43,7 @@ export function CapsuleRowButton({
       modifiers={[
         buttonStyle("plain"),
         frame({ maxWidth: Infinity }),
-        background(colors.muted as string),
+        background(colors.muted),
         clipShape("capsule"),
         ...(inputLabels ? [accessibilityInputLabels(inputLabels)] : []),
       ]}
@@ -70,7 +69,7 @@ export function CapsuleRowButton({
         {showChevron ? (
           <Image
             systemName="chevron.right"
-            color={colors.mutedForeground as string}
+            color={colors.mutedForeground}
             modifiers={[dfont({ size: 16 }), imageScale("small"), accessibilityHidden(true)]}
           />
         ) : null}

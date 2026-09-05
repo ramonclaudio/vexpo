@@ -367,7 +367,7 @@ export default function ProfileScreen() {
         <ScrollView
           modifiers={[
             scrollDismissesKeyboard("interactively"),
-            tint(colors.primary as string),
+            tint(colors.primary),
             defaultScrollAnchorForRole("center", "sizeChanges"),
           ]}
         >

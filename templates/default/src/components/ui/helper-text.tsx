@@ -21,7 +21,7 @@ export function HelperText({
       testID={testID}
       modifiers={[
         dfont({ size: 13 }),
-        foregroundStyle(colors.mutedForeground as string),
+        foregroundStyle(colors.mutedForeground),
         ...(modifiers ?? []),
       ]}
     >

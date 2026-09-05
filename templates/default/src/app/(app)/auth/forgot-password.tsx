@@ -84,9 +84,7 @@ export default function ForgotPasswordScreen() {
 
   return (
     <Host testID="forgot-password-screen" style={{ flex: 1, backgroundColor: colors.background }}>
-      <ScrollView
-        modifiers={[scrollDismissesKeyboard("interactively"), tint(colors.primary as string)]}
-      >
+      <ScrollView modifiers={[scrollDismissesKeyboard("interactively"), tint(colors.primary)]}>
         <VStack
           spacing={20}
           alignment="leading"
@@ -111,9 +109,7 @@ export default function ForgotPasswordScreen() {
             >
               Reset your password
             </Text>
-            <Text
-              modifiers={[dfont({ size: 16 }), foregroundStyle(colors.mutedForeground as string)]}
-            >
+            <Text modifiers={[dfont({ size: 16 }), foregroundStyle(colors.mutedForeground)]}>
               Enter your email and we&apos;ll send you a 6-digit code.
             </Text>
           </VStack>
@@ -153,7 +149,7 @@ export default function ForgotPasswordScreen() {
               label="Back to sign in"
               modifiers={[
                 buttonStyle("plain"),
-                foregroundStyle(colors.mutedForeground as string),
+                foregroundStyle(colors.mutedForeground),
                 dfont({ size: 14, weight: "semibold" }),
                 frame({ minHeight: TouchTarget.min }),
               ]}

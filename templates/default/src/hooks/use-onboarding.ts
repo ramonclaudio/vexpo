@@ -1,8 +1,8 @@
 import { useSyncExternalStore } from "react";
 
-import { createStorage } from "@/lib/storage";
+import { createStorage, isBoolean } from "@/lib/storage";
 
-const onboardingStore = createStorage<boolean>("onboarding_seen", false);
+const onboardingStore = createStorage("onboarding_seen", false, isBoolean);
 
 export function useOnboarding() {
   const seen = useSyncExternalStore(

@@ -38,7 +38,7 @@ export default function AppLayout() {
   const colors = useColors();
   const reduceMotion = useReducedMotion();
   const motion = useMotionScreenOptions("default");
-  const headerTint = colors.foreground as string;
+  const headerTint = colors.foreground;
   const titleStyle = { color: headerTint, fontFamily: FontFamily.semiBold };
 
   return (
@@ -46,7 +46,7 @@ export default function AppLayout() {
       screenOptions={{
         ...motion,
         headerShown: false,
-        contentStyle: { backgroundColor: colors.background as string },
+        contentStyle: { backgroundColor: colors.background },
         headerBackTitle: "Back",
         headerTintColor: headerTint,
         headerShadowVisible: false,
