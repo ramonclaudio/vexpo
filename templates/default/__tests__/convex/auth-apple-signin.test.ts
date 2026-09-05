@@ -15,7 +15,7 @@
 import { exportJWK, generateKeyPair, SignJWT } from "jose";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
-import { initConvexTest, type AuthedTest } from "./_harness";
+import { AUTH_ENV, type AuthedTest, initConvexTest, stubAuthEnv } from "./_harness";
 
 const BUNDLE_ID = "com.example.vexpo";
 const SERVICES_ID = "com.example.vexpo.signin";
@@ -24,9 +24,7 @@ const APPLE_JWKS_URL = `${APPLE_ISSUER}/auth/keys`;
 const KID = "test-apple-key";
 
 const ENV: Record<string, string> = {
-  CONVEX_SITE_URL: "https://test.convex.site",
-  SITE_URL: "vexpo://",
-  BETTER_AUTH_SECRET: "test-secret-at-least-32-characters-long",
+  ...AUTH_ENV,
   APPLE_CLIENT_ID: SERVICES_ID,
   APPLE_CLIENT_SECRET: "test-apple-client-secret",
   APP_BUNDLE_ID: BUNDLE_ID,
@@ -54,14 +52,14 @@ function signInWithApple(
 ) {
   return t.fetch("/api/auth/sign-in/social", {
     method: "POST",
-    headers: { "Content-Type": "application/json", origin: ENV.SITE_URL },
+    headers: { "Content-Type": "application/json", origin: AUTH_ENV.SITE_URL },
     body: JSON.stringify({ provider: "apple", idToken: { token, ...(user ? { user } : {}) } }),
   });
 }
 
 describe("native Sign in with Apple", () => {
   beforeEach(async () => {
-    for (const [key, value] of Object.entries(ENV)) vi.stubEnv(key, value);
+    stubAuthEnv(ENV);
 
     const keys = await generateKeyPair("ES256", { extractable: true });
     privateKey = keys.privateKey;

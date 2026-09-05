@@ -18,12 +18,10 @@
  */
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
-import { initConvexTest, type AuthedTest } from "./_harness";
+import { AUTH_ENV, type AuthedTest, initConvexTest, sessionCookie, stubAuthEnv } from "./_harness";
 
 const ENV: Record<string, string> = {
-  CONVEX_SITE_URL: "https://test.convex.site",
-  SITE_URL: "vexpo://",
-  BETTER_AUTH_SECRET: "test-secret-at-least-32-characters-long",
+  ...AUTH_ENV,
   REQUIRE_EMAIL_VERIFICATION: "true",
 };
 
@@ -38,27 +36,18 @@ function post(t: AuthedTest, path: string, body: unknown, cookie?: string) {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      origin: ENV.SITE_URL,
+      origin: AUTH_ENV.SITE_URL,
       ...(cookie && { cookie }),
     },
     body: JSON.stringify(body),
   });
 }
 
-function sessionCookie(response: Response): string {
-  const setCookie = response.headers.get("set-cookie");
-  expect(setCookie).toBeTruthy();
-  return setCookie!
-    .split(/,(?=[^;]+?=)/)
-    .map((c) => c.split(";")[0].trim())
-    .join("; ");
-}
-
 describe("guest -> account link with email verification on", () => {
   let logged: string[];
 
   beforeEach(() => {
-    for (const [key, value] of Object.entries(ENV)) vi.stubEnv(key, value);
+    stubAuthEnv(ENV);
     logged = [];
     vi.spyOn(console, "log").mockImplementation((...args: unknown[]) => {
       logged.push(args.map(String).join(" "));

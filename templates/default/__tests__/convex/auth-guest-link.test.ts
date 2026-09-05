@@ -20,20 +20,19 @@
  */
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
-import type { Id } from "@/convex/_generated/dataModel";
-
-import { initConvexTest, type AuthedTest } from "./_harness";
-
-const ENV: Record<string, string> = {
-  CONVEX_SITE_URL: "https://test.convex.site",
-  SITE_URL: "vexpo://",
-  BETTER_AUTH_SECRET: "test-secret-at-least-32-characters-long",
-};
+import {
+  AUTH_ENV,
+  type AuthedTest,
+  initConvexTest,
+  seedToken,
+  sessionCookie,
+  stubAuthEnv,
+} from "./_harness";
 
 function signInAnonymous(t: AuthedTest) {
   return t.fetch("/api/auth/sign-in/anonymous", {
     method: "POST",
-    headers: { "Content-Type": "application/json", origin: ENV.SITE_URL },
+    headers: { "Content-Type": "application/json", origin: AUTH_ENV.SITE_URL },
     body: JSON.stringify({}),
   });
 }
@@ -49,7 +48,7 @@ function signUpEmail(t: AuthedTest, cookie?: string) {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      origin: ENV.SITE_URL,
+      origin: AUTH_ENV.SITE_URL,
       ...(cookie && { cookie }),
     },
     body: JSON.stringify(ACCOUNT),
@@ -59,38 +58,14 @@ function signUpEmail(t: AuthedTest, cookie?: string) {
 function signInEmail(t: AuthedTest, cookie: string) {
   return t.fetch("/api/auth/sign-in/email", {
     method: "POST",
-    headers: { "Content-Type": "application/json", origin: ENV.SITE_URL, cookie },
+    headers: { "Content-Type": "application/json", origin: AUTH_ENV.SITE_URL, cookie },
     body: JSON.stringify({ email: ACCOUNT.email, password: ACCOUNT.password }),
   });
 }
 
-async function seedPushToken(t: AuthedTest, userId: Id<"users">, token: string) {
-  const now = Date.now();
-  return t.run(async (ctx) =>
-    ctx.db.insert("pushTokens", {
-      userId,
-      token,
-      deviceType: "ios" as const,
-      createdAt: now,
-      updatedAt: now,
-      revoked: false,
-    }),
-  );
-}
-
-/** The session cookie Better Auth just set, in request form. */
-function sessionCookie(response: Response): string {
-  const setCookie = response.headers.get("set-cookie");
-  expect(setCookie).toBeTruthy();
-  return setCookie!
-    .split(/,(?=[^;]+?=)/)
-    .map((c) => c.split(";")[0].trim())
-    .join("; ");
-}
-
 describe("guest -> account link", () => {
   beforeEach(() => {
-    for (const [key, value] of Object.entries(ENV)) vi.stubEnv(key, value);
+    stubAuthEnv();
   });
   afterEach(() => vi.unstubAllEnvs());
 
@@ -108,7 +83,7 @@ describe("guest -> account link", () => {
 
     // Something worth keeping. Push registration is the first thing the stock
     // app writes for a guest, so it is what the merge has to carry.
-    const tokenId = await seedPushToken(t, guestRows[0]._id, "ExponentPushToken[guest]");
+    const tokenId = await seedToken(t, guestRows[0]._id, "ExponentPushToken[guest]");
 
     const signUpResponse = await signUpEmail(t, sessionCookie(guestResponse));
     expect(signUpResponse.status).toBe(200);
@@ -141,7 +116,7 @@ describe("guest -> account link", () => {
       (u) => u._id !== account._id,
     )!;
     await t.run(async (ctx) => ctx.db.patch(guest._id, { bio: "guest bio" }));
-    const tokenId = await seedPushToken(t, guest._id, "ExponentPushToken[same-device]");
+    const tokenId = await seedToken(t, guest._id, "ExponentPushToken[same-device]");
 
     expect((await signInEmail(t, sessionCookie(guestResponse))).status).toBe(200);
 
@@ -160,13 +135,13 @@ describe("guest -> account link", () => {
     const t = initConvexTest();
     const guestResponse = await signInAnonymous(t);
     const [guest] = await t.run(async (ctx) => ctx.db.query("users").collect());
-    const tokenId = await seedPushToken(t, guest._id, "ExponentPushToken[guest]");
+    const tokenId = await seedToken(t, guest._id, "ExponentPushToken[guest]");
 
     const response = await t.fetch("/api/auth/delete-anonymous-user", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        origin: ENV.SITE_URL,
+        origin: AUTH_ENV.SITE_URL,
         cookie: sessionCookie(guestResponse),
       },
       body: JSON.stringify({}),
@@ -187,7 +162,7 @@ describe("guest -> account link", () => {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        origin: ENV.SITE_URL,
+        origin: AUTH_ENV.SITE_URL,
         cookie: sessionCookie(first),
       },
       body: JSON.stringify({}),

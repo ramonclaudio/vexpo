@@ -27,6 +27,7 @@ import {
   identityFor,
   initConvexTest,
   seedAuthedUser,
+  seedToken,
 } from "./_harness";
 
 const FAR_FUTURE = Date.now() + 7 * 24 * 60 * 60 * 1000;
@@ -37,17 +38,7 @@ describe("users.deleteAccount", () => {
     const { authUserId, sessionId, appUserId } = await seedAuthedUser(t);
 
     // Give the user a push token so we can prove deleteAccount removes it.
-    const tokenNow = Date.now();
-    const pushTokenId = await t.run(async (ctx) =>
-      ctx.db.insert("pushTokens", {
-        userId: appUserId,
-        token: "ExponentPushToken[abc123]",
-        deviceType: "ios",
-        createdAt: tokenNow,
-        updatedAt: tokenNow,
-        revoked: false,
-      }),
-    );
+    const pushTokenId = await seedToken(t, appUserId, "ExponentPushToken[abc123]");
 
     // Sanity: the row starts un-tombstoned with one live session.
     const before = await t.run(async (ctx) => ctx.db.get(appUserId));

@@ -13,13 +13,7 @@ import { afterEach, describe, expect, test, vi } from "vitest";
 
 import { api, internal } from "@/convex/_generated/api";
 
-import { identityFor, initConvexTest, seedAuthedUser } from "./_harness";
-
-const ENV: Record<string, string> = {
-  CONVEX_SITE_URL: "https://test.convex.site",
-  SITE_URL: "vexpo://",
-  BETTER_AUTH_SECRET: "test-secret-at-least-32-characters-long",
-};
+import { AUTH_ENV, identityFor, initConvexTest, seedAuthedUser, stubAuthEnv } from "./_harness";
 
 afterEach(() => vi.unstubAllEnvs());
 
@@ -59,7 +53,7 @@ describe("admin.resetRateLimit", () => {
 describe("admin.createReviewAccount", () => {
   test("creates the account verified, and a re-run is a no-op that keeps it verified", async () => {
     const t = initConvexTest();
-    for (const [key, value] of Object.entries(ENV)) vi.stubEnv(key, value);
+    stubAuthEnv();
 
     const first = await t.action(internal.admin.createReviewAccount, {
       email: "review@example.com",
@@ -89,7 +83,7 @@ describe("admin.createReviewAccount", () => {
 
   test("reset rotates the password on an existing account", async () => {
     const t = initConvexTest();
-    for (const [key, value] of Object.entries(ENV)) vi.stubEnv(key, value);
+    stubAuthEnv();
 
     await t.action(internal.admin.createReviewAccount, {
       email: "review2@example.com",
@@ -109,7 +103,7 @@ describe("admin.createReviewAccount", () => {
     // hasher rather than written raw.
     const response = await t.fetch("/api/auth/sign-in/email", {
       method: "POST",
-      headers: { "Content-Type": "application/json", origin: ENV.SITE_URL },
+      headers: { "Content-Type": "application/json", origin: AUTH_ENV.SITE_URL },
       body: JSON.stringify({ email: "review2@example.com", password: "a-different-password" }),
     });
     expect(response.status).toBe(200);

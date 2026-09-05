@@ -12,16 +12,11 @@ import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
 import { api } from "@/convex/_generated/api";
 
-import { initConvexTest } from "./_harness";
-
-const SITE_URL = "vexpo://";
+import { AUTH_ENV, initConvexTest, stubAuthEnv } from "./_harness";
 
 describe("GUEST_MODE=false", () => {
   beforeEach(() => {
-    vi.stubEnv("CONVEX_SITE_URL", "https://test.convex.site");
-    vi.stubEnv("SITE_URL", SITE_URL);
-    vi.stubEnv("BETTER_AUTH_SECRET", "test-secret-at-least-32-characters-long");
-    vi.stubEnv("GUEST_MODE", "false");
+    stubAuthEnv({ GUEST_MODE: "false" });
   });
   afterEach(() => vi.unstubAllEnvs());
 
@@ -30,7 +25,7 @@ describe("GUEST_MODE=false", () => {
 
     const response = await t.fetch("/api/auth/sign-in/anonymous", {
       method: "POST",
-      headers: { "Content-Type": "application/json", origin: SITE_URL },
+      headers: { "Content-Type": "application/json", origin: AUTH_ENV.SITE_URL },
       body: JSON.stringify({}),
     });
 

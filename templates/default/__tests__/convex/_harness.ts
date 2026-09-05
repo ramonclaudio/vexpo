@@ -16,6 +16,7 @@ import { register as registerBetterAuth } from "@convex-dev/better-auth/test";
 import { register as registerRateLimiter } from "@convex-dev/rate-limiter/test";
 import { register as registerResend } from "@convex-dev/resend/test";
 import { convexTest } from "convex-test";
+import { expect, vi } from "vitest";
 
 import type { Id } from "@/convex/_generated/dataModel";
 import schema from "@/convex/schema";
@@ -179,4 +180,26 @@ export async function componentSessionsFor(t: AuthedTest, authUserId: string) {
     const all = await db.query("session").collect();
     return all.filter((s) => s.userId === authUserId);
   });
+}
+
+/** The env every Better Auth HTTP test needs before `t.fetch` reaches a route. */
+export const AUTH_ENV: Record<string, string> = {
+  CONVEX_SITE_URL: "https://test.convex.site",
+  SITE_URL: "vexpo://",
+  BETTER_AUTH_SECRET: "test-secret-at-least-32-characters-long",
+};
+
+/** Stub AUTH_ENV plus anything the file needs on top. Call from a `beforeEach`. */
+export function stubAuthEnv(extra: Record<string, string> = {}): void {
+  for (const [key, value] of Object.entries({ ...AUTH_ENV, ...extra })) vi.stubEnv(key, value);
+}
+
+/** The session cookie Better Auth just set, in request form. */
+export function sessionCookie(response: Response): string {
+  const setCookie = response.headers.get("set-cookie");
+  expect(setCookie).toBeTruthy();
+  return setCookie!
+    .split(/,(?=[^;]+?=)/)
+    .map((c) => c.split(";")[0].trim())
+    .join("; ");
 }

@@ -12,13 +12,7 @@ import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
 import { api, internal } from "@/convex/_generated/api";
 
-import { identityFor, initConvexTest, seedAuthedUser } from "./_harness";
-
-const ENV: Record<string, string> = {
-  CONVEX_SITE_URL: "https://test.convex.site",
-  SITE_URL: "vexpo://",
-  BETTER_AUTH_SECRET: "test-secret-at-least-32-characters-long",
-};
+import { AUTH_ENV, identityFor, initConvexTest, seedAuthedUser, stubAuthEnv } from "./_harness";
 
 const ACCOUNT = {
   name: "Ada Lovelace",
@@ -28,7 +22,7 @@ const ACCOUNT = {
 
 describe("auth.hasPassword", () => {
   beforeEach(() => {
-    for (const [key, value] of Object.entries(ENV)) vi.stubEnv(key, value);
+    stubAuthEnv();
   });
   afterEach(() => vi.unstubAllEnvs());
 
@@ -41,7 +35,7 @@ describe("auth.hasPassword", () => {
     const t = initConvexTest();
     const response = await t.fetch("/api/auth/sign-up/email", {
       method: "POST",
-      headers: { "Content-Type": "application/json", origin: ENV.SITE_URL },
+      headers: { "Content-Type": "application/json", origin: AUTH_ENV.SITE_URL },
       body: JSON.stringify(ACCOUNT),
     });
     expect(response.status).toBe(200);
@@ -77,7 +71,7 @@ describe("auth.hasPassword", () => {
 
 describe("auth.rotateKeys", () => {
   beforeEach(() => {
-    for (const [key, value] of Object.entries(ENV)) vi.stubEnv(key, value);
+    stubAuthEnv();
   });
   afterEach(() => vi.unstubAllEnvs());
 
