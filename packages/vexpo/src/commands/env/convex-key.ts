@@ -72,46 +72,44 @@ async function mintProdKey(
   return { ok: true, key: minted.key, easProd };
 }
 
-function planWrites(keys: {
-  devKey?: string;
-  prodKey?: string;
-  devSel?: string;
-  prodSel?: string;
-}): Write[] {
-  const writes: Write[] = [];
-  if (keys.devKey)
-    writes.push({
-      name: "CONVEX_DEPLOY_KEY",
-      value: keys.devKey,
-      visibility: "secret",
-      envs: ["development"],
-      label: "dev deploy key",
-    });
-  if (keys.prodKey)
-    writes.push({
-      name: "CONVEX_DEPLOY_KEY",
-      value: keys.prodKey,
-      visibility: "secret",
-      envs: ["production"],
-      label: "prod deploy key",
-    });
-  if (keys.devSel)
-    writes.push({
-      name: "CONVEX_DEPLOYMENT",
-      value: keys.devSel,
-      visibility: "plaintext",
-      envs: ["development"],
-      label: "dev selector",
-    });
-  if (keys.prodSel)
-    writes.push({
-      name: "CONVEX_DEPLOYMENT",
-      value: keys.prodSel,
-      visibility: "plaintext",
-      envs: ["production", "preview"],
-      label: "prod selector",
-    });
-  return writes;
+type KeySlot = "devKey" | "prodKey" | "devSel" | "prodSel";
+
+const WRITE_PLAN: Array<{ slot: KeySlot } & Omit<Write, "value">> = [
+  {
+    slot: "devKey",
+    name: "CONVEX_DEPLOY_KEY",
+    visibility: "secret",
+    envs: ["development"],
+    label: "dev deploy key",
+  },
+  {
+    slot: "prodKey",
+    name: "CONVEX_DEPLOY_KEY",
+    visibility: "secret",
+    envs: ["production"],
+    label: "prod deploy key",
+  },
+  {
+    slot: "devSel",
+    name: "CONVEX_DEPLOYMENT",
+    visibility: "plaintext",
+    envs: ["development"],
+    label: "dev selector",
+  },
+  {
+    slot: "prodSel",
+    name: "CONVEX_DEPLOYMENT",
+    visibility: "plaintext",
+    envs: ["production", "preview"],
+    label: "prod selector",
+  },
+];
+
+function planWrites(keys: Partial<Record<KeySlot, string>>): Write[] {
+  return WRITE_PLAN.flatMap(({ slot, name, visibility, envs, label }) => {
+    const value = keys[slot];
+    return value ? [{ name, value, visibility, envs, label }] : [];
+  });
 }
 
 async function presenceMaps(

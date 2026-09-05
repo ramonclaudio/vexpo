@@ -121,7 +121,6 @@ async function ensureVerifiedDomains(fullKey: string): Promise<ResendDomain[] | 
     return null;
   }
   ok(`${target.name} verified after ${formatElapsed(result.elapsedMs)}`);
-  ok(`${target.name} verified after ${formatElapsed(result.elapsedMs)}`);
   return [result.value];
 }
 
@@ -237,16 +236,21 @@ export async function runResend(options: ResendOptions): Promise<number> {
 
   const fromAddr = options.from ?? `${name}@${domain.name}`;
 
-  await envSet("RESEND_API_KEY", token);
-  ok("RESEND_API_KEY set on Convex");
-  await envSet("RESEND_WEBHOOK_SECRET", secret);
-  ok("RESEND_WEBHOOK_SECRET set on Convex");
-  await envSet("EMAIL_FROM", fromAddr);
-  ok(`EMAIL_FROM=${fromAddr} set on Convex`);
-  await envSet("RESEND_TEST_MODE", "false");
-  ok("RESEND_TEST_MODE=false (sends to real addresses)");
-  await envSet("REQUIRE_EMAIL_VERIFICATION", "true");
-  ok("REQUIRE_EMAIL_VERIFICATION=true (sign-up now requires OTP)");
+  const convexWrites: Array<[string, string, string]> = [
+    ["RESEND_API_KEY", token, "RESEND_API_KEY set on Convex"],
+    ["RESEND_WEBHOOK_SECRET", secret, "RESEND_WEBHOOK_SECRET set on Convex"],
+    ["EMAIL_FROM", fromAddr, `EMAIL_FROM=${fromAddr} set on Convex`],
+    ["RESEND_TEST_MODE", "false", "RESEND_TEST_MODE=false (sends to real addresses)"],
+    [
+      "REQUIRE_EMAIL_VERIFICATION",
+      "true",
+      "REQUIRE_EMAIL_VERIFICATION=true (sign-up now requires OTP)",
+    ],
+  ];
+  for (const [key, value, message] of convexWrites) {
+    await envSet(key, value);
+    ok(message);
+  }
 
   const prodWebhook = await syncProdChannel(fullKey, siteUrl, token, fromAddr);
 

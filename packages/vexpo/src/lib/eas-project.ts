@@ -138,54 +138,33 @@ export async function init(): Promise<{ ok: boolean; projectId?: string }> {
   return { ok: !!id, projectId: id ?? undefined };
 }
 
-async function listChannels(): Promise<string[]> {
-  const parsed = await easJson<{ currentPage?: Array<{ name?: string }> }>([
-    "channel:list",
-    "--limit",
-    "25",
-  ]);
-  return (parsed.currentPage ?? []).map((c) => c.name ?? "").filter(Boolean);
-}
+type NamedResource = "channel" | "branch";
 
-async function createChannel(name: string): Promise<boolean> {
-  const { code } = await easText(["channel:create", name, "--non-interactive", "--json"]);
-  return code === 0;
-}
-
-export async function ensureChannels(names: readonly string[]): Promise<string[]> {
-  const existing = new Set(await listChannels());
-  const created: string[] = [];
-  for (const name of names) {
-    if (existing.has(name)) continue;
-    if (!(await createChannel(name))) throw new Error(`eas channel:create ${name} failed`);
-    created.push(name);
-  }
-  return created;
-}
-
-async function listBranches(): Promise<string[]> {
+async function listNamed(kind: NamedResource): Promise<string[]> {
   const parsed = await easJson<
     Array<{ name?: string }> | { currentPage?: Array<{ name?: string }> }
-  >(["branch:list", "--limit", "25"]);
-  if (Array.isArray(parsed)) return parsed.map((b) => b.name ?? "").filter(Boolean);
-  return (parsed.currentPage ?? []).map((b) => b.name ?? "").filter(Boolean);
+  >([`${kind}:list`, "--limit", "25"]);
+  const rows = Array.isArray(parsed) ? parsed : (parsed.currentPage ?? []);
+  return rows.map((r) => r.name ?? "").filter(Boolean);
 }
 
-async function createBranch(name: string): Promise<boolean> {
-  const { code } = await easText(["branch:create", name, "--non-interactive", "--json"]);
-  return code === 0;
-}
-
-export async function ensureBranches(names: readonly string[]): Promise<string[]> {
-  const existing = new Set(await listBranches());
+async function ensureNamed(kind: NamedResource, names: readonly string[]): Promise<string[]> {
+  const existing = new Set(await listNamed(kind));
   const created: string[] = [];
   for (const name of names) {
     if (existing.has(name)) continue;
-    if (!(await createBranch(name))) throw new Error(`eas branch:create ${name} failed`);
+    const { code } = await easText([`${kind}:create`, name, "--non-interactive", "--json"]);
+    if (code !== 0) throw new Error(`eas ${kind}:create ${name} failed`);
     created.push(name);
   }
   return created;
 }
+
+export const ensureChannels = (names: readonly string[]): Promise<string[]> =>
+  ensureNamed("channel", names);
+
+export const ensureBranches = (names: readonly string[]): Promise<string[]> =>
+  ensureNamed("branch", names);
 
 export async function projectInfo(): Promise<{ fullName: string; id: string } | null> {
   const { code, stdout } = await easText(["project:info"]);
