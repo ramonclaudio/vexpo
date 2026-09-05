@@ -1,7 +1,6 @@
-import { useSyncExternalStore } from "react";
 import { Appearance, useColorScheme as useRNColorScheme } from "react-native";
 
-import { createStorage, isOneOf } from "@/lib/storage";
+import { createStorage, isOneOf, useStore } from "@/lib/storage";
 import { Colors, type ColorPalette } from "@/constants/theme";
 
 type ThemeMode = "light" | "dark" | "system";
@@ -24,7 +23,7 @@ export function setTheme(mode: ThemeMode) {
 }
 
 export function useColorScheme(): "light" | "dark" {
-  const mode = useSyncExternalStore(store.subscribe, store.get, store.get);
+  const mode = useStore(store);
   const systemScheme = useRNColorScheme();
   if (mode === "system") return systemScheme === "dark" ? "dark" : "light";
   return mode;
@@ -34,7 +33,7 @@ export function useThemeMode(): {
   mode: ThemeMode;
   setMode: (mode: ThemeMode) => void;
 } {
-  const mode = useSyncExternalStore(store.subscribe, store.get, store.get);
+  const mode = useStore(store);
   return { mode, setMode: setTheme };
 }
 

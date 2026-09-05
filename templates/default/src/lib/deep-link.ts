@@ -30,23 +30,6 @@ function isDeepLinkPath(path: string): path is DeepLinkPath {
   return path in DeepLinkRoutes;
 }
 
-function isValidDeepLink(url: string): boolean {
-  if (!url || typeof url !== "string") return false;
-  if (url.includes("..")) return false;
-
-  let parsed;
-  try {
-    parsed = parse(url);
-  } catch {
-    return false;
-  }
-
-  const isRelativePath = url.startsWith("/") && !url.startsWith("//");
-  if (!isRelativePath && !parsed.scheme) return false;
-
-  return isDeepLinkPath(normalizePath(parsed.path));
-}
-
 type ResolvedDeepLink = {
   path: DeepLinkPath | null;
   href: Href | null;
@@ -55,7 +38,7 @@ type ResolvedDeepLink = {
 
 export function resolveDeepLink(url: string): ResolvedDeepLink {
   const empty: ResolvedDeepLink = { path: null, href: null, params: {} };
-  if (!url || typeof url !== "string") return empty;
+  if (!url || typeof url !== "string" || url.includes("..")) return empty;
 
   let parsed;
   try {
@@ -64,9 +47,11 @@ export function resolveDeepLink(url: string): ResolvedDeepLink {
     return empty;
   }
 
-  if (!isValidDeepLink(url)) return empty;
+  const isRelativePath = url.startsWith("/") && !url.startsWith("//");
+  if (!isRelativePath && !parsed.scheme) return empty;
 
-  const path = normalizePath(parsed.path) as DeepLinkPath;
+  const path = normalizePath(parsed.path);
+  if (!isDeepLinkPath(path)) return empty;
 
   const params: Record<string, string> = {};
   if (parsed.queryParams) {
