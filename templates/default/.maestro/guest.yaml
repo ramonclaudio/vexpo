@@ -1,0 +1,314 @@
+# Guest journey: browse without an account -> see the upgrade CTA -> discard.
+#
+# Runs first in the suite because it starts from a wiped state and ends signed
+# out, which is exactly what auth.yaml expects to find. It never creates a real
+# account, so nothing it does collides with the account auth.yaml makes.
+#
+# Needs GUEST_MODE unset or true on the deployment (the default). With
+# GUEST_MODE=false, `getEnabledProviders` returns guest: false, the button is
+# not rendered and the first tap here fails. That is the intended reading of
+# the failure, not a broken flow.
+#
+# Same @expo/ui SwiftUI driving notes as auth.yaml: `testID` surfaces to Maestro
+# as `resource-id`, SecondaryButton/ProminentButton centers hold content so tap
+# them by id, and capsule list rows have a Spacer in the middle so tap those by
+# their label text.
+#
+# `MAESTRO_GUEST_EMAIL` is the account this flow upgrades into, minted per run
+# by scripts/e2e.mjs so it never collides with auth.yaml's.
+#
+# Run locally: `npm run e2e -- .maestro/guest.yaml`
+# Run on EAS:  via `.eas/workflows/e2e-tests.yml` (workflow_dispatch only).
+appId: ${MAESTRO_APP_ID}
+---
+- launchApp:
+    clearState: true
+    # Same SpringBoard alert as auth.yaml: invisible to the accessibility tree,
+    # so it has to be answered up front or every later assert fails behind it.
+    permissions:
+      notifications: deny
+- waitForAnimationToEnd:
+    timeout: 15000
+
+# Dev-client builds land on the server picker after clearState. Open the bundle
+# by deep link rather than tapping the row; see the long note in auth.yaml.
+- runFlow:
+    when:
+      visible: "DEVELOPMENT SERVERS"
+    commands:
+      - openLink: ${MAESTRO_DEV_URL}
+      - extendedWaitUntil:
+          notVisible: "DEVELOPMENT SERVERS"
+          timeout: 30000
+      - waitForAnimationToEnd:
+          timeout: 15000
+
+- extendedWaitUntil:
+    visible:
+      id: "sign-in-screen"
+    timeout: 20000
+
+# The whole point of the change: a way past the wall that isn't an account.
+- scrollUntilVisible:
+    element:
+      id: "sign-in-guest"
+    direction: DOWN
+- tapOn:
+    id: "sign-in-guest"
+
+# A guest is a real session, so the first-launch gate fires the same as it does
+# for a fresh account. Skip past onboarding.
+- extendedWaitUntil:
+    visible:
+      id: "welcome-screen"
+    timeout: 30000
+- assertVisible: "Skip"
+- tapOn: "Skip"
+- waitForAnimationToEnd:
+    timeout: 15000
+- extendedWaitUntil:
+    visible:
+      id: "home-screen"
+    timeout: 20000
+- takeScreenshot: .maestro/screenshots/guest-home
+
+# Search lists the screens a guest can actually reach. Profile and Linked stay,
+# Sessions goes, and "Create an account" is added at the top. Tapping a row a
+# guest cannot reach would land on +not-found, so this is the filter working.
+- assertVisible: "Search"
+- tapOn: "Search"
+- waitForAnimationToEnd:
+    timeout: 10000
+- extendedWaitUntil:
+    visible:
+      id: "search-screen"
+    timeout: 20000
+- assertVisible:
+    id: "search-result-create-an-account"
+- assertVisible:
+    id: "search-result-profile"
+- assertNotVisible:
+    id: "search-result-active-sessions"
+- takeScreenshot: .maestro/screenshots/guest-search
+
+# Tab bar taps go by label, the way tour.yaml does them.
+- assertVisible: "Settings"
+- tapOn: "Settings"
+- waitForAnimationToEnd:
+    timeout: 10000
+
+# Settings tells a guest apart from an account. The profile card stays, since
+# name, photo and bio are theirs to edit and travel to the account on sign-up.
+# What changes is the create-account row and everything that needs an account
+# behind it.
+#
+# Two things about what can be asserted here. A `Text` nested inside a Button
+# never reaches Maestro's hierarchy at all: the Button surfaces its own id and
+# its SF Symbols and nothing else, so the name and the "Add a name and a photo"
+# line under it are unassertable by id or by copy. And assertNotVisible passes
+# for an element that is absent OR merely scrolled off. Between them, the
+# assertVisible lines are the load-bearing half here.
+- extendedWaitUntil:
+    visible:
+      id: "settings-profile"
+    timeout: 20000
+- assertVisible:
+    id: "settings-create-account"
+- assertNotVisible:
+    id: "settings-sessions"
+- assertNotVisible:
+    id: "settings-sign-out"
+- takeScreenshot: .maestro/screenshots/guest-settings
+
+# The profile screen a guest gets: name, photo and bio, and no username, email
+# or danger zone. The card's center holds content, so it taps by id.
+- tapOn:
+    id: "settings-profile"
+- extendedWaitUntil:
+    visible:
+      id: "profile-screen"
+    timeout: 20000
+- assertVisible:
+    id: "profile-name"
+- assertVisible:
+    id: "profile-bio"
+- assertNotVisible:
+    id: "profile-username"
+- assertNotVisible:
+    id: "profile-email"
+- assertNotVisible:
+    id: "profile-sign-out"
+- assertNotVisible:
+    id: "profile-delete-account"
+- assertVisible:
+    id: "profile-create-account"
+# Give the link something to carry. `mergeGuestData` moves the bio onto the
+# account, and the account has none, so it is the one field that proves the
+# merge ran rather than the account just being new.
+- tapOn:
+    id: "profile-bio"
+- inputText: "written as a guest"
+- swipe:
+    start: 50%, 35%
+    end: 50%, 85%
+- waitForAnimationToEnd:
+    timeout: 3000
+- scrollUntilVisible:
+    element:
+      id: "profile-save"
+    direction: DOWN
+- tapOn:
+    id: "profile-save"
+# The inline Save only renders while `hasChanges` is true, so it going away is
+# the structural proof the save landed. Same trick tour.yaml uses.
+- extendedWaitUntil:
+    notVisible:
+      id: "profile-save"
+    timeout: 20000
+- takeScreenshot: .maestro/screenshots/guest-profile
+
+# Maestro's `back` is Android and web only. The header back button reads
+# "Settings", same as the tab, and either lands on the settings root.
+- tapOn: "Settings"
+- waitForAnimationToEnd:
+    timeout: 5000
+- extendedWaitUntil:
+    visible:
+      id: "settings-screen"
+    timeout: 15000
+
+# --- The upgrade ------------------------------------------------------------
+# The whole point of guest mode: signing up carries the guest's rows onto the
+# account. `auth-guest-link.test.ts` pins the server half over the real HTTP
+# routes; this is the half that only a device shows, that the guards flip and
+# the app lands signed in with the data still there.
+- scrollUntilVisible:
+    element:
+      id: "settings-create-account"
+    direction: DOWN
+- tapOn: "Create an account"
+- extendedWaitUntil:
+    visible:
+      id: "sign-up-screen"
+    timeout: 20000
+
+# The wall is optional for a guest, so back out of it once before going
+# through. Without this the auth group is a one-way door for anyone who taps
+# the row to see what it says.
+- scrollUntilVisible:
+    element:
+      id: "sign-up-dismiss"
+    direction: DOWN
+- tapOn:
+    id: "sign-up-dismiss"
+- extendedWaitUntil:
+    visible:
+      id: "settings-screen"
+    timeout: 20000
+- assertVisible:
+    id: "settings-create-account"
+
+# Now the real thing.
+- tapOn: "Create an account"
+- extendedWaitUntil:
+    visible:
+      id: "sign-up-screen"
+    timeout: 20000
+
+# Name is pre-filled only when the guest set one, and this one did not, so the
+# field still reads the placeholder and has to be typed. Same input dance as
+# auth.yaml, including the eye toggle: iOS Automatic Strong Password hijacks a
+# SecureField with newPassword content type on the simulator and swallows the
+# text, and the toggle swaps in a plain TextField that types fine.
+- tapOn:
+    id: "sign-up-name"
+- inputText: "Guest Upgrade"
+- swipe:
+    start: 50%, 35%
+    end: 50%, 85%
+- scrollUntilVisible:
+    element:
+      id: "sign-up-email"
+    direction: DOWN
+- tapOn:
+    id: "sign-up-email"
+- inputText: ${MAESTRO_GUEST_EMAIL}
+- swipe:
+    start: 50%, 35%
+    end: 50%, 85%
+- scrollUntilVisible:
+    element:
+      id: "sign-up-password"
+    direction: DOWN
+- tapOn:
+    id: "sign-up-password-visibility"
+- waitForAnimationToEnd:
+    timeout: 3000
+- tapOn:
+    id: "sign-up-password"
+- inputText: ${MAESTRO_TEST_PASSWORD}
+- swipe:
+    start: 50%, 35%
+    end: 50%, 85%
+- scrollUntilVisible:
+    element:
+      id: "sign-up-submit"
+    direction: DOWN
+- tapOn:
+    id: "sign-up-submit"
+
+# Lite path: the account is created verified and the session returns in the
+# same call. Fail on the cause if verification is on, the same way auth.yaml
+# does, rather than on a timeout three asserts later.
+- assertNotVisible: "Verify your email"
+
+# The auth screen was pushed from Settings, so the guard flip drops back onto
+# the settings tab rather than bouncing to home. Settings now reads as an
+# account: the create-account row is gone and the rows that need one are back.
+- extendedWaitUntil:
+    visible:
+      id: "settings-screen"
+    timeout: 30000
+- extendedWaitUntil:
+    visible:
+      id: "settings-sessions"
+    timeout: 20000
+- assertNotVisible:
+    id: "settings-create-account"
+- assertNotVisible:
+    id: "settings-discard-guest"
+- assertVisible:
+    id: "settings-sign-out"
+
+# And the bio came with them. The profile screen shows the account's fields
+# now, so the username and email inputs are back too.
+- tapOn:
+    id: "settings-profile"
+- extendedWaitUntil:
+    visible:
+      id: "profile-screen"
+    timeout: 20000
+- assertVisible:
+    id: "profile-username"
+- assertVisible:
+    id: "profile-email"
+- assertVisible: ".*written as a guest.*"
+- takeScreenshot: .maestro/screenshots/guest-linked
+
+# Sign out, so auth.yaml finds the wall it expects.
+- tapOn: "Settings"
+- waitForAnimationToEnd:
+    timeout: 5000
+- scrollUntilVisible:
+    element:
+      id: "settings-sign-out"
+    direction: DOWN
+- tapOn:
+    id: "settings-sign-out"
+- waitForAnimationToEnd:
+    timeout: 3000
+- tapOn: "Sign Out"
+- extendedWaitUntil:
+    visible:
+      id: "sign-in-screen"
+    timeout: 30000

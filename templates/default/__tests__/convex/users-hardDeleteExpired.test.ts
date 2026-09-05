@@ -46,6 +46,11 @@ describe("users.hardDeleteExpired", () => {
     const expiredAudit = await auditRowsFor(t, expired.appUserId);
     expect(expiredAudit.some((r) => r.event === "permanent")).toBe(true);
 
+    // And the app row is actually gone. Purging goes through the component
+    // adapter, which does not run the `onDelete` trigger, so the row and its
+    // avatar blob only disappear because `purgeUser` frees them by hand.
+    expect(await t.run(async (ctx) => ctx.db.get(expired.appUserId))).toBeNull();
+
     // In-grace tombstone: untouched, no permanent purge.
     const inGraceRow = await t.run(async (ctx) => ctx.db.get(inGrace.appUserId));
     expect(inGraceRow?.deletedAt).toBe(now - 60_000);

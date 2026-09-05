@@ -10,9 +10,16 @@ export default defineSchema(
       createdAt: v.number(),
       updatedAt: v.number(),
       deletedAt: v.optional(v.number()),
+      // Set when the row mirrors an anonymous (guest) Better Auth user, and
+      // only then. Linking a guest to a real account deletes this row, so a
+      // row that still has the field is a guest who has not signed up yet.
+      // `purgeAbandonedGuests` walks the index and drops the ones whose
+      // sessions have all expired, since nothing can reach those again.
+      guestSince: v.optional(v.number()),
     })
       .index("by_authId", ["authId"])
-      .index("by_deletedAt", ["deletedAt"]),
+      .index("by_deletedAt", ["deletedAt"])
+      .index("by_guestSince", ["guestSince"]),
 
     accountDeletionAudit: defineTable({
       userId: v.id("users"),

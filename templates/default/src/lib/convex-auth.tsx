@@ -22,10 +22,17 @@ import { authClient } from "./auth-client";
  *
  * This bridge does the minimum the platform actually needs:
  *  - `isAuthenticated` / `isLoading` come from `authClient.useSession()` directly.
- *  - `fetchAccessToken` is identity-stable (`useCallback([])`). The Convex
- *    client caches the JWT internally and re-calls only on expiry/forceRefresh.
- *  - In-flight calls de-dup via a ref, so multiple consumers can't fire
- *    parallel `/convex/token` requests.
+ *  - `fetchAccessToken` is keyed on the signed-in USER id, not the server-side
+ *    session id. The session id rotates on every `/convex/token` call, which is
+ *    what makes the upstream version loop; a user id is stable for as long as
+ *    the same person is signed in. Keying on it is what makes the guest ->
+ *    account upgrade work: both states are authenticated, so `isAuthenticated`
+ *    never flips, and with a `[]` dependency Convex would keep the guest's JWT
+ *    after Better Auth deleted that user, leaving every authed query reading as
+ *    signed out.
+ *  - In-flight calls de-dup via a ref tagged with the user they belong to, so
+ *    multiple consumers can't fire parallel `/convex/token` requests and a call
+ *    started for the old user can't be handed to the new one.
  *
  * The OAuth one-time-token (`?ott=...`) handling in the upstream provider is
  * a web-only path (`window === undefined` on native), so we don't replicate it.
@@ -33,12 +40,17 @@ import { authClient } from "./auth-client";
 function useBetterAuthForConvex() {
   const { data: session, isPending } = authClient.useSession();
   const isAuthenticated = !!session?.session;
+  const userId = session?.user?.id ?? null;
 
-  const inflightRef = useRef<Promise<string | null> | null>(null);
+  const inflightRef = useRef<{ userId: string | null; promise: Promise<string | null> } | null>(
+    null,
+  );
 
   const fetchAccessToken = useCallback(
     async ({ forceRefreshToken = false }: { forceRefreshToken?: boolean } = {}) => {
-      if (!forceRefreshToken && inflightRef.current) return inflightRef.current;
+      if (!forceRefreshToken && inflightRef.current?.userId === userId) {
+        return inflightRef.current.promise;
+      }
 
       // Convex treats one null from this fetcher as "signed out" and clears
       // auth without retrying (authentication_manager `refetchToken`), so a
@@ -62,13 +74,13 @@ function useBetterAuthForConvex() {
           await new Promise((resolve) => setTimeout(resolve, 500 * 2 ** attempt));
         }
       })().finally(() => {
-        inflightRef.current = null;
+        if (inflightRef.current?.promise === promise) inflightRef.current = null;
       });
 
-      inflightRef.current = promise;
+      inflightRef.current = { userId, promise };
       return promise;
     },
-    [],
+    [userId],
   );
 
   return useMemo(

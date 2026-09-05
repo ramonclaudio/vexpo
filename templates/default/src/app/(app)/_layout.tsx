@@ -3,7 +3,7 @@ import { useQuery } from "convex/react";
 import { useEffect } from "react";
 
 import { api } from "@/convex/_generated/api";
-import { authClient } from "@/lib/auth-client";
+import { useAuthStatus } from "@/hooks/use-auth-status";
 import { useDeepLinkHandler } from "@/hooks/use-deep-link";
 import { useOnboarding } from "@/hooks/use-onboarding";
 import { useColors } from "@/hooks/use-theme";
@@ -23,8 +23,10 @@ export function SuspenseFallback() {
 export const unstable_settings = { anchor: "(tabs)" } as const;
 
 export default function AppLayout() {
-  const { data: session } = authClient.useSession();
-  const isAuthenticated = !!session?.session;
+  // A guest counts as authenticated: they hold a real JWT and the tabs, the
+  // onboarding and the Convex queries all work for them. `hasAccount` is the
+  // narrower gate for the screens that need an actual account behind them.
+  const { isAuthenticated, isGuest, hasAccount } = useAuthStatus();
 
   // Skipped while unauthed because Convex queries need a live JWT.
   const me = useQuery(api.users.getMe, isAuthenticated ? {} : "skip");
@@ -112,26 +114,35 @@ export default function AppLayout() {
           }}
         />
 
+        {/* A guest edits their name, photo and bio like anyone else, and those
+            are exactly what `mergeGuestData` carries onto the account, so this
+            stays on the plain authed guard. The screen hides the username and
+            email fields for them. */}
         <Stack.Screen name="profile/index" options={{ headerShown: true }}>
           <Stack.Header transparent />
           <Stack.Screen.Title style={titleStyle}>Profile</Stack.Screen.Title>
           <Stack.Screen.BackButton>Settings</Stack.Screen.BackButton>
         </Stack.Screen>
 
-        <Stack.Screen
-          name="profile/change-password"
-          options={{ headerShown: true, presentation: "modal" }}
-        >
-          <Stack.Header transparent />
-          <Stack.Screen.Title style={titleStyle}>Password</Stack.Screen.Title>
-          <Stack.Screen.BackButton>Profile</Stack.Screen.BackButton>
-        </Stack.Screen>
+        {/* Sessions lists the devices signed in to an account and password
+            change needs a password, and a guest has neither. Nested inside the
+            authed guard, not a replacement for it. */}
+        <Stack.Protected guard={hasAccount}>
+          <Stack.Screen
+            name="profile/change-password"
+            options={{ headerShown: true, presentation: "modal" }}
+          >
+            <Stack.Header transparent />
+            <Stack.Screen.Title style={titleStyle}>Password</Stack.Screen.Title>
+            <Stack.Screen.BackButton>Profile</Stack.Screen.BackButton>
+          </Stack.Screen>
 
-        <Stack.Screen name="sessions" options={{ headerShown: true }}>
-          <Stack.Header transparent />
-          <Stack.Screen.Title style={titleStyle}>Sessions</Stack.Screen.Title>
-          <Stack.Screen.BackButton>Settings</Stack.Screen.BackButton>
-        </Stack.Screen>
+          <Stack.Screen name="sessions" options={{ headerShown: true }}>
+            <Stack.Header transparent />
+            <Stack.Screen.Title style={titleStyle}>Sessions</Stack.Screen.Title>
+            <Stack.Screen.BackButton>Settings</Stack.Screen.BackButton>
+          </Stack.Screen>
+        </Stack.Protected>
       </Stack.Protected>
 
       {/* Own Stack.Protected so the whole authed tree above un-mounts when
@@ -148,13 +159,17 @@ export default function AppLayout() {
         />
       </Stack.Protected>
 
-      <Stack.Protected guard={!isAuthenticated}>
+      {/* Registered for guests too, so "Create an account" in settings has
+          somewhere to go. With no session at all it is the only registered
+          screen and renders as the wall; with a guest session `(tabs)` is the
+          anchor and this is a screen you push onto it, and can back out of. */}
+      <Stack.Protected guard={!hasAccount}>
         <Stack.Screen
           name="auth"
           options={{
             headerShown: false,
             presentation: "fullScreenModal",
-            gestureEnabled: false,
+            gestureEnabled: isGuest,
             animation: reduceMotion ? "fade" : "fade_from_bottom",
             animationDuration: reduceMotion ? 150 : 250,
           }}

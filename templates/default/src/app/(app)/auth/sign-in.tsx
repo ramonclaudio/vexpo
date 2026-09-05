@@ -54,10 +54,13 @@ import { HelperText } from "@/components/ui/helper-text";
 import { PasswordField } from "@/components/auth/password-field";
 import { SegmentedToggle } from "@/components/ui/segmented-toggle";
 import { ProminentButton } from "@/components/ui/prominent-button";
+import { SecondaryButton } from "@/components/ui/secondary-button";
 import { ErrorText } from "@/components/ui/status-text";
 import { announce } from "@/lib/a11y";
 import { useColors, useThemedAsset } from "@/hooks/use-theme";
 import { useAppleAuth } from "@/hooks/use-apple-auth";
+import { useAuthStatus } from "@/hooks/use-auth-status";
+import { dismissAuth, useGuestSignIn } from "@/hooks/use-guest-sign-in";
 import { AppleButton } from "@/components/auth/apple-button";
 
 type SignInState = { error?: string };
@@ -95,6 +98,11 @@ export default function SignInScreen() {
   // dead end. Email + password sign-up/sign-in remains available.
   const emailFeatures = providers?.emailFeatures === true;
   const isOtp = signInMethod === "otp";
+  // Already browsing as a guest: this screen is the upgrade path, not the
+  // wall, so it offers a way back to the app instead of a way past it.
+  const { isGuest } = useAuthStatus();
+  const guest = useGuestSignIn();
+  const showGuest = providers?.guest === true && !isGuest;
 
   /**
    * Sends a fresh verification code and moves to the OTP screen. Called when a
@@ -215,8 +223,10 @@ export default function SignInScreen() {
     initialState,
   );
 
-  const error = emailState.error ?? usernameState.error ?? otpRequestState.error ?? apple.error;
-  const isLoading = isEmailPending || isUsernamePending || isSendingOtp || apple.isPending;
+  const error =
+    emailState.error ?? usernameState.error ?? otpRequestState.error ?? apple.error ?? guest.error;
+  const isLoading =
+    isEmailPending || isUsernamePending || isSendingOtp || apple.isPending || guest.isPending;
 
   if (showOtpVerification) {
     return (
@@ -282,9 +292,11 @@ export default function SignInScreen() {
             <Text
               modifiers={[dfont({ size: 16 }), foregroundStyle(colors.mutedForeground as string)]}
             >
-              {isOtp
-                ? "We'll email you a 6-digit code. No password needed."
-                : "Enter your credentials to access your account."}
+              {isGuest
+                ? "Sign in and everything you did as a guest comes with you."
+                : isOtp
+                  ? "We'll email you a 6-digit code. No password needed."
+                  : "Enter your credentials to access your account."}
             </Text>
           </VStack>
 
@@ -465,6 +477,29 @@ export default function SignInScreen() {
               type={AppleAuthentication.AppleAuthenticationButtonType.SIGN_IN}
               onPress={() => startTransition(() => apple.signIn())}
               disabled={isLoading}
+            />
+          )}
+
+          {showGuest && (
+            <VStack spacing={6} alignment="leading" modifiers={[frame({ maxWidth: Infinity })]}>
+              <SecondaryButton
+                testID="sign-in-guest"
+                label={guest.isPending ? "Starting..." : "Continue as guest"}
+                onPress={() => startTransition(() => guest.signIn())}
+                disabled={isLoading}
+                inputLabels={["Continue as guest", "Guest", "Skip sign in"]}
+              />
+              <HelperText>You can create an account later and keep what you did.</HelperText>
+            </VStack>
+          )}
+
+          {isGuest && (
+            <SecondaryButton
+              testID="sign-in-dismiss"
+              label="Not now"
+              onPress={dismissAuth}
+              disabled={isLoading}
+              filled={false}
             />
           )}
         </VStack>

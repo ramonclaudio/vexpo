@@ -199,7 +199,8 @@ npm run format                 oxfmt
 npm run format:check           oxfmt --check
 npm run test                   vitest run
 npm run test:watch             vitest
-npm run e2e                    Maestro flows on the simulator (one flow: npm run e2e -- .maestro/auth.yaml)
+npm run e2e                    Maestro flows on the simulator (one flow: npm run e2e -- .maestro/guest.yaml)
+                               .maestro/guest-mode-off.yaml is opt-in. Its header has the two env commands
 npm run fp                     Print Expo fingerprint hash
 npm run updates:gen-cert       Generate the OTA code-signing keypair (run once)
 npm run upgrade                expo install expo@next && expo install --fix
@@ -210,9 +211,10 @@ npm run upgrade:stable         expo install expo@latest && expo install --fix
 
 - Convex backend: reactive queries, storage, real-time sync, per-mutation rate limiting
 - Better Auth via `@convex-dev/better-auth`: email, password, OTP, Apple Sign In, per-device session revocation
+- Optional accounts: guest browsing through the Better Auth anonymous plugin, with the guest's data merged onto the account when they sign up
 - Resend for OTP, password reset, and change-email, with delivery webhooks
 - APNs push, Apple Universal Links, profile editing with avatar uploads
-- Account soft-delete with a 30-day grace window
+- Account soft-delete with a 30-day grace window, and a same-day purge for guests, who have nothing to sign back in with
 - Theme switching, haptics, reduced motion, VoiceOver, and Dynamic Type
 - Liquid Glass on iOS 26+, with a `UIVisualEffectView` blur fallback on iOS 16.4 through 25
 - OTA updates code-signed, so only signed bundles install

@@ -10,6 +10,7 @@ import {
 } from "@expo/ui/swift-ui/modifiers";
 
 import { ContentUnavailable } from "@/components/ui/content-unavailable";
+import { GUEST_NAME } from "@/convex/constants";
 import { authClient } from "@/lib/auth-client";
 import { useDynamicFont } from "@/lib/dynamic-font";
 import { useColors } from "@/hooks/use-theme";
@@ -19,7 +20,9 @@ export default function HomeScreen() {
   const colors = useColors();
   const { data: session, refetch } = authClient.useSession();
 
-  const name = session?.user?.name?.split(" ")[0] ?? "there";
+  // "Hey, Guest" reads like a name nobody chose. A guest who set one gets it.
+  const rawName = session?.user?.name;
+  const name = !rawName || rawName === GUEST_NAME ? "there" : rawName.split(" ")[0];
   const now = new Date();
 
   const onRefresh = async () => {

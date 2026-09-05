@@ -90,6 +90,12 @@ export const ROUTING: Record<string, RoutingEntry> = {
   REQUIRE_EMAIL_VERIFICATION: {
     routes: (c) => [{ type: "convex", key: "REQUIRE_EMAIL_VERIFICATION", channel: c }],
   },
+  // Guest browsing, on unless the deployment says otherwise. Nothing writes
+  // this key: it is here so setting GUEST_MODE=false by hand in .env.local or
+  // .env.prod reaches the deployment on the next push instead of going quiet.
+  GUEST_MODE: {
+    routes: (c) => [{ type: "convex", key: "GUEST_MODE", channel: c }],
+  },
   APP_BUNDLE_ID: { routes: (c) => [{ type: "convex", key: "APP_BUNDLE_ID", channel: c }] },
   APPLE_CLIENT_ID: { routes: (c) => [{ type: "convex", key: "APPLE_CLIENT_ID", channel: c }] },
   APPLE_CLIENT_SECRET: {

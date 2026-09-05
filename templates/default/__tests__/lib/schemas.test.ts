@@ -6,6 +6,7 @@ import {
   firstError,
   firstErrorField,
   forgotPasswordSchema,
+  guestProfileSchema,
   profileUpdateSchema,
   resetPasswordSchema,
   signInEmailSchema,
@@ -193,6 +194,39 @@ describe("resetPasswordSchema", () => {
   it("accepts a valid reset with matching passwords", () => {
     const r = resetPasswordSchema.safeParse({ ...base, confirmPassword: validPassword });
     expect(r.success).toBe(true);
+  });
+});
+
+describe("guestProfileSchema", () => {
+  // The guest profile form is name and bio only. The account variants require
+  // an email, and a guest's is a placeholder the anonymous plugin generated,
+  // so parsing one here would pull a field the form never showed into a
+  // mutation.
+  it("accepts a name on its own", () => {
+    expect(guestProfileSchema.safeParse({ name: "Ada" }).success).toBe(true);
+  });
+
+  it("trims, the way the account schemas do", () => {
+    const parsed = guestProfileSchema.safeParse({ name: "  Ada  " });
+    expect(parsed.success && parsed.data.name).toBe("Ada");
+  });
+
+  it("rejects an empty name", () => {
+    const parsed = guestProfileSchema.safeParse({ name: "" });
+    expect(parsed.success).toBe(false);
+    expect(firstError(parsed as never)).toBe("Name is required");
+  });
+
+  it("rejects whitespace-only, which trims to empty", () => {
+    expect(guestProfileSchema.safeParse({ name: "   " }).success).toBe(false);
+  });
+
+  it("ignores an email even when one is passed", () => {
+    const parsed = guestProfileSchema.safeParse({
+      name: "Ada",
+      email: "temp@abc.com",
+    });
+    expect(parsed.success && "email" in parsed.data).toBe(false);
   });
 });
 

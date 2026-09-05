@@ -37,7 +37,7 @@ import {
 import { useDynamicFont } from "@/lib/dynamic-font";
 
 import { api } from "@/convex/_generated/api";
-import { isReservedUsername, isValidUsernameFormat } from "@/convex/constants";
+import { GUEST_NAME, isReservedUsername, isValidUsernameFormat } from "@/convex/constants";
 import { scheduleOnRN } from "react-native-worklets";
 
 import { authClient } from "@/lib/auth-client";
@@ -53,11 +53,14 @@ import { useUnsavedChanges } from "@/hooks/use-unsaved-changes";
 import { PasswordField } from "@/components/auth/password-field";
 import { SegmentedToggle } from "@/components/ui/segmented-toggle";
 import { ProminentButton } from "@/components/ui/prominent-button";
+import { SecondaryButton } from "@/components/ui/secondary-button";
 import { firstError, firstErrorField, signUpSchema } from "@/lib/schemas";
 import { ErrorText } from "@/components/ui/status-text";
 import { announce } from "@/lib/a11y";
 import { useColors, useThemedAsset } from "@/hooks/use-theme";
 import { useAppleAuth } from "@/hooks/use-apple-auth";
+import { useAuthStatus } from "@/hooks/use-auth-status";
+import { dismissAuth, useGuestSignIn } from "@/hooks/use-guest-sign-in";
 import { AppleButton } from "@/components/auth/apple-button";
 
 type SignUpState = { error?: string };
@@ -75,7 +78,13 @@ export default function SignUpScreen() {
   const dfont = useDynamicFont();
   const colors = useColors();
   const brandIcon = useThemedAsset(assets.brandIconLight, assets.brandIconDark);
+  const nameFieldState = useNativeState("");
   const [name, setName] = useState("");
+  // A name the guest set on their profile, carried into the form so they don't
+  // retype it. `mergeGuestData` can't do this: the name lives on the Better
+  // Auth user, not the app row, and overwriting whatever they type here with
+  // the old one would be worse than asking.
+  const [prefilledName, setPrefilledName] = useState("");
   const usernameState = useNativeState("");
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
@@ -89,6 +98,11 @@ export default function SignUpScreen() {
   // no OTP step. When true (testflight tier+), the OTP verification
   // screen renders after sign-up.
   const emailFeatures = providers?.emailFeatures === true;
+  // Signing up from a guest session links the two accounts and carries the
+  // guest's rows over, so the copy promises that and the wall becomes optional.
+  const { isGuest, name: sessionName } = useAuthStatus();
+  const guest = useGuestSignIn();
+  const showGuest = providers?.guest === true && !isGuest;
 
   // Bound to ScrollView via `scrollPosition`. Writing a field id scrolls the
   // form so that field aligns with the top of the viewport.
@@ -154,8 +168,18 @@ export default function SignUpScreen() {
     else if (usernameAvailable === false) announce("This username is not available");
   }, [usernameAvailable]);
 
+  useEffect(() => {
+    if (!isGuest || !sessionName || sessionName === GUEST_NAME) return;
+    if (prefilledName === sessionName) return;
+    setPrefilledName(sessionName);
+    setNativeValue(nameFieldState, sessionName);
+    setName(sessionName);
+  }, [isGuest, sessionName, prefilledName, nameFieldState]);
+
+  // The prefilled name is not something the user typed, so it must not arm the
+  // discard-changes dialog on its own.
   const hasInput =
-    name.length > 0 || username.length > 0 || email.length > 0 || password.length > 0;
+    name !== prefilledName || username.length > 0 || email.length > 0 || password.length > 0;
   const { pendingNavAction, discard, dismiss } = useUnsavedChanges(hasInput && !showVerification);
 
   const [state, signUp, isPending] = useActionState<SignUpState, void>(async () => {
@@ -230,8 +254,8 @@ export default function SignUpScreen() {
     }
   }, initialState);
 
-  const isLoading = isPending || apple.isPending;
-  const error = state.error ?? apple.error;
+  const isLoading = isPending || apple.isPending || guest.isPending;
+  const error = state.error ?? apple.error ?? guest.error;
   // HIG: pair color with a non-color signal. The status row carries text +
   // color + an SF Symbol so a colorblind user gets the same answer.
   const usernameStatus: {
@@ -310,9 +334,11 @@ export default function SignUpScreen() {
             <Text
               modifiers={[dfont({ size: 16 }), foregroundStyle(colors.mutedForeground as string)]}
             >
-              {emailFeatures
-                ? "A verification code will be sent to confirm your email."
-                : "Sign up and you're in. No email to confirm."}
+              {isGuest
+                ? "Your guest data comes with you, and you get it back on your next device."
+                : emailFeatures
+                  ? "A verification code will be sent to confirm your email."
+                  : "Sign up and you're in. No email to confirm."}
             </Text>
           </VStack>
 
@@ -339,6 +365,7 @@ export default function SignUpScreen() {
             <Text modifiers={labelModifiers}>Name</Text>
             <CapsuleTextField
               testID="sign-up-name"
+              text={nameFieldState}
               placeholder="Your name"
               onTextChange={setName}
               modifiers={[
@@ -452,6 +479,29 @@ export default function SignUpScreen() {
               type={AppleAuthentication.AppleAuthenticationButtonType.SIGN_UP}
               onPress={() => startTransition(() => apple.signIn())}
               disabled={isLoading}
+            />
+          )}
+
+          {showGuest && (
+            <VStack spacing={6} alignment="leading" modifiers={[frame({ maxWidth: Infinity })]}>
+              <SecondaryButton
+                testID="sign-up-guest"
+                label={guest.isPending ? "Starting..." : "Continue as guest"}
+                onPress={() => startTransition(() => guest.signIn())}
+                disabled={isLoading}
+                inputLabels={["Continue as guest", "Guest", "Skip sign up"]}
+              />
+              <HelperText>You can create an account later and keep what you did.</HelperText>
+            </VStack>
+          )}
+
+          {isGuest && (
+            <SecondaryButton
+              testID="sign-up-dismiss"
+              label="Not now"
+              onPress={dismissAuth}
+              disabled={isLoading}
+              filled={false}
             />
           )}
         </VStack>

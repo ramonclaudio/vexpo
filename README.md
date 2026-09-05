@@ -81,6 +81,7 @@ The scaffold's own [`README.md`](./templates/default/README.md#setup) has the lo
 - Every screen is SwiftUI through `@expo/ui/swift-ui`, with Liquid Glass on iOS 26 and later and a blur fallback on anything older.
 - VoiceOver, Voice Control, and Dynamic Type work on every screen. Loading and error states get announced instead of passing silently, related rows read as one stop instead of several, icons scale with the text setting, and backgrounding the app hides emails and session IPs from the app-switcher snapshot. Wired against released `@expo/ui` only.
 - Email, password, OTP, and Apple Sign In, with per-device session revocation and account soft-delete.
+- An account is optional. "Continue as guest" gets you into the app with a real session, and signing up later carries the guest's data onto the account. Set `GUEST_MODE=false` on the Convex deployment to require an account instead.
 - Convex reactive queries and storage, plus Resend delivery webhooks.
 - APNs push and Apple Universal Links.
 - EAS builds, updates, submission, and store metadata, with nine workflows under `.eas/workflows/`. None trigger on a push to `main`.

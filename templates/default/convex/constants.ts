@@ -1,6 +1,11 @@
 // Safe to import from Convex functions AND React routes.
 // Do not add imports from `convex/server`, `./_generated/*`, or React here.
 
+// The name every guest gets. The server sets it when the anonymous session is
+// created; the client reads it to tell a guest who never set a name from one
+// who did, so sign-up can carry a real name onto the account.
+export const GUEST_NAME = "Guest";
+
 export const USERNAME_MIN_LENGTH = 3;
 export const USERNAME_MAX_LENGTH = 30;
 

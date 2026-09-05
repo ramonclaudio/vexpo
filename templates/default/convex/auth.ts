@@ -2,9 +2,10 @@ import { expo } from "@better-auth/expo";
 import { createClient } from "@convex-dev/better-auth";
 import type { AuthFunctions, GenericCtx } from "@convex-dev/better-auth";
 import { convex } from "@convex-dev/better-auth/plugins";
+import { requireRunMutationCtx } from "@convex-dev/better-auth/utils";
 import type { BetterAuthOptions } from "better-auth";
 import { betterAuth } from "better-auth/minimal";
-import { emailOTP, username } from "better-auth/plugins";
+import { anonymous, emailOTP, username } from "better-auth/plugins";
 import { v } from "convex/values";
 
 import { components, internal } from "./_generated/api";
@@ -13,6 +14,7 @@ import { internalAction, query } from "./_generated/server";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
 import authConfig from "./auth.config";
 import {
+  GUEST_NAME,
   USERNAME_FORMAT_REGEX,
   USERNAME_MAX_LENGTH,
   USERNAME_MIN_LENGTH,
@@ -29,6 +31,12 @@ const SEVEN_DAYS = 7 * ONE_DAY;
 const TEN_MINUTES = 10 * ONE_MINUTE;
 const FIVE_MINUTES = 5 * ONE_MINUTE;
 
+// `session.expiresIn` below, in milliseconds. A session's `expiresAt` is never
+// earlier than its creation plus this, so a user created more recently than
+// this cannot have an expired session yet. `users.purgeAbandonedGuests` uses
+// that to skip fresh guests without asking the component about each one.
+export const SESSION_MAX_AGE_MS = SEVEN_DAYS * 1000;
+
 const authFunctions: AuthFunctions = internal.auth;
 
 export async function getUserByAuthId(
@@ -41,8 +49,30 @@ export async function getUserByAuthId(
     .unique();
 }
 
+/**
+ * Everything the app owns for one Better Auth user: the `users` row, the
+ * avatar blob it points at, and the push tokens that point at it. One function
+ * because there are two ways a user gets deleted and both have to agree.
+ * Better Auth's own deletes (a guest linking to an account, the plugin's
+ * `/delete-anonymous-user`) reach it through the `user.onDelete` trigger.
+ * `users.purgeUser` calls it by hand, because it drives the component adapter
+ * directly and that path never fires the trigger.
+ */
+export async function purgeAppUser(ctx: MutationCtx, authId: string): Promise<void> {
+  const user = await getUserByAuthId(ctx, authId);
+  if (!user) return;
+  const tokens = await ctx.db
+    .query("pushTokens")
+    .withIndex("by_userId", (q) => q.eq("userId", user._id))
+    .collect();
+  await Promise.all(tokens.map((t) => ctx.db.delete(t._id)));
+  if (user.avatar) await ctx.storage.delete(user.avatar);
+  await ctx.db.delete(user._id);
+}
+
 export type AuthUser = Doc<"users"> & {
   authUserId: string;
+  isAnonymous: boolean;
   email: string;
   name: string;
   emailVerified: boolean;
@@ -58,18 +88,20 @@ export const authComponent = createClient<DataModel>(components.betterAuth, {
   triggers: {
     user: {
       onCreate: async (ctx, authUser) => {
+        const now = Date.now();
+        // Mirror the anonymous flag as a timestamp so the reaper can range on
+        // it. Better Auth owns `isAnonymous` on its own user row; copying it
+        // here keeps the sweep inside the app schema and off a component scan.
+        const isAnonymous = !!(authUser as { isAnonymous?: boolean | null }).isAnonymous;
         await ctx.db.insert("users", {
           authId: authUser._id,
-          createdAt: Date.now(),
-          updatedAt: Date.now(),
+          createdAt: now,
+          updatedAt: now,
+          guestSince: isAnonymous ? now : undefined,
         });
       },
       onDelete: async (ctx, authUser) => {
-        const user = await getUserByAuthId(ctx, authUser._id);
-        if (!user) return;
-        // Free the avatar blob before dropping the row so we don't leak storage.
-        if (user.avatar) await ctx.storage.delete(user.avatar);
-        await ctx.db.delete(user._id);
+        await purgeAppUser(ctx, authUser._id);
       },
     },
   },
@@ -152,6 +184,11 @@ export const createAuth = (ctx: GenericCtx<DataModel>) =>
       window: ONE_MINUTE,
       max: 100,
       customRules: {
+        // Covers /sign-in/anonymous too, deliberately. A per-hour rule for
+        // guests reads tighter but this limiter keys on IP, so anything that
+        // strict locks out a whole office or campus behind one NAT address.
+        // The plugin already refuses a second anonymous sign-in while one is
+        // live, and the app only calls it on an explicit tap.
         "/sign-in/*": { window: ONE_MINUTE, max: 5 },
         "/sign-up/*": { window: ONE_MINUTE, max: 3 },
         "/email-otp/request-password-reset": { window: ONE_HOUR, max: 3 },
@@ -193,6 +230,24 @@ export const createAuth = (ctx: GenericCtx<DataModel>) =>
           return USERNAME_FORMAT_REGEX.test(normalized);
         },
       }),
+      // Guest browsing. `signIn.anonymous()` mints a real session backed by a
+      // throwaway user, so every authQuery/authMutation keeps working for a
+      // guest with no branching. Signing in or signing up from a guest session
+      // fires `onLinkAccount` (before Better Auth deletes the guest user), which
+      // is where the guest's rows move onto the real account.
+      ...(env.guestMode
+        ? [
+            anonymous({
+              generateName: () => GUEST_NAME,
+              onLinkAccount: async ({ anonymousUser, newUser }) => {
+                await requireRunMutationCtx(ctx).runMutation(internal.users.mergeGuestData, {
+                  guestAuthId: anonymousUser.user.id,
+                  authId: newUser.user.id,
+                });
+              },
+            }),
+          ]
+        : []),
       expo(),
     ],
   } satisfies BetterAuthOptions);
@@ -214,6 +269,7 @@ export async function safeGetAuthenticatedUser(
   return {
     ...user,
     authUserId: authUser._id,
+    isAnonymous: !!(authUser as { isAnonymous?: boolean | null }).isAnonymous,
     email: authUser.email,
     name: authUser.name,
     emailVerified: authUser.emailVerified,
@@ -243,7 +299,9 @@ export const authUserValidator = v.object({
   // grace window the user is still authenticated; the client routes
   // these users to a "restore or continue with deletion" surface.
   deletedAt: v.optional(v.number()),
+  guestSince: v.optional(v.number()),
   authUserId: v.string(),
+  isAnonymous: v.boolean(),
   email: v.string(),
   name: v.string(),
   emailVerified: v.boolean(),
@@ -281,14 +339,18 @@ export const hasPassword = query({
  * client hides OTP sign-in, password reset, change-email. the only working
  * flow is email + password sign-up/sign-in. This is the minimal-tier path:
  * users get into the app without configuring Resend or any DNS.
+ *
+ * `guest` is true when `GUEST_MODE` is on (the default). When false, the
+ * "Continue as guest" button is hidden and `/sign-in/anonymous` is not
+ * registered at all, so an account is required to get past the sign-in screen.
  */
 export const getEnabledProviders = query({
   args: {},
-  returns: v.object({ apple: v.boolean(), emailFeatures: v.boolean() }),
+  returns: v.object({ apple: v.boolean(), emailFeatures: v.boolean(), guest: v.boolean() }),
   handler: async () => {
     const apple = !!process.env.APPLE_CLIENT_ID && !!process.env.APPLE_CLIENT_SECRET;
     const emailFeatures = env.requireEmailVerification;
-    return { apple, emailFeatures };
+    return { apple, emailFeatures, guest: env.guestMode };
   },
 });
 

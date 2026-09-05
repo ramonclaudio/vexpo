@@ -41,6 +41,7 @@ export function ProfileFields({
   onBioChange,
   isSaving,
   emailFeatures,
+  isGuest,
   createdAt,
   hasChanges,
   onSave,
@@ -55,6 +56,10 @@ export function ProfileFields({
   onBioChange: (v: string) => void;
   isSaving: boolean;
   emailFeatures: boolean;
+  // A guest's username is unset and their email is a throwaway the server
+  // generated, so neither field has anything to edit. Name, photo and bio do,
+  // and those are what `mergeGuestData` carries onto the account.
+  isGuest: boolean;
   createdAt: number;
   hasChanges: boolean;
   onSave: () => void;
@@ -83,61 +88,65 @@ export function ProfileFields({
         />
       </VStack>
 
-      <VStack spacing={6} alignment="leading" modifiers={[frame({ maxWidth: Infinity })]}>
-        <Text modifiers={labelModifiers}>Username</Text>
-        <CapsuleTextField
-          testID="profile-username"
-          text={usernameState}
-          placeholder="johndoe"
-          onTextChange={(text) => {
-            "worklet";
-            const next = maskUsername(text);
-            if (usernameState) usernameState.value = next;
-            scheduleOnRN(onUsernameChange, next);
-          }}
-          modifiers={[
-            keyboardType("ascii-capable"),
-            autocorrectionDisabled(),
-            textInputAutocapitalization("never"),
-            textContentType("username"),
-            disabled(isSaving),
-            submitLabel("next"),
-            accessibilityLabel("Username"),
-            accessibilityHint("Edit the username for your profile"),
-          ]}
-        />
-        <HelperText>Name and username are visible to other users.</HelperText>
-      </VStack>
+      {isGuest ? null : (
+        <>
+          <VStack spacing={6} alignment="leading" modifiers={[frame({ maxWidth: Infinity })]}>
+            <Text modifiers={labelModifiers}>Username</Text>
+            <CapsuleTextField
+              testID="profile-username"
+              text={usernameState}
+              placeholder="johndoe"
+              onTextChange={(text) => {
+                "worklet";
+                const next = maskUsername(text);
+                if (usernameState) usernameState.value = next;
+                scheduleOnRN(onUsernameChange, next);
+              }}
+              modifiers={[
+                keyboardType("ascii-capable"),
+                autocorrectionDisabled(),
+                textInputAutocapitalization("never"),
+                textContentType("username"),
+                disabled(isSaving),
+                submitLabel("next"),
+                accessibilityLabel("Username"),
+                accessibilityHint("Edit the username for your profile"),
+              ]}
+            />
+            <HelperText>Name and username are visible to other users.</HelperText>
+          </VStack>
 
-      <VStack spacing={6} alignment="leading" modifiers={[frame({ maxWidth: Infinity })]}>
-        <Text modifiers={labelModifiers}>Email</Text>
-        <CapsuleTextField
-          testID="profile-email"
-          text={emailState}
-          placeholder="you@example.com"
-          onTextChange={onEmailChange}
-          modifiers={[
-            keyboardType("email-address"),
-            autocorrectionDisabled(),
-            textInputAutocapitalization("never"),
-            textContentType("emailAddress"),
-            privacySensitive(),
-            disabled(isSaving || !emailFeatures),
-            submitLabel("next"),
-            accessibilityLabel("Email address"),
-            accessibilityHint(
-              emailFeatures
-                ? "Edit the email address for your account"
-                : "Email change is disabled until email verification is configured",
-            ),
-          ]}
-        />
-        <HelperText>
-          {emailFeatures
-            ? "Changing your email requires verifying the new address with a 6-digit code."
-            : "Email change requires Resend setup. Run `npx vexpo full` to enable."}
-        </HelperText>
-      </VStack>
+          <VStack spacing={6} alignment="leading" modifiers={[frame({ maxWidth: Infinity })]}>
+            <Text modifiers={labelModifiers}>Email</Text>
+            <CapsuleTextField
+              testID="profile-email"
+              text={emailState}
+              placeholder="you@example.com"
+              onTextChange={onEmailChange}
+              modifiers={[
+                keyboardType("email-address"),
+                autocorrectionDisabled(),
+                textInputAutocapitalization("never"),
+                textContentType("emailAddress"),
+                privacySensitive(),
+                disabled(isSaving || !emailFeatures),
+                submitLabel("next"),
+                accessibilityLabel("Email address"),
+                accessibilityHint(
+                  emailFeatures
+                    ? "Edit the email address for your account"
+                    : "Email change is disabled until email verification is configured",
+                ),
+              ]}
+            />
+            <HelperText>
+              {emailFeatures
+                ? "Changing your email requires verifying the new address with a 6-digit code."
+                : "Email change requires Resend setup. Run `npx vexpo full` to enable."}
+            </HelperText>
+          </VStack>
+        </>
+      )}
 
       <VStack spacing={6} alignment="leading" modifiers={[frame({ maxWidth: Infinity })]}>
         <Text modifiers={labelModifiers}>Bio</Text>
@@ -161,7 +170,11 @@ export function ProfileFields({
             accessibilityHint("Up to 500 characters describing yourself"),
           ]}
         />
-        <HelperText>Up to 500 characters. Visible on your public profile.</HelperText>
+        <HelperText>
+          {isGuest
+            ? "Up to 500 characters. It comes with you when you create an account."
+            : "Up to 500 characters. Visible on your public profile."}
+        </HelperText>
       </VStack>
 
       <VStack
@@ -170,7 +183,7 @@ export function ProfileFields({
         alignment="leading"
         modifiers={[frame({ maxWidth: Infinity }), accessibilityElement("combine")]}
       >
-        <Text modifiers={labelModifiers}>Member since</Text>
+        <Text modifiers={labelModifiers}>{isGuest ? "Browsing since" : "Member since"}</Text>
         <Text modifiers={[dfont({ size: 16 }), foregroundStyle(colors.mutedForeground as string)]}>
           {formatDate(createdAt)}
         </Text>

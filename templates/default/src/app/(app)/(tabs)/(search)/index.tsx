@@ -18,6 +18,7 @@ import {
 import type { SFSymbol } from "sf-symbols-typescript";
 
 import { useDynamicFont } from "@/lib/dynamic-font";
+import { useAuthStatus } from "@/hooks/use-auth-status";
 import { useColors } from "@/hooks/use-theme";
 import { useDebounce } from "@/hooks/use-debounce";
 import { useDebugEnabled } from "@/lib/preferences";
@@ -30,6 +31,9 @@ type Destination = {
   icon: SFSymbol;
   href: Parameters<typeof router.push>[0];
   keywords: string;
+  // The screen is registered only behind a real account. A guest tapping the
+  // row would land on +not-found, so it is filtered out for them instead.
+  accountOnly?: true;
 };
 
 const DESTINATIONS: readonly Destination[] = [
@@ -67,6 +71,7 @@ const DESTINATIONS: readonly Destination[] = [
     icon: "list.bullet.rectangle.portrait.fill",
     href: "/(app)/sessions",
     keywords: "sessions devices logout signed in revoke",
+    accountOnly: true,
   },
   {
     title: "Linked accounts",
@@ -90,6 +95,14 @@ const DESTINATIONS: readonly Destination[] = [
     keywords: "privacy data tracking apple labels",
   },
 ];
+
+const SIGN_UP_DESTINATION: Destination = {
+  title: "Create an account",
+  subtitle: "Keep your data and get it on your next device",
+  icon: "person.crop.circle.badge.plus",
+  href: "/(app)/auth/sign-up" as Destination["href"],
+  keywords: "create account sign up register guest upgrade save data sign in",
+};
 
 const DEBUG_DESTINATION: Destination = {
   title: "Debug",
@@ -119,11 +132,14 @@ export default function SearchScreen() {
   const [raw, setRaw] = useState("");
   const query = useDebounce(raw, DEBOUNCE_MS);
   const [debugOn] = useDebugEnabled();
+  const { isGuest } = useAuthStatus();
 
-  const destinations = useMemo<readonly Destination[]>(
-    () => (debugOn ? [...DESTINATIONS, DEBUG_DESTINATION] : DESTINATIONS),
-    [debugOn],
-  );
+  const destinations = useMemo<readonly Destination[]>(() => {
+    const base = isGuest
+      ? [SIGN_UP_DESTINATION, ...DESTINATIONS.filter((d) => !d.accountOnly)]
+      : DESTINATIONS;
+    return debugOn ? [...base, DEBUG_DESTINATION] : base;
+  }, [debugOn, isGuest]);
 
   const results = useMemo(() => {
     const trimmed = query.trim();

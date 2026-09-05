@@ -108,6 +108,16 @@ export const profileUpdateOptionalUsernameSchema = z.object({
   email: emailSchema,
 });
 
+// The guest profile form is name and bio only, so this parses name and nothing
+// else. The account variants above require an email, and a guest's is a
+// placeholder the anonymous plugin generated. It passes an email check (the
+// exact shape moves between Better Auth releases) but nobody reads it, and
+// parsing a field the form never showed is how a hidden value reaches a
+// mutation.
+export const guestProfileSchema = z.object({
+  name: nameSchema,
+});
+
 export function firstError(
   result: { success: false; error: z.ZodError } | { success: true; data: unknown },
 ): string | null {

@@ -4,7 +4,13 @@ import { components, internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
 import type { MutationCtx } from "./_generated/server";
 import { internalMutation } from "./_generated/server";
-import { authComponent, authUserValidator } from "./auth";
+import {
+  SESSION_MAX_AGE_MS,
+  authComponent,
+  authUserValidator,
+  getUserByAuthId,
+  purgeAppUser,
+} from "./auth";
 import { validationError } from "./errors";
 import { authMutation, optionalAuthQuery } from "./functions";
 import { rateLimitWithThrow } from "./rateLimit";
@@ -119,6 +125,133 @@ export const deleteAvatar = authMutation({
   },
 });
 
+/**
+ * Moves a guest's rows onto the account they just signed in or signed up with.
+ *
+ * Called from the anonymous plugin's `onLinkAccount`, which runs in the same
+ * request as the sign-in, after the real account exists and before Better Auth
+ * deletes the guest user. That delete fires the `onDelete` trigger, which drops
+ * the guest `users` row and frees whatever `_storage` blob it still points at,
+ * so anything worth keeping has to move (and be un-pointed on the guest row)
+ * here.
+ *
+ * Scaffold note: `bio`, the avatar blob, and push tokens are all this template
+ * owns. Add your own tables to the same mutation as you add them.
+ */
+export const mergeGuestData = internalMutation({
+  args: { guestAuthId: v.string(), authId: v.string() },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    if (args.guestAuthId === args.authId) return null;
+
+    const target = await getUserByAuthId(ctx, args.authId);
+    // The trigger that creates this row runs inside the same adapter mutation
+    // that created the auth user, so a missing row is a broken invariant, not
+    // a race. Silently dropping the merge would lose the guest's data.
+    if (!target) throw new Error(`mergeGuestData: no users row for authId ${args.authId}`);
+
+    const guest = await getUserByAuthId(ctx, args.guestAuthId);
+    if (!guest) return null;
+
+    const now = Date.now();
+    const patch: { bio?: string; avatar?: Id<"_storage">; updatedAt: number } = { updatedAt: now };
+
+    // Never clobber. Someone signing in to an existing account keeps the
+    // profile they already had, and the guest's copy falls away with the row.
+    if (guest.bio !== undefined && target.bio === undefined) patch.bio = guest.bio;
+    if (guest.avatar !== undefined && target.avatar === undefined) {
+      patch.avatar = guest.avatar;
+      await ctx.db.patch(guest._id, { avatar: undefined });
+    }
+
+    // Same device, so the guest's push token can already be on the target
+    // account from an earlier session. Repoint what is new, drop the duplicate.
+    const guestTokens = await ctx.db
+      .query("pushTokens")
+      .withIndex("by_userId", (q) => q.eq("userId", guest._id))
+      .collect();
+    for (const token of guestTokens) {
+      const sameToken = await ctx.db
+        .query("pushTokens")
+        .withIndex("by_token", (q) => q.eq("token", token.token))
+        .collect();
+      const duplicate = sameToken.some((r) => r._id !== token._id && r.userId === target._id);
+      if (duplicate) await ctx.db.delete(token._id);
+      else await ctx.db.patch(token._id, { userId: target._id, updatedAt: now });
+    }
+
+    await ctx.db.patch(target._id, patch);
+    return null;
+  },
+});
+
+/**
+ * A guest has no email, so there is nothing to sign back in with and the
+ * 30-day restore window in `deleteAccount` would be a window onto nothing.
+ * This purges immediately instead. The client signs out straight after.
+ */
+export const discardGuest = authMutation({
+  args: {},
+  returns: v.object({ success: v.boolean() }),
+  handler: async (ctx) => {
+    if (!ctx.user.isAnonymous) throw validationError("This is not a guest session");
+    await rateLimitWithThrow(ctx, "criticalAction", ctx.user._id.toString());
+    await purgeUser(ctx, ctx.user.authUserId, ctx.user._id, { audit: false });
+    return { success: true };
+  },
+});
+
+/**
+ * Guests that can never come back.
+ *
+ * A guest has no credentials, so the session cookie on their device is the
+ * only way back to their row. Better Auth refreshes `expiresAt` on use and
+ * lets it lapse after `session.expiresIn` idle, so "every session expired" is
+ * exactly "unreachable", and that is the purge rule: no cap from creation, a
+ * daily guest is kept forever and a one-visit install is gone a week later.
+ *
+ * Guests younger than the session lifetime are skipped by index range, since
+ * their session cannot have expired yet. Everyone older gets one component
+ * read per sweep. A cursor walks the range so old guests with live sessions
+ * (which stay at the head of the index) never starve the ones behind them.
+ */
+export const purgeAbandonedGuests = internalMutation({
+  args: { cursor: v.optional(v.string()) },
+  returns: v.number(),
+  handler: async (ctx, args) => {
+    const now = Date.now();
+    const oldEnough = now - SESSION_MAX_AGE_MS;
+    const page = await ctx.db
+      .query("users")
+      .withIndex("by_guestSince", (q) => q.gt("guestSince", undefined).lt("guestSince", oldEnough))
+      .paginate({ numItems: HARD_DELETE_BATCH, cursor: args.cursor ?? null });
+
+    let purged = 0;
+    for (const guest of page.page) {
+      if (await hasLiveSession(ctx, guest.authId, now)) continue;
+      await purgeUser(ctx, guest.authId, guest._id, { audit: false });
+      purged++;
+    }
+
+    if (!page.isDone) {
+      await ctx.scheduler.runAfter(0, internal.users.purgeAbandonedGuests, {
+        cursor: page.continueCursor,
+      });
+    }
+
+    return purged;
+  },
+});
+
+async function hasLiveSession(ctx: MutationCtx, authUserId: string, now: number) {
+  const sessions = (await ctx.runQuery(components.betterAuth.adapter.findMany, {
+    model: "session",
+    where: [{ field: "userId", value: authUserId }],
+    paginationOpts: { numItems: 100, cursor: null },
+  })) as { page: Array<{ expiresAt: number }> };
+  return sessions.page.some((s) => s.expiresAt > now);
+}
+
 // 30-day grace window between a user requesting deletion and the row
 // being permanently purged. Apple's 5.1.1(v) requires deletability from
 // within the app; the window lets a confused tap be recovered. After it
@@ -196,8 +329,8 @@ export const restoreAccount = authMutation({
  * within your app, you revoke the associated tokens when they delete
  * their account."
  *
- * Deleting the Better Auth user fires the `onDelete` trigger that drops
- * the app users row and frees the avatar blob.
+ * Purging tears down the Better Auth rows and then the app row and its
+ * avatar blob, which `purgeUser` does by hand: see the note there.
  */
 export const hardDeleteExpired = internalMutation({
   args: {},
@@ -230,7 +363,12 @@ export const hardDeleteExpired = internalMutation({
   },
 });
 
-async function purgeUser(ctx: MutationCtx, authUserId: string, userId: Id<"users">): Promise<void> {
+async function purgeUser(
+  ctx: MutationCtx,
+  authUserId: string,
+  userId: Id<"users">,
+  { audit = true }: { audit?: boolean } = {},
+): Promise<void> {
   // Snapshot the email before tearing down Better Auth so we can also
   // drop any pending verification rows keyed on it.
   const authUser = (await ctx.runQuery(components.betterAuth.adapter.findOne, {
@@ -270,12 +408,23 @@ async function purgeUser(ctx: MutationCtx, authUserId: string, userId: Id<"users
     input: { model: "user", where: [{ field: "_id", value: authUserId }] },
   });
 
-  await ctx.db.insert("accountDeletionAudit", {
-    userId,
-    authId: authUserId,
-    event: "permanent",
-    at: Date.now(),
-  });
+  // The `user.onDelete` trigger only runs when Better Auth itself drives the
+  // delete: the component attaches the trigger handle, and calling its adapter
+  // straight from here (which is the only way to purge a user with no live
+  // session) doesn't. Drop this and every hard-deleted account leaves an
+  // orphan row and a blob that nothing ever collects.
+  await purgeAppUser(ctx, authUserId);
+
+  // Guests are swept, not deleted on request, so they leave no audit trail.
+  // The table is a record of what users asked for, not of every row we drop.
+  if (audit) {
+    await ctx.db.insert("accountDeletionAudit", {
+      userId,
+      authId: authUserId,
+      event: "permanent",
+      at: Date.now(),
+    });
+  }
 }
 
 type UserIdModel =

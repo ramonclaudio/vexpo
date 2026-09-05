@@ -1,0 +1,67 @@
+# Guest mode turned off: the sign-in screen must show no way past the wall.
+#
+# NOT in the suite. `scripts/e2e.mjs` runs a fixed list and this one is off it
+# on purpose, because it only means anything against a deployment with
+# `GUEST_MODE=false`, and setting that is a change to the deployment rather
+# than something a flow can do to itself. Every other flow assumes the default,
+# so a run that left the var set would fail all of them.
+#
+# Run it by hand, and put the deployment back afterwards:
+#
+#   npx convex env set GUEST_MODE false
+#   npm run e2e -- .maestro/guest-mode-off.yaml
+#   npx convex env remove GUEST_MODE
+#
+# The server half is covered without a simulator by
+# `__tests__/convex/auth-guest-mode-off.test.ts`: the anonymous plugin is not
+# registered at all, so `/sign-in/anonymous` 404s and no guest row can be
+# created. This is the client half, that the button is actually gone rather
+# than just failing on tap.
+appId: ${MAESTRO_APP_ID}
+---
+- launchApp:
+    clearState: true
+    permissions:
+      notifications: deny
+- waitForAnimationToEnd:
+    timeout: 15000
+- runFlow:
+    when:
+      visible: "DEVELOPMENT SERVERS"
+    commands:
+      - openLink: ${MAESTRO_DEV_URL}
+      - extendedWaitUntil:
+          notVisible: "DEVELOPMENT SERVERS"
+          timeout: 30000
+      - waitForAnimationToEnd:
+          timeout: 15000
+- extendedWaitUntil:
+    visible:
+      id: "sign-in-screen"
+    timeout: 20000
+
+# `getEnabledProviders` is a live Convex query and the button renders on its
+# answer, so wait for something unconditional first. Asserting absence on the
+# frame before the query lands would pass whatever the deployment says.
+- extendedWaitUntil:
+    visible:
+      id: "sign-in-submit"
+    timeout: 20000
+- assertNotVisible:
+    id: "sign-in-guest"
+- assertNotVisible: "Continue as guest"
+- takeScreenshot: .maestro/screenshots/guest-mode-off
+
+# Sign up is the other entry point and reads the same flag.
+- tapOn: "Sign up"
+- extendedWaitUntil:
+    visible:
+      id: "sign-up-screen"
+    timeout: 20000
+- extendedWaitUntil:
+    visible:
+      id: "sign-up-submit"
+    timeout: 20000
+- assertNotVisible:
+    id: "sign-up-guest"
+- assertNotVisible: "Continue as guest"

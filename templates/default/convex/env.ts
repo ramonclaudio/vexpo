@@ -28,4 +28,9 @@ export const env = {
     },
   },
   requireEmailVerification: bool("REQUIRE_EMAIL_VERIFICATION", false),
+  // Guest browsing. On by default so a fresh scaffold satisfies App Store
+  // guideline 5.1.1 out of the box: the sign-in screen offers "Continue as
+  // guest" and the app is usable without an account. Set GUEST_MODE=false on
+  // the Convex deployment for an app where an account really is the product.
+  guestMode: bool("GUEST_MODE", true),
 } as const;

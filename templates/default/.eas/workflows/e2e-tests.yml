@@ -79,8 +79,8 @@ jobs:
     params:
       build_id: ${{ needs.build_ios_simulator.outputs.build_id }}
       # Listed one by one, in order. A directory is planned in REVERSE
-      # alphabetical order, which runs auth.yaml last, after the three flows
-      # that need the session it creates. Same order as ORDERED_FLOWS in
+      # alphabetical order, which runs auth.yaml last, after the flows that
+      # need the session it creates. Same order as ORDERED_FLOWS in
       # scripts/e2e.mjs.
       #
       # zz-delete-restore.yaml is missing on purpose. The delete is gated on
@@ -93,8 +93,14 @@ jobs:
       # no hook to do it. The gate itself is right (see use-delete-account.ts,
       # Apple 5.1.1(v)) and is not worth weakening for a test, so the
       # delete -> restore journey stays a local check via `npm run e2e`.
+      # guest.yaml runs first: it wipes state, browses as a guest and discards
+      # the guest session, so it hands auth.yaml the signed-out app it wants.
+      # Its purge has no LocalAuthentication gate (a guest has no identity to
+      # confirm), so unlike zz-delete-restore.yaml it runs fine on this job.
       flow_path:
+        - .maestro/guest.yaml
         - .maestro/auth.yaml
         - .maestro/launch.yaml
         - .maestro/tour.yaml
+        - .maestro/screens.yaml
       retries: 2
