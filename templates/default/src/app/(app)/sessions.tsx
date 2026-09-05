@@ -255,7 +255,14 @@ export default function SessionsScreen() {
                             frame({ minHeight: TouchTarget.min }),
                             contentShape(shapes.rectangle()),
                             accessibilityLabel(`Revoke ${deviceLabel(s.userAgent)}`),
-                            accessibilityInputLabels([`Revoke ${deviceLabel(s.userAgent)}`]),
+                            // The device name disambiguates the rows for
+                            // VoiceOver, but the word on screen is just
+                            // "Revoke", and Voice Control matches what you
+                            // can see. Both phrases work.
+                            accessibilityInputLabels([
+                              "Revoke",
+                              `Revoke ${deviceLabel(s.userAgent)}`,
+                            ]),
                           ]}
                           onPress={() => {
                             haptics.warning();

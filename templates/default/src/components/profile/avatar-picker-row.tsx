@@ -72,7 +72,12 @@ export function AvatarPickerRow({
             // email the children already say, and this row is the only place
             // VoiceOver meets them before the fields below.
             accessibilityHint("Change your profile photo"),
-            accessibilityInputLabels(["Change profile photo", "Profile photo"]),
+            accessibilityInputLabels([
+              "Change profile photo",
+              "Profile photo",
+              // What a guest actually reads on this row.
+              "Add a photo",
+            ]),
           ]}
           onPress={() => {
             setAvatarPicker(true);
