@@ -270,8 +270,9 @@ export async function ensureIdentity(localEnv: Map<string, string>): Promise<voi
   const teamId = await resolveTeamId(localEnv);
 
   if (bundleId) {
-    await convexEnvSet("APP_BUNDLE_ID", bundleId);
-    ok(`Convex env: APP_BUNDLE_ID=${bundleId}`);
+    const devBundleId = `${bundleId}.dev`;
+    await convexEnvSet("APP_BUNDLE_ID", devBundleId);
+    ok(`Convex env: APP_BUNDLE_ID=${devBundleId} (dev deployment serves the dev variant)`);
   }
   if (teamId) {
     await convexEnvSet("APPLE_TEAM_ID", teamId);

@@ -188,8 +188,9 @@ async function syncBundleId(bundleId: string): Promise<void> {
   ok(`wrote EXPO_PUBLIC_APP_BUNDLE_ID=${bundleId} to .env.local`);
 
   if (env.has("CONVEX_DEPLOYMENT")) {
-    await convexEnvSet("APP_BUNDLE_ID", bundleId);
-    ok(`Convex env: APP_BUNDLE_ID=${bundleId}`);
+    const devBundleId = `${bundleId}.dev`;
+    await convexEnvSet("APP_BUNDLE_ID", devBundleId);
+    ok(`Convex env: APP_BUNDLE_ID=${devBundleId} (dev deployment serves the dev variant)`);
   } else {
     note("no Convex deployment yet; the next `vexpo convex` run carries APP_BUNDLE_ID");
   }
@@ -224,9 +225,8 @@ async function rewriteAppConfig(inputs: RebrandInputs): Promise<void> {
   );
 
   text = text.replace(
-    new RegExp(String.raw`name: IS_DEV \? ${QUOTED} : ${QUOTED},`),
-    () =>
-      `name: IS_DEV ? ${JSON.stringify(`${inputs.appName} (Dev)`)} : ${JSON.stringify(inputs.appName)},`,
+    new RegExp(String.raw`const APP_NAME = ${QUOTED};`),
+    () => `const APP_NAME = ${JSON.stringify(inputs.appName)};`,
   );
 
   text = text.replace(
@@ -235,8 +235,8 @@ async function rewriteAppConfig(inputs: RebrandInputs): Promise<void> {
   );
 
   text = text.replace(
-    new RegExp(String.raw`scheme: ${QUOTED},`),
-    () => `scheme: ${JSON.stringify(inputs.scheme)},`,
+    new RegExp(String.raw`const SCHEME = ${QUOTED};`),
+    () => `const SCHEME = ${JSON.stringify(inputs.scheme)};`,
   );
 
   await writeFile(file, text);
@@ -364,9 +364,9 @@ async function validateAppConfig(): Promise<void> {
       ),
       "BUNDLE_ID assignment",
     ],
-    [new RegExp(String.raw`name: IS_DEV \? ${QUOTED} : ${QUOTED},`), "name"],
+    [new RegExp(String.raw`const APP_NAME = ${QUOTED};`), "APP_NAME"],
     [new RegExp(String.raw`slug: ${QUOTED},`), "slug"],
-    [new RegExp(String.raw`scheme: ${QUOTED},`), "scheme"],
+    [new RegExp(String.raw`const SCHEME = ${QUOTED};`), "SCHEME"],
   ];
   for (const [re, label] of markers) {
     if (!re.test(cfg)) {
@@ -439,15 +439,10 @@ async function rewriteEnvExample(inputs: RebrandInputs): Promise<void> {
   const text = await readOrSkip(file);
   if (text === null) return;
 
-  const updated = text
-    .replace(
-      /# Reverse-DNS bundle id, e\.g\. \S+\./,
-      () => `# Reverse-DNS bundle id, e.g. ${inputs.bundleId}.`,
-    )
-    .replace(
-      /# Toggles `name` to "[^"]*" so dev and prod/,
-      () => `# Toggles \`name\` to ${JSON.stringify(`${inputs.appName} (Dev)`)} so dev and prod`,
-    );
+  const updated = text.replace(
+    /# Reverse-DNS bundle id, e\.g\. \S+\./,
+    () => `# Reverse-DNS bundle id, e.g. ${inputs.bundleId}.`,
+  );
   if (updated === text) {
     nop(`${file} already customized; skipped`);
     return;
@@ -498,7 +493,7 @@ async function detectTemplateDefaults(): Promise<{ stillTemplate: boolean; signa
   const cfg = await readFile("app.config.ts", "utf8");
   if (cfg.includes("`com.example.${pkg.name}`")) signals.push("app.config.ts: example bundle id");
   if (/slug: "vexpo"/.test(cfg)) signals.push("app.config.ts: slug=vexpo");
-  if (/scheme: "vexpo"/.test(cfg)) signals.push("app.config.ts: scheme=vexpo");
+  if (/const SCHEME = "vexpo";/.test(cfg)) signals.push("app.config.ts: scheme=vexpo");
   const pkg = JSON.parse(await readFile("package.json", "utf8")) as { name?: string };
   if (pkg.name === "vexpo") signals.push("package.json: name=vexpo");
   return { stillTemplate: signals.length > 0, signals };

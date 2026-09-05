@@ -24,10 +24,10 @@ beforeEach(() => {
 afterEach(() => vi.clearAllMocks());
 
 describe("ensureIdentity", () => {
-  it("syncs the existing .env.local bundle id to Convex without rewriting the env line", async () => {
+  it("syncs the dev variant of the .env.local bundle id to Convex without rewriting the env line", async () => {
     await ensureIdentity(new Map([["EXPO_PUBLIC_APP_BUNDLE_ID", "com.acme.foobar"]]));
 
-    expect(envSetSpy).toHaveBeenCalledWith("APP_BUNDLE_ID", "com.acme.foobar");
+    expect(envSetSpy).toHaveBeenCalledWith("APP_BUNDLE_ID", "com.acme.foobar.dev");
     const bundleWrite = ensureLineSpy.mock.calls.find((c) => c[0] === "EXPO_PUBLIC_APP_BUNDLE_ID");
     expect(bundleWrite).toBeUndefined();
   });
