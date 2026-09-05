@@ -4,6 +4,8 @@ import { accessibilityHidden, frame } from "@expo/ui/swift-ui/modifiers";
 
 import { useColors } from "@/hooks/use-theme";
 
+// Decorative both places it is used: the settings row and the picker button
+// each carry their own label, and the fallback symbol below is hidden too.
 export function RemoteAvatar({ url, size }: { url: string; size: number }) {
   const colors = useColors();
   const image = useImage(url, { maxWidth: size * 4 });
@@ -23,7 +25,6 @@ export function RemoteAvatar({ url, size }: { url: string; size: number }) {
         source={image}
         style={{ width: size, height: size, borderRadius: size / 2 }}
         contentFit="cover"
-        accessibilityLabel="Profile photo"
       />
     </RNHostView>
   );

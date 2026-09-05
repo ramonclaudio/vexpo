@@ -95,12 +95,7 @@ export default function RestoreAccountScreen() {
           alignment="center"
           modifiers={[frame({ maxWidth: Infinity }), padding({ horizontal: 24, vertical: 48 })]}
         >
-          <ExpoImage
-            source={brandIcon}
-            style={{ width: 72, height: 72 }}
-            contentFit="contain"
-            accessibilityLabel=""
-          />
+          <ExpoImage source={brandIcon} style={{ width: 72, height: 72 }} contentFit="contain" />
 
           <VStack spacing={12} alignment="center">
             <Text
