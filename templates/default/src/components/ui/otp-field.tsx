@@ -13,10 +13,11 @@ import {
   submitLabel,
   textContentType,
 } from "@expo/ui/swift-ui/modifiers";
+import { useWindowDimensions } from "react-native";
 import { scheduleOnRN } from "react-native-worklets";
 
 import { CapsuleTextField } from "@/components/ui/capsule-text-field";
-import { DynamicType } from "@/constants/ui";
+import { DynamicType, otpKerning } from "@/constants/ui";
 import { useColors } from "@/hooks/use-theme";
 import { useDynamicFont } from "@/lib/dynamic-font";
 import { maskOtp } from "@/lib/masks";
@@ -42,6 +43,7 @@ export function OtpField({
 }) {
   const dfont = useDynamicFont();
   const colors = useColors();
+  const { fontScale } = useWindowDimensions();
   return (
     <CapsuleTextField
       testID={testID}
@@ -57,7 +59,7 @@ export function OtpField({
       modifiers={[
         dfont({ size: 24, design: "monospaced" }),
         monospacedDigit(),
-        kerning(8),
+        kerning(otpKerning(fontScale)),
         multilineTextAlignment("center"),
         dynamicTypeSize({ max: DynamicType.otp }),
         keyboardType("numeric"),

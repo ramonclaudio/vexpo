@@ -1,4 +1,5 @@
 import { startTransition, useActionState, useEffect, useState } from "react";
+import { useWindowDimensions } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
 import {
   Host,
@@ -35,7 +36,7 @@ import {
 } from "@expo/ui/swift-ui/modifiers";
 import { useDynamicFont } from "@/lib/dynamic-font";
 import { TouchTarget } from "@/constants/layout";
-import { DynamicType } from "@/constants/ui";
+import { DynamicType, otpKerning } from "@/constants/ui";
 
 import { scheduleOnRN } from "react-native-worklets";
 
@@ -63,6 +64,7 @@ const initialState: ResetState = {};
 
 export default function ResetPasswordScreen() {
   const dfont = useDynamicFont();
+  const { fontScale } = useWindowDimensions();
   const colors = useColors();
   const { email = "" } = useLocalSearchParams<{ email: string }>();
   const providers = useQuery(api.auth.getEnabledProviders);
@@ -251,7 +253,7 @@ export default function ResetPasswordScreen() {
                 textContentType("oneTimeCode"),
                 dfont({ size: 24, design: "monospaced" }),
                 monospacedDigit(),
-                kerning(8),
+                kerning(otpKerning(fontScale)),
                 multilineTextAlignment("center"),
                 dynamicTypeSize({ max: DynamicType.otp }),
                 submitLabel("next"),
