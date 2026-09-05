@@ -27,6 +27,7 @@ import {
   provisionWebhook,
   verifyDomain,
   type ResendDomain,
+  type ResendWebhook,
 } from "../lib/resend-api.ts";
 import { load as loadState, recordStep } from "../lib/state.ts";
 
@@ -290,10 +291,7 @@ async function recreateWebhook(
   return id;
 }
 
-async function retireStale(
-  fullKey: string,
-  stale: Array<{ id: string; endpoint: string }>,
-): Promise<number> {
+async function retireStale(fullKey: string, stale: ResendWebhook[]): Promise<number> {
   for (const webhook of stale) {
     await deleteWebhook(fullKey, webhook.id);
     note(`retired stale webhook → ${webhook.endpoint}`);

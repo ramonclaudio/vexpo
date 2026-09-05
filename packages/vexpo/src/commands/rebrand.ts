@@ -298,10 +298,10 @@ async function rewriteStoreConfigFile(
   inputs: RebrandInputs,
   { required }: { required: boolean },
 ): Promise<void> {
-  let json: StoreConfigShape;
+  let json: StoreConfig;
   try {
     await access(file);
-    json = JSON.parse(await readFile(file, "utf8")) as StoreConfigShape;
+    json = JSON.parse(await readFile(file, "utf8")) as StoreConfig;
   } catch {
     if (!required) return;
     throw new Error(`${file} missing or unparseable; restore it from the vexpo template first`);
@@ -324,7 +324,7 @@ async function rewriteStoreConfigFile(
   ok(`updated ${file}`);
 }
 
-type StoreConfigShape = {
+type StoreConfig = {
   configVersion: number;
   apple: {
     copyright: string;
