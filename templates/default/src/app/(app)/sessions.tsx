@@ -28,6 +28,7 @@ import { DynamicType, Duration, toSeconds } from "@/constants/ui";
 import { ContentUnavailable } from "@/components/ui/content-unavailable";
 import { SkeletonSessions } from "@/components/ui/skeleton";
 import { ErrorText } from "@/components/ui/status-text";
+import { announce } from "@/lib/a11y";
 import { deviceLabel } from "@/lib/device";
 import { useDynamicFont } from "@/lib/dynamic-font";
 
@@ -46,6 +47,8 @@ type SessionRow = {
   createdAt: Date;
   expiresAt: Date;
 };
+
+const REVOKE_FAILED = "Couldn't revoke session";
 
 function formatRelative(date: Date): string {
   const now = Date.now();
@@ -110,6 +113,7 @@ export default function SessionsScreen() {
       const res = await authClient.revokeSession({ token });
       if (res.error) {
         haptics.error();
+        announce(`Error: ${REVOKE_FAILED}`);
         setRevokeError(true);
         return;
       }
@@ -117,6 +121,7 @@ export default function SessionsScreen() {
       await load();
     } catch {
       haptics.error();
+      announce(`Error: ${REVOKE_FAILED}`);
       setRevokeError(true);
     } finally {
       setRevoking(null);
@@ -310,7 +315,7 @@ export default function SessionsScreen() {
               </Text>
             ) : null}
             {revokeError ? (
-              <ErrorText testID="sessions-revoke-error">Couldn't revoke session</ErrorText>
+              <ErrorText testID="sessions-revoke-error">{REVOKE_FAILED}</ErrorText>
             ) : null}
           </VStack>
         </ScrollView>

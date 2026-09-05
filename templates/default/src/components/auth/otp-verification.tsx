@@ -45,7 +45,7 @@ type OtpVerificationProps = {
   flow?: OtpFlow;
 };
 
-type OtpState = { error?: string; ok?: boolean; attempt?: number };
+type OtpState = { error?: string; ok?: boolean };
 const initialState: OtpState = {};
 
 export function OtpVerification({ email, onBack, flow = "verify-email" }: OtpVerificationProps) {
@@ -56,12 +56,10 @@ export function OtpVerification({ email, onBack, flow = "verify-email" }: OtpVer
   const [lastAction, setLastAction] = useState<"verify" | "resend">("verify");
   const isSignIn = flow === "sign-in";
 
-  const [verifyState, verify, isVerifying] = useActionState<OtpState, void>(async (prev) => {
-    const attempt = (prev.attempt ?? 0) + 1;
-
+  const [verifyState, verify, isVerifying] = useActionState<OtpState, void>(async () => {
     const code = otpState.value;
     if (code.length !== 6) {
-      return fail("Please enter the 6-digit code", attempt);
+      return fail("Please enter the 6-digit code");
     }
 
     try {
@@ -70,7 +68,7 @@ export function OtpVerification({ email, onBack, flow = "verify-email" }: OtpVer
         : await authClient.emailOtp.verifyEmail({ email: email.trim(), otp: code });
 
       if (response.error) {
-        return fail("Invalid or expired code. Please try again.", attempt);
+        return fail("Invalid or expired code. Please try again.");
       }
 
       succeed(isSignIn ? "Signed in" : "Email verified");
@@ -78,25 +76,23 @@ export function OtpVerification({ email, onBack, flow = "verify-email" }: OtpVer
     } catch {
       return fail(
         isSignIn ? "Sign in failed. Please try again." : "Verification failed. Please try again.",
-        attempt,
       );
     }
   }, initialState);
 
-  const [resendState, resend, isResending] = useActionState<OtpState, void>(async (prev) => {
-    const attempt = (prev.attempt ?? 0) + 1;
+  const [resendState, resend, isResending] = useActionState<OtpState, void>(async () => {
     try {
       const response = await authClient.emailOtp.sendVerificationOtp({
         email: email.trim(),
         type: isSignIn ? "sign-in" : "email-verification",
       });
       if (response.error) {
-        return fail("Failed to send code. Please try again.", attempt);
+        return fail("Failed to send code. Please try again.");
       }
       succeed("New verification code sent");
       return { ok: true };
     } catch {
-      return fail("Failed to send code. Please try again.", attempt);
+      return fail("Failed to send code. Please try again.");
     }
   }, initialState);
 
@@ -110,7 +106,6 @@ export function OtpVerification({ email, onBack, flow = "verify-email" }: OtpVer
   };
 
   const error = lastAction === "resend" ? resendState.error : verifyState.error;
-  const attempt = lastAction === "resend" ? resendState.attempt : verifyState.attempt;
   const invalidCode = lastAction === "verify" && !!verifyState.error;
 
   const verifyLabel = (() => {
@@ -171,11 +166,7 @@ export function OtpVerification({ email, onBack, flow = "verify-email" }: OtpVer
             <Text modifiers={[dfont({ size: 15, weight: "semibold" })]}>{email}</Text>
           </VStack>
 
-          {error && (
-            <ErrorText testID="otp-error" attempt={attempt}>
-              {error}
-            </ErrorText>
-          )}
+          {error && <ErrorText testID="otp-error">{error}</ErrorText>}
 
           <VStack spacing={12} modifiers={[frame({ maxWidth: Infinity })]}>
             <OtpField

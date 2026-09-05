@@ -32,7 +32,7 @@ import { useUnsavedChanges } from "@/hooks/use-unsaved-changes";
 import { useDynamicFont } from "@/lib/dynamic-font";
 import { fail, succeed } from "@/lib/form-result";
 
-type ChangePasswordState = { error?: string; ok?: boolean; attempt?: number };
+type ChangePasswordState = { error?: string; ok?: boolean };
 const initialState: ChangePasswordState = {};
 
 export default function ChangePasswordScreen() {
@@ -49,16 +49,15 @@ function ChangePasswordForm({ email }: { email: string }) {
   const [confirm, setConfirm] = useState("");
   const emailState = useNativeState(email);
 
-  const [state, submit, isPending] = useActionState<ChangePasswordState, void>(async (prev) => {
-    const attempt = (prev.attempt ?? 0) + 1;
+  const [state, submit, isPending] = useActionState<ChangePasswordState, void>(async () => {
     if (!current || !next || !confirm) {
-      return fail("Fill in every field", attempt);
+      return fail("Fill in every field");
     }
     if (next.length < 10 || next.length > 128) {
-      return fail("Password must be 10-128 characters", attempt);
+      return fail("Password must be 10-128 characters");
     }
     if (next !== confirm) {
-      return fail("Passwords do not match", attempt);
+      return fail("Passwords do not match");
     }
     try {
       const res = await authClient.changePassword({
@@ -67,12 +66,12 @@ function ChangePasswordForm({ email }: { email: string }) {
         revokeOtherSessions: true,
       });
       if (res.error) {
-        return fail(res.error.message ?? "Failed to change password", attempt);
+        return fail(res.error.message ?? "Failed to change password");
       }
       succeed("Password changed. Other sessions have been signed out.");
       return { ok: true };
     } catch {
-      return fail("An unexpected error occurred", attempt);
+      return fail("An unexpected error occurred");
     }
   }, initialState);
 
@@ -161,11 +160,7 @@ function ChangePasswordForm({ email }: { email: string }) {
             />
           </LabeledField>
 
-          {state.error ? (
-            <ErrorText testID="change-password-error" attempt={state.attempt}>
-              {state.error}
-            </ErrorText>
-          ) : null}
+          {state.error ? <ErrorText testID="change-password-error">{state.error}</ErrorText> : null}
 
           <ProminentButton
             testID="change-password-submit"

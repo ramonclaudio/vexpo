@@ -6,6 +6,7 @@ import { describe, expect, it, vi } from "vitest";
 vi.mock("expo-local-authentication", () => ({}));
 vi.mock("@/lib/auth-client", () => ({ authClient: { signOut: vi.fn() } }));
 vi.mock("@/lib/haptics", () => ({ haptics: { error: vi.fn() } }));
+vi.mock("@/lib/a11y", () => ({ announce: vi.fn() }));
 
 const { isAuthUnavailable } = await import("@/hooks/use-delete-account");
 
