@@ -57,6 +57,26 @@ npx skills add expo/skills                           # Cursor and everything els
 
 The Claude Code and Codex plugins register the MCP server themselves, so on those two the `.mcp.json` is a duplicate you can delete.
 
+An agent can also drive the app instead of only reading the code. [`agent-device`](https://agent-device.dev) is Callstack's CLI for that. It reads an accessibility snapshot of the current screen, acts on refs like `@e2`, and saves a screenshot as evidence:
+
+```bash
+npm install -g agent-device@latest
+agent-device doctor
+```
+
+The loop, once the app is running on a simulator:
+
+```bash
+agent-device apps --platform ios
+agent-device open Vexpo --platform ios
+agent-device snapshot -i          # @e1 [heading] "Welcome"  @e2 [button] "Sign in"
+agent-device press @e2 --settle
+agent-device screenshot ./artifacts/sign-in.png
+agent-device close
+```
+
+Two more for watching rather than driving. `expo-device-hub` adds a device dashboard to `npm run dev`, printed as `Expo Device Hub: http://localhost:8081/_expo/plugins/expo-device-hub`. It streams the simulator into the browser and you can tap and type into it there. `npx @expo/serve-sim` does the same thing without a dev server, on port 3200, and the URL tunnels, so an agent on another machine can see the screen.
+
 ## Prerequisites
 
 The local tools come down to these two, since `eas-cli` and the `convex` CLI come through the project (npx fetches them) with no global installs:
