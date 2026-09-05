@@ -1,7 +1,7 @@
 import { v } from "convex/values";
 
 import { components, internal } from "./_generated/api";
-import type { Id } from "./_generated/dataModel";
+import type { Doc, Id } from "./_generated/dataModel";
 import type { MutationCtx } from "./_generated/server";
 import { internalMutation } from "./_generated/server";
 import {
@@ -131,32 +131,53 @@ export const mergeGuestData = internalMutation({
     if (!guest) return null;
 
     const now = Date.now();
-    const patch: { bio?: string; avatar?: Id<"_storage">; updatedAt: number } = { updatedAt: now };
-
-    if (guest.bio !== undefined && target.bio === undefined) patch.bio = guest.bio;
-    if (guest.avatar !== undefined && target.avatar === undefined) {
-      patch.avatar = guest.avatar;
-      await ctx.db.patch(guest._id, { avatar: undefined });
-    }
-
-    const guestTokens = await ctx.db
-      .query("pushTokens")
-      .withIndex("by_userId", (q) => q.eq("userId", guest._id))
-      .collect();
-    for (const token of guestTokens) {
-      const sameToken = await ctx.db
-        .query("pushTokens")
-        .withIndex("by_token", (q) => q.eq("token", token.token))
-        .collect();
-      const duplicate = sameToken.some((r) => r._id !== token._id && r.userId === target._id);
-      if (duplicate) await ctx.db.delete(token._id);
-      else await ctx.db.patch(token._id, { userId: target._id, updatedAt: now });
-    }
-
-    await ctx.db.patch(target._id, patch);
+    await ctx.db.patch(target._id, await mergeProfile(ctx, guest, target, now));
+    await movePushTokens(ctx, guest._id, target._id, now);
     return null;
   },
 });
+
+type UserDoc = Doc<"users">;
+
+// The guest's bio and avatar fill in only where the account has nothing yet.
+// The avatar moves rather than copies, so the storage id has one owner.
+async function mergeProfile(
+  ctx: MutationCtx,
+  guest: UserDoc,
+  target: UserDoc,
+  now: number,
+): Promise<{ bio?: string; avatar?: Id<"_storage">; updatedAt: number }> {
+  const patch: { bio?: string; avatar?: Id<"_storage">; updatedAt: number } = { updatedAt: now };
+  if (guest.bio !== undefined && target.bio === undefined) patch.bio = guest.bio;
+  if (guest.avatar !== undefined && target.avatar === undefined) {
+    patch.avatar = guest.avatar;
+    await ctx.db.patch(guest._id, { avatar: undefined });
+  }
+  return patch;
+}
+
+// A device the account already registered would come across as a second row for
+// the same token, so those are dropped instead of reassigned.
+async function movePushTokens(
+  ctx: MutationCtx,
+  guestId: Id<"users">,
+  targetId: Id<"users">,
+  now: number,
+): Promise<void> {
+  const guestTokens = await ctx.db
+    .query("pushTokens")
+    .withIndex("by_userId", (q) => q.eq("userId", guestId))
+    .collect();
+  for (const token of guestTokens) {
+    const sameToken = await ctx.db
+      .query("pushTokens")
+      .withIndex("by_token", (q) => q.eq("token", token.token))
+      .collect();
+    const duplicate = sameToken.some((r) => r._id !== token._id && r.userId === targetId);
+    if (duplicate) await ctx.db.delete(token._id);
+    else await ctx.db.patch(token._id, { userId: targetId, updatedAt: now });
+  }
+}
 
 export const discardGuest = authMutation({
   args: {},
