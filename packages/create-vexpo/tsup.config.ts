@@ -20,7 +20,10 @@ export default defineConfig({
     const src = join(process.cwd(), "..", "..", "templates", "default");
     const dest = join(process.cwd(), "dist", "templates", "default");
     await rm(dest, { recursive: true, force: true });
-    const ROOT_ONLY_DIRS = ["ios", "android", ".expo", ".tanstack", ".output"];
+    // Paths relative to the template root. `.maestro/debug` is where maestro
+    // drops its screenshots and logs, so a scaffold made after a local e2e run
+    // would otherwise ship them.
+    const ROOT_ONLY_DIRS = ["ios", "android", ".expo", ".tanstack", ".output", ".maestro/debug"];
     const SKIP_DIRS = [
       "node_modules",
       ".claude",
