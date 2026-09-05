@@ -323,6 +323,8 @@ That job only runs on a PR that touches `templates/default`, and it always runs 
 - `@expo/ui` keeps SwiftUI's default labeling, so a control wrapping a `Text` already announces it. Label icon-only controls, hide decorative symbols with `accessibilityHidden(true)`, and leave the rest alone. A label on a container replaces what its children would have said.
 - An `expo-image` `Image` needs `accessible` alongside `accessibilityLabel`. Without it the view never enters the accessibility hierarchy and the label does nothing.
 - Nothing rests on colour alone. Status rows pair the tone with a symbol and a word.
+- Voice Control matches what you can read. When a control's input labels differ from its visible text, keep the visible words in the list too, or saying them does nothing.
+- The launch screen follows the system appearance, not the in-app one, so an app set to Dark under a Light system flashes white on every launch. `vexpo asc accessibility url` sets the App Store link Apple keeps for exactly this kind of caveat.
 - No test can confirm what VoiceOver says: Maestro reads the iOS accessibility hierarchy and an `@expo/ui` `Text` never reaches it. Turn VoiceOver on before you submit.
 
 ## Conventions
