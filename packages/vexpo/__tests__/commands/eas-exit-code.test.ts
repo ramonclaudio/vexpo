@@ -1,5 +1,12 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { mkdtemp, readFile, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import path from "node:path";
 
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+// Only the two modules that shell out to eas-cli are stubbed. `env-files`,
+// `fs`, `state` and `output` run for real against the temp project below, so
+// the real ROUTING table decides which keys reach EAS.
 vi.mock("../../src/lib/eas-cli.ts", () => ({ easSpawn: vi.fn().mockResolvedValue(0) }));
 vi.mock("../../src/lib/eas-project.ts", () => ({
   checkCli: vi.fn().mockResolvedValue({ ok: true, version: "1.0.0" }),
@@ -10,58 +17,71 @@ vi.mock("../../src/lib/eas-project.ts", () => ({
   ensureBranches: vi.fn().mockResolvedValue([]),
   envPush: vi.fn(),
 }));
-vi.mock("../../src/lib/env-files.ts", async () => ({
-  ...(await vi.importActual("../../src/lib/env-files.ts")),
-  ROUTING: { EXPO_PUBLIC_CONVEX_URL: { routes: () => [{ type: "eas" }] } },
-  readEnvFile: vi.fn().mockResolvedValue(new Map([["EXPO_PUBLIC_CONVEX_URL", "https://x"]])),
-  withTempEnvFile: vi.fn((_lines: string[], fn: (p: string) => Promise<unknown>) =>
-    fn("/tmp/fake.env"),
-  ),
-}));
-vi.mock("../../src/lib/fs.ts", () => ({ fileExists: vi.fn() }));
-vi.mock("../../src/lib/state.ts", () => ({ recordStep: vi.fn().mockResolvedValue(undefined) }));
-vi.mock("../../src/lib/output.ts", async () => ({
-  ...(await vi.importActual("../../src/lib/output.ts")),
-  bad: vi.fn(),
-  ok: vi.fn(),
-  nop: vi.fn(),
-  note: vi.fn(),
-  yep: vi.fn(),
-  line: vi.fn(),
-  section: vi.fn(),
-  askYesNo: vi.fn().mockResolvedValue(true),
-}));
 
 import { runEas } from "../../src/commands/eas.ts";
 import { envPush } from "../../src/lib/eas-project.ts";
-import { fileExists } from "../../src/lib/fs.ts";
 
 const envPushSpy = envPush as unknown as ReturnType<typeof vi.fn>;
-const fileExistsSpy = fileExists as unknown as ReturnType<typeof vi.fn>;
 
-beforeEach(() => {
+let originalCwd: string;
+let workdir: string;
+
+beforeEach(async () => {
+  originalCwd = process.cwd();
+  workdir = await mkdtemp(path.join(tmpdir(), "eas-exit-code-"));
+  process.chdir(workdir);
   vi.clearAllMocks();
 });
 
+afterEach(() => {
+  process.chdir(originalCwd);
+});
+
+const CONVEX_URL = "EXPO_PUBLIC_CONVEX_URL=https://example.convex.cloud\n";
+const SERVER_SECRET = "BETTER_AUTH_SECRET=not-for-eas\n";
+
 describe("runEas exit code", () => {
   it("exits nonzero when the development env push fails", async () => {
-    fileExistsSpy.mockResolvedValue(true);
+    await writeFile(".env.local", CONVEX_URL);
     envPushSpy.mockRejectedValue(new Error("eas env:push failed"));
-    const exit = await runEas({});
-    expect(exit).toBe(1);
+    await expect(runEas({})).resolves.toBe(1);
   });
 
   it("exits nonzero when the prod env push fails", async () => {
-    fileExistsSpy.mockImplementation((p: string) => Promise.resolve(p === ".env.prod"));
+    await writeFile(".env.prod", CONVEX_URL);
     envPushSpy.mockRejectedValue(new Error("eas env:push failed"));
-    const exit = await runEas({ withProd: true });
-    expect(exit).toBe(1);
+    await expect(runEas({ withProd: true })).resolves.toBe(1);
   });
 
   it("exits zero when pushes succeed", async () => {
-    fileExistsSpy.mockResolvedValue(true);
+    await writeFile(".env.local", CONVEX_URL);
     envPushSpy.mockResolvedValue(undefined);
-    const exit = await runEas({});
-    expect(exit).toBe(0);
+    await expect(runEas({})).resolves.toBe(0);
+  });
+
+  it("exits zero and pushes nothing when .env.local is missing", async () => {
+    await expect(runEas({})).resolves.toBe(0);
+    expect(envPushSpy).not.toHaveBeenCalled();
+  });
+
+  // The real ROUTING table is what keeps server secrets out of EAS. With it
+  // mocked to a single key this test could not fail.
+  it("does not push a Convex-routed secret to EAS", async () => {
+    await writeFile(".env.local", SERVER_SECRET);
+    envPushSpy.mockResolvedValue(undefined);
+    await expect(runEas({})).resolves.toBe(0);
+    expect(envPushSpy).not.toHaveBeenCalled();
+  });
+
+  it("pushes only the EAS-routed key when the file holds both", async () => {
+    await writeFile(".env.local", CONVEX_URL + SERVER_SECRET);
+    // The temp file is deleted as soon as the push returns, so read it here.
+    let pushed = "";
+    envPushSpy.mockImplementation(async (opts: { path: string }) => {
+      pushed = await readFile(opts.path, "utf8");
+    });
+    await expect(runEas({})).resolves.toBe(0);
+    expect(pushed).toContain("EXPO_PUBLIC_CONVEX_URL=");
+    expect(pushed).not.toContain("BETTER_AUTH_SECRET");
   });
 });

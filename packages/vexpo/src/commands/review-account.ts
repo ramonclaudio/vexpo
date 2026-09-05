@@ -87,10 +87,23 @@ async function seedBothChannels(payload: string): Promise<boolean> {
   return true;
 }
 
+async function readStoreConfig(): Promise<StoreConfig | null> {
+  try {
+    return JSON.parse(await readFile("store.config.json", "utf8")) as StoreConfig;
+  } catch {
+    return null;
+  }
+}
+
 export async function runReviewAccount(options: ReviewAccountOptions): Promise<number> {
   section("App Review demo account");
 
-  const config = JSON.parse(await readFile("store.config.json", "utf8")) as StoreConfig;
+  const config = await readStoreConfig();
+  if (!config) {
+    bad("no readable store.config.json here. Run from your project root.");
+    note("the vexpo template ships one; `npx eas-cli metadata:pull` writes one from ASC");
+    return 1;
+  }
   const creds = resolveCreds(options, config);
   if (!creds) {
     bad("missing email (set --email, or fill apple.review.demoUsername in store.config.json)");

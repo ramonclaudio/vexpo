@@ -1,24 +1,13 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { mkdtemp, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import path from "node:path";
 
-const localEnv = new Map<string, string>();
-const prodEnvFiles = new Map<string, Map<string, string>>();
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("../../src/lib/env-local.ts", () => ({
-  readOne: vi.fn(async (key: string) => localEnv.get(key)),
-}));
-vi.mock("../../src/lib/env-files.ts", async () => ({
-  ...(await vi.importActual("../../src/lib/env-files.ts")),
-  readEnvFile: vi.fn(async (file: string) => prodEnvFiles.get(file) ?? new Map()),
-}));
-vi.mock("../../src/lib/fs.ts", () => ({
-  fileExists: vi.fn(async (file: string) => prodEnvFiles.has(file)),
-}));
-vi.mock("../../src/lib/app.ts", () => ({ pkgName: vi.fn(async () => "acme") }));
+// Only the Resend HTTP client and the `convex env set` shell-out are stubbed.
+// `env-local`, `env-files`, `fs`, `app` and `state` read and write real files
+// in the temp project set up below.
 vi.mock("../../src/lib/convex-env.ts", () => ({ envSet: vi.fn(async () => undefined) }));
-vi.mock("../../src/lib/state.ts", () => ({
-  load: vi.fn(async () => ({ steps: {} })),
-  recordStep: vi.fn(async () => undefined),
-}));
 vi.mock("../../src/lib/resend-api.ts", () => ({
   probeAccess: vi.fn(async () => "full"),
   listDomains: vi.fn(async () => [{ id: "d1", name: "mailer.acme.com", status: "verified" }]),
@@ -45,18 +34,29 @@ const deleteWebhookSpy = deleteWebhook as unknown as ReturnType<typeof vi.fn>;
 const DEV_SITE = "https://dev-site.convex.site";
 const PROD_SITE = "https://prod-site.convex.site";
 
-beforeEach(() => {
+let originalCwd: string;
+
+async function writeProdEnv(siteUrl: string): Promise<void> {
+  await writeFile(".env.prod", `EXPO_PUBLIC_CONVEX_SITE_URL=${siteUrl}\n`);
+}
+
+beforeEach(async () => {
+  originalCwd = process.cwd();
+  process.chdir(await mkdtemp(path.join(tmpdir(), "resend-")));
+  await writeFile("package.json", JSON.stringify({ name: "acme" }));
+  await writeFile(".env.local", `EXPO_PUBLIC_CONVEX_SITE_URL=${DEV_SITE}\n`);
   vi.clearAllMocks();
-  localEnv.clear();
-  prodEnvFiles.clear();
-  localEnv.set("EXPO_PUBLIC_CONVEX_SITE_URL", DEV_SITE);
   process.env.RESEND_FULL_ACCESS_KEY = "re_full_bootstrap";
   Object.defineProperty(process.stdin, "isTTY", { value: false, configurable: true });
 });
 
+afterEach(() => {
+  process.chdir(originalCwd);
+});
+
 describe("runResend full flow", () => {
   it("provisions the prod channel alongside dev when a prod site URL exists", async () => {
-    prodEnvFiles.set(".env.prod", new Map([["EXPO_PUBLIC_CONVEX_SITE_URL", PROD_SITE]]));
+    await writeProdEnv(PROD_SITE);
 
     expect(await runResend({})).toBe(0);
 
@@ -82,7 +82,7 @@ describe("runResend full flow", () => {
 
 describe("runResend --repoint", () => {
   it("never retires the sibling channel's live webhook", async () => {
-    prodEnvFiles.set(".env.prod", new Map([["EXPO_PUBLIC_CONVEX_SITE_URL", PROD_SITE]]));
+    await writeProdEnv(PROD_SITE);
     listWebhooksSpy.mockResolvedValue([
       { id: "wh_dev", endpoint: `${DEV_SITE}/resend-webhook`, status: "enabled" },
       { id: "wh_dead", endpoint: "https://old-site.convex.site/resend-webhook", status: "enabled" },
@@ -96,7 +96,7 @@ describe("runResend --repoint", () => {
   });
 
   it("protects the prod webhook during a dev repoint", async () => {
-    prodEnvFiles.set(".env.prod", new Map([["EXPO_PUBLIC_CONVEX_SITE_URL", PROD_SITE]]));
+    await writeProdEnv(PROD_SITE);
     listWebhooksSpy.mockResolvedValue([
       { id: "wh_prod", endpoint: `${PROD_SITE}/resend-webhook`, status: "enabled" },
       { id: "wh_dead", endpoint: "https://old-site.convex.site/resend-webhook", status: "enabled" },

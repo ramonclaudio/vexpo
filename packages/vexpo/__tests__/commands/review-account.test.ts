@@ -1,50 +1,46 @@
-import { readFile, writeFile } from "node:fs/promises";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import path from "node:path";
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+// Only the `convex run` shell-out is stubbed. store.config.json and the env
+// files are real files in the temp project, so the read, the rewrite and the
+// prod-scope check all run against what the command actually wrote.
 vi.mock("../../src/lib/pkg-manager.ts", () => ({ dlx: () => "bunx" }));
 vi.mock("../../src/lib/proc.ts", () => ({
   run: vi.fn().mockResolvedValue({ code: 0, stdout: "", stderr: "" }),
 }));
-vi.mock("../../src/lib/fs.ts", () => ({ fileExists: vi.fn(async () => false) }));
-vi.mock("../../src/lib/env-files.ts", async () => ({
-  ...(await vi.importActual("../../src/lib/env-files.ts")),
-  readEnvFile: vi.fn(async () => new Map()),
-}));
-vi.mock("node:fs/promises", () => ({
-  readFile: vi.fn(),
-  writeFile: vi.fn().mockResolvedValue(undefined),
-}));
 
 import { runReviewAccount } from "../../src/commands/review-account.ts";
-import { readEnvFile } from "../../src/lib/env-files.ts";
-import { fileExists } from "../../src/lib/fs.ts";
 import { run } from "../../src/lib/proc.ts";
 
 const runSpy = run as unknown as ReturnType<typeof vi.fn>;
-const readFileSpy = readFile as unknown as ReturnType<typeof vi.fn>;
-const writeFileSpy = writeFile as unknown as ReturnType<typeof vi.fn>;
-const fileExistsSpy = fileExists as unknown as ReturnType<typeof vi.fn>;
-const readEnvFileSpy = readEnvFile as unknown as ReturnType<typeof vi.fn>;
 
-function config(demoPassword: string) {
-  return JSON.stringify({
-    apple: { review: { demoUsername: "review@example.com", demoPassword } },
-  });
-}
+const storeConfig = (demoPassword: string) =>
+  JSON.stringify({ apple: { review: { demoUsername: "review@example.com", demoPassword } } });
 
 const seedCalls = () =>
   runSpy.mock.calls.filter((c) => (c[0] as string[]).includes("admin:createReviewAccount"));
 
-beforeEach(() => {
+const readStoreConfig = async () =>
+  JSON.parse(await readFile("store.config.json", "utf8")) as {
+    apple: { review: { demoPassword: string } };
+  };
+
+let originalCwd: string;
+
+beforeEach(async () => {
+  originalCwd = process.cwd();
+  process.chdir(await mkdtemp(path.join(tmpdir(), "review-account-")));
+  await writeFile("store.config.json", storeConfig("pw123456"));
   vi.clearAllMocks();
   runSpy.mockResolvedValue({ code: 0, stdout: "", stderr: "" });
-  readFileSpy.mockResolvedValue(config("pw123456"));
-  fileExistsSpy.mockResolvedValue(false);
-  readEnvFileSpy.mockResolvedValue(new Map());
 });
 
-afterEach(() => vi.clearAllMocks());
+afterEach(() => {
+  process.chdir(originalCwd);
+});
 
 describe("runReviewAccount", () => {
   it("seeds via a single convex run with reset so an existing account converges", async () => {
@@ -63,28 +59,24 @@ describe("runReviewAccount", () => {
   });
 
   it("generates a real password instead of seeding the placeholder, and writes it back", async () => {
-    readFileSpy.mockResolvedValueOnce(config("REPLACE_BEFORE_SUBMIT"));
+    await writeFile("store.config.json", storeConfig("REPLACE_BEFORE_SUBMIT"));
 
     expect(await runReviewAccount({})).toBe(0);
 
     const payload = JSON.parse(seedCalls()[0]![0][4] as string) as { password: string };
     expect(payload.password).not.toBe("REPLACE_BEFORE_SUBMIT");
     expect(payload.password.length).toBeGreaterThanOrEqual(10);
-
-    const written = JSON.parse(writeFileSpy.mock.calls[0]![1] as string) as {
-      apple: { review: { demoPassword: string } };
-    };
-    expect(written.apple.review.demoPassword).toBe(payload.password);
+    expect((await readStoreConfig()).apple.review.demoPassword).toBe(payload.password);
   });
 
-  it("does not rewrite store.config.json when the seeded creds already match", async () => {
+  it("leaves store.config.json byte-identical when the seeded creds already match", async () => {
+    const before = await readFile("store.config.json", "utf8");
     expect(await runReviewAccount({})).toBe(0);
-    expect(writeFileSpy).not.toHaveBeenCalled();
+    expect(await readFile("store.config.json", "utf8")).toBe(before);
   });
 
   it("also seeds prod through a prod-scoped env file", async () => {
-    fileExistsSpy.mockImplementation(async (f: string) => f === ".env.prod");
-    readEnvFileSpy.mockResolvedValue(new Map([["CONVEX_DEPLOY_KEY", "prod:brave-otter-42|tok"]]));
+    await writeFile(".env.prod", "CONVEX_DEPLOY_KEY=prod:brave-otter-42|tok\n");
 
     expect(await runReviewAccount({})).toBe(0);
 
@@ -96,15 +88,28 @@ describe("runReviewAccount", () => {
   });
 
   it("skips prod when .env.prod is not prod-scoped (the dev key would win)", async () => {
-    fileExistsSpy.mockImplementation(async (f: string) => f === ".env.prod");
-    readEnvFileSpy.mockResolvedValue(new Map([["CONVEX_DEPLOYMENT", "dev:quick-fox-123"]]));
+    await writeFile(".env.prod", "CONVEX_DEPLOYMENT=dev:quick-fox-123\n");
 
     expect(await runReviewAccount({})).toBe(0);
     expect(seedCalls()).toHaveLength(1);
   });
 
   it("returns 1 (no seed) when no email can be resolved", async () => {
-    readFileSpy.mockResolvedValueOnce("{}");
+    await writeFile("store.config.json", "{}");
+    expect(await runReviewAccount({})).toBe(1);
+    expect(seedCalls()).toHaveLength(0);
+  });
+
+  // The old test mocked node:fs/promises wholesale, so a missing or malformed
+  // file was unreachable and the command threw a raw ENOENT instead of exiting.
+  it("returns 1 when store.config.json is missing entirely", async () => {
+    await rm("store.config.json");
+    expect(await runReviewAccount({})).toBe(1);
+    expect(seedCalls()).toHaveLength(0);
+  });
+
+  it("returns 1 when store.config.json is not valid JSON", async () => {
+    await writeFile("store.config.json", "{ not json");
     expect(await runReviewAccount({})).toBe(1);
     expect(seedCalls()).toHaveLength(0);
   });
