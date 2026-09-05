@@ -11,9 +11,7 @@ vi.mock("../../src/lib/env-local.ts", () => ({
     for (const k of keys) store.delete(k);
   }),
 }));
-vi.mock("../../src/lib/proc.ts", () => ({
-  spawn: vi.fn(() => ({ exited: Promise.resolve(0) })),
-}));
+vi.mock("../../src/lib/proc.ts", async () => (await import("../helpers/proc-stub.ts")).procStub());
 vi.mock("../../src/lib/convex-management.ts", () => ({
   checkToken: vi.fn().mockResolvedValue("valid"),
 }));

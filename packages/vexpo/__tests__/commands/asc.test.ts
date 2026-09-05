@@ -1,18 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { exitedWith } from "../helpers/proc-stub.ts";
+
 import { useTmpCwd } from "../helpers/tmp-cwd.ts";
 
-vi.mock("../../src/lib/proc.ts", () => ({
-  run: vi.fn().mockResolvedValue({ code: 0, stdout: "{}", stderr: "" }),
-  spawn: vi.fn(() => ({
-    exited: Promise.resolve(0),
-    stdout: null,
-    stderr: null,
-    stdin: null,
-    pid: 1,
-    kill: () => {},
-  })),
-}));
+vi.mock("../../src/lib/proc.ts", async () =>
+  (await import("../helpers/proc-stub.ts")).procStub(0, "{}"),
+);
 
 vi.mock("../../src/lib/pkg-manager.ts", () => ({
   dlx: () => "bunx",
@@ -74,14 +68,7 @@ beforeEach(async () => {
   });
   appsListSpy.mockResolvedValue([{ type: "apps", id: "app-1", attributes: { bundleId: "x" } }]);
   spawnSpy.mockReset();
-  spawnSpy.mockReturnValue({
-    exited: Promise.resolve(0),
-    stdout: null,
-    stderr: null,
-    stdin: null,
-    pid: 1,
-    kill: () => {},
-  });
+  spawnSpy.mockReturnValue(exitedWith(0));
 
   await save({
     schemaVersion: 1,
@@ -364,14 +351,7 @@ describe("runAscConnect", () => {
       status: "not-connected",
     });
     requireBundleIdSpy.mockResolvedValueOnce("com.vexpo.vexpo");
-    spawnSpy.mockReturnValueOnce({
-      exited: Promise.resolve(42),
-      stdout: null,
-      stderr: null,
-      stdin: null,
-      pid: 1,
-      kill: () => {},
-    });
+    spawnSpy.mockReturnValueOnce(exitedWith(42));
 
     const exit = await runAscConnect({});
     expect(exit).toBe(42);
