@@ -171,7 +171,6 @@ export async function runAscConnect(opts: { force?: boolean } = {}): Promise<num
 
   const asc = await reportCachedAscKey();
   if (!asc) return 1;
-  const p8Path = asc.privateKey.path;
 
   const bundleId = await requireBundleId();
   if (!bundleId) return 1;
@@ -194,9 +193,7 @@ export async function runAscConnect(opts: { force?: boolean } = {}): Promise<num
 
   const env: Record<string, string> = {
     ...(process.env as Record<string, string>),
-    EXPO_ASC_API_KEY_PATH: p8Path,
-    EXPO_ASC_KEY_ID: asc.keyId,
-    EXPO_ASC_ISSUER_ID: asc.issuerId,
+    ...ascKeyEnvFrom(asc),
   };
 
   line();

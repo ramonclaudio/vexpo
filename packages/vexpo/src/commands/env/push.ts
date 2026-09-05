@@ -180,10 +180,10 @@ function groupByFile(entries: SyncEntry[], remote: RemoteState): FilePlan[] {
 }
 
 const STATUS_TAG: Record<DiffStatus, string> = {
-  create: "\x1b[32mcreate\x1b[0m",
-  update: "\x1b[33mupdate\x1b[0m",
-  noop: "\x1b[2mnoop\x1b[0m",
-  blocked: "\x1b[31mblocked\x1b[0m",
+  create: `${GREEN}create${RESET}`,
+  update: `${YELLOW}update${RESET}`,
+  noop: `${DIM}noop${RESET}`,
+  blocked: `${RED}blocked${RESET}`,
 };
 
 function printResolved(resolved: ResolvedDestination, newValue: string): void {
@@ -328,10 +328,8 @@ function reportManualSecrets(sources: EnvSource[]): void {
   note(`${DIM}lite skips these to avoid pushing secrets at default visibility${RESET}`);
 }
 
-type PlanTotals = { actionable: number; conflicts: number; blocked: number };
-
-function printPlans(plans: FilePlan[]): PlanTotals {
-  const totals: PlanTotals = { actionable: 0, conflicts: 0, blocked: 0 };
+function printPlans(plans: FilePlan[]): PlanCounts {
+  const totals: PlanCounts = { actionable: 0, conflicts: 0, blocked: 0 };
   for (const plan of plans) {
     const one = printFilePlan(plan);
     totals.actionable += one.actionable;
@@ -341,7 +339,7 @@ function printPlans(plans: FilePlan[]): PlanTotals {
   return totals;
 }
 
-function reportDryRun(totals: PlanTotals): void {
+function reportDryRun(totals: PlanCounts): void {
   line();
   if (totals.actionable > 0) {
     const blocked = totals.blocked > 0 ? `, ${totals.blocked} blocked` : "";

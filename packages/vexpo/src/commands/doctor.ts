@@ -61,9 +61,7 @@ export async function runDoctor(options: DoctorOptions): Promise<number> {
   try {
     if (!(await isInVexpoProject())) {
       if (options.json) {
-        process.stdout.write(
-          JSON.stringify({ error: "not in a vexpo project", cwd: process.cwd() }, null, 2) + "\n",
-        );
+        emitJson({ error: "not in a vexpo project", cwd: process.cwd() });
       } else {
         section("Verify");
         bad("not in a vexpo project (no app.config.ts, convex/, or eas.json in current dir)");

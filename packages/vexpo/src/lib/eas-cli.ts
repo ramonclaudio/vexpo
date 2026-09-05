@@ -7,13 +7,7 @@ const EAS_CLI = "eas-cli";
 export type EasArgs = readonly (string | number | boolean | undefined | null)[];
 
 function compact(argv: EasArgs): string[] {
-  const out: string[] = [];
-  for (const item of argv) {
-    if (item === undefined || item === null || item === false) continue;
-    if (item === true) continue;
-    out.push(String(item));
-  }
-  return out;
+  return argv.filter((i) => i != null && typeof i !== "boolean").map(String);
 }
 
 const NOT_SIGNED_IN = /An Expo user account is required|not logged in|Log in to EAS/i;

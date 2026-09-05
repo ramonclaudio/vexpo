@@ -18,16 +18,6 @@ function glyph(severity: Severity): string {
 
 type RenderStyle = "section" | "compact";
 
-function groupByCategory(checks: Check[]): Map<Category, Check[]> {
-  const byCategory = new Map<Category, Check[]>();
-  for (const check of checks) {
-    const items = byCategory.get(check.category) ?? [];
-    byCategory.set(check.category, items);
-    items.push(check);
-  }
-  return byCategory;
-}
-
 function renderCheck(check: Check, style: RenderStyle, width: number): void {
   line(
     style === "section"
@@ -43,7 +33,7 @@ function renderCheck(check: Check, style: RenderStyle, width: number): void {
 }
 
 export function renderVerifyResults(checks: Check[], style: RenderStyle): void {
-  const byCategory = groupByCategory(checks);
+  const byCategory = Map.groupBy(checks, (c) => c.category);
   const globalWidth = Math.max(...checks.map((c) => c.name.length));
   for (const category of RENDER_ORDER) {
     const items = byCategory.get(category);

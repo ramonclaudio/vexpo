@@ -1,3 +1,5 @@
+import { randomBytes } from "node:crypto";
+
 import { appName, scheme } from "../lib/app.ts";
 import { envMap, envSet } from "../lib/convex-env.ts";
 import { nop, ok, section } from "../lib/output.ts";
@@ -9,11 +11,7 @@ export type BetterAuthOptions = {
   appName?: string;
 };
 
-function base64Secret(): string {
-  const buf = new Uint8Array(32);
-  crypto.getRandomValues(buf);
-  return btoa(String.fromCharCode(...buf));
-}
+const base64Secret = (): string => randomBytes(32).toString("base64");
 
 async function setUnlessMatches(
   env: Map<string, string>,
