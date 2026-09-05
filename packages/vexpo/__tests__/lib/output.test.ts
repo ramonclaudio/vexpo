@@ -4,11 +4,11 @@ const ESC = String.fromCharCode(27);
 
 // output.ts reads the stream and the environment once, at import, so each case
 // sets both and then loads a fresh copy of the module.
-async function loadOutput(opts: { isTTY: boolean; noColor?: string }) {
+async function loadOutput(opts: { isTTY: boolean; noColor?: string; term?: string }) {
   const original = process.stderr.isTTY;
   Object.defineProperty(process.stderr, "isTTY", { value: opts.isTTY, configurable: true });
-  if (opts.noColor === undefined) vi.stubEnv("NO_COLOR", undefined);
-  else vi.stubEnv("NO_COLOR", opts.noColor);
+  vi.stubEnv("NO_COLOR", opts.noColor);
+  vi.stubEnv("TERM", opts.term ?? "xterm-256color");
   vi.resetModules();
   const mod = await import("../../src/lib/output.ts");
   Object.defineProperty(process.stderr, "isTTY", { value: original, configurable: true });
@@ -53,6 +53,26 @@ describe("colour", () => {
   it("keeps colour when NO_COLOR is empty", async () => {
     const { ok } = await loadOutput({ isTTY: true, noColor: "" });
     expect(captureStderr(() => ok("linked"))).toContain(ESC);
+  });
+
+  // A dumb terminal cannot render escapes, and it is what a screen reader runs
+  // its shell under.
+  it("writes none under TERM=dumb", async () => {
+    const { ok } = await loadOutput({ isTTY: true, term: "dumb" });
+    expect(captureStderr(() => ok("linked"))).toBe("  ok   linked\n");
+  });
+});
+
+describe("section", () => {
+  it("rules the title off on a terminal", async () => {
+    const { section } = await loadOutput({ isTTY: true });
+    expect(captureStderr(() => section("Convex"))).toContain("\u2500");
+  });
+
+  // The rule is decoration, and a screen reader reads it one dash at a time.
+  it("drops the rule when there is no colour", async () => {
+    const { section } = await loadOutput({ isTTY: false });
+    expect(captureStderr(() => section("Convex"))).toBe("\nConvex\n");
   });
 });
 

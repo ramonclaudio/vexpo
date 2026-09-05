@@ -1,7 +1,11 @@
 import { createInterface } from "node:readline/promises";
 
-const colorOn = (stream: NodeJS.WriteStream): boolean =>
-  stream.isTTY === true && !process.env.NO_COLOR;
+// `NO_COLOR` is the cross-tool opt-out (any non-empty value) and `TERM=dumb` is
+// what a terminal that cannot handle escapes reports, which is what a screen
+// reader runs under. A pipe or a log file gets none either.
+const plain = (): boolean => !!process.env.NO_COLOR || process.env.TERM === "dumb";
+
+const colorOn = (stream: NodeJS.WriteStream): boolean => stream.isTTY === true && !plain();
 
 const wrap =
   (open: number, close: number, stream: NodeJS.WriteStream = process.stdout) =>
@@ -28,8 +32,13 @@ export type Spinner = {
   warn: (text: string) => void;
 };
 
+// A repainting line is re-announced on every repaint, so twelve braille frames
+// a second is twelve announcements a second for the length of an install. The
+// same signals that turn colour off turn the animation off, and `TERM=dumb` is
+// what a screen reader's terminal sets. Everyone who opts out gets the one-line
+// form below instead.
 export function spinner(text: string): Spinner {
-  const animate = process.stderr.isTTY === true;
+  const animate = process.stderr.isTTY === true && !plain();
   let timer: NodeJS.Timeout | null = null;
   let frame = 0;
 

@@ -1,10 +1,12 @@
 import { createInterface } from "node:readline/promises";
 
 // Everything here writes to stderr, so stderr decides. `NO_COLOR` is the
-// cross-tool opt-out (any non-empty value), and a pipe or a log file gets no
-// escapes either, which is what a screen reader or a braille display reads.
+// cross-tool opt-out (any non-empty value), `TERM=dumb` is what a terminal that
+// cannot handle escapes reports, and a pipe or a log file gets none either.
+// That last one is what a screen reader or a braille display reads.
 // Read once: neither the stream nor the environment changes mid-run.
-const colorEnabled = process.stderr.isTTY === true && !process.env.NO_COLOR;
+const colorEnabled =
+  process.stderr.isTTY === true && !process.env.NO_COLOR && process.env.TERM !== "dumb";
 
 const code = (seq: string): string => (colorEnabled ? seq : "");
 
@@ -52,7 +54,14 @@ function stringWidth(s: string): number {
   return [...s].length;
 }
 
+// The rule after the title is decoration. Seventy box-drawing dashes read back
+// one at a time is noise, so anything reading this without a terminal gets the
+// title alone.
 export function section(title: string): void {
+  if (!colorEnabled) {
+    line(`\n${title}`);
+    return;
+  }
   const w = process.stderr.columns ?? process.stdout.columns ?? 80;
   const fill = "─".repeat(Math.max(0, w - stringWidth(title) - 3));
   line(`\n${BOLD}${VIOLET}${title}${RESET} ${DIM}${fill}${RESET}`);
