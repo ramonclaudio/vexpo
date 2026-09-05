@@ -13,6 +13,7 @@ import {
   runAccessibilityLint,
   runAccessibilityPush,
   runAccessibilityShow,
+  runAccessibilityUrl,
 } from "./commands/asc-accessibility.ts";
 import { runPrivacyLint, runPrivacyShow } from "./commands/asc-privacy.ts";
 import {
@@ -396,6 +397,15 @@ ascA11y
   .option("--dry-run", "print what would change and send nothing", false)
   .action((file: string, options: { publish?: boolean; dryRun?: boolean }) =>
     exitWith(runAccessibilityPush(file, options)),
+  );
+
+ascA11y
+  .command("url [url]")
+  .description("Show or set the accessibility URL on the App Store page.")
+  .option("--clear", "remove the URL instead of setting one", false)
+  .option("--json", "JSON output", false)
+  .action((url: string | undefined, options: { clear?: boolean; json?: boolean }) =>
+    exitWith(runAccessibilityUrl(url, options)),
   );
 
 const testflight = program

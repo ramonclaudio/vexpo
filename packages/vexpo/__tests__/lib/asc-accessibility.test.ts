@@ -1,6 +1,11 @@
 import { describe, expect, test } from "vitest";
 
-import { lintAccessibilityConfig, planAccessibilityPush } from "../../src/lib/asc-accessibility.ts";
+import {
+  fetchAccessibilityUrl,
+  lintAccessibilityConfig,
+  planAccessibilityPush,
+  setAccessibilityUrl,
+} from "../../src/lib/asc-accessibility.ts";
 
 describe("lintAccessibilityConfig", () => {
   test("accepts a clean iPhone config", () => {
@@ -102,5 +107,73 @@ describe("planAccessibilityPush", () => {
       { id: "phone", attributes: { deviceFamily: "IPHONE", state: "DRAFT" } },
     ];
     expect(planAccessibilityPush([entry], remote)[0]!.id).toBe("phone");
+  });
+});
+
+// Apple's own list of states is DRAFT, PUBLISHED and REPLACED, and only a draft
+// accepts PATCH.
+describe("planAccessibilityPush states", () => {
+  test("blocks a replaced declaration too", () => {
+    const remote = [{ id: "abc", attributes: { deviceFamily: "IPHONE", state: "REPLACED" } }];
+    const plan = planAccessibilityPush([{ deviceFamily: "IPHONE" }], remote);
+    expect(plan[0]!.action).toBe("blocked");
+    expect(plan[0]!.state).toBe("REPLACED");
+  });
+});
+
+type Call = { method: string; path: string; body?: unknown; query?: unknown };
+
+function fakeClient(reply: unknown) {
+  const calls: Call[] = [];
+  const client = {
+    request: (method: string, path: string, body?: unknown, query?: unknown) => {
+      calls.push({ method, path, body, query });
+      return Promise.resolve(reply);
+    },
+  };
+  return { client: client as never, calls };
+}
+
+describe("accessibility URL", () => {
+  test("reads it off the app, asking for only that field", async () => {
+    const { client, calls } = fakeClient({
+      data: { attributes: { accessibilityUrl: "https://example.com/a11y" } },
+    });
+    await expect(fetchAccessibilityUrl(client, "123")).resolves.toBe("https://example.com/a11y");
+    expect(calls[0]).toEqual({
+      method: "GET",
+      path: "/v1/apps/123",
+      body: undefined,
+      query: { "fields[apps]": "accessibilityUrl" },
+    });
+  });
+
+  test("reads an unset URL as null, not undefined", async () => {
+    const { client } = fakeClient({ data: { attributes: {} } });
+    await expect(fetchAccessibilityUrl(client, "123")).resolves.toBeNull();
+  });
+
+  test("patches the app resource", async () => {
+    const { client, calls } = fakeClient({});
+    await setAccessibilityUrl(client, "123", "https://example.com/a11y");
+    expect(calls[0]!.method).toBe("PATCH");
+    expect(calls[0]!.path).toBe("/v1/apps/123");
+    expect(calls[0]!.body).toEqual({
+      data: {
+        type: "apps",
+        id: "123",
+        attributes: { accessibilityUrl: "https://example.com/a11y" },
+      },
+    });
+  });
+
+  // Clearing sends an explicit null. Omitting the attribute would leave the old
+  // link on the page.
+  test("clears with null rather than by omission", async () => {
+    const { client, calls } = fakeClient({});
+    await setAccessibilityUrl(client, "123", null);
+    expect(calls[0]!.body).toEqual({
+      data: { type: "apps", id: "123", attributes: { accessibilityUrl: null } },
+    });
   });
 });

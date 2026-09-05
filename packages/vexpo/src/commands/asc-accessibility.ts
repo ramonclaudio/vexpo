@@ -3,6 +3,8 @@ import { ascBootstrap } from "../lib/asc-state.ts";
 import {
   createAccessibilityDeclaration,
   fetchAccessibilityDeclarations,
+  fetchAccessibilityUrl,
+  setAccessibilityUrl,
   lintAccessibilityConfig,
   planAccessibilityPush,
   publishAccessibilityDeclaration,
@@ -105,4 +107,52 @@ async function applyStep(
     ok(`${step.deviceFamily} published`);
   }
   return true;
+}
+
+/** True once the reason the arguments cannot be used has been printed. */
+function urlArgsRejected(value: string | undefined, clear: boolean | undefined): boolean {
+  if (value && clear) {
+    bad("pass a URL or --clear, not both.");
+    return true;
+  }
+  if (value && !value.startsWith("https://")) {
+    bad(`the accessibility URL must start with https://, got '${value}'`);
+    note("it is a public link on your App Store page, so Apple rejects anything else");
+    return true;
+  }
+  return false;
+}
+
+export async function runAccessibilityUrl(
+  value: string | undefined,
+  opts: { clear?: boolean; json?: boolean },
+): Promise<number> {
+  if (urlArgsRejected(value, opts.clear)) return 1;
+
+  const { client, ascAppId, bundleId } = await ascBootstrap();
+  if (!ascAppId) {
+    bad(`no ASC app for bundle id ${bundleId ?? "(unset)"}`);
+    return 1;
+  }
+
+  if (value || opts.clear) {
+    await setAccessibilityUrl(client, ascAppId, value ?? null);
+  }
+  const current = await fetchAccessibilityUrl(client, ascAppId);
+  if (opts.json) return emitJson({ accessibilityUrl: current });
+  reportUrl(current, opts.clear === true);
+  return 0;
+}
+
+function reportUrl(current: string | null, cleared: boolean): void {
+  section("Accessibility URL");
+  if (current) {
+    ok(current);
+    return;
+  }
+  nop("not set");
+  if (cleared) return;
+  note("Apple points here for what the nine labels cannot say: in-app");
+  note("accessibility settings, caption languages, and the parts of the app");
+  note("that do not support a feature.");
 }

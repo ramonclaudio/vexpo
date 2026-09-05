@@ -179,3 +179,29 @@ export async function publishAccessibilityDeclaration(
     data: { type: "accessibilityDeclarations", id, attributes: { publish: true } },
   });
 }
+
+/**
+ * The accessibility URL is a link on the App Store page, separate from the
+ * declarations. Apple's own overview points here for anything the nine flags
+ * cannot say: in-app accessibility settings, caption languages, and the parts
+ * of the app that don't support a feature.
+ */
+export async function fetchAccessibilityUrl(
+  client: AscClient,
+  appId: string,
+): Promise<string | null> {
+  const res = await client.request<{
+    data?: { attributes?: { accessibilityUrl?: string | null } };
+  }>("GET", `/v1/apps/${appId}`, undefined, { "fields[apps]": "accessibilityUrl" });
+  return res.data?.attributes?.accessibilityUrl ?? null;
+}
+
+export async function setAccessibilityUrl(
+  client: AscClient,
+  appId: string,
+  url: string | null,
+): Promise<void> {
+  await client.request("PATCH", `/v1/apps/${appId}`, {
+    data: { type: "apps", id: appId, attributes: { accessibilityUrl: url } },
+  });
+}
