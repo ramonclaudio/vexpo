@@ -1,0 +1,48 @@
+# Subflow, not a flow. Reached with `runFlow: { file: _sign-up-form.yaml, env: { NAME, EMAIL } }`.
+#
+# Fills the sign-up form and submits it, from the sign-up screen. Each field
+# needs a swipe to dismiss the keyboard and a scroll to bring the next one up,
+# because the form is taller than the screen once the keyboard is open.
+appId: ${MAESTRO_APP_ID}
+env:
+  NAME: "Maestro E2E"
+  EMAIL: ${MAESTRO_TEST_EMAIL}
+---
+- tapOn:
+    id: "sign-up-name"
+- inputText: ${NAME}
+- swipe:
+    start: 50%, 35%
+    end: 50%, 85%
+- scrollUntilVisible:
+    element:
+      id: "sign-up-email"
+    direction: DOWN
+- tapOn:
+    id: "sign-up-email"
+- inputText: ${EMAIL}
+- swipe:
+    start: 50%, 35%
+    end: 50%, 85%
+- scrollUntilVisible:
+    element:
+      id: "sign-up-password"
+    direction: DOWN
+- tapOn:
+    id: "sign-up-password-visibility"
+- waitForAnimationToEnd:
+    timeout: 3000
+- tapOn:
+    id: "sign-up-password"
+- inputText: ${MAESTRO_TEST_PASSWORD}
+- swipe:
+    start: 50%, 35%
+    end: 50%, 85%
+- scrollUntilVisible:
+    element:
+      id: "sign-up-submit"
+    direction: DOWN
+- tapOn:
+    id: "sign-up-submit"
+
+- assertNotVisible: "Verify your email"

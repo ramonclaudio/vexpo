@@ -8,19 +8,7 @@ appId: ${MAESTRO_APP_ID}
     timeout: 30000
 - assertNotVisible:
     id: "sign-in-screen"
-- repeat:
-    times: 5
-    while:
-      notVisible:
-        id: "settings-screen"
-    commands:
-      - tapOn: "Settings"
-      - waitForAnimationToEnd:
-          timeout: 5000
-- extendedWaitUntil:
-    visible:
-      id: "settings-screen"
-    timeout: 20000
+- runFlow: _to-settings.yaml
 
 - tapOn: "Help & Feedback"
 - extendedWaitUntil:
@@ -42,19 +30,7 @@ appId: ${MAESTRO_APP_ID}
 - assertVisible:
     id: "expanded"
 - takeScreenshot: .maestro/screenshots/help
-- repeat:
-    times: 5
-    while:
-      notVisible:
-        id: "settings-screen"
-    commands:
-      - tapOn: "Settings"
-      - waitForAnimationToEnd:
-          timeout: 5000
-- extendedWaitUntil:
-    visible:
-      id: "settings-screen"
-    timeout: 20000
+- runFlow: _to-settings.yaml
 
 - tapOn: "Debug"
 - extendedWaitUntil:
@@ -62,19 +38,7 @@ appId: ${MAESTRO_APP_ID}
       id: "debug-screen"
     timeout: 15000
 - takeScreenshot: .maestro/screenshots/debug
-- repeat:
-    times: 5
-    while:
-      notVisible:
-        id: "settings-screen"
-    commands:
-      - tapOn: "Settings"
-      - waitForAnimationToEnd:
-          timeout: 5000
-- extendedWaitUntil:
-    visible:
-      id: "settings-screen"
-    timeout: 20000
+- runFlow: _to-settings.yaml
 
 - tapOn:
     id: "settings-profile"
@@ -103,30 +67,4 @@ appId: ${MAESTRO_APP_ID}
     id: "change-password-cancel"
 - waitForAnimationToEnd:
     timeout: 5000
-- repeat:
-    times: 5
-    while:
-      notVisible:
-        id: "settings-screen"
-    commands:
-      - tapOn: "Settings"
-      - waitForAnimationToEnd:
-          timeout: 5000
-- extendedWaitUntil:
-    visible:
-      id: "settings-screen"
-    timeout: 20000
-
-- repeat:
-    times: 5
-    while:
-      notVisible:
-        id: "settings-screen"
-    commands:
-      - tapOn: "Settings"
-      - waitForAnimationToEnd:
-          timeout: 5000
-- extendedWaitUntil:
-    visible:
-      id: "settings-screen"
-    timeout: 20000
+- runFlow: _to-settings.yaml

@@ -359,6 +359,7 @@ plugins/
 .github/workflows/check.yml       Typecheck, lint, format, tests, and the iOS smoke build
 .maestro/                         Maestro e2e flows, run with `npm run e2e`
   smoke.yaml                      Boots to sign-in, no backend. What CI runs
+  _*.yaml                         Subflows the flows share, not flows themselves
 scripts/
   dev.mjs                         Metro launcher behind dev/start/ios
   e2e.mjs                         Maestro runner behind `npm run e2e`

@@ -34,28 +34,7 @@ appId: ${MAESTRO_APP_ID}
       id: "sign-in-screen"
     timeout: 30000
 
-- tapOn:
-    id: "sign-in-email"
-- inputText: ${MAESTRO_TEST_EMAIL}
-- swipe:
-    start: 50%, 35%
-    end: 50%, 85%
-- tapOn:
-    id: "sign-in-email-password-visibility"
-- waitForAnimationToEnd:
-    timeout: 3000
-- tapOn:
-    id: "sign-in-email-password"
-- inputText: ${MAESTRO_TEST_PASSWORD}
-- swipe:
-    start: 50%, 35%
-    end: 50%, 85%
-- scrollUntilVisible:
-    element:
-      id: "sign-in-submit"
-    direction: DOWN
-- tapOn:
-    id: "sign-in-submit"
+- runFlow: _sign-in-form.yaml
 
 - extendedWaitUntil:
     visible:

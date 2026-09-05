@@ -1,0 +1,29 @@
+# Subflow, not a flow. Reached with `runFlow: _sign-in-form.yaml`.
+#
+# Fills the email sign-in form and submits it, from the sign-in screen. The
+# visibility toggle goes on first because a synthetic tap on a secure field
+# can land before the field is focused.
+appId: ${MAESTRO_APP_ID}
+---
+- tapOn:
+    id: "sign-in-email"
+- inputText: ${MAESTRO_TEST_EMAIL}
+- swipe:
+    start: 50%, 35%
+    end: 50%, 85%
+- tapOn:
+    id: "sign-in-email-password-visibility"
+- waitForAnimationToEnd:
+    timeout: 3000
+- tapOn:
+    id: "sign-in-email-password"
+- inputText: ${MAESTRO_TEST_PASSWORD}
+- swipe:
+    start: 50%, 35%
+    end: 50%, 85%
+- scrollUntilVisible:
+    element:
+      id: "sign-in-submit"
+    direction: DOWN
+- tapOn:
+    id: "sign-in-submit"

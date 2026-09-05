@@ -1,0 +1,32 @@
+# Subflow, not a flow. Reached with `runFlow: _cold-start.yaml`.
+#
+# Cold start to the sign-in screen: launch with a cleared keychain, deny the
+# push alert (SpringBoard draws it outside the accessibility tree, so every
+# assert after it fails on a simulator that hasn't answered), and open the dev
+# bundle by deep link when the launcher's server picker is up. That picker
+# scans the local network, which never resolves on a simulator, so tapping the
+# row is not an option.
+appId: ${MAESTRO_APP_ID}
+---
+- launchApp:
+    clearState: true
+    permissions:
+      notifications: deny
+- waitForAnimationToEnd:
+    timeout: 15000
+
+- runFlow:
+    when:
+      visible: "DEVELOPMENT SERVERS"
+    commands:
+      - openLink: ${MAESTRO_DEV_URL}
+      - extendedWaitUntil:
+          notVisible: "DEVELOPMENT SERVERS"
+          timeout: 30000
+      - waitForAnimationToEnd:
+          timeout: 15000
+
+- extendedWaitUntil:
+    visible:
+      id: "sign-in-screen"
+    timeout: 20000

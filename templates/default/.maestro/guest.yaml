@@ -1,27 +1,6 @@
 appId: ${MAESTRO_APP_ID}
 ---
-- launchApp:
-    clearState: true
-    permissions:
-      notifications: deny
-- waitForAnimationToEnd:
-    timeout: 15000
-
-- runFlow:
-    when:
-      visible: "DEVELOPMENT SERVERS"
-    commands:
-      - openLink: ${MAESTRO_DEV_URL}
-      - extendedWaitUntil:
-          notVisible: "DEVELOPMENT SERVERS"
-          timeout: 30000
-      - waitForAnimationToEnd:
-          timeout: 15000
-
-- extendedWaitUntil:
-    visible:
-      id: "sign-in-screen"
-    timeout: 20000
+- runFlow: _cold-start.yaml
 
 - scrollUntilVisible:
     element:
@@ -154,44 +133,11 @@ appId: ${MAESTRO_APP_ID}
       id: "sign-up-screen"
     timeout: 20000
 
-- tapOn:
-    id: "sign-up-name"
-- inputText: "Guest Upgrade"
-- swipe:
-    start: 50%, 35%
-    end: 50%, 85%
-- scrollUntilVisible:
-    element:
-      id: "sign-up-email"
-    direction: DOWN
-- tapOn:
-    id: "sign-up-email"
-- inputText: ${MAESTRO_GUEST_EMAIL}
-- swipe:
-    start: 50%, 35%
-    end: 50%, 85%
-- scrollUntilVisible:
-    element:
-      id: "sign-up-password"
-    direction: DOWN
-- tapOn:
-    id: "sign-up-password-visibility"
-- waitForAnimationToEnd:
-    timeout: 3000
-- tapOn:
-    id: "sign-up-password"
-- inputText: ${MAESTRO_TEST_PASSWORD}
-- swipe:
-    start: 50%, 35%
-    end: 50%, 85%
-- scrollUntilVisible:
-    element:
-      id: "sign-up-submit"
-    direction: DOWN
-- tapOn:
-    id: "sign-up-submit"
-
-- assertNotVisible: "Verify your email"
+- runFlow:
+    file: _sign-up-form.yaml
+    env:
+      NAME: "Guest Upgrade"
+      EMAIL: ${MAESTRO_GUEST_EMAIL}
 
 - extendedWaitUntil:
     visible:
