@@ -13,18 +13,22 @@ import { useReducedMotion } from "@/hooks/use-reduced-motion";
 
 type UpdatesState = ReturnType<typeof useUpdates>;
 
+// First match wins, so the more specific states come first.
+const STATUSES: [(s: UpdatesState) => boolean, (s: UpdatesState) => string][] = [
+  [(s) => s.isRestarting || s.isUpdatePending, () => "Restarting..."],
+  [
+    (s) => s.isDownloading,
+    (s) =>
+      `Downloading...${s.downloadProgress == null ? "" : ` ${Math.round(s.downloadProgress * 100)}%`}`,
+  ],
+  [(s) => s.isChecking, () => "Checking..."],
+  [(s) => s.downloadError != null, (s) => s.downloadError!.message],
+  [(s) => s.checkError != null, (s) => s.checkError!.message],
+  [(s) => s.isUpdateAvailable, () => "Update available"],
+];
+
 function deriveStatusText(state: UpdatesState): string {
-  if (state.isRestarting || state.isUpdatePending) return "Restarting...";
-  if (state.isDownloading) {
-    const pct =
-      state.downloadProgress != null ? ` ${Math.round(state.downloadProgress * 100)}%` : "";
-    return `Downloading...${pct}`;
-  }
-  if (state.isChecking) return "Checking...";
-  if (state.downloadError) return state.downloadError.message;
-  if (state.checkError) return state.checkError.message;
-  if (state.isUpdateAvailable) return "Update available";
-  return "Up to date";
+  return STATUSES.find(([match]) => match(state))?.[1](state) ?? "Up to date";
 }
 
 const NOOP_STATE: UpdatesState = {

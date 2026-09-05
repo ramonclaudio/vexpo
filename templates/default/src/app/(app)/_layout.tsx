@@ -99,14 +99,12 @@ export default function AppLayout() {
           }}
         />
 
-        {}
         <Stack.Screen name="profile/index" options={{ headerShown: true }}>
           <Stack.Header transparent />
           <Stack.Screen.Title style={titleStyle}>Profile</Stack.Screen.Title>
           <Stack.Screen.BackButton>Settings</Stack.Screen.BackButton>
         </Stack.Screen>
 
-        {}
         <Stack.Protected guard={hasAccount}>
           <Stack.Screen
             name="profile/change-password"
@@ -125,7 +123,6 @@ export default function AppLayout() {
         </Stack.Protected>
       </Stack.Protected>
 
-      {}
       <Stack.Protected guard={isAuthenticated && isAccountDeleted}>
         <Stack.Screen
           name="restore-account"
@@ -138,7 +135,6 @@ export default function AppLayout() {
         />
       </Stack.Protected>
 
-      {}
       <Stack.Protected guard={!hasAccount}>
         <Stack.Screen
           name="auth"

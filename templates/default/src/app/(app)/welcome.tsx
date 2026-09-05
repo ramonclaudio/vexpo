@@ -147,7 +147,6 @@ export default function WelcomeScreen() {
                   </RNHostView>
                 ) : (
                   <VStack spacing={0} modifiers={[accessibilityHidden(true)]}>
-                    {}
                     <Image
                       systemName={s.icon}
                       color={colors.primary}
@@ -157,7 +156,6 @@ export default function WelcomeScreen() {
                         dynamicTypeSize({ max: DynamicType.control }),
                       ]}
                     />
-                    {}
                     <Image
                       systemName={s.icon}
                       color={colors.primary}

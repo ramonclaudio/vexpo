@@ -90,7 +90,6 @@ export default function RestoreAccountScreen() {
 
   return (
     <Host testID="restore-account-screen" style={{ flex: 1, backgroundColor: colors.background }}>
-      {}
       <ScrollView modifiers={[defaultScrollAnchor("center")]}>
         <VStack
           spacing={24}

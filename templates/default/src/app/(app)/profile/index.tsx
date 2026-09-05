@@ -431,7 +431,6 @@ export default function ProfileScreen() {
                   onSave={() => startTransition(() => save())}
                 />
 
-                {}
                 {isGuest ? (
                   <SecondaryButton
                     testID="profile-create-account"

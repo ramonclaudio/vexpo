@@ -91,7 +91,6 @@ export default function SettingsScreen() {
           alignment="leading"
           modifiers={[padding({ horizontal: 24, top: 24, bottom: 40 })]}
         >
-          {}
           <Button
             testID="settings-profile"
             modifiers={[
@@ -216,7 +215,6 @@ export default function SettingsScreen() {
           </VStack>
 
           <VStack spacing={8} modifiers={[frame({ maxWidth: Infinity })]}>
-            {}
             {isGuest ? (
               <Alert
                 title="Discard guest data?"
@@ -283,7 +281,6 @@ export default function SettingsScreen() {
                   </ConfirmationDialog.Message>
                 </ConfirmationDialog>
 
-                {}
                 <Alert
                   title="Delete account?"
                   isPresented={showDeleteAccount}
