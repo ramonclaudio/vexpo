@@ -1,8 +1,8 @@
-import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
-import { tmpdir } from "node:os";
-import path from "node:path";
+import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+import { useTmpCwd } from "../helpers/tmp-cwd.ts";
 
 vi.mock("../../src/lib/pkg-manager.ts", () => ({ dlx: () => "bunx" }));
 vi.mock("../../src/lib/proc.ts", () => ({
@@ -84,9 +84,6 @@ const FLAGS = {
   reviewEmail: "ada@example.com",
 };
 
-let originalCwd: string;
-let workdir: string;
-
 async function seed(): Promise<void> {
   await writeFile("app.config.ts", APP_CONFIG);
   await writeFile("app.json", JSON.stringify({ expo: { extra: { eas: { projectId: "p" } } } }));
@@ -98,10 +95,9 @@ async function seed(): Promise<void> {
   await writeFile("README.md", README);
 }
 
+useTmpCwd("rebrand-test-");
+
 beforeEach(async () => {
-  originalCwd = process.cwd();
-  workdir = await mkdtemp(path.join(tmpdir(), "rebrand-test-"));
-  process.chdir(workdir);
   fromFileWrites.length = 0;
   runSpy.mockReset();
   runSpy.mockImplementation(async (argv: string[]) => {
@@ -117,9 +113,7 @@ beforeEach(async () => {
   await seed();
 });
 
-afterEach(async () => {
-  process.chdir(originalCwd);
-  await rm(workdir, { recursive: true, force: true });
+afterEach(() => {
   vi.clearAllMocks();
 });
 

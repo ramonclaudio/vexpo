@@ -1,8 +1,8 @@
-import { mkdtemp, readFile, writeFile } from "node:fs/promises";
-import { tmpdir } from "node:os";
-import path from "node:path";
+import { readFile, writeFile } from "node:fs/promises";
 
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+import { useTmpCwd } from "../helpers/tmp-cwd.ts";
 
 // Only the two modules that shell out to eas-cli are stubbed. `env-files`,
 // `fs`, `state` and `output` run for real against the temp project below, so
@@ -23,18 +23,10 @@ import { envPush } from "../../src/lib/eas-project.ts";
 
 const envPushSpy = envPush as unknown as ReturnType<typeof vi.fn>;
 
-let originalCwd: string;
-let workdir: string;
+useTmpCwd("eas-exit-code-");
 
-beforeEach(async () => {
-  originalCwd = process.cwd();
-  workdir = await mkdtemp(path.join(tmpdir(), "eas-exit-code-"));
-  process.chdir(workdir);
+beforeEach(() => {
   vi.clearAllMocks();
-});
-
-afterEach(() => {
-  process.chdir(originalCwd);
 });
 
 const CONVEX_URL = "EXPO_PUBLIC_CONVEX_URL=https://example.convex.cloud\n";

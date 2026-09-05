@@ -1,8 +1,9 @@
-import { access, mkdir, mkdtemp, rm, symlink, writeFile } from "node:fs/promises";
-import { tmpdir } from "node:os";
+import { access, mkdir, symlink, writeFile } from "node:fs/promises";
 import path from "node:path";
 
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
+
+import { useTmpCwd } from "../helpers/tmp-cwd.ts";
 
 import {
   STATE_FILE,
@@ -18,19 +19,7 @@ import {
   type SetupState,
 } from "../../src/lib/state";
 
-let originalCwd: string;
-let workdir: string;
-
-beforeEach(async () => {
-  originalCwd = process.cwd();
-  workdir = await mkdtemp(path.join(tmpdir(), "state-test-"));
-  process.chdir(workdir);
-});
-
-afterEach(async () => {
-  process.chdir(originalCwd);
-  await rm(workdir, { recursive: true, force: true });
-});
+const workdir = useTmpCwd("state-test-");
 
 describe("state load/save round-trip", () => {
   it("returns empty state when file is absent", async () => {
@@ -152,7 +141,7 @@ describe("audit log", () => {
         args: [`run-${i}`],
         pid: i,
         bunVersion: "test",
-        cwd: workdir,
+        cwd: workdir.path,
         completed: [],
         skipped: [],
       });
@@ -265,7 +254,7 @@ describe("checkConcurrentRun", () => {
 
 describe("lookupCachedPath", () => {
   it("returns the value when the file exists", async () => {
-    const fixturePath = path.join(workdir, "fixture.p8");
+    const fixturePath = path.join(workdir.path, "fixture.p8");
     await writeFile(fixturePath, "fake p8 contents");
     await recordStep("apple-sign-in", { p8Path: fixturePath });
     const out = await lookupCachedPath(await load(), ["apple-sign-in"], "p8Path");
@@ -273,15 +262,15 @@ describe("lookupCachedPath", () => {
   });
 
   it("returns null when the cached file no longer exists", async () => {
-    await recordStep("apple-sign-in", { p8Path: path.join(workdir, "missing.p8") });
+    await recordStep("apple-sign-in", { p8Path: path.join(workdir.path, "missing.p8") });
     const out = await lookupCachedPath(await load(), ["apple-sign-in"], "p8Path");
     expect(out).toBeNull();
   });
 
   it("falls through multiple steps in order", async () => {
-    const fixturePath = path.join(workdir, "fixture.p8");
+    const fixturePath = path.join(workdir.path, "fixture.p8");
     await writeFile(fixturePath, "x");
-    await recordStep("apple-sign-in", { p8Path: path.join(workdir, "missing-1.p8") });
+    await recordStep("apple-sign-in", { p8Path: path.join(workdir.path, "missing-1.p8") });
     await recordStep("asc-key", { p8Path: fixturePath });
     const out = await lookupCachedPath(await load(), ["apple-sign-in", "asc-key"], "p8Path");
     expect(out).toBe(fixturePath);

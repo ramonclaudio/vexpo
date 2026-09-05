@@ -1,31 +1,26 @@
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
-import { tmpdir } from "node:os";
-import path from "node:path";
+import { writeFile } from "node:fs/promises";
 
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
+import { useTmpCwd } from "../helpers/tmp-cwd.ts";
+
 import { resolveProjectId } from "../../src/lib/eas-project";
 
-let workdir: string;
-let originalCwd: string;
+useTmpCwd("eas-env-test-");
+
 let originalEnv: string | undefined;
 
-beforeEach(async () => {
-  originalCwd = process.cwd();
+beforeEach(() => {
   originalEnv = process.env.EAS_PROJECT_ID;
   delete process.env.EAS_PROJECT_ID;
-  workdir = await mkdtemp(path.join(tmpdir(), "eas-env-test-"));
-  process.chdir(workdir);
 });
 
-afterEach(async () => {
-  process.chdir(originalCwd);
+afterEach(() => {
   if (originalEnv === undefined) {
     delete process.env.EAS_PROJECT_ID;
   } else {
     process.env.EAS_PROJECT_ID = originalEnv;
   }
-  await rm(workdir, { recursive: true, force: true });
 });
 
 describe("resolveProjectId / app.json source", () => {

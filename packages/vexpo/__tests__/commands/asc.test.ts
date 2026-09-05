@@ -1,8 +1,6 @@
-import { mkdtemp, rm } from "node:fs/promises";
-import { tmpdir } from "node:os";
-import path from "node:path";
-
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+import { useTmpCwd } from "../helpers/tmp-cwd.ts";
 
 vi.mock("../../src/lib/proc.ts", () => ({
   run: vi.fn().mockResolvedValue({ code: 0, stdout: "{}", stderr: "" }),
@@ -57,14 +55,11 @@ const requireBundleIdSpy = requireBundleId as unknown as ReturnType<typeof vi.fn
 const spawnSpy = spawn as unknown as ReturnType<typeof vi.fn>;
 const loadAscCredsSpy = loadAscCreds as unknown as ReturnType<typeof vi.fn>;
 
-let originalCwd: string;
-let workdir: string;
+useTmpCwd("asc-connect-test-");
+
 let originalEnv: Record<string, string | undefined>;
 
 beforeEach(async () => {
-  originalCwd = process.cwd();
-  workdir = await mkdtemp(path.join(tmpdir(), "asc-connect-test-"));
-  process.chdir(workdir);
   originalEnv = { ...process.env };
   Object.defineProperty(process.stdin, "isTTY", { value: true, configurable: true });
 
@@ -105,9 +100,7 @@ beforeEach(async () => {
   });
 });
 
-afterEach(async () => {
-  process.chdir(originalCwd);
-  await rm(workdir, { recursive: true, force: true });
+afterEach(() => {
   process.env = originalEnv;
   vi.clearAllMocks();
 });

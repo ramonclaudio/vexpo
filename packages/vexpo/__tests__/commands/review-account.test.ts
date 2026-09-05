@@ -1,8 +1,8 @@
-import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
-import { tmpdir } from "node:os";
-import path from "node:path";
+import { readFile, rm, writeFile } from "node:fs/promises";
 
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+import { useTmpCwd } from "../helpers/tmp-cwd.ts";
 
 // Only the `convex run` shell-out is stubbed. store.config.json and the env
 // files are real files in the temp project, so the read, the rewrite and the
@@ -28,18 +28,12 @@ const readStoreConfig = async () =>
     apple: { review: { demoPassword: string } };
   };
 
-let originalCwd: string;
+useTmpCwd("review-account-");
 
 beforeEach(async () => {
-  originalCwd = process.cwd();
-  process.chdir(await mkdtemp(path.join(tmpdir(), "review-account-")));
   await writeFile("store.config.json", storeConfig("pw123456"));
   vi.clearAllMocks();
   runSpy.mockResolvedValue({ code: 0, stdout: "", stderr: "" });
-});
-
-afterEach(() => {
-  process.chdir(originalCwd);
 });
 
 describe("runReviewAccount", () => {

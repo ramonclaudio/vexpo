@@ -1,8 +1,10 @@
-import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
-import { homedir, tmpdir } from "node:os";
+import { mkdir, writeFile } from "node:fs/promises";
+import { homedir } from "node:os";
 import path from "node:path";
 
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
+
+import { useTmpCwd } from "../helpers/tmp-cwd.ts";
 
 import { CREDENTIALS_DIR, expandTilde, stagedP8 } from "../../src/lib/path.ts";
 
@@ -35,19 +37,7 @@ describe("expandTilde", () => {
 });
 
 describe("stagedP8", () => {
-  let workdir: string;
-  let originalCwd: string;
-
-  beforeEach(async () => {
-    originalCwd = process.cwd();
-    workdir = await mkdtemp(path.join(tmpdir(), "staged-p8-test-"));
-    process.chdir(workdir);
-  });
-
-  afterEach(async () => {
-    process.chdir(originalCwd);
-    await rm(workdir, { recursive: true, force: true });
-  });
+  useTmpCwd("staged-p8-test-");
 
   it("returns undefined when credentials/ is absent", () => {
     expect(stagedP8()).toBeUndefined();

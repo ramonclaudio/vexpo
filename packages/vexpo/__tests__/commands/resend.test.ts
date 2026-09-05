@@ -1,8 +1,8 @@
-import { mkdtemp, writeFile } from "node:fs/promises";
-import { tmpdir } from "node:os";
-import path from "node:path";
+import { writeFile } from "node:fs/promises";
 
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+import { useTmpCwd } from "../helpers/tmp-cwd.ts";
 
 // Only the Resend HTTP client and the `convex env set` shell-out are stubbed.
 // `env-local`, `env-files`, `fs`, `app` and `state` read and write real files
@@ -34,24 +34,18 @@ const deleteWebhookSpy = deleteWebhook as unknown as ReturnType<typeof vi.fn>;
 const DEV_SITE = "https://dev-site.convex.site";
 const PROD_SITE = "https://prod-site.convex.site";
 
-let originalCwd: string;
-
 async function writeProdEnv(siteUrl: string): Promise<void> {
   await writeFile(".env.prod", `EXPO_PUBLIC_CONVEX_SITE_URL=${siteUrl}\n`);
 }
 
+useTmpCwd("resend-");
+
 beforeEach(async () => {
-  originalCwd = process.cwd();
-  process.chdir(await mkdtemp(path.join(tmpdir(), "resend-")));
   await writeFile("package.json", JSON.stringify({ name: "acme" }));
   await writeFile(".env.local", `EXPO_PUBLIC_CONVEX_SITE_URL=${DEV_SITE}\n`);
   vi.clearAllMocks();
   process.env.RESEND_FULL_ACCESS_KEY = "re_full_bootstrap";
   Object.defineProperty(process.stdin, "isTTY", { value: false, configurable: true });
-});
-
-afterEach(() => {
-  process.chdir(originalCwd);
 });
 
 describe("runResend full flow", () => {

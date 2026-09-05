@@ -1,8 +1,8 @@
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
-import { tmpdir } from "node:os";
-import path from "node:path";
+import { rm, writeFile } from "node:fs/promises";
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+import { useTmpCwd } from "../helpers/tmp-cwd.ts";
 
 // Only the two modules that reach the network are stubbed. The env files are
 // real files in a temp project, so `readEnvFile` and its parser run for real.
@@ -22,11 +22,9 @@ const mintProdSpy = mintProdDeployKey as unknown as ReturnType<typeof vi.fn>;
 const envListSpy = envList as unknown as ReturnType<typeof vi.fn>;
 const envCreateSpy = envCreate as unknown as ReturnType<typeof vi.fn>;
 
-let originalCwd: string;
+useTmpCwd("convex-key-");
 
 beforeEach(async () => {
-  originalCwd = process.cwd();
-  process.chdir(await mkdtemp(path.join(tmpdir(), "convex-key-")));
   await writeFile(
     ".env.local",
     "CONVEX_DEPLOY_KEY=dev:merry-otter-1|x\nCONVEX_DEPLOYMENT=dev:merry-otter-1\n",
@@ -38,7 +36,6 @@ beforeEach(async () => {
 });
 
 afterEach(() => {
-  process.chdir(originalCwd);
   vi.clearAllMocks();
 });
 
