@@ -184,6 +184,19 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       "expo-system-ui",
       "expo-secure-store",
       "expo-web-browser",
+      [
+        "expo-widgets",
+        {
+          widgets: [
+            {
+              name: "StatusWidget",
+              displayName: APP_NAME,
+              description: "Your account at a glance.",
+              supportedFamilies: ["systemSmall", "systemMedium"],
+            },
+          ],
+        },
+      ],
       ["expo-dev-client", { launchMode: "most-recent" }],
       ["expo-build-properties", { ios: { deploymentTarget: "16.4" } }],
       ["./plugins/with-pod-deployment-target", { target: "16.4" }],

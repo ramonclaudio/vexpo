@@ -81,6 +81,7 @@
     "expo-task-manager": "~57.0.15",
     "expo-updates": "~57.0.21",
     "expo-web-browser": "~57.0.2",
+    "expo-widgets": "~57.0.17",
     "react": "19.2.3",
     "react-native": "0.86.3",
     "react-native-gesture-handler": "~2.32.0",
