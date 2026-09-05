@@ -151,9 +151,17 @@ appId: ${MAESTRO_APP_ID}
     id: "settings-create-account"
 - assertNotVisible:
     id: "settings-discard-guest"
+- scrollUntilVisible:
+    element:
+      id: "settings-sign-out"
+    direction: DOWN
 - assertVisible:
     id: "settings-sign-out"
 
+- scrollUntilVisible:
+    element:
+      id: "settings-profile"
+    direction: UP
 - tapOn:
     id: "settings-profile"
 - extendedWaitUntil:

@@ -42,6 +42,10 @@ appId: ${MAESTRO_APP_ID}
       id: "settings-screen"
     timeout: 15000
 
+- scrollUntilVisible:
+    element:
+      id: "settings-sign-out"
+    direction: DOWN
 - tapOn: "Sign out"
 - waitForAnimationToEnd:
     timeout: 3000
