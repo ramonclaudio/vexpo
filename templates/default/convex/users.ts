@@ -1,3 +1,4 @@
+import type { FunctionArgs } from "convex/server";
 import { v } from "convex/values";
 
 import { components, internal } from "./_generated/api";
@@ -249,7 +250,10 @@ export const deleteAccount = authMutation({
       .collect();
     await Promise.all(pushTokens.map((t) => ctx.db.delete(t._id)));
 
-    await deleteAllByUserId(ctx, "session", authUserId);
+    await deleteAllWhere(ctx, {
+      model: "session",
+      where: [{ field: "userId", value: authUserId }],
+    });
 
     await ctx.db.patch(userId, { deletedAt: now, updatedAt: now });
 
@@ -341,13 +345,15 @@ async function purgeUser(
     }
   }
 
-  await deleteAllByUserId(ctx, "session", authUserId);
-  await deleteAllByUserId(ctx, "account", authUserId);
-  await deleteAllByUserId(ctx, "twoFactor", authUserId);
-  await deleteAllByUserId(ctx, "oauthAccessToken", authUserId);
-  await deleteAllByUserId(ctx, "oauthConsent", authUserId);
-  await deleteAllByUserId(ctx, "oauthApplication", authUserId);
-  if (authUser?.email) await deleteVerificationByIdentifier(ctx, authUser.email);
+  for (const model of USER_ID_MODELS) {
+    await deleteAllWhere(ctx, { model, where: [{ field: "userId", value: authUserId }] });
+  }
+  if (authUser?.email) {
+    await deleteAllWhere(ctx, {
+      model: "verification",
+      where: [{ field: "identifier", value: authUser.email }],
+    });
+  }
 
   await ctx.runMutation(components.betterAuth.adapter.deleteOne, {
     input: { model: "user", where: [{ field: "_id", value: authUserId }] },
@@ -365,33 +371,23 @@ async function purgeUser(
   }
 }
 
-type UserIdModel =
-  | "session"
-  | "account"
-  | "twoFactor"
-  | "oauthAccessToken"
-  | "oauthConsent"
-  | "oauthApplication";
+const USER_ID_MODELS = [
+  "session",
+  "account",
+  "twoFactor",
+  "oauthAccessToken",
+  "oauthConsent",
+  "oauthApplication",
+] as const;
 
-const deleteAllByUserId = async (ctx: MutationCtx, model: UserIdModel, userId: string) => {
+type DeleteManyInput = FunctionArgs<typeof components.betterAuth.adapter.deleteMany>["input"];
+
+const deleteAllWhere = async (ctx: MutationCtx, input: DeleteManyInput) => {
   let cursor: string | null = null;
   let isDone = false;
   while (!isDone) {
     const result = (await ctx.runMutation(components.betterAuth.adapter.deleteMany, {
-      input: { model, where: [{ field: "userId", value: userId }] },
-      paginationOpts: { numItems: 100, cursor },
-    })) as { isDone: boolean; continueCursor: string };
-    isDone = result.isDone;
-    cursor = result.continueCursor;
-  }
-};
-
-const deleteVerificationByIdentifier = async (ctx: MutationCtx, identifier: string) => {
-  let cursor: string | null = null;
-  let isDone = false;
-  while (!isDone) {
-    const result = (await ctx.runMutation(components.betterAuth.adapter.deleteMany, {
-      input: { model: "verification", where: [{ field: "identifier", value: identifier }] },
+      input,
       paginationOpts: { numItems: 100, cursor },
     })) as { isDone: boolean; continueCursor: string };
     isDone = result.isDone;

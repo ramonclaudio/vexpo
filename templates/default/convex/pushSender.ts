@@ -194,13 +194,7 @@ export const reconcileReceipts = internalAction({
     }
 
     const { revoke, settled } = planReceiptReconciliation(pending, receipts, Date.now());
-    let revoked = 0;
-    for (const [code, tokenIds] of revoke) {
-      revoked += await ctx.runMutation(internal.pushTokens.markRevoked, {
-        tokenIds,
-        errorCode: code,
-      });
-    }
+    const revoked = await applyRevocations(ctx, revoke);
     if (settled.length > 0) {
       await ctx.runMutation(internal.pushTokens.deleteReceipts, { ids: settled });
     }
@@ -219,6 +213,32 @@ type PendingReceipt = {
   createdAt: number;
 };
 
+type PermanentError = { details?: { error?: string } };
+
+// Only permanent Expo error codes revoke a token; everything else is transient.
+function bucketPermanentError(
+  buckets: Map<string, Id<"pushTokens">[]>,
+  result: PermanentError,
+  tokenId: Id<"pushTokens">,
+): void {
+  const code = result.details?.error;
+  if (!code || !PERMANENT_ERROR_CODES.has(code)) return;
+  const list = buckets.get(code) ?? [];
+  list.push(tokenId);
+  buckets.set(code, list);
+}
+
+async function applyRevocations(
+  ctx: ActionCtx,
+  buckets: Map<string, Id<"pushTokens">[]>,
+): Promise<number> {
+  let revoked = 0;
+  for (const [errorCode, tokenIds] of buckets) {
+    revoked += await ctx.runMutation(internal.pushTokens.markRevoked, { tokenIds, errorCode });
+  }
+  return revoked;
+}
+
 function planReceiptReconciliation(
   pending: PendingReceipt[],
   receipts: Record<string, ExpoReceipt>,
@@ -234,11 +254,7 @@ function planReceiptReconciliation(
     }
     settled.push(row._id);
     if (receipt.status !== "error") continue;
-    const code = receipt.details?.error;
-    if (!code || !PERMANENT_ERROR_CODES.has(code)) continue;
-    const list = revoke.get(code) ?? [];
-    list.push(row.tokenId);
-    revoke.set(code, list);
+    bucketPermanentError(revoke, receipt, row.tokenId);
   }
   return { revoke, settled };
 }
@@ -247,19 +263,7 @@ async function reconcileTickets(ctx: ActionCtx, entries: TicketEntry[]): Promise
   const buckets = new Map<string, Id<"pushTokens">[]>();
   for (const { ticket, token } of entries) {
     if (ticket.status !== "error") continue;
-    const code = ticket.details?.error;
-    if (!code || !PERMANENT_ERROR_CODES.has(code)) continue;
-    const list = buckets.get(code) ?? [];
-    list.push(token._id);
-    buckets.set(code, list);
+    bucketPermanentError(buckets, ticket, token._id);
   }
-
-  let revoked = 0;
-  for (const [code, tokenIds] of buckets) {
-    revoked += await ctx.runMutation(internal.pushTokens.markRevoked, {
-      tokenIds,
-      errorCode: code,
-    });
-  }
-  return revoked;
+  return applyRevocations(ctx, buckets);
 }

@@ -5,7 +5,7 @@ import { authComponent, createAuth } from "./auth";
 import { resend } from "./email";
 import { log, newRequestId } from "./log";
 import { isRecord, optionalString } from "./json";
-import { withWebhook } from "./webhook";
+import { jsonError, toHex, withWebhook } from "./webhook";
 
 const http = httpRouter();
 
@@ -140,15 +140,7 @@ http.route({
 });
 
 async function sha256Hex(s: string): Promise<string> {
-  const sig = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(s));
-  return [...new Uint8Array(sig)].map((b) => b.toString(16).padStart(2, "0")).join("");
-}
-
-function jsonError(status: number, message: string, requestId: string): Response {
-  return new Response(JSON.stringify({ error: message, requestId }), {
-    status,
-    headers: { "Content-Type": "application/json", "X-Request-Id": requestId },
-  });
+  return toHex(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(s)));
 }
 
 export default http;

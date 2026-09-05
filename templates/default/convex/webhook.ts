@@ -133,7 +133,10 @@ export function withWebhook<T>(
   };
 }
 
-function jsonError(status: number, message: string, requestId: string): Response {
+export const toHex = (buf: ArrayBuffer): string =>
+  [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, "0")).join("");
+
+export function jsonError(status: number, message: string, requestId: string): Response {
   return new Response(JSON.stringify({ error: message, requestId }), {
     status,
     headers: { "Content-Type": "application/json", "X-Request-Id": requestId },
@@ -180,8 +183,7 @@ async function hmacHex(
     false,
     ["sign"],
   );
-  const sig = await crypto.subtle.sign("HMAC", key, enc.encode(body));
-  return [...new Uint8Array(sig)].map((b) => b.toString(16).padStart(2, "0")).join("");
+  return toHex(await crypto.subtle.sign("HMAC", key, enc.encode(body)));
 }
 
 function timingSafeEqual(a: string, b: string): boolean {

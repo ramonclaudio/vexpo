@@ -46,10 +46,4 @@ export const log = {
   },
 };
 
-export function newRequestId(): string {
-  const bytes = new Uint8Array(9);
-  crypto.getRandomValues(bytes);
-  let s = "";
-  for (const b of bytes) s += String.fromCharCode(b);
-  return btoa(s).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
-}
+export const newRequestId = (): string => crypto.randomUUID();

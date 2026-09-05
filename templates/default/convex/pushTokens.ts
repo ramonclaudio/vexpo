@@ -22,19 +22,10 @@ export const upsert = authMutation({
       .unique();
 
     if (existing) {
-      if (existing.userId === ctx.user._id) {
-        await ctx.db.patch(existing._id, {
-          updatedAt: now,
-          lastSeenAt: now,
-          revoked: false,
-          revokedAt: undefined,
-          lastErrorCode: undefined,
-        });
-        return existing._id;
-      }
+      // A token that moved to another user carries its owner and device type over.
+      const reassign = existing.userId === ctx.user._id ? {} : { userId: ctx.user._id, deviceType };
       await ctx.db.patch(existing._id, {
-        userId: ctx.user._id,
-        deviceType,
+        ...reassign,
         updatedAt: now,
         lastSeenAt: now,
         revoked: false,
