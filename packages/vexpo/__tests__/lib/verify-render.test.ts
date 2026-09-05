@@ -63,6 +63,23 @@ describe("renderVerifyResults", () => {
     expect(out).not.toMatch(/[✓✗✔✘]/);
   });
 
+  // The tag went from one character wide to two, so an indent tuned by hand
+  // for the old width would have left the details line short by one.
+  it.each(["section", "compact"] as const)(
+    "lines the details up under the name in %s",
+    async (style) => {
+      const { renderVerifyResults } = await loadRender(false);
+      const out = captureStderr(() =>
+        renderVerifyResults([{ ...checks[0], details: "from .env.local" }], style),
+      );
+      const [head, details] = out
+        .split("\n")
+        .filter((l) => l.trim())
+        .slice(-2);
+      expect(details.indexOf("from")).toBe(head.indexOf("convex url") + 2);
+    },
+  );
+
   it("still writes the name and the message", async () => {
     const { renderVerifyResults } = await loadRender(false);
     const out = captureStderr(() => renderVerifyResults(checks, "section"));

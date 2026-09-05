@@ -22,18 +22,21 @@ function glyph(severity: Severity): string {
 
 type RenderStyle = "section" | "compact";
 
+// Two for the tag and one for the space after it. The details line is derived
+// from those so it keeps sitting under the name if the tag changes width again.
+const TAG_WIDTH = 3;
+const INDENT: Record<RenderStyle, number> = { section: 2, compact: 4 };
+
 function renderCheck(check: Check, style: RenderStyle, width: number): void {
+  const lead = " ".repeat(INDENT[style]);
   line(
     style === "section"
-      ? `  ${glyph(check.severity)} ${BOLD}${check.name.padEnd(width)}${RESET}  ${check.message}`
-      : `    ${glyph(check.severity)} ${check.name.padEnd(width)}  ${check.message}`,
+      ? `${lead}${glyph(check.severity)} ${BOLD}${check.name.padEnd(width)}${RESET}  ${check.message}`
+      : `${lead}${glyph(check.severity)} ${check.name.padEnd(width)}  ${check.message}`,
   );
   if (!check.details) return;
-  line(
-    style === "section"
-      ? `       ${DIM}${check.details}${RESET}`
-      : `        ${DIM}${check.details}${RESET}`,
-  );
+  const pad = " ".repeat(INDENT[style] + TAG_WIDTH + 2);
+  line(`${pad}${DIM}${check.details}${RESET}`);
 }
 
 export function renderVerifyResults(checks: Check[], style: RenderStyle): void {
