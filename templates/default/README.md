@@ -121,12 +121,18 @@ To install a build without a terminal, use [Orbit](https://github.com/expo/orbit
 brew install expo-orbit
 ```
 
-One team setup needs a different route. If your Convex team is EAS-managed (created through Expo's integration), direct project creation fails with `is managed by oauth:...`, so provision through the integration instead and then adopt the deployment it made:
+One team setup needs a different route. If your Convex team is EAS-managed (created through Expo's integration), direct project creation fails with `is managed by oauth:...`. Provision through the integration instead:
 
 ```bash
-npx eas-cli integrations:convex:connect
-npx vexpo adopt
+npx eas-cli init            # if the app is not linked to EAS yet
+npx vexpo convex --eas      # add --region aws-us-east-1 to skip the region prompt
 ```
+
+That spawns `eas integrations:convex:connect`, which creates the project and writes `CONVEX_DEPLOY_KEY` and `EXPO_PUBLIC_CONVEX_URL` to `.env.local`, then carries on with the site URLs, the identity vars, and the schema push. A deploy key in `.env.local` wins over `--prod` on every convex command, so `npm run convex:logs:prod` reads dev until you point the CLI at another env file. `.env.example` has the recipe.
+
+The integration always creates a new Convex project, there is no input for an existing one, and it does not check whether this app already has one. So `--eas` reads `eas integrations:convex:project` first and stops if the app is already linked, which is what a fresh clone with no `.env.local` looks like. To point at a project you already have, put its deploy key in `.env.local` and run `npx vexpo convex` without `--eas`. To relink on purpose, run `npx eas-cli integrations:convex:project:delete` first, which drops the EAS link and leaves everything on Convex alone.
+
+One more thing the integration does: it writes the dev deployment URL to `EXPO_PUBLIC_CONVEX_URL` on EAS for production, preview and development alike. `npx vexpo env push` routes prod to production and preview and dev to development, so run it once a prod deployment exists.
 
 ## Ship path
 

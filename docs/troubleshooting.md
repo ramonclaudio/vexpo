@@ -50,12 +50,30 @@ The slug is in the Convex dashboard under team settings. `vexpo convex` also rea
 
 ### Provisioning fails: team `is managed by oauth:...`
 
-Accounts created through the EAS-Convex integration have their team managed by that OAuth app, and `convex dev --configure new` can't create projects there directly, with or without `CONVEX_TEAM`. Create the project through the integration, then adopt it:
+Accounts created through the EAS-Convex integration have their team managed by that OAuth app, and `convex dev --configure new` can't create projects there directly, with or without `CONVEX_TEAM`. Provision through the integration instead:
 
 ```bash
-npx eas-cli integrations:convex:connect
-npx vexpo adopt
+npx vexpo convex --eas
 ```
+
+That spawns `eas integrations:convex:connect` and then does the rest of the usual run. It needs the app linked to EAS first, so run `npx eas-cli init` if you have not. `--region <region>` skips the region prompt, and `CONVEX_TEAM` is passed as `--team-name`.
+
+The integration writes `CONVEX_DEPLOY_KEY` to `.env.local`, and that key wins over `--prod` and `--deployment-name` on every convex command. So `npm run convex:logs:prod` reads dev afterwards until you point the CLI at another env file.
+
+### `--eas` stops with `EAS already has a Convex project linked to this app`
+
+`eas integrations:convex:connect` takes a team, a region and a name, and nothing
+else. There is no input for an existing Convex project, and the command does not
+check whether the app already has one before it provisions. `--eas` reads
+`eas integrations:convex:project` first and stops when the app is already
+linked. A fresh clone hits this, because
+the check that decides to provision reads `.env.local`, which git does not track.
+
+To use the project that is already linked, get its deploy key from the Convex
+dashboard, put it in `.env.local` as `CONVEX_DEPLOY_KEY`, then run
+`npx vexpo convex` without `--eas`. To provision a replacement on purpose, run
+`npx eas-cli integrations:convex:project:delete` first. That drops the EAS link
+only, nothing on Convex is destroyed.
 
 ## Resend
 

@@ -190,8 +190,20 @@ const convex = program
   .option("--fresh", "provision a NEW deployment", false)
   .option("--local", "self-hosted or local backend", false)
   .option("--name <name>", "override Convex project name")
-  .action((options: { fresh?: boolean; local?: boolean; name?: string }) =>
-    exitWith(runConvex(options)),
+  .option(
+    "--eas",
+    "provision through `eas integrations:convex:connect` instead of `convex dev`. Needed when the Expo account creates Convex projects only through the integration",
+    false,
+  )
+  .option("--region <region>", "Convex deployment region for --eas, e.g. aws-us-east-1")
+  .action(
+    (options: {
+      fresh?: boolean;
+      local?: boolean;
+      name?: string;
+      eas?: boolean;
+      region?: string;
+    }) => exitWith(runConvex(options)),
   );
 
 convex

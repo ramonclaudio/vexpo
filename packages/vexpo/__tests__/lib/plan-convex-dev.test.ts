@@ -66,3 +66,35 @@ describe("convexUrls", () => {
     expect(siteUrl).not.toContain("convex.site");
   });
 });
+
+describe("planConvexDev with --eas", () => {
+  it("spawns the EAS integration instead of configuring a new convex project", () => {
+    const p = planConvexDev({ eas: true }, true, "app");
+    expect(p.connectArgs).toEqual(["integrations:convex:connect", "--project-name", "app"]);
+    expect(p.devArgs).not.toContain("--configure");
+    expect(p.devArgs).toEqual(["convex", "dev", "--once", "--tail-logs", "disable"]);
+  });
+
+  it("passes the team and region through", () => {
+    const p = planConvexDev({ eas: true, region: "aws-us-east-1" }, true, "app", "acme-team");
+    expect(p.connectArgs).toEqual([
+      "integrations:convex:connect",
+      "--project-name",
+      "app",
+      "--team-name",
+      "acme-team",
+      "--region",
+      "aws-us-east-1",
+    ]);
+  });
+
+  it("leaves an existing deployment alone", () => {
+    const p = planConvexDev({ eas: true }, false, "app");
+    expect(p.connectArgs).toBeUndefined();
+    expect(p.devArgs).toEqual(["convex", "dev", "--once", "--tail-logs", "disable"]);
+  });
+
+  it("never asks to pick a local deployment", () => {
+    expect(planConvexDev({ eas: true, local: true }, false, "app").selectLocalFirst).toBe(false);
+  });
+});
