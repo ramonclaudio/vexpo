@@ -30,7 +30,6 @@ import { TouchTarget } from "@/constants/layout";
 
 import { api } from "@/convex/_generated/api";
 import { authClient } from "@/lib/auth-client";
-import { haptics } from "@/lib/haptics";
 import { maskUsername } from "@/lib/masks";
 import {
   firstError,
@@ -182,14 +181,12 @@ export default function SignInScreen() {
           password: parsed.data.password,
         });
         if (response.error) {
-          haptics.error();
           if (response.error.code === NOT_VERIFIED) {
-            return {
-              error:
-                "This account still needs its email verified. Sign in with your email address and we'll send a new code.",
-            };
+            return fail(
+              "This account still needs its email verified. Sign in with your email address and we'll send a new code.",
+            );
           }
-          return { error: response.error.message ?? "Invalid username or password" };
+          return fail(response.error.message ?? "Invalid username or password");
         }
         succeed("Signed in");
         return {};

@@ -258,6 +258,11 @@ export default function ProfileScreen() {
   const [avatarUpdating, setAvatarUpdating] = useState(false);
   const [avatarError, setAvatarError] = useState<string | null>(null);
 
+  // The avatar paths set their own state instead of returning a form result,
+  // so they go through `fail` for the buzz and the announcement and keep the
+  // message.
+  const raiseAvatarError = (message: string) => setAvatarError(fail(message).error);
+
   // Both avatar mutations set the same three pieces of state around the work.
   const runAvatarTask = async (task: () => Promise<void>) => {
     try {
@@ -265,8 +270,7 @@ export default function ProfileScreen() {
       setAvatarUpdating(true);
       await task();
     } catch (err) {
-      haptics.error();
-      setAvatarError(formatError(err));
+      raiseAvatarError(formatError(err));
     } finally {
       setAvatarUpdating(false);
     }
@@ -280,8 +284,7 @@ export default function ProfileScreen() {
         ? await ImagePicker.requestCameraPermissionsAsync()
         : await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!perm.granted) {
-      haptics.error();
-      setAvatarError(source === "camera" ? "Camera access denied" : "Photos access denied");
+      raiseAvatarError(source === "camera" ? "Camera access denied" : "Photos access denied");
       return;
     }
     const options: ImagePicker.ImagePickerOptions = {

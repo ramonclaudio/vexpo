@@ -2,7 +2,6 @@ import { useActionState, useEffect, useState } from "react";
 import * as AppleAuthentication from "expo-apple-authentication";
 
 import { authClient } from "@/lib/auth-client";
-import { haptics } from "@/lib/haptics";
 import { fail, succeed } from "@/lib/form-result";
 
 type AppleState = { error?: string };
@@ -56,14 +55,12 @@ export function useAppleAuth({ successMessage }: { successMessage: string }) {
       });
 
       if (response.error) {
-        haptics.error();
         if (__DEV__) console.warn("[AppleAuth] server", response.error.status, response.error.code);
-        return {
-          error:
-            response.error.status === 429
-              ? "Too many sign-in attempts. Please wait a minute and try again."
-              : "We couldn't finish signing you in with Apple. Please try again, or use your email.",
-        };
+        return fail(
+          response.error.status === 429
+            ? "Too many sign-in attempts. Please wait a minute and try again."
+            : "We couldn't finish signing you in with Apple. Please try again, or use your email.",
+        );
       }
       succeed(successMessage);
       return {};

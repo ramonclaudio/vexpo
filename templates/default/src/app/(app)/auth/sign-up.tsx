@@ -187,10 +187,9 @@ export default function SignUpScreen() {
   const [state, signUp, isPending] = useActionState<SignUpState, void>(async () => {
     const parsed = signUpSchema.safeParse({ name, username, email, password });
     if (!parsed.success) {
-      haptics.error();
       const field = firstErrorField(parsed);
       if (field) setNativeValue(activeField, `field-${field}`);
-      return { error: firstError(parsed)! };
+      return fail(firstError(parsed)!);
     }
 
     try {
@@ -214,16 +213,15 @@ export default function SignUpScreen() {
           setShowVerification(true);
           return {};
         }
-        haptics.error();
         if (response.error.code === USERNAME_TAKEN) {
           setNativeValue(activeField, "field-username");
-          return {
-            error: emailFeatures
+          return fail(
+            emailFeatures
               ? "That username is taken. If the account is yours, sign in with your email and we'll send a new code."
               : "That username is taken. Please choose another.",
-          };
+          );
         }
-        return { error: "Unable to create account. Please try a different email or username." };
+        return fail("Unable to create account. Please try a different email or username.");
       }
 
       haptics.success();

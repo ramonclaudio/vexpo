@@ -40,7 +40,6 @@ import { DynamicType } from "@/constants/ui";
 import { scheduleOnRN } from "react-native-worklets";
 
 import { authClient } from "@/lib/auth-client";
-import { haptics } from "@/lib/haptics";
 import { maskOtp } from "@/lib/masks";
 import { firstError, resetPasswordSchema } from "@/lib/schemas";
 import BrandIcon from "@/components/ui/brand-icon";
@@ -100,13 +99,12 @@ export default function ResetPasswordScreen() {
       });
 
       if (response.error) {
-        haptics.error();
         const message = response.error.message ?? "Failed to reset password";
         const lower = message.toLowerCase();
         if (lower.includes("expired") || lower.includes("invalid")) {
-          return { error: "This code has expired. Request a new one.", expired: true };
+          return { ...fail("This code has expired. Request a new one."), expired: true };
         }
-        return { error: message };
+        return fail(message);
       }
       succeed("Password reset");
       return { ok: true };

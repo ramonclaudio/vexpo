@@ -18,7 +18,7 @@ import { CapsuleRowButton } from "@/components/ui/capsule-row-button";
 import { TouchTarget } from "@/constants/layout";
 
 import { ErrorText } from "@/components/ui/status-text";
-import { announce } from "@/lib/a11y";
+import { fail } from "@/lib/form-result";
 import { haptics } from "@/lib/haptics";
 import { useColors } from "@/hooks/use-theme";
 
@@ -51,11 +51,7 @@ export default function HelpScreen() {
   const [searchText, setSearchText] = useState("");
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [linkError, setLinkError] = useState<string | null>(null);
-  const raiseLinkError = (message: string) => {
-    haptics.error();
-    announce(`Error: ${message}`);
-    setLinkError(message);
-  };
+  const raiseLinkError = (message: string) => setLinkError(fail(message).error);
   const toggleExpanded = (question: string, next: boolean) => {
     haptics.selection();
     setExpanded((m) => ({ ...m, [question]: next }));

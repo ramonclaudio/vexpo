@@ -3,9 +3,8 @@ import type { FunctionReference } from "convex/server";
 import { useMutation } from "convex/react";
 
 import { authClient } from "@/lib/auth-client";
-import { announce } from "@/lib/a11y";
 import { formatError } from "@/lib/convex-error";
-import { haptics } from "@/lib/haptics";
+import { fail } from "@/lib/form-result";
 
 type Gate = () => Promise<{ ok: true } | { ok: false; error?: string }>;
 
@@ -21,11 +20,7 @@ export function useSignOutMutation(
   const [error, setError] = useState<string | null>(null);
 
   const submit = useCallback(async () => {
-    const raise = (message: string) => {
-      haptics.error();
-      announce(`Error: ${message}`);
-      setError(message);
-    };
+    const raise = (message: string) => setError(fail(message).error);
     setError(null);
     if (gate) {
       const passed = await gate();
