@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, test } from "vitest";
 
 import { isRecord } from "@/convex/json";
-import { withWebhook } from "@/convex/webhook";
+import { withWebhook, type WebhookHandler, type WithWebhookOptions } from "@/convex/webhook";
 
 // Stub Convex action context. The webhook factory doesn't use it (the inner
 // handler does, if it needs to call queries/mutations), so an empty object
@@ -57,38 +57,37 @@ describe("withWebhook (HMAC signature verification)", () => {
     process.env.TEST_WEBHOOK_SECRET = SECRET;
   });
 
+  // Every case below builds the same handler and changes at most two options.
+  const testHandler = (
+    overrides: Partial<WithWebhookOptions<Record<string, unknown>>> = {},
+    handler: WebhookHandler<Record<string, unknown>> = () => new Response("ok"),
+  ) =>
+    withWebhook(
+      {
+        source: "test",
+        parse: anyObject,
+        signatureHeader: "x-signature",
+        secretEnv: "TEST_WEBHOOK_SECRET",
+        algorithm: "sha256",
+        ...overrides,
+      },
+      handler,
+    );
+
   afterEach(() => {
     delete process.env.TEST_WEBHOOK_SECRET;
   });
 
   test("503 when secret env var is unset", async () => {
     delete process.env.TEST_WEBHOOK_SECRET;
-    const handler = withWebhook(
-      {
-        source: "test",
-        parse: anyObject,
-        signatureHeader: "x-signature",
-        secretEnv: "TEST_WEBHOOK_SECRET",
-        algorithm: "sha256",
-      },
-      () => new Response("ok"),
-    );
+    const handler = testHandler();
     const res = await handler(ctx, makeRequest({ body: "{}", signatureHeader: "x-signature" }));
     expect(res.status).toBe(503);
     expect(res.headers.get("X-Request-Id")).toBeTruthy();
   });
 
   test("401 when signature header is missing", async () => {
-    const handler = withWebhook(
-      {
-        source: "test",
-        parse: anyObject,
-        signatureHeader: "x-signature",
-        secretEnv: "TEST_WEBHOOK_SECRET",
-        algorithm: "sha256",
-      },
-      () => new Response("ok"),
-    );
+    const handler = testHandler();
     const res = await handler(ctx, makeRequest({ body: "{}", signatureHeader: "x-signature" }));
     expect(res.status).toBe(401);
     const text = await res.text();
@@ -96,16 +95,7 @@ describe("withWebhook (HMAC signature verification)", () => {
   });
 
   test("401 when signature does not match", async () => {
-    const handler = withWebhook(
-      {
-        source: "test",
-        parse: anyObject,
-        signatureHeader: "x-signature",
-        secretEnv: "TEST_WEBHOOK_SECRET",
-        algorithm: "sha256",
-      },
-      () => new Response("ok"),
-    );
+    const handler = testHandler();
     const res = await handler(
       ctx,
       makeRequest({
@@ -153,13 +143,11 @@ describe("withWebhook (HMAC signature verification)", () => {
   test("200 when signature matches with prefix (SHA-1, EAS-style)", async () => {
     const body = JSON.stringify({ status: "finished" });
     const signature = `sha1=${await sign("sha1", SECRET, body)}`;
-    const handler = withWebhook(
+    const handler = testHandler(
       {
         source: "eas-webhook",
-        parse: anyObject,
         signatureHeader: "expo-signature",
         signaturePrefix: "sha1=",
-        secretEnv: "TEST_WEBHOOK_SECRET",
         algorithm: "sha1",
       },
       () => new Response("ok", { status: 200 }),
@@ -178,16 +166,7 @@ describe("withWebhook (HMAC signature verification)", () => {
   test("400 when body is not valid JSON", async () => {
     const body = "not-json{";
     const signature = await sign("sha256", SECRET, body);
-    const handler = withWebhook(
-      {
-        source: "test",
-        parse: anyObject,
-        signatureHeader: "x-signature",
-        secretEnv: "TEST_WEBHOOK_SECRET",
-        algorithm: "sha256",
-      },
-      () => new Response("ok"),
-    );
+    const handler = testHandler();
     const res = await handler(
       ctx,
       makeRequest({
@@ -200,17 +179,7 @@ describe("withWebhook (HMAC signature verification)", () => {
   });
 
   test("413 when Content-Length exceeds maxBodyBytes", async () => {
-    const handler = withWebhook(
-      {
-        source: "test",
-        parse: anyObject,
-        signatureHeader: "x-signature",
-        secretEnv: "TEST_WEBHOOK_SECRET",
-        algorithm: "sha256",
-        maxBodyBytes: 100,
-      },
-      () => new Response("ok"),
-    );
+    const handler = testHandler({ maxBodyBytes: 100 });
     const res = await handler(
       ctx,
       makeRequest({
@@ -244,17 +213,7 @@ describe("withWebhook (HMAC signature verification)", () => {
       },
     });
 
-    const handler = withWebhook(
-      {
-        source: "test",
-        parse: anyObject,
-        signatureHeader: "x-signature",
-        secretEnv: "TEST_WEBHOOK_SECRET",
-        algorithm: "sha256",
-        maxBodyBytes: 100,
-      },
-      () => new Response("ok"),
-    );
+    const handler = testHandler({ maxBodyBytes: 100 });
     const req = new Request("https://example.convex.site/webhook", {
       method: "POST",
       headers: { "Content-Type": "application/json", "x-signature": "deadbeef" },
@@ -268,17 +227,7 @@ describe("withWebhook (HMAC signature verification)", () => {
   });
 
   test("401 when replay timestamp is missing", async () => {
-    const handler = withWebhook(
-      {
-        source: "test",
-        parse: anyObject,
-        signatureHeader: "x-signature",
-        secretEnv: "TEST_WEBHOOK_SECRET",
-        algorithm: "sha256",
-        replay: { header: "x-timestamp", maxAgeSeconds: 300 },
-      },
-      () => new Response("ok"),
-    );
+    const handler = testHandler({ replay: { header: "x-timestamp", maxAgeSeconds: 300 } });
     const body = "{}";
     const signature = await sign("sha256", SECRET, body);
     const res = await handler(
@@ -295,17 +244,7 @@ describe("withWebhook (HMAC signature verification)", () => {
   });
 
   test("401 when replay timestamp is stale", async () => {
-    const handler = withWebhook(
-      {
-        source: "test",
-        parse: anyObject,
-        signatureHeader: "x-signature",
-        secretEnv: "TEST_WEBHOOK_SECRET",
-        algorithm: "sha256",
-        replay: { header: "x-timestamp", maxAgeSeconds: 60 },
-      },
-      () => new Response("ok"),
-    );
+    const handler = testHandler({ replay: { header: "x-timestamp", maxAgeSeconds: 60 } });
     const body = "{}";
     const signature = await sign("sha256", SECRET, body);
     const stale = Date.now() - 120_000; // 2 minutes ago, exceeds 60s window
@@ -325,15 +264,8 @@ describe("withWebhook (HMAC signature verification)", () => {
   });
 
   test("200 when replay timestamp is fresh", async () => {
-    const handler = withWebhook(
-      {
-        source: "test",
-        parse: anyObject,
-        signatureHeader: "x-signature",
-        secretEnv: "TEST_WEBHOOK_SECRET",
-        algorithm: "sha256",
-        replay: { header: "x-timestamp", maxAgeSeconds: 300 },
-      },
+    const handler = testHandler(
+      { replay: { header: "x-timestamp", maxAgeSeconds: 300 } },
       () => new Response("ok", { status: 200 }),
     );
     const body = "{}";
@@ -355,17 +287,7 @@ describe("withWebhook (HMAC signature verification)", () => {
     // The window is two-sided (Math.abs of the age), so a forward-skewed clock
     // is rejected too. A one-sided `age > max` check would pass every other
     // replay test but accept arbitrarily-future timestamps; this pins that.
-    const handler = withWebhook(
-      {
-        source: "test",
-        parse: anyObject,
-        signatureHeader: "x-signature",
-        secretEnv: "TEST_WEBHOOK_SECRET",
-        algorithm: "sha256",
-        replay: { header: "x-timestamp", maxAgeSeconds: 60 },
-      },
-      () => new Response("ok"),
-    );
+    const handler = testHandler({ replay: { header: "x-timestamp", maxAgeSeconds: 60 } });
     const body = "{}";
     const signature = await sign("sha256", SECRET, body);
     const future = Date.now() + 120_000; // 2 minutes ahead, exceeds 60s window
@@ -384,16 +306,7 @@ describe("withWebhook (HMAC signature verification)", () => {
   });
 
   test("X-Request-Id header is set on every response", async () => {
-    const handler = withWebhook(
-      {
-        source: "test",
-        parse: anyObject,
-        signatureHeader: "x-signature",
-        secretEnv: "TEST_WEBHOOK_SECRET",
-        algorithm: "sha256",
-      },
-      () => new Response("ok", { status: 200 }),
-    );
+    const handler = testHandler({}, () => new Response("ok", { status: 200 }));
     const body = "{}";
     const signature = await sign("sha256", SECRET, body);
     const res = await handler(
@@ -409,18 +322,9 @@ describe("withWebhook (HMAC signature verification)", () => {
   });
 
   test("500 when handler throws", async () => {
-    const handler = withWebhook(
-      {
-        source: "test",
-        parse: anyObject,
-        signatureHeader: "x-signature",
-        secretEnv: "TEST_WEBHOOK_SECRET",
-        algorithm: "sha256",
-      },
-      () => {
-        throw new Error("simulated handler crash");
-      },
-    );
+    const handler = testHandler({}, () => {
+      throw new Error("simulated handler crash");
+    });
     const body = "{}";
     const signature = await sign("sha256", SECRET, body);
     const res = await handler(
