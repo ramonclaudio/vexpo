@@ -107,58 +107,61 @@ export const MANUAL_EAS_SECRETS: Record<string, string> = {
     "eas env:create --name CONVEX_DEPLOY_KEY --value <prod-deploy-key> --environment production --visibility secret",
 };
 
+type EnvLine =
+  | { kind: "skip" }
+  | { kind: "pair"; key: string; value: string }
+  | { kind: "open"; key: string; quote: '"' | "'"; rest: string };
+
+function parseEnvLine(raw: string): EnvLine {
+  const trimmed = raw.trim();
+  if (!trimmed || trimmed.startsWith("#")) return { kind: "skip" };
+  const eq = trimmed.indexOf("=");
+  if (eq <= 0) return { kind: "skip" };
+  const key = trimmed.slice(0, eq).trim();
+  const value = trimmed.slice(eq + 1).trim();
+
+  const closed = /^(['"])(.*)\1\s*(?:#.*)?$/.exec(value);
+  if (closed) return { kind: "pair", key, value: closed[2] };
+
+  const opens = /^(['"])(.*)$/.exec(value);
+  if (opens) {
+    const quote = opens[1] === '"' ? '"' : "'";
+    const rest = opens[2];
+    const closeIdx = rest.indexOf(quote);
+    if (closeIdx >= 0) return { kind: "pair", key, value: rest.slice(0, closeIdx) };
+    return { kind: "open", key, quote, rest };
+  }
+
+  const hashAt = value.search(/\s#/);
+  return { kind: "pair", key, value: hashAt >= 0 ? value.slice(0, hashAt).trim() : value };
+}
+
+type OpenQuote = { key: string; quote: '"' | "'"; buffer: string };
+
 export async function readEnvFile(path: string): Promise<Map<string, string>> {
   const out = new Map<string, string>();
   if (!(await fileExists(path))) return out;
-  const text = (await readFile(path, "utf8")).replace(/^﻿/, "").replace(/\r\n/g, "\n");
-  let buffer = "";
-  let pendingKey: string | null = null;
-  let pendingQuote: '"' | "'" | null = null;
+  const text = (await readFile(path, "utf8")).replace(/^\ufeff/, "").replace(/\r\n/g, "\n");
+  let pending: OpenQuote | null = null;
 
   for (const raw of text.split("\n")) {
-    if (pendingKey && pendingQuote) {
-      const closeIdx = raw.indexOf(pendingQuote);
-      if (closeIdx >= 0) {
-        buffer += `\n${raw.slice(0, closeIdx)}`;
-        out.set(pendingKey, buffer);
-        pendingKey = null;
-        pendingQuote = null;
-        buffer = "";
-      } else {
-        buffer += `\n${raw}`;
-      }
-      continue;
-    }
-    const trimmed = raw.trim();
-    if (!trimmed || trimmed.startsWith("#")) continue;
-    const eq = trimmed.indexOf("=");
-    if (eq <= 0) continue;
-    const key = trimmed.slice(0, eq).trim();
-    let value = trimmed.slice(eq + 1).trim();
-    const quoted = /^(['"])(.*)\1\s*(?:#.*)?$/.exec(value);
-    if (quoted) {
-      out.set(key, quoted[2]);
-      continue;
-    }
-    const opensQuote = /^(['"])(.*)$/.exec(value);
-    if (opensQuote) {
-      const quote = opensQuote[1] as '"' | "'";
-      const rest = opensQuote[2];
-      const closeIdx = rest.indexOf(quote);
-      if (closeIdx >= 0) {
-        out.set(key, rest.slice(0, closeIdx));
+    if (pending) {
+      const closeIdx = raw.indexOf(pending.quote);
+      if (closeIdx < 0) {
+        pending.buffer += `\n${raw}`;
         continue;
       }
-      pendingKey = key;
-      pendingQuote = quote;
-      buffer = rest;
+      out.set(pending.key, `${pending.buffer}\n${raw.slice(0, closeIdx)}`);
+      pending = null;
       continue;
     }
-    const hashAt = value.search(/\s#/);
-    if (hashAt >= 0) value = value.slice(0, hashAt).trim();
-    out.set(key, value);
+    const line = parseEnvLine(raw);
+    if (line.kind === "pair") out.set(line.key, line.value);
+    else if (line.kind === "open")
+      pending = { key: line.key, quote: line.quote, buffer: line.rest };
   }
-  if (pendingKey) out.set(pendingKey, buffer);
+
+  if (pending) out.set(pending.key, pending.buffer);
   return out;
 }
 
@@ -170,25 +173,29 @@ export async function findProdEnvFile(): Promise<string | null> {
 
 export type EnvSource = { path: string; channel: Channel; entries: Map<string, string> };
 
-export async function readSources(paths?: { local?: string; prod?: string }): Promise<EnvSource[]> {
-  const local = paths?.local ?? ".env.local";
-  const prodCandidates = paths?.prod ? [paths.prod] : [".env.prod", ".env.production"];
-  const sources: EnvSource[] = [];
+async function readLocalSource(localPath?: string): Promise<EnvSource | null> {
+  const local = localPath ?? ".env.local";
   if (await fileExists(local)) {
-    sources.push({ path: local, channel: "dev", entries: await readEnvFile(local) });
-  } else if (paths?.local) {
-    throw new Error(`--local-file path does not exist: ${paths.local}`);
+    return { path: local, channel: "dev", entries: await readEnvFile(local) };
   }
-  for (const p of prodCandidates) {
-    if (await fileExists(p)) {
-      sources.push({ path: p, channel: "prod", entries: await readEnvFile(p) });
-      break;
+  if (localPath) throw new Error(`--local-file path does not exist: ${localPath}`);
+  return null;
+}
+
+async function readProdSource(prodPath?: string): Promise<EnvSource | null> {
+  for (const candidate of prodPath ? [prodPath] : [".env.prod", ".env.production"]) {
+    if (await fileExists(candidate)) {
+      return { path: candidate, channel: "prod", entries: await readEnvFile(candidate) };
     }
   }
-  if (paths?.prod && !sources.some((s) => s.channel === "prod")) {
-    throw new Error(`--prod-file path does not exist: ${paths.prod}`);
-  }
-  return sources;
+  if (prodPath) throw new Error(`--prod-file path does not exist: ${prodPath}`);
+  return null;
+}
+
+export async function readSources(paths?: { local?: string; prod?: string }): Promise<EnvSource[]> {
+  const local = await readLocalSource(paths?.local);
+  const prod = await readProdSource(paths?.prod);
+  return [local, prod].filter((source) => source !== null);
 }
 
 export type SyncEntry = {

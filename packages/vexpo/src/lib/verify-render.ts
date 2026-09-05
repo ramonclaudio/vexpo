@@ -16,32 +16,41 @@ function glyph(severity: Severity): string {
   }
 }
 
-export function renderVerifyResults(checks: Check[], style: "section" | "compact"): void {
+type RenderStyle = "section" | "compact";
+
+function groupByCategory(checks: Check[]): Map<Category, Check[]> {
   const byCategory = new Map<Category, Check[]>();
-  for (const c of checks) {
-    if (!byCategory.has(c.category)) byCategory.set(c.category, []);
-    byCategory.get(c.category)!.push(c);
+  for (const check of checks) {
+    const items = byCategory.get(check.category) ?? [];
+    byCategory.set(check.category, items);
+    items.push(check);
   }
+  return byCategory;
+}
+
+function renderCheck(check: Check, style: RenderStyle, width: number): void {
+  line(
+    style === "section"
+      ? `  ${glyph(check.severity)} ${BOLD}${check.name.padEnd(width)}${RESET}  ${check.message}`
+      : `    ${glyph(check.severity)} ${check.name.padEnd(width)}  ${check.message}`,
+  );
+  if (!check.details) return;
+  line(
+    style === "section"
+      ? `       ${DIM}${check.details}${RESET}`
+      : `        ${DIM}${check.details}${RESET}`,
+  );
+}
+
+export function renderVerifyResults(checks: Check[], style: RenderStyle): void {
+  const byCategory = groupByCategory(checks);
   const globalWidth = Math.max(...checks.map((c) => c.name.length));
-  for (const cat of RENDER_ORDER) {
-    const items = byCategory.get(cat);
+  for (const category of RENDER_ORDER) {
+    const items = byCategory.get(category);
     if (!items || items.length === 0) continue;
-    if (style === "section") section(cat.charAt(0).toUpperCase() + cat.slice(1));
-    else line(`  ${BOLD}${cat}${RESET}`);
-    const w = style === "section" ? Math.max(...items.map((c) => c.name.length)) : globalWidth;
-    for (const c of items) {
-      line(
-        style === "section"
-          ? `  ${glyph(c.severity)} ${BOLD}${c.name.padEnd(w)}${RESET}  ${c.message}`
-          : `    ${glyph(c.severity)} ${c.name.padEnd(w)}  ${c.message}`,
-      );
-      if (c.details) {
-        line(
-          style === "section"
-            ? `       ${DIM}${c.details}${RESET}`
-            : `        ${DIM}${c.details}${RESET}`,
-        );
-      }
-    }
+    if (style === "section") section(category.charAt(0).toUpperCase() + category.slice(1));
+    else line(`  ${BOLD}${category}${RESET}`);
+    const width = style === "section" ? Math.max(...items.map((c) => c.name.length)) : globalWidth;
+    for (const check of items) renderCheck(check, style, width);
   }
 }

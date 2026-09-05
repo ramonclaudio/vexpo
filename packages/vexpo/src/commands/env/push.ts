@@ -111,25 +111,30 @@ type ResolvedDestination = {
   reason?: string;
 };
 
-export function resolveDestination(
-  dest: Destination,
+function resolveConvexDestination(
+  dest: Extract<Destination, { type: "convex" }>,
   newValue: string,
   remote: RemoteState,
 ): ResolvedDestination {
-  if (dest.type === "convex") {
-    const map = dest.channel === "prod" ? remote.convexProd : remote.convexDev;
-    if (map === null) {
-      return {
-        destination: dest,
-        current: undefined,
-        status: "blocked",
-        reason: "couldn't read convex env (auth/CLI failure). run `npx convex login` and re-run",
-      };
-    }
-    const current = map.get(dest.key);
-    if (current === newValue) return { destination: dest, current, status: "noop" };
-    return { destination: dest, current, status: current === undefined ? "create" : "update" };
+  const map = dest.channel === "prod" ? remote.convexProd : remote.convexDev;
+  if (map === null) {
+    return {
+      destination: dest,
+      current: undefined,
+      status: "blocked",
+      reason: "couldn't read convex env (auth/CLI failure). run `npx convex login` and re-run",
+    };
   }
+  const current = map.get(dest.key);
+  if (current === newValue) return { destination: dest, current, status: "noop" };
+  return { destination: dest, current, status: current === undefined ? "create" : "update" };
+}
+
+function resolveEasDestination(
+  dest: Extract<Destination, { type: "eas" }>,
+  newValue: string,
+  remote: RemoteState,
+): ResolvedDestination {
   if (!remote.hasEasProject) {
     return {
       destination: dest,
@@ -138,19 +143,22 @@ export function resolveDestination(
       reason: "no eas projectId. run setup:eas first",
     };
   }
-  let create = false;
-  let update = false;
-  for (const env of dest.environments) {
-    const cur = remote.easByEnv[env].get(dest.key);
-    if (cur === undefined) create = true;
-    else if (cur !== newValue) update = true;
+  const currents = dest.environments.map((env) => remote.easByEnv[env].get(dest.key));
+  if (currents.every((current) => current === newValue)) {
+    return { destination: dest, current: newValue, status: "noop" };
   }
-  if (!create && !update) return { destination: dest, current: newValue, status: "noop" };
-  return {
-    destination: dest,
-    current: undefined,
-    status: create ? "create" : "update",
-  };
+  const create = currents.some((current) => current === undefined);
+  return { destination: dest, current: undefined, status: create ? "create" : "update" };
+}
+
+export function resolveDestination(
+  dest: Destination,
+  newValue: string,
+  remote: RemoteState,
+): ResolvedDestination {
+  return dest.type === "convex"
+    ? resolveConvexDestination(dest, newValue, remote)
+    : resolveEasDestination(dest, newValue, remote);
 }
 
 export type FilePlan = {
@@ -164,49 +172,50 @@ function groupByFile(entries: SyncEntry[], remote: RemoteState): FilePlan[] {
   for (const entry of entries) {
     const resolved = entry.destinations.map((d) => resolveDestination(d, entry.value, remote));
     const key = entry.sourceFile;
-    if (!byFile.has(key)) byFile.set(key, { sourceFile: key, channel: entry.channel, rows: [] });
-    byFile.get(key)!.rows.push({ entry, resolved });
+    const plan = byFile.get(key) ?? { sourceFile: key, channel: entry.channel, rows: [] };
+    byFile.set(key, plan);
+    plan.rows.push({ entry, resolved });
   }
   return [...byFile.values()];
 }
 
-function printFilePlan(plan: FilePlan): {
-  actionable: number;
-  conflicts: number;
-  blocked: number;
-} {
+const STATUS_TAG: Record<DiffStatus, string> = {
+  create: "\x1b[32mcreate\x1b[0m",
+  update: "\x1b[33mupdate\x1b[0m",
+  noop: "\x1b[2mnoop\x1b[0m",
+  blocked: "\x1b[31mblocked\x1b[0m",
+};
+
+function printResolved(resolved: ResolvedDestination, newValue: string): void {
+  const reason = resolved.reason ? ` ${DIM}(${resolved.reason})${RESET}` : "";
+  const diff =
+    resolved.status === "update" && resolved.current !== undefined
+      ? ` ${DIM}fp: ${fingerprint(resolved.current)} \u2192 ${fingerprint(newValue)}${RESET}`
+      : "";
+  line(
+    `      ${STATUS_TAG[resolved.status]}  ${describeDest(resolved.destination)}${diff}${reason}`,
+  );
+}
+
+type PlanCounts = { actionable: number; conflicts: number; blocked: number };
+
+function printFilePlan(plan: FilePlan): PlanCounts {
   section(`${plan.sourceFile} ${DIM}(${plan.channel})${RESET}`);
   if (plan.rows.length === 0) {
     nop("(no recognized keys in this file)");
     return { actionable: 0, conflicts: 0, blocked: 0 };
   }
-  let actionable = 0;
-  let conflicts = 0;
-  let blocked = 0;
+  const counts: PlanCounts = { actionable: 0, conflicts: 0, blocked: 0 };
   for (const row of plan.rows) {
     line(`  ${BOLD}${row.entry.sourceKey}${RESET}  ${DIM}= ${planRowValue(row.entry)}${RESET}`);
-    for (const r of row.resolved) {
-      const tag =
-        r.status === "create"
-          ? "\x1b[32mcreate\x1b[0m"
-          : r.status === "update"
-            ? "\x1b[33mupdate\x1b[0m"
-            : r.status === "noop"
-              ? "\x1b[2mnoop\x1b[0m"
-              : "\x1b[31mblocked\x1b[0m";
-      const destStr = describeDest(r.destination);
-      const reason = r.reason ? ` ${DIM}(${r.reason})${RESET}` : "";
-      const diff =
-        r.status === "update" && r.current !== undefined
-          ? ` ${DIM}fp: ${fingerprint(r.current)} → ${fingerprint(row.entry.value)}${RESET}`
-          : "";
-      line(`      ${tag}  ${destStr}${diff}${reason}`);
-      if (r.status === "create" || r.status === "update") actionable += 1;
-      if (r.status === "update") conflicts += 1;
-      if (r.status === "blocked") blocked += 1;
+    for (const resolved of row.resolved) {
+      printResolved(resolved, row.entry.value);
+      if (resolved.status === "create" || resolved.status === "update") counts.actionable += 1;
+      if (resolved.status === "update") counts.conflicts += 1;
+      if (resolved.status === "blocked") counts.blocked += 1;
     }
   }
-  return { actionable, conflicts, blocked };
+  return counts;
 }
 
 type Batch = {
@@ -437,13 +446,11 @@ function verifyPushed(sources: EnvSource[], strict: boolean): Promise<number> {
   return verifyAfterPush(channels, strict);
 }
 
-export async function runEnvPush(options: EnvPushOptions): Promise<number> {
-  section("Env push");
-
+async function readSourcesOrExplain(options: EnvPushOptions): Promise<EnvSource[] | null> {
   if ((await checkToken()) === "unauthorized") {
     bad("Convex login expired or revoked");
     note("run `npx convex login` to refresh, then re-run");
-    return 1;
+    return null;
   }
 
   const sources = await readSources({ local: options.localFile, prod: options.prodFile });
@@ -451,33 +458,20 @@ export async function runEnvPush(options: EnvPushOptions): Promise<number> {
     yep("no source files found");
     note("checked: .env.local, .env.prod, .env.production");
     note("create one with the values you want synced and re-run");
-    return 1;
+    return null;
   }
-  for (const s of sources) {
-    ok(`source: ${s.path} ${DIM}(${s.channel}, ${s.entries.size} keys)${RESET}`);
+  for (const source of sources) {
+    ok(`source: ${source.path} ${DIM}(${source.channel}, ${source.entries.size} keys)${RESET}`);
   }
+  return sources;
+}
 
-  reportUnrecognized(sources);
-  reportMissing(sources);
-
-  const remote = await readRemoteState(sources.find((s) => s.channel === "prod")?.path);
-  if (!remote.hasEasProject) yep("no EAS projectId in app.json. EAS env routes will be blocked");
-
-  reportManualSecrets(sources);
-
-  const entries = buildPlan(sources);
-  const filePlans = groupByFile(entries, remote);
-  const totals = printPlans(filePlans);
-
-  if (options.dryRun) {
-    reportDryRun(totals);
-    return 0;
-  }
-
-  if (totals.actionable === 0) return nothingToDo(totals);
-
-  if (!prodConvexWritesAreSafe(entries, sources)) return 1;
-
+async function applyAndReport(
+  filePlans: FilePlan[],
+  sources: EnvSource[],
+  totals: PlanCounts,
+  options: EnvPushOptions,
+): Promise<number> {
   line();
   if (totals.conflicts > 0) {
     note(
@@ -502,4 +496,32 @@ export async function runEnvPush(options: EnvPushOptions): Promise<number> {
   line();
   note("for full provisioning (Resend key, Apple JWT, signups), run `vexpo full`");
   return 0;
+}
+
+export async function runEnvPush(options: EnvPushOptions): Promise<number> {
+  section("Env push");
+
+  const sources = await readSourcesOrExplain(options);
+  if (!sources) return 1;
+
+  reportUnrecognized(sources);
+  reportMissing(sources);
+
+  const remote = await readRemoteState(sources.find((s) => s.channel === "prod")?.path);
+  if (!remote.hasEasProject) yep("no EAS projectId in app.json. EAS env routes will be blocked");
+
+  reportManualSecrets(sources);
+
+  const entries = buildPlan(sources);
+  const filePlans = groupByFile(entries, remote);
+  const totals = printPlans(filePlans);
+
+  if (options.dryRun) {
+    reportDryRun(totals);
+    return 0;
+  }
+  if (totals.actionable === 0) return nothingToDo(totals);
+  if (!prodConvexWritesAreSafe(entries, sources)) return 1;
+
+  return applyAndReport(filePlans, sources, totals, options);
 }

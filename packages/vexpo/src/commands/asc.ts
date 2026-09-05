@@ -137,21 +137,29 @@ async function syncAfterConnect(): Promise<void> {
   await ensureAscApiKeyInEasJson();
 }
 
+type CachedAscKey = { issuerId: string; keyId: string; privateKey: { path: string } };
+
+async function reportCachedAscKey(): Promise<CachedAscKey | null> {
+  const asc = await loadAscCreds();
+  if (!asc || !("path" in asc.privateKey)) {
+    bad("no cached ASC creds. Run `vexpo apple asc-key` first to validate one.");
+    return null;
+  }
+  ok("cached ASC API key found in state.json");
+  note(`  issuerId: ${BOLD}${asc.issuerId}${RESET}`);
+  note(`  keyId:    ${BOLD}${asc.keyId}${RESET}`);
+  note(`  .p8:      ${BOLD}${asc.privateKey.path}${RESET}`);
+  return { issuerId: asc.issuerId, keyId: asc.keyId, privateKey: asc.privateKey };
+}
+
 export async function runAscConnect(opts: { force?: boolean } = {}): Promise<number> {
   section("ASC connect");
 
   if (!opts.force && (await reuseExistingLink())) return 0;
 
-  const asc = await loadAscCreds();
-  if (!asc || !("path" in asc.privateKey)) {
-    bad("no cached ASC creds. Run `vexpo apple asc-key` first to validate one.");
-    return 1;
-  }
+  const asc = await reportCachedAscKey();
+  if (!asc) return 1;
   const p8Path = asc.privateKey.path;
-  ok("cached ASC API key found in state.json");
-  note(`  issuerId: ${BOLD}${asc.issuerId}${RESET}`);
-  note(`  keyId:    ${BOLD}${asc.keyId}${RESET}`);
-  note(`  .p8:      ${BOLD}${p8Path}${RESET}`);
 
   const bundleId = await requireBundleId();
   if (!bundleId) return 1;

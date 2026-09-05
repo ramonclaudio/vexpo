@@ -8,7 +8,7 @@
     "style": "off"
   },
   "rules": {
-    "complexity": ["error", { "max": 14 }],
+    "complexity": ["error", { "max": 10 }],
     "no-console": "off",
     "typescript/no-explicit-any": "warn",
     "typescript/no-unused-vars": ["warn", { "argsIgnorePattern": "^_" }],

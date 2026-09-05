@@ -14,29 +14,39 @@ export async function whoami(): Promise<string | null> {
   return text ? text.split("\n")[0].trim() : null;
 }
 
-export async function resolveProjectId(): Promise<string | null> {
+function nonEmpty(value: string | undefined): string | null {
+  return value && value.length > 0 ? value : null;
+}
+
+async function projectIdFromAppJson(): Promise<string | null> {
   try {
     await access("app.json");
     const json = JSON.parse(await readFile("app.json", "utf8")) as {
       expo?: { extra?: { eas?: { projectId?: string } } };
     };
-    const value = json.expo?.extra?.eas?.projectId;
-    if (value && value.length > 0) return value;
-  } catch {}
+    return nonEmpty(json.expo?.extra?.eas?.projectId);
+  } catch {
+    return null;
+  }
+}
 
-  const fromProcess = process.env.EAS_PROJECT_ID;
-  if (fromProcess && fromProcess.length > 0) return fromProcess;
-
+async function projectIdFromEnvFile(): Promise<string | null> {
   try {
     const { readOne } = await import("./env-local.ts");
-    const fromFile = await readOne("EAS_PROJECT_ID");
-    if (fromFile && fromFile.length > 0) {
-      process.env.EAS_PROJECT_ID = fromFile;
-      return fromFile;
-    }
-  } catch {}
+    const value = nonEmpty(await readOne("EAS_PROJECT_ID"));
+    if (value) process.env.EAS_PROJECT_ID = value;
+    return value;
+  } catch {
+    return null;
+  }
+}
 
-  return null;
+export async function resolveProjectId(): Promise<string | null> {
+  return (
+    (await projectIdFromAppJson()) ??
+    nonEmpty(process.env.EAS_PROJECT_ID) ??
+    (await projectIdFromEnvFile())
+  );
 }
 
 export async function envList(

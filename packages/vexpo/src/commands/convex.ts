@@ -240,6 +240,10 @@ export async function runConvex(options: ConvexOptions): Promise<number> {
     return 1;
   }
 
+  return recordDeployment(options);
+}
+
+async function recordDeployment(options: ConvexOptions): Promise<number> {
   const refreshed = await readAll();
   const active = readActiveDeployment(refreshed);
   if (!active) return 1;

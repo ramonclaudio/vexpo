@@ -271,6 +271,36 @@ export async function runResend(options: ResendOptions): Promise<number> {
   return 0;
 }
 
+function keepWebhook(existing: { id: string }, endpoint: string): string {
+  ok(`webhook already points at ${endpoint}`);
+  note("pass --force to recreate the webhook and realign RESEND_WEBHOOK_SECRET");
+  return existing.id;
+}
+
+async function recreateWebhook(
+  fullKey: string,
+  endpoint: string,
+  convexTarget: ConvexTarget | undefined,
+  channel: string,
+): Promise<string> {
+  const { id, secret } = await provisionWebhook(fullKey, endpoint);
+  ok(`webhook → ${endpoint}`);
+  await envSet("RESEND_WEBHOOK_SECRET", secret, convexTarget);
+  ok(`RESEND_WEBHOOK_SECRET aligned on the ${channel} deployment`);
+  return id;
+}
+
+async function retireStale(
+  fullKey: string,
+  stale: Array<{ id: string; endpoint: string }>,
+): Promise<number> {
+  for (const webhook of stale) {
+    await deleteWebhook(fullKey, webhook.id);
+    note(`retired stale webhook → ${webhook.endpoint}`);
+  }
+  return stale.length;
+}
+
 async function runResendRepoint(options: ResendOptions): Promise<number> {
   const channel = options.prod ? "prod" : "dev";
   section(`Resend repoint (${channel})`);
@@ -299,25 +329,12 @@ async function runResendRepoint(options: ResendOptions): Promise<number> {
       w.endpoint.endsWith("/resend-webhook"),
   );
 
-  let webhookId: string | undefined;
-  if (atNew && !options.force) {
-    ok(`webhook already points at ${endpoint}`);
-    note("pass --force to recreate the webhook and realign RESEND_WEBHOOK_SECRET");
-    webhookId = atNew.id;
-  } else {
-    const { id, secret } = await provisionWebhook(fullKey, endpoint);
-    webhookId = id;
-    ok(`webhook → ${endpoint}`);
-    await envSet("RESEND_WEBHOOK_SECRET", secret, convexTarget);
-    ok(`RESEND_WEBHOOK_SECRET aligned on the ${channel} deployment`);
-  }
+  const webhookId =
+    atNew && !options.force
+      ? keepWebhook(atNew, endpoint)
+      : await recreateWebhook(fullKey, endpoint, convexTarget, channel);
 
-  let retired = 0;
-  for (const w of stale) {
-    await deleteWebhook(fullKey, w.id);
-    note(`retired stale webhook → ${w.endpoint}`);
-    retired += 1;
-  }
+  const retired = await retireStale(fullKey, stale);
 
   const prev = (await loadState()).steps.resend?.outputs ?? {};
   await recordStep("resend", { ...prev, webhookEndpoint: endpoint, webhookId });

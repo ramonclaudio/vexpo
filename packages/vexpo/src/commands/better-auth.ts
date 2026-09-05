@@ -15,18 +15,26 @@ function base64Secret(): string {
   return btoa(String.fromCharCode(...buf));
 }
 
+async function setUnlessMatches(
+  env: Map<string, string>,
+  key: string,
+  value: string,
+): Promise<void> {
+  if (env.get(key) === value) {
+    nop(`${key} already set to ${value}`);
+    return;
+  }
+  await envSet(key, value);
+  ok(`set ${key}=${value}`);
+}
+
 export async function runBetterAuth(options: BetterAuthOptions): Promise<number> {
   section("Better Auth env");
 
   const env = (await envMap()) ?? new Map<string, string>();
 
   const siteUrl = options.siteUrl ?? `${await scheme()}://`;
-  if (env.has("SITE_URL") && env.get("SITE_URL") === siteUrl) {
-    nop(`SITE_URL already set to ${siteUrl}`);
-  } else {
-    await envSet("SITE_URL", siteUrl);
-    ok(`set SITE_URL=${siteUrl}`);
-  }
+  await setUnlessMatches(env, "SITE_URL", siteUrl);
 
   if (env.has("BETTER_AUTH_SECRET") && !options.rotateSecret) {
     nop("BETTER_AUTH_SECRET already set (use --rotate-secret to regenerate)");
@@ -40,12 +48,7 @@ export async function runBetterAuth(options: BetterAuthOptions): Promise<number>
   }
 
   const desiredAppName = options.appName ?? (await appName());
-  if (env.has("APP_NAME") && env.get("APP_NAME") === desiredAppName) {
-    nop(`APP_NAME already set to ${desiredAppName}`);
-  } else {
-    await envSet("APP_NAME", desiredAppName);
-    ok(`set APP_NAME=${desiredAppName}`);
-  }
+  await setUnlessMatches(env, "APP_NAME", desiredAppName);
 
   await recordStep("better-auth", {
     siteUrl,
