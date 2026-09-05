@@ -1,19 +1,23 @@
 import { createInterface } from "node:readline/promises";
 
-const COLOR = process.stdout.isTTY === true && !process.env.NO_COLOR;
+const colorOn = (stream: NodeJS.WriteStream): boolean =>
+  stream.isTTY === true && !process.env.NO_COLOR;
 
 const wrap =
-  (open: number, close: number) =>
+  (open: number, close: number, stream: NodeJS.WriteStream = process.stdout) =>
   (s: string): string =>
-    COLOR ? `\x1b[${open}m${s}\x1b[${close}m` : s;
+    colorOn(stream) ? `\x1b[${open}m${s}\x1b[${close}m` : s;
 
 export const red = wrap(31, 39);
-const green = wrap(32, 39);
-const yellow = wrap(33, 39);
 export const cyan = wrap(36, 39);
 export const gray = wrap(90, 39);
 export const bold = wrap(1, 22);
 export const dim = wrap(2, 22);
+
+// The spinner writes to stderr, so its symbols follow stderr, not stdout.
+const errRed = wrap(31, 39, process.stderr);
+const errGreen = wrap(32, 39, process.stderr);
+const errYellow = wrap(33, 39, process.stderr);
 
 const FRAMES = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
 const FRAME_MS = 80;
@@ -51,9 +55,9 @@ export function spinner(text: string): Spinner {
   };
 
   return {
-    succeed: (m) => done(green("✔"), m),
-    fail: (m) => done(red("✖"), m),
-    warn: (m) => done(yellow("⚠"), m),
+    succeed: (m) => done(errGreen("✔"), m),
+    fail: (m) => done(errRed("✖"), m),
+    warn: (m) => done(errYellow("⚠"), m),
   };
 }
 
