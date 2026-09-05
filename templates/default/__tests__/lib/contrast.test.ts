@@ -23,7 +23,7 @@ function luminance(hex: string): number {
   return 0.2126 * r! + 0.7152 * g! + 0.0722 * b!;
 }
 
-export function contrastRatio(a: string, b: string): number {
+function contrastRatio(a: string, b: string): number {
   const [x, y] = [luminance(a), luminance(b)];
   return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05);
 }

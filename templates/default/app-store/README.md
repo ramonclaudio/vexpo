@@ -29,7 +29,7 @@ These are the one-time settings you configure in the ASC web UI. Items tagged `[
 ## App Accessibility
 
 - `[dashboard]` Declare the features the template ships: VoiceOver, Voice Control, Larger Text, Dark Interface, Differentiate Without Color, Sufficient Contrast, Reduced Motion. Mirror in `accessibility.config.json`, verify with `vexpo asc accessibility lint`. Saves as a draft, Apple publishes it with your first released version.
-- The declaration is not shipped by anything. Nothing in `store.config.json` carries it and `eas metadata:push` won't send it, so somebody has to enter it in App Store Connect. The `notes` field in `accessibility.config.json` says what backs each level in the template's own code, and `npm run test` in the template covers one of them: `__tests__/lib/contrast.test.ts` measures thirteen colour pairs across all four appearances against WCAG AA, so Sufficient Contrast is checked rather than asserted.
+- The declaration is not shipped by anything. Nothing in `store.config.json` carries it and `eas metadata:push` won't send it, so somebody has to enter it in App Store Connect. The `notes` field in `accessibility.config.json` says what backs each level in the template's own code, and `npm run test` in the template covers one of them: `__tests__/lib/contrast.test.ts` measures twelve colour pairs across all four appearances against WCAG AA, so Sufficient Contrast is checked rather than asserted.
 - Re-check every level against your own screens before you submit. The template's levels describe the template. A screen you add with an unlabelled control, a pinned font size or a colour pair that misses 4.5:1 makes the declaration wrong, and the declaration is what Apple holds you to.
 
 ## TestFlight
