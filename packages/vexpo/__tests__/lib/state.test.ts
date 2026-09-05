@@ -186,67 +186,41 @@ describe("isStepFresh", () => {
 });
 
 describe("checkConcurrentRun", () => {
+  // Only lastPid and the write age matter, so both are what each case varies.
+  const stateAt = (lastPid: number | undefined, agoMs = 0): SetupState => ({
+    createdAt: new Date(Date.now() - agoMs).toISOString(),
+    updatedAt: new Date(Date.now() - agoMs).toISOString(),
+    lastPid: lastPid as number,
+    steps: {},
+    audit: [],
+  });
+
   it("reports active=true with otherPid when a different pid wrote recently", () => {
-    const state: SetupState = {
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      lastPid: process.pid + 1,
-      steps: {},
-      audit: [],
-    };
-    const result = checkConcurrentRun(state);
+    const result = checkConcurrentRun(stateAt(process.pid + 1));
     expect(result.active).toBe(true);
     expect(result.otherPid).toBe(process.pid + 1);
   });
 
   it("reports active=false for writes older than the warn window", () => {
-    const state: SetupState = {
-      createdAt: new Date(Date.now() - 60_000).toISOString(),
-      updatedAt: new Date(Date.now() - 60_000).toISOString(),
-      lastPid: process.pid + 1,
-      steps: {},
-      audit: [],
-    };
-    const result = checkConcurrentRun(state);
+    const result = checkConcurrentRun(stateAt(process.pid + 1, 60_000));
     expect(result.active).toBe(false);
     expect(result.otherPid).toBeUndefined();
   });
 
   it("reports active=false for writes from the same pid", () => {
-    const state: SetupState = {
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      lastPid: process.pid,
-      steps: {},
-      audit: [],
-    };
-    const result = checkConcurrentRun(state);
+    const result = checkConcurrentRun(stateAt(process.pid));
     expect(result.active).toBe(false);
     expect(result.otherPid).toBeUndefined();
   });
 
   it("reports active=false when lastPid is undefined (corrupted state)", () => {
-    const state: SetupState = {
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      lastPid: undefined as unknown as number,
-      steps: {},
-      audit: [],
-    };
-    const result = checkConcurrentRun(state);
+    const result = checkConcurrentRun(stateAt(undefined));
     expect(result.active).toBe(false);
     expect(result.otherPid).toBeUndefined();
   });
 
   it("reports active=false when lastPid is 0 (initial state placeholder)", () => {
-    const state: SetupState = {
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      lastPid: 0,
-      steps: {},
-      audit: [],
-    };
-    const result = checkConcurrentRun(state);
+    const result = checkConcurrentRun(stateAt(0));
     expect(result.active).toBe(false);
     expect(result.otherPid).toBeUndefined();
   });

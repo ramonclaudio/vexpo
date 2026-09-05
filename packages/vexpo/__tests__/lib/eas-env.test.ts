@@ -23,16 +23,13 @@ afterEach(() => {
   }
 });
 
+// app.json with a projectId under expo.extra.eas, which is where the real one lives.
+const writeAppJson = (projectId: string) =>
+  writeFile("app.json", JSON.stringify({ expo: { extra: { eas: { projectId } } } }));
+
 describe("resolveProjectId / app.json source", () => {
   it("returns the projectId from a well-formed app.json", async () => {
-    await writeFile(
-      "app.json",
-      JSON.stringify({
-        expo: {
-          extra: { eas: { projectId: "abc-123-def-456" } },
-        },
-      }),
-    );
+    await writeAppJson("abc-123-def-456");
     expect(await resolveProjectId()).toBe("abc-123-def-456");
   });
 
@@ -51,7 +48,7 @@ describe("resolveProjectId / app.json source", () => {
   });
 
   it("falls through when expo.extra.eas.projectId is empty string", async () => {
-    await writeFile("app.json", JSON.stringify({ expo: { extra: { eas: { projectId: "" } } } }));
+    await writeAppJson("");
     expect(await resolveProjectId()).toBeNull();
   });
 
@@ -92,10 +89,7 @@ describe("resolveProjectId / env var source", () => {
   });
 
   it("app.json wins over env when both are set", async () => {
-    await writeFile(
-      "app.json",
-      JSON.stringify({ expo: { extra: { eas: { projectId: "from-json" } } } }),
-    );
+    await writeAppJson("from-json");
     process.env.EAS_PROJECT_ID = "from-env";
     expect(await resolveProjectId()).toBe("from-json");
   });
@@ -114,10 +108,7 @@ describe("resolveProjectId / .env.local source", () => {
   });
 
   it("app.json wins over .env.local", async () => {
-    await writeFile(
-      "app.json",
-      JSON.stringify({ expo: { extra: { eas: { projectId: "from-json" } } } }),
-    );
+    await writeAppJson("from-json");
     await writeFile(".env.local", "EAS_PROJECT_ID=from-dotenv\n");
     expect(await resolveProjectId()).toBe("from-json");
   });
@@ -140,10 +131,7 @@ describe("resolveProjectId / .env.local source", () => {
   });
 
   it("does not overwrite process.env when app.json wins", async () => {
-    await writeFile(
-      "app.json",
-      JSON.stringify({ expo: { extra: { eas: { projectId: "from-json" } } } }),
-    );
+    await writeAppJson("from-json");
     await writeFile(".env.local", "EAS_PROJECT_ID=from-dotenv\n");
     expect(process.env.EAS_PROJECT_ID).toBeUndefined();
     expect(await resolveProjectId()).toBe("from-json");

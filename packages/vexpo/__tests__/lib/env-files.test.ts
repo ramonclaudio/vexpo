@@ -161,135 +161,93 @@ describe("readSources", () => {
 });
 
 describe("buildPlan routing", () => {
+  // Every case writes one line into one env file and reads back what it routes to.
+  const planFor = async (file: ".env.local" | ".env.prod", line: string) => {
+    await writeFile(file, `${line}\n`);
+    return buildPlan(await readSources());
+  };
+  const destFor = async (file: ".env.local" | ".env.prod", line: string) =>
+    (await planFor(file, line))[0].destinations[0];
+
   it("routes EXPO_PUBLIC_ keys from .env.local to EAS development only", async () => {
-    await writeFile(".env.local", "EXPO_PUBLIC_CONVEX_URL=https://x.convex.cloud\n");
-    const sources = await readSources();
-    const plan = buildPlan(sources);
+    const plan = await planFor(".env.local", "EXPO_PUBLIC_CONVEX_URL=https://x.convex.cloud");
     expect(plan.length).toBe(1);
-    const dest = plan[0].destinations[0];
-    expect(dest.type).toBe("eas");
-    if (dest.type === "eas") {
-      expect(dest.environments).toEqual(["development"]);
-    }
+    expect(plan[0].destinations[0]).toMatchObject({
+      type: "eas",
+      environments: ["development"],
+    });
   });
 
   it("routes EXPO_PUBLIC_ keys from .env.prod to EAS production+preview", async () => {
-    await writeFile(".env.prod", "EXPO_PUBLIC_CONVEX_URL=https://x.convex.cloud\n");
-    const sources = await readSources();
-    const plan = buildPlan(sources);
+    const plan = await planFor(".env.prod", "EXPO_PUBLIC_CONVEX_URL=https://x.convex.cloud");
     expect(plan.length).toBe(1);
-    const dest = plan[0].destinations[0];
-    if (dest.type === "eas") {
-      expect(dest.environments).toEqual(["production", "preview"]);
-    } else {
-      expect.fail("expected EAS destination");
-    }
+    expect(plan[0].destinations[0]).toMatchObject({
+      type: "eas",
+      environments: ["production", "preview"],
+    });
   });
 
   it("routes BETTER_AUTH_SECRET from .env.local to convex dev", async () => {
-    await writeFile(".env.local", "BETTER_AUTH_SECRET=abcd1234\n");
-    const sources = await readSources();
-    const plan = buildPlan(sources);
-    const dest = plan[0].destinations[0];
-    if (dest.type === "convex") {
-      expect(dest.channel).toBe("dev");
-      expect(dest.key).toBe("BETTER_AUTH_SECRET");
-    } else {
-      expect.fail("expected Convex destination");
-    }
+    expect(await destFor(".env.local", "BETTER_AUTH_SECRET=abcd1234")).toMatchObject({
+      type: "convex",
+      channel: "dev",
+      key: "BETTER_AUTH_SECRET",
+    });
   });
 
   it("routes BETTER_AUTH_SECRET from .env.prod to convex prod", async () => {
-    await writeFile(".env.prod", "BETTER_AUTH_SECRET=abcd1234\n");
-    const sources = await readSources();
-    const plan = buildPlan(sources);
-    const dest = plan[0].destinations[0];
-    if (dest.type === "convex") {
-      expect(dest.channel).toBe("prod");
-    } else {
-      expect.fail("expected Convex destination");
-    }
+    expect(await destFor(".env.prod", "BETTER_AUTH_SECRET=abcd1234")).toMatchObject({
+      type: "convex",
+      channel: "prod",
+    });
   });
 
   it("routes REQUIRE_EMAIL_VERIFICATION from .env.local to convex dev", async () => {
-    await writeFile(".env.local", "REQUIRE_EMAIL_VERIFICATION=true\n");
-    const sources = await readSources();
-    const plan = buildPlan(sources);
-    const dest = plan[0].destinations[0];
-    if (dest.type === "convex") {
-      expect(dest.channel).toBe("dev");
-      expect(dest.key).toBe("REQUIRE_EMAIL_VERIFICATION");
-    } else {
-      expect.fail("expected Convex destination");
-    }
+    expect(await destFor(".env.local", "REQUIRE_EMAIL_VERIFICATION=true")).toMatchObject({
+      type: "convex",
+      channel: "dev",
+      key: "REQUIRE_EMAIL_VERIFICATION",
+    });
   });
 
   it("routes REQUIRE_EMAIL_VERIFICATION from .env.prod to convex prod", async () => {
-    await writeFile(".env.prod", "REQUIRE_EMAIL_VERIFICATION=true\n");
-    const sources = await readSources();
-    const plan = buildPlan(sources);
-    const dest = plan[0].destinations[0];
-    if (dest.type === "convex") {
-      expect(dest.channel).toBe("prod");
-      expect(dest.key).toBe("REQUIRE_EMAIL_VERIFICATION");
-    } else {
-      expect.fail("expected Convex destination");
-    }
+    expect(await destFor(".env.prod", "REQUIRE_EMAIL_VERIFICATION=true")).toMatchObject({
+      type: "convex",
+      channel: "prod",
+      key: "REQUIRE_EMAIL_VERIFICATION",
+    });
   });
 
   it("routes APPLE_TEAM_ID from .env.prod to Convex prod (no gh-secret. dropped)", async () => {
-    await writeFile(".env.prod", "APPLE_TEAM_ID=ABCDE12345\n");
-    const sources = await readSources();
-    const plan = buildPlan(sources);
+    const plan = await planFor(".env.prod", "APPLE_TEAM_ID=ABCDE12345");
     expect(plan.length).toBe(1);
-    const types = plan[0].destinations.map((d) => d.type);
-    expect(types).toEqual(["convex"]);
+    expect(plan[0].destinations.map((d) => d.type)).toEqual(["convex"]);
   });
 
   it("routes APPLE_TEAM_ID from .env.local to Convex dev only", async () => {
-    await writeFile(".env.local", "APPLE_TEAM_ID=ABCDE12345\n");
-    const sources = await readSources();
-    const plan = buildPlan(sources);
-    const types = plan[0].destinations.map((d) => d.type);
-    expect(types).toEqual(["convex"]);
+    const plan = await planFor(".env.local", "APPLE_TEAM_ID=ABCDE12345");
+    expect(plan[0].destinations.map((d) => d.type)).toEqual(["convex"]);
   });
 
   it("renames APPLE_SERVICES_ID to APPLE_CLIENT_ID on Convex", async () => {
-    await writeFile(".env.prod", "APPLE_SERVICES_ID=com.x.app.signin\n");
-    const sources = await readSources();
-    const plan = buildPlan(sources);
+    const plan = await planFor(".env.prod", "APPLE_SERVICES_ID=com.x.app.signin");
     expect(plan.length).toBe(1);
-    expect(plan[0].destinations.length).toBe(1);
-    const convexDest = plan[0].destinations[0];
-    if (convexDest.type === "convex") {
-      expect(convexDest.key).toBe("APPLE_CLIENT_ID");
-    } else {
-      expect.fail("expected single Convex destination");
-    }
+    expect(plan[0].destinations).toHaveLength(1);
+    expect(plan[0].destinations[0]).toMatchObject({ type: "convex", key: "APPLE_CLIENT_ID" });
   });
 
   it("APPLE_P8_PRIVATE_KEY is unrecognized (manual eas env:create --visibility secret)", async () => {
-    await writeFile(".env.prod", "APPLE_P8_PRIVATE_KEY=-----BEGIN-----\n");
-    const sources = await readSources();
-    const plan = buildPlan(sources);
-    expect(plan.length).toBe(0);
-    const unknown = unrecognizedKeys(sources);
-    expect(unknown).toContain("APPLE_P8_PRIVATE_KEY");
+    expect(await planFor(".env.prod", "APPLE_P8_PRIVATE_KEY=-----BEGIN-----")).toHaveLength(0);
+    expect(unrecognizedKeys(await readSources())).toContain("APPLE_P8_PRIVATE_KEY");
   });
 
   it("CONVEX_DEPLOY_KEY is unrecognized (manual eas env:create --visibility secret)", async () => {
-    await writeFile(".env.prod", "CONVEX_DEPLOY_KEY=prod:foo|ey...\n");
-    const sources = await readSources();
-    const plan = buildPlan(sources);
-    expect(plan.length).toBe(0);
-    const unknown = unrecognizedKeys(sources);
-    expect(unknown).toContain("CONVEX_DEPLOY_KEY");
+    expect(await planFor(".env.prod", "CONVEX_DEPLOY_KEY=prod:foo|ey...")).toHaveLength(0);
+    expect(unrecognizedKeys(await readSources())).toContain("CONVEX_DEPLOY_KEY");
   });
 
   it("ignores CONVEX_DEPLOYMENT (file-local pointer)", async () => {
-    await writeFile(".env.local", "CONVEX_DEPLOYMENT=dev:happy-frog-12\nFOO=bar\n");
-    const sources = await readSources();
-    const plan = buildPlan(sources);
+    const plan = await planFor(".env.local", "CONVEX_DEPLOYMENT=dev:happy-frog-12\nFOO=bar");
     expect(plan.find((p) => p.sourceKey === "CONVEX_DEPLOYMENT")).toBeUndefined();
   });
 });

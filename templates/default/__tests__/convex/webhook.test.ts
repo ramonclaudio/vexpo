@@ -74,6 +74,23 @@ describe("withWebhook (HMAC signature verification)", () => {
       handler,
     );
 
+  // Sign a body with the real secret and drive the handler with it. Every 200
+  // case and every post-signature rejection goes through here.
+  const signedCall = async (
+    handler: ReturnType<typeof testHandler>,
+    body = "{}",
+    extra: Partial<Parameters<typeof makeRequest>[0]> = {},
+  ): Promise<Response> =>
+    handler(
+      ctx,
+      makeRequest({
+        body,
+        signatureHeader: "x-signature",
+        signatureValue: await sign("sha256", SECRET, body),
+        ...extra,
+      }),
+    );
+
   afterEach(() => {
     delete process.env.TEST_WEBHOOK_SECRET;
   });
@@ -111,29 +128,12 @@ describe("withWebhook (HMAC signature verification)", () => {
 
   test("200 when signature matches (SHA-256)", async () => {
     const body = JSON.stringify({ event: "test.ping" });
-    const signature = await sign("sha256", SECRET, body);
     let handlerCalled = false;
-    const handler = withWebhook(
-      {
-        source: "test",
-        parse: withEvent,
-        signatureHeader: "x-signature",
-        secretEnv: "TEST_WEBHOOK_SECRET",
-        algorithm: "sha256",
-      },
-      (_ctx, payload) => {
-        handlerCalled = true;
-        return new Response(JSON.stringify({ ok: true, received: payload.event }), { status: 200 });
-      },
-    );
-    const res = await handler(
-      ctx,
-      makeRequest({
-        body,
-        signatureHeader: "x-signature",
-        signatureValue: signature,
-      }),
-    );
+    const handler = testHandler({ parse: withEvent }, (_ctx, payload) => {
+      handlerCalled = true;
+      return new Response(JSON.stringify({ ok: true, received: payload.event }), { status: 200 });
+    });
+    const res = await signedCall(handler, body);
     expect(res.status).toBe(200);
     expect(handlerCalled).toBe(true);
     const json = (await res.json()) as { ok: boolean; received: string };
@@ -164,17 +164,8 @@ describe("withWebhook (HMAC signature verification)", () => {
   });
 
   test("400 when body is not valid JSON", async () => {
-    const body = "not-json{";
-    const signature = await sign("sha256", SECRET, body);
     const handler = testHandler();
-    const res = await handler(
-      ctx,
-      makeRequest({
-        body,
-        signatureHeader: "x-signature",
-        signatureValue: signature,
-      }),
-    );
+    const res = await signedCall(handler, "not-json{");
     expect(res.status).toBe(400);
   });
 
@@ -228,16 +219,7 @@ describe("withWebhook (HMAC signature verification)", () => {
 
   test("401 when replay timestamp is missing", async () => {
     const handler = testHandler({ replay: { header: "x-timestamp", maxAgeSeconds: 300 } });
-    const body = "{}";
-    const signature = await sign("sha256", SECRET, body);
-    const res = await handler(
-      ctx,
-      makeRequest({
-        body,
-        signatureHeader: "x-signature",
-        signatureValue: signature,
-      }),
-    );
+    const res = await signedCall(handler);
     expect(res.status).toBe(401);
     const text = await res.text();
     expect(text).toContain("missing x-timestamp");
@@ -245,19 +227,11 @@ describe("withWebhook (HMAC signature verification)", () => {
 
   test("401 when replay timestamp is stale", async () => {
     const handler = testHandler({ replay: { header: "x-timestamp", maxAgeSeconds: 60 } });
-    const body = "{}";
-    const signature = await sign("sha256", SECRET, body);
     const stale = Date.now() - 120_000; // 2 minutes ago, exceeds 60s window
-    const res = await handler(
-      ctx,
-      makeRequest({
-        body,
-        signatureHeader: "x-signature",
-        signatureValue: signature,
-        timestampHeader: "x-timestamp",
-        timestampValue: String(stale),
-      }),
-    );
+    const res = await signedCall(handler, "{}", {
+      timestampHeader: "x-timestamp",
+      timestampValue: String(stale),
+    });
     expect(res.status).toBe(401);
     const text = await res.text();
     expect(text).toContain("timestamp out of window");
@@ -268,18 +242,10 @@ describe("withWebhook (HMAC signature verification)", () => {
       { replay: { header: "x-timestamp", maxAgeSeconds: 300 } },
       () => new Response("ok", { status: 200 }),
     );
-    const body = "{}";
-    const signature = await sign("sha256", SECRET, body);
-    const res = await handler(
-      ctx,
-      makeRequest({
-        body,
-        signatureHeader: "x-signature",
-        signatureValue: signature,
-        timestampHeader: "x-timestamp",
-        timestampValue: String(Date.now()),
-      }),
-    );
+    const res = await signedCall(handler, "{}", {
+      timestampHeader: "x-timestamp",
+      timestampValue: String(Date.now()),
+    });
     expect(res.status).toBe(200);
   });
 
@@ -288,35 +254,18 @@ describe("withWebhook (HMAC signature verification)", () => {
     // is rejected too. A one-sided `age > max` check would pass every other
     // replay test but accept arbitrarily-future timestamps; this pins that.
     const handler = testHandler({ replay: { header: "x-timestamp", maxAgeSeconds: 60 } });
-    const body = "{}";
-    const signature = await sign("sha256", SECRET, body);
     const future = Date.now() + 120_000; // 2 minutes ahead, exceeds 60s window
-    const res = await handler(
-      ctx,
-      makeRequest({
-        body,
-        signatureHeader: "x-signature",
-        signatureValue: signature,
-        timestampHeader: "x-timestamp",
-        timestampValue: String(future),
-      }),
-    );
+    const res = await signedCall(handler, "{}", {
+      timestampHeader: "x-timestamp",
+      timestampValue: String(future),
+    });
     expect(res.status).toBe(401);
     expect(await res.text()).toContain("timestamp out of window");
   });
 
   test("X-Request-Id header is set on every response", async () => {
     const handler = testHandler({}, () => new Response("ok", { status: 200 }));
-    const body = "{}";
-    const signature = await sign("sha256", SECRET, body);
-    const res = await handler(
-      ctx,
-      makeRequest({
-        body,
-        signatureHeader: "x-signature",
-        signatureValue: signature,
-      }),
-    );
+    const res = await signedCall(handler);
     expect(res.status).toBe(200);
     expect(res.headers.get("X-Request-Id")).toBeTruthy();
   });
@@ -325,41 +274,18 @@ describe("withWebhook (HMAC signature verification)", () => {
     const handler = testHandler({}, () => {
       throw new Error("simulated handler crash");
     });
-    const body = "{}";
-    const signature = await sign("sha256", SECRET, body);
-    const res = await handler(
-      ctx,
-      makeRequest({
-        body,
-        signatureHeader: "x-signature",
-        signatureValue: signature,
-      }),
-    );
+    const res = await signedCall(handler);
     expect(res.status).toBe(500);
     const text = await res.text();
     expect(text).toContain("handler error");
   });
   test("400 when the body parses as JSON but not as the expected shape", async () => {
     let handlerCalled = false;
-    const handler = withWebhook(
-      {
-        source: "test",
-        parse: withEvent,
-        signatureHeader: "x-signature",
-        secretEnv: "TEST_WEBHOOK_SECRET",
-        algorithm: "sha256",
-      },
-      () => {
-        handlerCalled = true;
-        return new Response("ok");
-      },
-    );
-    const body = JSON.stringify({ event: 42 });
-    const signature = await sign("sha256", SECRET, body);
-    const res = await handler(
-      ctx,
-      makeRequest({ body, signatureHeader: "x-signature", signatureValue: signature }),
-    );
+    const handler = testHandler({ parse: withEvent }, () => {
+      handlerCalled = true;
+      return new Response("ok");
+    });
+    const res = await signedCall(handler, JSON.stringify({ event: 42 }));
     expect(res.status).toBe(400);
     expect(handlerCalled).toBe(false);
     expect(await res.text()).toContain("expected shape");

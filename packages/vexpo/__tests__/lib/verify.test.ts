@@ -1,7 +1,8 @@
-import { generateKeyPairSync } from "node:crypto";
 import { writeFile } from "node:fs/promises";
 
-import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+import { useEcKey } from "../helpers/ec-key.ts";
 
 import { useTmpCwd } from "../helpers/tmp-cwd.ts";
 
@@ -10,11 +11,17 @@ import { readAppConfigFacts, summarize, verifyAll, type VerifyContext } from "..
 
 useTmpCwd("verify-test-");
 
-let p8Pem: string;
+const key = useEcKey("verify-test-key-");
 
-beforeAll(() => {
-  const { privateKey } = generateKeyPairSync("ec", { namedCurve: "prime256v1" });
-  p8Pem = privateKey.export({ format: "pem", type: "pkcs8" }).toString();
+// Default for every test. The describes that care about a specific response
+// overwrite globalThis.fetch in the test body.
+beforeEach(() => {
+  globalThis.fetch = vi
+    .fn()
+    .mockImplementation(
+      async () =>
+        new Response("[]", { status: 200, headers: { "content-type": "application/json" } }),
+    ) as unknown as typeof fetch;
 });
 
 function signSiwaJwt(opts: {
@@ -23,7 +30,7 @@ function signSiwaJwt(opts: {
   servicesId: string;
   expirationDays: number;
 }): Promise<string> {
-  return signClientSecret({ privateKey: { contents: p8Pem }, ...opts });
+  return signClientSecret({ privateKey: { contents: key.pem }, ...opts });
 }
 
 function emptyContext(overrides: Partial<VerifyContext> = {}): VerifyContext {
@@ -40,15 +47,6 @@ function emptyContext(overrides: Partial<VerifyContext> = {}): VerifyContext {
 }
 
 describe("verifyAll - empty context", () => {
-  beforeEach(() => {
-    globalThis.fetch = vi
-      .fn()
-      .mockImplementation(
-        async () =>
-          new Response("[]", { status: 200, headers: { "content-type": "application/json" } }),
-      ) as unknown as typeof fetch;
-  });
-
   it("emits checks even with no env data", async () => {
     const ctx = emptyContext();
     const checks = await verifyAll(ctx);
@@ -59,15 +57,6 @@ describe("verifyAll - empty context", () => {
 });
 
 describe("Apple JWT verification", () => {
-  beforeEach(() => {
-    globalThis.fetch = vi
-      .fn()
-      .mockImplementation(
-        async () =>
-          new Response("[]", { status: 200, headers: { "content-type": "application/json" } }),
-      ) as unknown as typeof fetch;
-  });
-
   const SIWA = {
     teamId: "ABCDE12345",
     keyId: "FGHIJ67890",
@@ -156,15 +145,6 @@ describe("Apple JWT verification", () => {
 });
 
 describe("Coherence checks", () => {
-  beforeEach(() => {
-    globalThis.fetch = vi
-      .fn()
-      .mockImplementation(
-        async () =>
-          new Response("[]", { status: 200, headers: { "content-type": "application/json" } }),
-      ) as unknown as typeof fetch;
-  });
-
   it("ok when bundle id matches across local + convex", async () => {
     const ctx = emptyContext({
       envLocal: new Map([["EXPO_PUBLIC_APP_BUNDLE_ID", "com.foo.bar"]]),
@@ -300,15 +280,6 @@ describe("Convex deployment checks", () => {
 });
 
 describe("unreadable Convex env", () => {
-  beforeEach(() => {
-    globalThis.fetch = vi
-      .fn()
-      .mockImplementation(
-        async () =>
-          new Response("[]", { status: 200, headers: { "content-type": "application/json" } }),
-      ) as unknown as typeof fetch;
-  });
-
   it("warns env-read on prod instead of failing per-var checks", async () => {
     const ctx = emptyContext({ channel: "prod", convexProdEnv: null });
     const checks = await verifyAll(ctx);

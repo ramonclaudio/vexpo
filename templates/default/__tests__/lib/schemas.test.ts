@@ -22,6 +22,24 @@ import {
 
 const validPassword = "a".repeat(PASSWORD_MIN_LENGTH);
 
+// Both forms have four fields and every case below varies one of them.
+const signUp = (overrides: Record<string, string> = {}) =>
+  signUpSchema.safeParse({
+    name: "Ray",
+    username: "",
+    email: "r@example.com",
+    password: validPassword,
+    ...overrides,
+  });
+
+const profile = (overrides: Record<string, string> = {}) =>
+  profileUpdateSchema.safeParse({
+    name: "Ray",
+    username: "rayc",
+    email: "r@example.com",
+    ...overrides,
+  });
+
 describe("email validation", () => {
   it("trims and lowercases a valid email", () => {
     const r = forgotPasswordSchema.safeParse({ email: "  Foo@Bar.COM  " });
@@ -38,111 +56,65 @@ describe("email validation", () => {
 
 describe("password bounds", () => {
   it(`rejects shorter than ${PASSWORD_MIN_LENGTH}`, () => {
-    const r = signUpSchema.safeParse({
-      name: "Ray",
-      username: "",
-      email: "r@example.com",
-      password: "a".repeat(PASSWORD_MIN_LENGTH - 1),
-    });
+    const r = signUp({ password: "a".repeat(PASSWORD_MIN_LENGTH - 1) });
     expect(r.success).toBe(false);
     expect(firstError(r)).toBe(`Password must be at least ${PASSWORD_MIN_LENGTH} characters`);
   });
 
   it(`rejects longer than ${PASSWORD_MAX_LENGTH}`, () => {
-    const r = signUpSchema.safeParse({
-      name: "Ray",
-      username: "",
-      email: "r@example.com",
-      password: "a".repeat(PASSWORD_MAX_LENGTH + 1),
-    });
+    const r = signUp({ password: "a".repeat(PASSWORD_MAX_LENGTH + 1) });
     expect(r.success).toBe(false);
     expect(firstError(r)).toBe(`Password must be ${PASSWORD_MAX_LENGTH} characters or fewer`);
   });
 
   it("accepts a password at the minimum length", () => {
-    const r = signUpSchema.safeParse({
-      name: "Ray",
-      username: "",
-      email: "r@example.com",
-      password: validPassword,
-    });
+    const r = signUp();
     expect(r.success).toBe(true);
   });
 });
 
 describe("required username (profileUpdateSchema)", () => {
   it("lowercases and trims a valid username", () => {
-    const r = profileUpdateSchema.safeParse({
-      name: "Ray",
-      username: "  RayC  ",
-      email: "r@example.com",
-    });
+    const r = profile({ username: "  RayC  " });
     expect(r.success).toBe(true);
     if (r.success) expect(r.data.username).toBe("rayc");
   });
 
   it("rejects too-short usernames", () => {
-    const r = profileUpdateSchema.safeParse({
-      name: "Ray",
-      username: "ab",
-      email: "r@example.com",
-    });
+    const r = profile({ username: "ab" });
     expect(r.success).toBe(false);
     expect(firstErrorField(r)).toBe("username");
   });
 
   it("rejects invalid characters with the format message", () => {
-    const r = profileUpdateSchema.safeParse({
-      name: "Ray",
-      username: "bad name!",
-      email: "r@example.com",
-    });
+    const r = profile({ username: "bad name!" });
     expect(firstError(r)).toBe("Letters, numbers, dots, and underscores only");
   });
 
   it("rejects a reserved username, case-insensitively", () => {
-    const r = profileUpdateSchema.safeParse({
-      name: "Ray",
-      username: "ADMIN",
-      email: "r@example.com",
-    });
+    const r = profile({ username: "ADMIN" });
     expect(firstError(r)).toBe("That username is reserved");
   });
 
   it("rejects an empty username (required here, unlike sign-up)", () => {
-    const r = profileUpdateSchema.safeParse({ name: "Ray", username: "", email: "r@example.com" });
+    const r = profile({ username: "" });
     expect(r.success).toBe(false);
   });
 });
 
 describe("optional username (signUpSchema)", () => {
   it("accepts an empty username", () => {
-    const r = signUpSchema.safeParse({
-      name: "Ray",
-      username: "",
-      email: "r@example.com",
-      password: validPassword,
-    });
+    const r = signUp();
     expect(r.success).toBe(true);
   });
 
   it("still rejects a non-empty reserved username", () => {
-    const r = signUpSchema.safeParse({
-      name: "Ray",
-      username: "root",
-      email: "r@example.com",
-      password: validPassword,
-    });
+    const r = signUp({ username: "root" });
     expect(firstError(r)).toBe("That username is reserved");
   });
 
   it("requires a non-empty name", () => {
-    const r = signUpSchema.safeParse({
-      name: "   ",
-      username: "",
-      email: "r@example.com",
-      password: validPassword,
-    });
+    const r = signUp({ name: "   " });
     expect(r.success).toBe(false);
     expect(firstError(r)).toBe("Name is required");
   });
