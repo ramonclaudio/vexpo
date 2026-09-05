@@ -1,5 +1,5 @@
 {
-  "_comment": "Drives `vexpo asc accessibility lint`. The starter template ships VoiceOver labels, DynamicType, reduced-motion respect, and DynamicColorIOS for high-contrast support. Audit each feature against your actual user flows before declaring FULLY_SUPPORTS in production.",
+  "_comment": "Drives `vexpo asc accessibility lint`. Apple has no write API for accessibility declarations, so this file is the versioned mirror of what you enter in App Store Connect. The levels below describe the template as it ships, and each one names what backs it. Re-check them against your own screens before you submit: your app is not this app.",
   "entries": [
     {
       "deviceFamily": "IPHONE",
@@ -14,7 +14,7 @@
         "CAPTIONS": "NOT_APPLICABLE",
         "AUDIO_DESCRIPTIONS": "NOT_APPLICABLE"
       },
-      "notes": "Verify against the actual screens in your app before submission. The defaults reflect what the vexpo template ships, not what your app delivers."
+      "notes": "IPHONE only, because app.config.ts sets supportsTablet: false. What each level rests on, in the template's own code. VOICE_OVER: every control carries a label, hints on the ones whose label doesn't say what happens, isHeader on screen titles, decorative symbols hidden with accessibilityHidden(true), and errors and successes announced from fail() and succeed() so a repeat is heard as a repeat. VOICE_CONTROL: accessibilityInputLabels on the buttons whose visible name is awkward to say. LARGER_TEXT: useDynamicFont resolves every size to a SwiftUI text style, so text scales through Font.custom(relativeTo:), and icons that would break the layout are capped with dynamicTypeSize rather than pinned. DARK_INTERFACE: DynamicColorIOS across the palette, plus an in-app light, dark and system preference. SUFFICIENT_CONTRAST: __tests__/lib/contrast.test.ts measures thirteen foreground and background pairs across all four appearances against WCAG AA, including the high-contrast variants. DIFFERENTIATION_WITHOUT_COLOR_ALONE: status rows pair the colour with a symbol and a word, and no control uses colour as its only state. REDUCED_MOTION: a three-way preference over the system setting, read by the screen transitions, the banners, the onboarding bar and the sessions list. CAPTIONS and AUDIO_DESCRIPTIONS are NOT_APPLICABLE because nothing here plays media. Everything above is verified statically: none of it has been heard on a device."
     }
   ]
 }
