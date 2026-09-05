@@ -1,8 +1,7 @@
 import { pkgName } from "../lib/app.ts";
 import { envSet, type ConvexTarget } from "../lib/convex-env.ts";
-import { readEnvFile } from "../lib/env-files.ts";
+import { findProdEnvFile, readEnvFile } from "../lib/env-files.ts";
 import { readOne } from "../lib/env-local.ts";
-import { fileExists } from "../lib/fs.ts";
 import {
   BOLD,
   DIM,
@@ -53,14 +52,153 @@ async function resolveFullKey(): Promise<string | null> {
 }
 
 async function prodChannel(): Promise<{ envFile: string; siteUrl: string } | null> {
-  const envFile = (await fileExists(".env.prod"))
-    ? ".env.prod"
-    : (await fileExists(".env.production"))
-      ? ".env.production"
-      : null;
+  const envFile = await findProdEnvFile();
   if (!envFile) return null;
   const siteUrl = (await readEnvFile(envFile)).get("EXPO_PUBLIC_CONVEX_SITE_URL");
   return siteUrl ? { envFile, siteUrl } : null;
+}
+
+async function ensureVerifiedDomains(fullKey: string): Promise<ResendDomain[] | null> {
+  const verified = (await listDomains(fullKey)).filter((d) => d.status === "verified");
+  if (verified.length > 0) return verified;
+
+  yep("no verified Resend domains. Walk through the manual setup once:");
+  note("  1. Add Domain in the Resend dashboard (apex domain you control)");
+  note("  2. Resend shows 3-5 DNS records (SPF, DKIM, MX-send, optional return-path CNAME)");
+  note("  3. Add records at your DNS registrar (GoDaddy, Cloudflare, Vercel, etc.)");
+  note("  4. Click Verify in the Resend dashboard. Apex domains with `p=reject` DMARC defaults");
+  note("     (GoDaddy ships these) need both SPF + DKIM in place before any mail will deliver.");
+  note("  5. Set Custom Return-Path on, click/open tracking off, TLS Enforced.");
+  line();
+  await helpAndWait({
+    body: "Open the Resend domains page:",
+    urls: [{ label: "Resend domains", url: "https://resend.com/domains" }],
+    allowSkip: false,
+  });
+
+  const all = await listDomains(fullKey);
+  const pending = all.filter((d) => d.status !== "verified");
+  if (pending.length === 0) {
+    bad("no domains added yet in Resend. Add one in the dashboard, then re-run.");
+    return null;
+  }
+  const target = pending[pending.length - 1];
+  note(`polling ${BOLD}${target.name}${RESET} for verified status (every 30s, max 10 min)...`);
+  note(
+    `${DIM}DNS propagation timing depends on your registrar. Some are seconds, some are an hour.${RESET}`,
+  );
+
+  const result = await poll<ResendDomain>({
+    intervalMs: 30_000,
+    timeoutMs: 10 * 60 * 1000,
+    check: async () => {
+      try {
+        await verifyDomain(fullKey, target.id);
+      } catch {}
+      const refreshed = await getDomain(fullKey, target.id);
+      if (refreshed.status === "verified") {
+        return {
+          done: true,
+          value: { id: refreshed.id, name: refreshed.name, status: refreshed.status },
+        };
+      }
+      return { done: false, reason: refreshed.status };
+    },
+    tick: ({ attempts, elapsedMs, reason }) => {
+      nop(
+        `still ${reason ?? "pending"} (attempt ${attempts}, ${formatElapsed(elapsedMs)} elapsed)`,
+      );
+    },
+  });
+
+  if (!result.done) {
+    bad(
+      `${target.name} not verified after ${formatElapsed(result.elapsedMs)} (${result.attempts} polls)`,
+    );
+    note("DNS records may still be propagating. Re-run `vexpo resend` later.");
+    note(`Or check the dashboard: ${BOLD}https://resend.com/domains/${target.id}${RESET}`);
+    return null;
+  }
+  ok(`${target.name} verified after ${formatElapsed(result.elapsedMs)}`);
+  ok(`${target.name} verified after ${formatElapsed(result.elapsedMs)}`);
+  return [result.value];
+}
+
+function pickDomain(verified: ResendDomain[]): Promise<ResendDomain> | ResendDomain {
+  if (verified.length === 1) return verified[0];
+  if (!process.stdin.isTTY) {
+    yep(`multiple verified domains; non-TTY → picking first: ${verified[0].name}`);
+    return verified[0];
+  }
+  line();
+  note("Verified domains:");
+  verified.forEach((d, i) => note(`  ${i + 1}. ${d.name}`));
+  return ask(`  Pick (1-${verified.length}, default 1) > `).then(
+    (raw) => verified[parseInt(raw || "1", 10) - 1] ?? verified[0],
+  );
+}
+
+async function syncProdChannel(
+  fullKey: string,
+  siteUrl: string,
+  token: string,
+  fromAddr: string,
+): Promise<{ id: string; endpoint: string } | undefined> {
+  const prod = await prodChannel();
+  if (!prod) {
+    nop(
+      "no prod site URL yet; prod channel skipped (re-run after `CONVEX_DEPLOY_KEY= npx convex deploy`)",
+    );
+    return undefined;
+  }
+  if (prod.siteUrl === siteUrl) {
+    nop("prod site URL matches dev; prod channel skipped");
+    return undefined;
+  }
+  const target: ConvexTarget = { prod: true, envFile: prod.envFile };
+  const prodEndpoint = `${prod.siteUrl.replace(/\/$/, "")}/resend-webhook`;
+  const created = await provisionWebhook(fullKey, prodEndpoint);
+  ok(`webhook → ${prodEndpoint}`);
+  await envSet("RESEND_API_KEY", token, target);
+  await envSet("RESEND_WEBHOOK_SECRET", created.secret, target);
+  await envSet("EMAIL_FROM", fromAddr, target);
+  await envSet("RESEND_TEST_MODE", "false", target);
+  await envSet("REQUIRE_EMAIL_VERIFICATION", "true", target);
+  ok("prod deployment env aligned (same sending key, its own webhook secret)");
+  return { id: created.id, endpoint: prodEndpoint };
+}
+
+async function requireFullKey(): Promise<string | null> {
+  const fullKey = await resolveFullKey();
+  if (!fullKey) {
+    if (process.stdin.isTTY) bad("aborted");
+    else bad("no RESEND_FULL_ACCESS_KEY env var and no TTY for paste");
+    return null;
+  }
+  const access = await probeAccess(fullKey);
+  if (access !== "full") {
+    bad(`provided key has '${access}' access; need 'full'`);
+    return null;
+  }
+  ok("full-access key verified");
+  return fullKey;
+}
+
+async function resolveRepointTarget(
+  prod: boolean,
+): Promise<{ siteUrl: string; convexTarget?: ConvexTarget } | null> {
+  if (!prod) {
+    const siteUrl = await readOne("EXPO_PUBLIC_CONVEX_SITE_URL");
+    return siteUrl ? { siteUrl } : null;
+  }
+  const envFile = (await findProdEnvFile()) ?? ".env.production";
+  const siteUrl = (await readEnvFile(envFile)).get("EXPO_PUBLIC_CONVEX_SITE_URL");
+  return siteUrl ? { siteUrl, convexTarget: { prod: true, envFile } } : null;
+}
+
+async function siblingWebhookEndpoint(prod: boolean): Promise<string | undefined> {
+  const site = prod ? await readOne("EXPO_PUBLIC_CONVEX_SITE_URL") : (await prodChannel())?.siteUrl;
+  return site ? `${site.replace(/\/$/, "")}/resend-webhook` : undefined;
 }
 
 export async function runResend(options: ResendOptions): Promise<number> {
@@ -81,96 +219,12 @@ export async function runResend(options: ResendOptions): Promise<number> {
 
   const name = options.name ?? (await pkgName());
 
-  const fullKey = await resolveFullKey();
-  if (!fullKey) {
-    if (process.stdin.isTTY) bad("aborted");
-    else bad("no RESEND_FULL_ACCESS_KEY env var and no TTY for paste");
-    return 1;
-  }
+  const fullKey = await requireFullKey();
+  if (!fullKey) return 1;
 
-  const keyAccess = await probeAccess(fullKey);
-  if (keyAccess !== "full") {
-    bad(`provided key has '${keyAccess}' access; need 'full'`);
-    return 1;
-  }
-  ok("full-access key verified");
-
-  let verified = (await listDomains(fullKey)).filter((d) => d.status === "verified");
-  if (verified.length === 0) {
-    yep("no verified Resend domains. Walk through the manual setup once:");
-    note("  1. Add Domain in the Resend dashboard (apex domain you control)");
-    note("  2. Resend shows 3-5 DNS records (SPF, DKIM, MX-send, optional return-path CNAME)");
-    note("  3. Add records at your DNS registrar (GoDaddy, Cloudflare, Vercel, etc.)");
-    note("  4. Click Verify in the Resend dashboard. Apex domains with `p=reject` DMARC defaults");
-    note("     (GoDaddy ships these) need both SPF + DKIM in place before any mail will deliver.");
-    note("  5. Set Custom Return-Path on, click/open tracking off, TLS Enforced.");
-    line();
-    await helpAndWait({
-      body: "Open the Resend domains page:",
-      urls: [{ label: "Resend domains", url: "https://resend.com/domains" }],
-      allowSkip: false,
-    });
-
-    const all = await listDomains(fullKey);
-    const pending = all.filter((d) => d.status !== "verified");
-    if (pending.length === 0) {
-      bad("no domains added yet in Resend. Add one in the dashboard, then re-run.");
-      return 1;
-    }
-    const target = pending[pending.length - 1];
-    note(`polling ${BOLD}${target.name}${RESET} for verified status (every 30s, max 10 min)...`);
-    note(
-      `${DIM}DNS propagation timing depends on your registrar. Some are seconds, some are an hour.${RESET}`,
-    );
-
-    const result = await poll<ResendDomain>({
-      intervalMs: 30_000,
-      timeoutMs: 10 * 60 * 1000,
-      check: async () => {
-        try {
-          await verifyDomain(fullKey, target.id);
-        } catch {}
-        const refreshed = await getDomain(fullKey, target.id);
-        if (refreshed.status === "verified") {
-          return {
-            done: true,
-            value: { id: refreshed.id, name: refreshed.name, status: refreshed.status },
-          };
-        }
-        return { done: false, reason: refreshed.status };
-      },
-      tick: ({ attempts, elapsedMs, reason }) => {
-        nop(
-          `still ${reason ?? "pending"} (attempt ${attempts}, ${formatElapsed(elapsedMs)} elapsed)`,
-        );
-      },
-    });
-
-    if (!result.done) {
-      bad(
-        `${target.name} not verified after ${formatElapsed(result.elapsedMs)} (${result.attempts} polls)`,
-      );
-      note("DNS records may still be propagating. Re-run `vexpo resend` later.");
-      note(`Or check the dashboard: ${BOLD}https://resend.com/domains/${target.id}${RESET}`);
-      return 1;
-    }
-    ok(`${target.name} verified after ${formatElapsed(result.elapsedMs)}`);
-    verified = [result.value];
-  }
-  let domain: ResendDomain;
-  if (verified.length === 1) {
-    domain = verified[0];
-  } else if (!process.stdin.isTTY) {
-    domain = verified[0];
-    yep(`multiple verified domains; non-TTY → picking first: ${domain.name}`);
-  } else {
-    line();
-    note("Verified domains:");
-    verified.forEach((d, i) => note(`  ${i + 1}. ${d.name}`));
-    const raw = (await ask(`  Pick (1-${verified.length}, default 1) > `)) || "1";
-    const idx = parseInt(raw, 10);
-    domain = verified[idx - 1] ?? verified[0];
-  }
+  const verified = await ensureVerifiedDomains(fullKey);
+  if (!verified) return 1;
+  const domain = await pickDomain(verified);
   ok(`domain: ${domain.name}`);
 
   const token = await provisionSendingKey(fullKey, name, domain.id);
@@ -193,27 +247,7 @@ export async function runResend(options: ResendOptions): Promise<number> {
   await envSet("REQUIRE_EMAIL_VERIFICATION", "true");
   ok("REQUIRE_EMAIL_VERIFICATION=true (sign-up now requires OTP)");
 
-  const prod = await prodChannel();
-  let prodWebhook: { id: string; endpoint: string } | undefined;
-  if (!prod) {
-    nop(
-      "no prod site URL yet; prod channel skipped (re-run after `CONVEX_DEPLOY_KEY= npx convex deploy`)",
-    );
-  } else if (prod.siteUrl === siteUrl) {
-    nop("prod site URL matches dev; prod channel skipped");
-  } else {
-    const target: ConvexTarget = { prod: true, envFile: prod.envFile };
-    const prodEndpoint = `${prod.siteUrl.replace(/\/$/, "")}/resend-webhook`;
-    const created = await provisionWebhook(fullKey, prodEndpoint);
-    prodWebhook = { id: created.id, endpoint: prodEndpoint };
-    ok(`webhook → ${prodEndpoint}`);
-    await envSet("RESEND_API_KEY", token, target);
-    await envSet("RESEND_WEBHOOK_SECRET", created.secret, target);
-    await envSet("EMAIL_FROM", fromAddr, target);
-    await envSet("RESEND_TEST_MODE", "false", target);
-    await envSet("REQUIRE_EMAIL_VERIFICATION", "true", target);
-    ok("prod deployment env aligned (same sending key, its own webhook secret)");
-  }
+  const prodWebhook = await syncProdChannel(fullKey, siteUrl, token, fromAddr);
 
   await recordStep("resend", {
     domainId: domain.id,
@@ -241,40 +275,20 @@ async function runResendRepoint(options: ResendOptions): Promise<number> {
   const channel = options.prod ? "prod" : "dev";
   section(`Resend repoint (${channel})`);
 
-  let siteUrl: string | undefined;
-  let convexTarget: ConvexTarget | undefined;
-  if (options.prod) {
-    const prodFile = (await fileExists(".env.prod")) ? ".env.prod" : ".env.production";
-    siteUrl = (await readEnvFile(prodFile)).get("EXPO_PUBLIC_CONVEX_SITE_URL");
-    convexTarget = { prod: true, envFile: prodFile };
-  } else {
-    siteUrl = (await readOne("EXPO_PUBLIC_CONVEX_SITE_URL")) ?? undefined;
-  }
-  if (!siteUrl) {
+  const target = await resolveRepointTarget(options.prod === true);
+  if (!target) {
     bad(`EXPO_PUBLIC_CONVEX_SITE_URL missing from ${options.prod ? ".env.prod" : ".env.local"}`);
     note("run `vexpo convex` (and a prod deploy) so the site URL is populated, then re-run");
     return 1;
   }
+  const { siteUrl, convexTarget } = target;
   const endpoint = `${siteUrl.replace(/\/$/, "")}/resend-webhook`;
   ok(`target endpoint: ${endpoint}`);
 
-  const fullKey = await resolveFullKey();
-  if (!fullKey) {
-    if (process.stdin.isTTY) bad("aborted");
-    else bad("no RESEND_FULL_ACCESS_KEY env var and no TTY for paste");
-    return 1;
-  }
-  if ((await probeAccess(fullKey)) !== "full") {
-    bad("provided key does not have full access");
-    return 1;
-  }
+  const fullKey = await requireFullKey();
+  if (!fullKey) return 1;
 
-  const siblingSite = options.prod
-    ? await readOne("EXPO_PUBLIC_CONVEX_SITE_URL")
-    : (await prodChannel())?.siteUrl;
-  const siblingEndpoint = siblingSite
-    ? `${siblingSite.replace(/\/$/, "")}/resend-webhook`
-    : undefined;
+  const siblingEndpoint = await siblingWebhookEndpoint(options.prod === true);
 
   const hooks = await listWebhooks(fullKey);
   const atNew = hooks.find((w) => w.endpoint === endpoint);

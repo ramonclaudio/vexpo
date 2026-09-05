@@ -70,6 +70,89 @@ type SignInMethod = "email" | "username" | "otp";
 
 const NOT_VERIFIED = "EMAIL_NOT_VERIFIED";
 
+type MethodOption = { value: SignInMethod; label: string };
+
+function methodOptions(emailFeatures: boolean): MethodOption[] {
+  const base: MethodOption[] = [
+    { value: "email", label: "Email" },
+    { value: "username", label: "Username" },
+  ];
+  return emailFeatures ? [...base, { value: "otp", label: "Email OTP" }] : base;
+}
+
+function Subtitle({ isGuest, isOtp }: { isGuest: boolean; isOtp: boolean }) {
+  const dfont = useDynamicFont();
+  const colors = useColors();
+  const text = isGuest
+    ? "Sign in and everything you did as a guest comes with you."
+    : isOtp
+      ? "We'll email you a 6-digit code. No password needed."
+      : "Enter your credentials to access your account.";
+  return (
+    <Text modifiers={[dfont({ size: 16 }), foregroundStyle(colors.mutedForeground as string)]}>
+      {text}
+    </Text>
+  );
+}
+
+function ForgotPasswordLink({ testID }: { testID: string }) {
+  const dfont = useDynamicFont();
+  const colors = useColors();
+  return (
+    <Button
+      testID={testID}
+      label="Forgot password?"
+      modifiers={[
+        buttonStyle("plain"),
+        foregroundStyle(colors.mutedForeground as string),
+        dfont({ size: 13 }),
+        frame({ minHeight: TouchTarget.min }),
+        contentShape(shapes.rectangle()),
+      ]}
+      onPress={() => {
+        router.push("/auth/forgot-password");
+      }}
+    />
+  );
+}
+
+function GuestOptions({
+  showGuest,
+  isGuest,
+  isLoading,
+  guest,
+}: {
+  showGuest: boolean;
+  isGuest: boolean;
+  isLoading: boolean;
+  guest: ReturnType<typeof useGuestSignIn>;
+}) {
+  if (showGuest) {
+    return (
+      <VStack spacing={6} alignment="leading" modifiers={[frame({ maxWidth: Infinity })]}>
+        <SecondaryButton
+          testID="sign-in-guest"
+          label={guest.isPending ? "Starting..." : "Continue as guest"}
+          onPress={() => startTransition(() => guest.signIn())}
+          disabled={isLoading}
+          inputLabels={["Continue as guest", "Guest", "Skip sign in"]}
+        />
+        <HelperText>You can create an account later and keep what you did.</HelperText>
+      </VStack>
+    );
+  }
+  if (!isGuest) return null;
+  return (
+    <SecondaryButton
+      testID="sign-in-dismiss"
+      label="Not now"
+      onPress={dismissAuth}
+      disabled={isLoading}
+      filled={false}
+    />
+  );
+}
+
 export default function SignInScreen() {
   const dfont = useDynamicFont();
   const colors = useColors();
@@ -204,10 +287,20 @@ export default function SignInScreen() {
     initialState,
   );
 
-  const error =
-    emailState.error ?? usernameState.error ?? otpRequestState.error ?? apple.error ?? guest.error;
-  const isLoading =
-    isEmailPending || isUsernamePending || isSendingOtp || apple.isPending || guest.isPending;
+  const error = [
+    emailState.error,
+    usernameState.error,
+    otpRequestState.error,
+    apple.error,
+    guest.error,
+  ].find(Boolean);
+  const isLoading = [
+    isEmailPending,
+    isUsernamePending,
+    isSendingOtp,
+    apple.isPending,
+    guest.isPending,
+  ].some(Boolean);
 
   if (showOtpVerification) {
     return (
@@ -266,15 +359,7 @@ export default function SignInScreen() {
             >
               Sign in
             </Text>
-            <Text
-              modifiers={[dfont({ size: 16 }), foregroundStyle(colors.mutedForeground as string)]}
-            >
-              {isGuest
-                ? "Sign in and everything you did as a guest comes with you."
-                : isOtp
-                  ? "We'll email you a 6-digit code. No password needed."
-                  : "Enter your credentials to access your account."}
-            </Text>
+            <Subtitle isGuest={isGuest} isOtp={isOtp} />
           </VStack>
 
           <SegmentedToggle
@@ -294,18 +379,7 @@ export default function SignInScreen() {
             testID="sign-in-method"
             accessibilityLabel="Sign-in method"
             value={signInMethod}
-            options={
-              emailFeatures
-                ? [
-                    { value: "email", label: "Email" },
-                    { value: "username", label: "Username" },
-                    { value: "otp", label: "Email OTP" },
-                  ]
-                : [
-                    { value: "email", label: "Email" },
-                    { value: "username", label: "Username" },
-                  ]
-            }
+            options={methodOptions(emailFeatures)}
             onChange={(value) => setSignInMethod(value as SignInMethod)}
           />
 
@@ -342,22 +416,7 @@ export default function SignInScreen() {
                   accessibilityHint="Enter your account password"
                 />
               </VStack>
-              {emailFeatures && (
-                <Button
-                  testID="sign-in-email-forgot-password"
-                  label="Forgot password?"
-                  modifiers={[
-                    buttonStyle("plain"),
-                    foregroundStyle(colors.mutedForeground as string),
-                    dfont({ size: 13 }),
-                    frame({ minHeight: TouchTarget.min }),
-                    contentShape(shapes.rectangle()),
-                  ]}
-                  onPress={() => {
-                    router.push("/auth/forgot-password");
-                  }}
-                />
-              )}
+              {emailFeatures && <ForgotPasswordLink testID="sign-in-email-forgot-password" />}
             </>
           )}
 
@@ -398,22 +457,7 @@ export default function SignInScreen() {
                   accessibilityHint="Enter your account password"
                 />
               </VStack>
-              {emailFeatures && (
-                <Button
-                  testID="sign-in-username-forgot-password"
-                  label="Forgot password?"
-                  modifiers={[
-                    buttonStyle("plain"),
-                    foregroundStyle(colors.mutedForeground as string),
-                    dfont({ size: 13 }),
-                    frame({ minHeight: TouchTarget.min }),
-                    contentShape(shapes.rectangle()),
-                  ]}
-                  onPress={() => {
-                    router.push("/auth/forgot-password");
-                  }}
-                />
-              )}
+              {emailFeatures && <ForgotPasswordLink testID="sign-in-username-forgot-password" />}
             </>
           )}
 
@@ -456,28 +500,12 @@ export default function SignInScreen() {
             />
           )}
 
-          {showGuest && (
-            <VStack spacing={6} alignment="leading" modifiers={[frame({ maxWidth: Infinity })]}>
-              <SecondaryButton
-                testID="sign-in-guest"
-                label={guest.isPending ? "Starting..." : "Continue as guest"}
-                onPress={() => startTransition(() => guest.signIn())}
-                disabled={isLoading}
-                inputLabels={["Continue as guest", "Guest", "Skip sign in"]}
-              />
-              <HelperText>You can create an account later and keep what you did.</HelperText>
-            </VStack>
-          )}
-
-          {isGuest && (
-            <SecondaryButton
-              testID="sign-in-dismiss"
-              label="Not now"
-              onPress={dismissAuth}
-              disabled={isLoading}
-              filled={false}
-            />
-          )}
+          <GuestOptions
+            showGuest={showGuest}
+            isGuest={isGuest}
+            isLoading={isLoading}
+            guest={guest}
+          />
         </VStack>
       </ScrollView>
     </Host>

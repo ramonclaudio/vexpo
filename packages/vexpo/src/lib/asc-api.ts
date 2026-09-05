@@ -6,6 +6,7 @@ import {
   retryDelay,
   sleep,
 } from "./http-retry.ts";
+import { errText } from "./output.ts";
 
 const ASC_BASE = "https://api.appstoreconnect.apple.com";
 
@@ -284,7 +285,7 @@ export async function validate(creds: AscCredentials): Promise<ValidateResult> {
             : (err.detail ?? `ASC ${err.status}`);
       return { ok: false, status: err.status, code: err.code, reason };
     }
-    return { ok: false, status: 0, reason: err instanceof Error ? err.message : String(err) };
+    return { ok: false, status: 0, reason: errText(err) };
   }
 }
 

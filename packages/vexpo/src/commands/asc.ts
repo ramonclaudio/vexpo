@@ -8,7 +8,7 @@ import { easSpawn } from "../lib/eas-cli.ts";
 import { ascStatus } from "../lib/eas-integrations.ts";
 import { withAscApiKey, withAscAppId } from "../lib/eas-submit.ts";
 import { requireBundleId } from "../lib/env-local.ts";
-import { BOLD, RESET, bad, line, nop, note, ok, section, yep } from "../lib/output.ts";
+import { BOLD, RESET, bad, errText, line, nop, note, ok, section, yep } from "../lib/output.ts";
 import { recordStep } from "../lib/state.ts";
 
 export type AscAppResolution =
@@ -41,7 +41,7 @@ async function syncAscAppIdToEasJson(ascAppId: string | undefined): Promise<void
       nop("eas.json submit profiles already carry ascAppId");
     }
   } catch (err) {
-    yep(`couldn't write ascAppId to eas.json: ${err instanceof Error ? err.message : err}`);
+    yep(`couldn't write ascAppId to eas.json: ${errText(err)}`);
     note("non-interactive submit will need `ascAppId` set manually in eas.json");
   }
 }
@@ -73,7 +73,7 @@ export async function ensureAscApiKeyInEasJson(): Promise<void> {
       nop("eas.json submit profiles already carry the ASC key");
     }
   } catch (err) {
-    yep(`couldn't write ASC key fields to eas.json: ${err instanceof Error ? err.message : err}`);
+    yep(`couldn't write ASC key fields to eas.json: ${errText(err)}`);
   }
 }
 
@@ -87,28 +87,60 @@ export async function ascKeyEnv(): Promise<Record<string, string> | null> {
   };
 }
 
+async function reuseExistingLink(): Promise<boolean> {
+  let app: NonNullable<Awaited<ReturnType<typeof ascStatus>>["appStoreConnectApp"]> | undefined;
+  try {
+    const status = await ascStatus();
+    if (status.status !== "connected") return false;
+    app = status.appStoreConnectApp;
+  } catch {
+    return false;
+  }
+  if (!app) return false;
+  nop(`already connected (${app.bundleIdentifier ?? app.ascAppIdentifier})`);
+  await recordStep("apple-asc-link", {
+    ascAppId: app.ascAppIdentifier,
+    ascAppEasId: app.id,
+    bundleId: app.bundleIdentifier,
+    connectedAt: new Date().toISOString(),
+  });
+  await syncAscAppIdToEasJson(app.ascAppIdentifier);
+  await ensureAscApiKeyInEasJson();
+  return true;
+}
+
+async function connectHeadless(bundleId: string, ascAppId: string | undefined): Promise<number> {
+  if (!ascAppId) {
+    bad("ASC connect needs a TTY and cached creds to resolve ascAppId headless");
+    note("run `vexpo apple asc-key` to cache a key, then `vexpo asc connect` in a terminal");
+    return 1;
+  }
+  ok(`resolved ascAppId ${BOLD}${ascAppId}${RESET} from App Store Connect`);
+  await syncAscAppIdToEasJson(ascAppId);
+  await ensureAscApiKeyInEasJson();
+  await recordStep("apple-asc-link", {
+    bundleId,
+    ascAppId,
+    integrationLinked: false,
+    wroteAscAppIdAt: new Date().toISOString(),
+  });
+  note("enough for a non-interactive submit. for the EAS↔ASC server-side link");
+  note("(cloud builds) run `vexpo asc connect` in a TTY; for a local submit set");
+  note("EXPO_ASC_API_KEY_PATH / EXPO_ASC_KEY_ID / EXPO_ASC_ISSUER_ID.");
+  return 0;
+}
+
+async function syncAfterConnect(): Promise<void> {
+  if (!existsSync("eas.json")) return;
+  const postStatus = await ascStatus().catch(() => null);
+  await syncAscAppIdToEasJson(postStatus?.appStoreConnectApp?.ascAppIdentifier);
+  await ensureAscApiKeyInEasJson();
+}
+
 export async function runAscConnect(opts: { force?: boolean } = {}): Promise<number> {
   section("ASC connect");
 
-  if (!opts.force) {
-    try {
-      const status = await ascStatus();
-      if (status.status === "connected" && status.appStoreConnectApp) {
-        const label =
-          status.appStoreConnectApp.bundleIdentifier ?? status.appStoreConnectApp.ascAppIdentifier;
-        nop(`already connected (${label})`);
-        await recordStep("apple-asc-link", {
-          ascAppId: status.appStoreConnectApp.ascAppIdentifier,
-          ascAppEasId: status.appStoreConnectApp.id,
-          bundleId: status.appStoreConnectApp.bundleIdentifier,
-          connectedAt: new Date().toISOString(),
-        });
-        await syncAscAppIdToEasJson(status.appStoreConnectApp.ascAppIdentifier);
-        await ensureAscApiKeyInEasJson();
-        return 0;
-      }
-    } catch {}
-  }
+  if (!opts.force && (await reuseExistingLink())) return 0;
 
   const asc = await loadAscCreds();
   if (!asc || !("path" in asc.privateKey)) {
@@ -137,24 +169,7 @@ export async function runAscConnect(opts: { force?: boolean } = {}): Promise<num
   }
 
   if (!process.stdin.isTTY) {
-    if (resolved.kind === "found") {
-      ok(`resolved ascAppId ${BOLD}${resolved.ascAppId}${RESET} from App Store Connect`);
-      await syncAscAppIdToEasJson(resolved.ascAppId);
-      await ensureAscApiKeyInEasJson();
-      await recordStep("apple-asc-link", {
-        bundleId,
-        ascAppId: resolved.ascAppId,
-        integrationLinked: false,
-        wroteAscAppIdAt: new Date().toISOString(),
-      });
-      note("enough for a non-interactive submit. for the EAS↔ASC server-side link");
-      note("(cloud builds) run `vexpo asc connect` in a TTY; for a local submit set");
-      note("EXPO_ASC_API_KEY_PATH / EXPO_ASC_KEY_ID / EXPO_ASC_ISSUER_ID.");
-      return 0;
-    }
-    bad("ASC connect needs a TTY and cached creds to resolve ascAppId headless");
-    note("run `vexpo apple asc-key` to cache a key, then `vexpo asc connect` in a terminal");
-    return 1;
+    return connectHeadless(bundleId, resolved.kind === "found" ? resolved.ascAppId : undefined);
   }
 
   const env: Record<string, string> = {
@@ -194,15 +209,6 @@ export async function runAscConnect(opts: { force?: boolean } = {}): Promise<num
     connectedAt: new Date().toISOString(),
   });
 
-  if (existsSync("eas.json")) {
-    let postStatus: Awaited<ReturnType<typeof ascStatus>> | null = null;
-    try {
-      postStatus = await ascStatus();
-    } catch {
-      postStatus = null;
-    }
-    await syncAscAppIdToEasJson(postStatus?.appStoreConnectApp?.ascAppIdentifier);
-    await ensureAscApiKeyInEasJson();
-  }
+  await syncAfterConnect();
   return 0;
 }

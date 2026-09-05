@@ -33,7 +33,7 @@ import { runResend } from "./commands/resend.ts";
 import { runReviewAccount } from "./commands/review-account.ts";
 import { runSetup } from "./commands/setup.ts";
 import { runSubmit } from "./commands/submit.ts";
-import { bad } from "./lib/output.ts";
+import { bad, errText } from "./lib/output.ts";
 
 const program = new Command()
   .name("vexpo")
@@ -42,7 +42,7 @@ const program = new Command()
 
 const exitWith = (p: Promise<number>): void => {
   p.then((code) => process.exit(code)).catch((err) => {
-    bad(err instanceof Error ? err.message : String(err));
+    bad(errText(err));
     process.exit(1);
   });
 };

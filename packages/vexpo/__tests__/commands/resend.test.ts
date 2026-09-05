@@ -6,7 +6,8 @@ const prodEnvFiles = new Map<string, Map<string, string>>();
 vi.mock("../../src/lib/env-local.ts", () => ({
   readOne: vi.fn(async (key: string) => localEnv.get(key)),
 }));
-vi.mock("../../src/lib/env-files.ts", () => ({
+vi.mock("../../src/lib/env-files.ts", async () => ({
+  ...(await vi.importActual("../../src/lib/env-files.ts")),
   readEnvFile: vi.fn(async (file: string) => prodEnvFiles.get(file) ?? new Map()),
 }));
 vi.mock("../../src/lib/fs.ts", () => ({

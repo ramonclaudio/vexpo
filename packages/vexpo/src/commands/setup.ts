@@ -23,6 +23,7 @@ import {
   YELLOW,
   askYesNo,
   bad,
+  errText,
   line,
   nop,
   note,
@@ -426,9 +427,7 @@ async function stepInstallOnly(): Promise<void> {
   await runInstall();
 }
 
-type StepRunner = () => Promise<number>;
-
-function stepRunners(o: SetupOptions): Record<string, StepRunner> {
+function stepRunners(o: SetupOptions) {
   return {
     "vexpo accounts": () => runAccounts({ lite: o.lite }),
     "vexpo rebrand": () => runRebrand({}),
@@ -449,9 +448,8 @@ function stepRunners(o: SetupOptions): Record<string, StepRunner> {
   };
 }
 
-async function runStep(ctx: RunContext, name: string, state?: StepName): Promise<void> {
+async function runStep(ctx: RunContext, name: StepCommand, state?: StepName): Promise<void> {
   const runner = stepRunners(ctx.options)[name];
-  if (!runner) throw new Error(`unknown setup step: ${name}`);
   try {
     const code = await runner();
     if (code !== 0) throw new Error(`${name} exited with code ${code}`);
@@ -464,7 +462,7 @@ async function runStep(ctx: RunContext, name: string, state?: StepName): Promise
 
 async function maybeRunStep(
   ctx: RunContext,
-  name: string,
+  name: StepCommand,
   prompt: string,
   state?: StepName,
   defaultYes = true,
@@ -506,6 +504,195 @@ async function stepExpoDoctor(): Promise<void> {
   else yep(`expo-doctor reported issues (exit ${code}); review above`);
 }
 
+type Probe = { rows: Map<string, ProbeRow>; needs: Map<string, boolean>; install: boolean };
+
+type StepCommand = keyof ReturnType<typeof stepRunners>;
+
+type Phase = {
+  step: StepName;
+  command: StepCommand;
+  inScope?: (scope: EffectiveScope) => boolean;
+  offScopeNotice?: () => void;
+  prompt?: (status: ProbeRow["status"] | undefined) => { text: string; defaultYes: boolean };
+} & (
+  | { needed: (probe: Probe, options: SetupOptions) => boolean; cached: string }
+  | { needed?: never; cached?: never }
+);
+
+const always = (text: string) => () => ({ text, defaultYes: true });
+const missingOrForced =
+  (step: StepName) =>
+  (probe: Probe, o: SetupOptions): boolean =>
+    o.force === true || probe.rows.get(step)?.status === "missing";
+const needsWork =
+  (step: StepName) =>
+  (probe: Probe, o: SetupOptions): boolean =>
+    o.force === true || probe.needs.get(step) === true;
+
+const PHASES: Phase[] = [
+  {
+    step: "accounts",
+    command: "vexpo accounts",
+    inScope: (s) => s.accounts,
+    needed: missingOrForced("accounts"),
+    cached: "vexpo accounts cached",
+    prompt: always("Walk through Apple/Expo/Convex/Resend signups now?"),
+  },
+  {
+    step: "rebrand",
+    command: "vexpo rebrand",
+    inScope: (s) => s.rebrand,
+    needed: missingOrForced("rebrand"),
+    cached: "vexpo rebrand cached",
+    prompt: always("Run the rebrand wizard to replace template defaults?"),
+  },
+  {
+    step: "convex",
+    command: "vexpo convex",
+    needed: (probe, o) => o.fresh === true || needsWork("convex")(probe, o),
+    cached: "vexpo convex already complete",
+  },
+  {
+    step: "better-auth",
+    command: "vexpo better-auth",
+    needed: needsWork("better-auth"),
+    cached: "vexpo better-auth already complete",
+  },
+  {
+    step: "resend",
+    command: "vexpo resend",
+    inScope: (s) => s.resend,
+    needed: needsWork("resend"),
+    cached: "vexpo resend already complete",
+  },
+  {
+    step: "review-account",
+    command: "vexpo review-account",
+    inScope: (s) => s.reviewAccount,
+    prompt: always("Seed (or re-seed) the App Review demo account on Convex now?"),
+  },
+  {
+    step: "eas",
+    command: "vexpo eas",
+    inScope: (s) => s.eas,
+    offScopeNotice: () => {
+      section("EAS (skipped. lite mode)");
+      nop("re-run without `--lite` to provision EAS");
+    },
+    needed: needsWork("eas"),
+    cached: "vexpo eas already complete",
+  },
+  {
+    step: "asc-key",
+    command: "vexpo apple asc-key",
+    inScope: (s) => s.apple,
+    offScopeNotice: () => {
+      section("Apple (skipped. lite mode)");
+      nop(
+        "re-run without `--lite` to provision Apple Sign In, ASC key, services id, EAS credentials",
+      );
+    },
+    needed: needsWork("asc-key"),
+    cached: "vexpo apple asc-key cached",
+    prompt: always("Validate or upload App Store Connect API key now?"),
+  },
+  {
+    step: "apple-credentials",
+    command: "vexpo apple credentials",
+    inScope: (s) => s.apple,
+    needed: needsWork("apple-credentials"),
+    cached: "vexpo apple credentials cached",
+    prompt: always("Configure EAS iOS credentials (dist cert + profile + push key) now?"),
+  },
+  {
+    step: "apple-asc-link",
+    command: "vexpo asc connect",
+    inScope: (s) => s.apple,
+    needed: needsWork("apple-asc-link"),
+    cached: "vexpo asc connect cached",
+    prompt: always("Link the EAS project to its ASC app now?"),
+  },
+  {
+    step: "apple-services-id",
+    command: "vexpo apple services-id",
+    inScope: (s) => s.apple,
+    needed: needsWork("apple-services-id"),
+    cached: "vexpo apple services-id cached",
+    prompt: always("Provision Sign In with Apple Services ID via ASC API now?"),
+  },
+  {
+    step: "apple-sign-in",
+    command: "vexpo apple jwt",
+    inScope: (s) => s.apple,
+    prompt: (status) => {
+      const healthy = status === "live" || status === "cached";
+      return {
+        text: healthy
+          ? "Apple Sign In is configured, rotate the JWT now?"
+          : "Sign the Apple Sign In JWT now?",
+        defaultYes: !healthy,
+      };
+    },
+  },
+  {
+    step: "apple-eas-rotation-secrets",
+    command: "vexpo apple eas-rotation-secrets",
+    inScope: (s) => s.apple,
+    needed: needsWork("apple-eas-rotation-secrets"),
+    cached: "EAS rotation secrets already set",
+    prompt: always("Push the 5 EAS production secrets the JWT rotation cron needs?"),
+  },
+];
+
+async function runPhases(ctx: RunContext, probe: Probe, scope: EffectiveScope): Promise<void> {
+  for (const phase of PHASES) {
+    if (phase.inScope && !phase.inScope(scope)) {
+      phase.offScopeNotice?.();
+      ctx.skipped.push(phase.step);
+      continue;
+    }
+    if (phase.needed && !phase.needed(probe, ctx.options)) {
+      nop(phase.cached);
+      continue;
+    }
+    const ask = phase.prompt?.(probe.rows.get(phase.step)?.status);
+    if (ask) await maybeRunStep(ctx, phase.command, ask.text, phase.step, ask.defaultYes);
+    else await runStep(ctx, phase.command, phase.step);
+  }
+}
+
+async function warnConcurrentRun(options: SetupOptions): Promise<void> {
+  if (options.dryRun || options.plan || options.noState) return;
+  const concurrent = checkConcurrentRun(await loadState());
+  if (!concurrent.active || concurrent.otherPid === undefined) return;
+  yep(
+    `another vexpo run (pid ${concurrent.otherPid}) touched .setup-state.json recently; if you're not running in another terminal, ignore this`,
+  );
+}
+
+async function writeAudit(
+  ctx: RunContext,
+  invokedAt: string,
+  failureMessage: string | null,
+): Promise<void> {
+  const o = ctx.options;
+  if (o.dryRun === true || o.plan === true || o.noState === true) return;
+  try {
+    await appendAudit({
+      invokedAt,
+      args: process.argv.slice(2),
+      pid: process.pid,
+      bunVersion: currentRuntimeVersion(),
+      cwd: process.cwd(),
+      completed: ctx.completed,
+      skipped: ctx.skipped,
+      ...(failureMessage
+        ? { failed: { step: ctx.failedStep ?? "unknown", message: failureMessage } }
+        : {}),
+    });
+  } catch {}
+}
+
 export async function runSetup(opts: SetupOptions): Promise<number> {
   const ctx: RunContext = { options: opts, completed: [], skipped: [], failedStep: null };
   const { options } = ctx;
@@ -514,19 +701,8 @@ export async function runSetup(opts: SetupOptions): Promise<number> {
   let failureMessage: string | null = null;
 
   try {
-    if (options.fresh) {
-      await clearAll();
-    }
-
-    if (!options.dryRun && !options.plan && !options.noState) {
-      const existing = await loadState();
-      const concurrent = checkConcurrentRun(existing);
-      if (concurrent.active && concurrent.otherPid !== undefined) {
-        yep(
-          `another vexpo run (pid ${concurrent.otherPid}) touched .setup-state.json recently; if you're not running in another terminal, ignore this`,
-        );
-      }
-    }
+    if (options.fresh) await clearAll();
+    await warnConcurrentRun(options);
 
     await stepPrerequisites();
     const probe = await stepProbe(ctx);
@@ -551,201 +727,23 @@ export async function runSetup(opts: SetupOptions): Promise<number> {
       return 0;
     }
 
-    if (options.fresh) {
-      await stepCleanup(true);
-    } else if (probe.install) {
-      await stepInstallOnly();
-    }
+    if (options.fresh) await stepCleanup(true);
+    else if (probe.install) await stepInstallOnly();
 
-    const scope = computeScope(options);
-
-    if (scope.accounts) {
-      const status = probe.rows.get("accounts")?.status;
-      if (options.force || status === "missing") {
-        await maybeRunStep(
-          ctx,
-          "vexpo accounts",
-          "Walk through Apple/Expo/Convex/Resend signups now?",
-          "accounts",
-        );
-      } else {
-        nop("vexpo accounts cached");
-      }
-    } else {
-      ctx.skipped.push("accounts");
-    }
-
-    if (scope.rebrand) {
-      const status = probe.rows.get("rebrand")?.status;
-      if (options.force || status === "missing") {
-        await maybeRunStep(
-          ctx,
-          "vexpo rebrand",
-          "Run the rebrand wizard to replace template defaults?",
-          "rebrand",
-        );
-      } else {
-        nop("vexpo rebrand cached");
-      }
-    } else {
-      ctx.skipped.push("rebrand");
-    }
-
-    if (options.fresh || options.force || probe.needs.get("convex")) {
-      await runStep(ctx, "vexpo convex", "convex");
-    } else {
-      nop("vexpo convex already complete");
-    }
-
-    if (options.force || probe.needs.get("better-auth")) {
-      await runStep(ctx, "vexpo better-auth", "better-auth");
-    } else {
-      nop("vexpo better-auth already complete");
-    }
-
-    if (scope.resend) {
-      if (options.force || probe.needs.get("resend")) {
-        await runStep(ctx, "vexpo resend", "resend");
-      } else {
-        nop("vexpo resend already complete");
-      }
-    } else {
-      ctx.skipped.push("resend");
-    }
-
-    if (scope.reviewAccount) {
-      await maybeRunStep(
-        ctx,
-        "vexpo review-account",
-        "Seed (or re-seed) the App Review demo account on Convex now?",
-        "review-account",
-      );
-    } else {
-      ctx.skipped.push("review-account");
-    }
-
-    if (scope.eas) {
-      if (options.force || probe.needs.get("eas")) {
-        await runStep(ctx, "vexpo eas", "eas");
-      } else {
-        nop("vexpo eas already complete");
-      }
-    } else {
-      section("EAS (skipped. lite mode)");
-      nop("re-run without `--lite` to provision EAS");
-      ctx.skipped.push("eas");
-    }
-
-    if (scope.apple) {
-      if (options.force || probe.needs.get("asc-key")) {
-        await maybeRunStep(
-          ctx,
-          "vexpo apple asc-key",
-          "Validate or upload App Store Connect API key now?",
-          "asc-key",
-        );
-      } else {
-        nop("vexpo apple asc-key cached");
-      }
-
-      if (options.force || probe.needs.get("apple-credentials")) {
-        await maybeRunStep(
-          ctx,
-          "vexpo apple credentials",
-          "Configure EAS iOS credentials (dist cert + profile + push key) now?",
-          "apple-credentials",
-        );
-      } else {
-        nop("vexpo apple credentials cached");
-      }
-
-      if (options.force || probe.needs.get("apple-asc-link")) {
-        await maybeRunStep(
-          ctx,
-          "vexpo asc connect",
-          "Link the EAS project to its ASC app now?",
-          "apple-asc-link",
-        );
-      } else {
-        nop("vexpo asc connect cached");
-      }
-
-      if (options.force || probe.needs.get("apple-services-id")) {
-        await maybeRunStep(
-          ctx,
-          "vexpo apple services-id",
-          "Provision Sign In with Apple Services ID via ASC API now?",
-          "apple-services-id",
-        );
-      } else {
-        nop("vexpo apple services-id cached");
-      }
-      const status = probe.rows.get("apple-sign-in")?.status;
-      const healthy = status === "live" || status === "cached";
-      const prompt = healthy
-        ? "Apple Sign In is configured, rotate the JWT now?"
-        : "Sign the Apple Sign In JWT now?";
-      await maybeRunStep(ctx, "vexpo apple jwt", prompt, "apple-sign-in", !healthy);
-
-      if (options.force || probe.needs.get("apple-eas-rotation-secrets")) {
-        await maybeRunStep(
-          ctx,
-          "vexpo apple eas-rotation-secrets",
-          "Push the 5 EAS production secrets the JWT rotation cron needs?",
-          "apple-eas-rotation-secrets",
-        );
-      } else {
-        nop("EAS rotation secrets already set");
-      }
-    } else {
-      section("Apple (skipped. lite mode)");
-      nop(
-        "re-run without `--lite` to provision Apple Sign In, ASC key, services id, EAS credentials",
-      );
-      ctx.skipped.push(
-        "apple-sign-in",
-        "apple-services-id",
-        "apple-credentials",
-        "apple-asc-link",
-        "asc-key",
-        "apple-eas-rotation-secrets",
-      );
-    }
+    await runPhases(ctx, probe, computeScope(options));
 
     await stepExpoDoctor();
     await printSummary(!!options.local, performance.now() - startedAtPerf);
 
-    if (!options.lite) {
-      printShipNextSteps();
-    }
+    if (!options.lite) printShipNextSteps();
   } catch (err) {
     line();
-    if (err instanceof Error) {
-      bad(err.message);
-      failureMessage = err.message;
-    } else {
-      bad(String(err));
-      failureMessage = String(err);
-    }
+    const message = errText(err);
+    failureMessage = message;
+    bad(message);
     return 1;
   } finally {
-    const skipAudit = options.dryRun === true || options.plan === true || options.noState === true;
-    if (!skipAudit) {
-      try {
-        await appendAudit({
-          invokedAt: startedAtIso,
-          args: process.argv.slice(2),
-          pid: process.pid,
-          bunVersion: currentRuntimeVersion(),
-          cwd: process.cwd(),
-          completed: ctx.completed,
-          skipped: ctx.skipped,
-          ...(failureMessage
-            ? { failed: { step: ctx.failedStep ?? "unknown", message: failureMessage } }
-            : {}),
-        });
-      } catch {}
-    }
+    await writeAudit(ctx, startedAtIso, failureMessage);
   }
   return 0;
 }

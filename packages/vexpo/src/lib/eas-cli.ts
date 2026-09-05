@@ -1,5 +1,6 @@
 import { dlx } from "./pkg-manager.ts";
 import { run, spawn } from "./proc.ts";
+import { errText } from "./output.ts";
 
 const EAS_CLI = "eas-cli";
 
@@ -33,10 +34,7 @@ export async function easJson<T = unknown>(argv: EasArgs): Promise<T> {
   try {
     return JSON.parse(stdout) as T;
   } catch (err) {
-    throw new Error(
-      `eas ${flat[0]} returned non-JSON output: ${err instanceof Error ? err.message : err}`,
-      { cause: err },
-    );
+    throw new Error(`eas ${flat[0]} returned non-JSON output: ${errText(err)}`, { cause: err });
   }
 }
 

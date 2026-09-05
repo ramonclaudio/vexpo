@@ -17,6 +17,7 @@ import {
   nop,
   note,
   ok,
+  plural,
   section,
   yep,
 } from "../../lib/output.ts";
@@ -107,9 +108,7 @@ export async function runServicesId(options: ServicesIdOptions): Promise<number>
     note("re-run `vexpo apple asc-key` to refresh");
     return 1;
   }
-  ok(
-    `ASC API authenticated (${validation.appCount} app${validation.appCount === 1 ? "" : "s"} on team)`,
-  );
+  ok(`ASC API authenticated (${validation.appCount} app${plural(validation.appCount)} on team)`);
 
   const client = makeAscClient(creds);
 

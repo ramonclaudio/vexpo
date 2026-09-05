@@ -69,6 +69,84 @@ const initialState: SignUpState = {};
 const ALREADY_EXISTS = "USER_ALREADY_EXISTS_USE_ANOTHER_EMAIL";
 const USERNAME_TAKEN = "USERNAME_IS_ALREADY_TAKEN";
 
+type UsernameStatus = {
+  text: string;
+  color: string;
+  icon: "ellipsis.circle" | "checkmark.circle.fill" | "exclamationmark.circle.fill";
+};
+
+function Subtitle({ isGuest, emailFeatures }: { isGuest: boolean; emailFeatures: boolean }) {
+  const dfont = useDynamicFont();
+  const colors = useColors();
+  const text = isGuest
+    ? "Your guest data comes with you, and you get it back on your next device."
+    : emailFeatures
+      ? "A verification code will be sent to confirm your email."
+      : "Sign up and you're in. No email to confirm.";
+  return (
+    <Text modifiers={[dfont({ size: 16 }), foregroundStyle(colors.mutedForeground as string)]}>
+      {text}
+    </Text>
+  );
+}
+
+function UsernameStatusRow({ status }: { status: UsernameStatus | null }) {
+  const dfont = useDynamicFont();
+  if (!status) return <HelperText>A unique handle others can use to find you.</HelperText>;
+  return (
+    <HStack spacing={6} alignment="center">
+      <Image
+        systemName={status.icon}
+        color={status.color}
+        modifiers={[dfont({ size: 13 }), accessibilityHidden(true)]}
+      />
+      <Text
+        testID="sign-up-username-status"
+        modifiers={[dfont({ size: 13 }), foregroundStyle(status.color as string)]}
+      >
+        {status.text}
+      </Text>
+    </HStack>
+  );
+}
+
+function GuestOptions({
+  showGuest,
+  isGuest,
+  isLoading,
+  guest,
+}: {
+  showGuest: boolean;
+  isGuest: boolean;
+  isLoading: boolean;
+  guest: ReturnType<typeof useGuestSignIn>;
+}) {
+  if (showGuest) {
+    return (
+      <VStack spacing={6} alignment="leading" modifiers={[frame({ maxWidth: Infinity })]}>
+        <SecondaryButton
+          testID="sign-up-guest"
+          label={guest.isPending ? "Starting..." : "Continue as guest"}
+          onPress={() => startTransition(() => guest.signIn())}
+          disabled={isLoading}
+          inputLabels={["Continue as guest", "Guest", "Skip sign up"]}
+        />
+        <HelperText>You can create an account later and keep what you did.</HelperText>
+      </VStack>
+    );
+  }
+  if (!isGuest) return null;
+  return (
+    <SecondaryButton
+      testID="sign-up-dismiss"
+      label="Not now"
+      onPress={dismissAuth}
+      disabled={isLoading}
+      filled={false}
+    />
+  );
+}
+
 export default function SignUpScreen() {
   const dfont = useDynamicFont();
   const colors = useColors();
@@ -213,13 +291,9 @@ export default function SignUpScreen() {
     }
   }, initialState);
 
-  const isLoading = isPending || apple.isPending || guest.isPending;
-  const error = state.error ?? apple.error ?? guest.error;
-  const usernameStatus: {
-    text: string;
-    color: string;
-    icon: "ellipsis.circle" | "checkmark.circle.fill" | "exclamationmark.circle.fill";
-  } | null = (() => {
+  const isLoading = [isPending, apple.isPending, guest.isPending].some(Boolean);
+  const error = [state.error, apple.error, guest.error].find(Boolean);
+  const usernameStatus: UsernameStatus | null = (() => {
     if (!username || !isValidUsernameFormat(username.trim().toLowerCase())) return null;
     if (isCheckingUsername) {
       return {
@@ -285,15 +359,7 @@ export default function SignUpScreen() {
             >
               Create your account
             </Text>
-            <Text
-              modifiers={[dfont({ size: 16 }), foregroundStyle(colors.mutedForeground as string)]}
-            >
-              {isGuest
-                ? "Your guest data comes with you, and you get it back on your next device."
-                : emailFeatures
-                  ? "A verification code will be sent to confirm your email."
-                  : "Sign up and you're in. No email to confirm."}
-            </Text>
+            <Subtitle isGuest={isGuest} emailFeatures={emailFeatures} />
           </VStack>
 
           <SegmentedToggle
@@ -360,23 +426,7 @@ export default function SignUpScreen() {
                 accessibilityHint("Choose a unique handle, 3 to 30 characters"),
               ]}
             />
-            {usernameStatus ? (
-              <HStack spacing={6} alignment="center">
-                <Image
-                  systemName={usernameStatus.icon}
-                  color={usernameStatus.color}
-                  modifiers={[dfont({ size: 13 }), accessibilityHidden(true)]}
-                />
-                <Text
-                  testID="sign-up-username-status"
-                  modifiers={[dfont({ size: 13 }), foregroundStyle(usernameStatus.color as string)]}
-                >
-                  {usernameStatus.text}
-                </Text>
-              </HStack>
-            ) : (
-              <HelperText>A unique handle others can use to find you.</HelperText>
-            )}
+            <UsernameStatusRow status={usernameStatus} />
           </VStack>
 
           <VStack
@@ -436,28 +486,12 @@ export default function SignUpScreen() {
             />
           )}
 
-          {showGuest && (
-            <VStack spacing={6} alignment="leading" modifiers={[frame({ maxWidth: Infinity })]}>
-              <SecondaryButton
-                testID="sign-up-guest"
-                label={guest.isPending ? "Starting..." : "Continue as guest"}
-                onPress={() => startTransition(() => guest.signIn())}
-                disabled={isLoading}
-                inputLabels={["Continue as guest", "Guest", "Skip sign up"]}
-              />
-              <HelperText>You can create an account later and keep what you did.</HelperText>
-            </VStack>
-          )}
-
-          {isGuest && (
-            <SecondaryButton
-              testID="sign-up-dismiss"
-              label="Not now"
-              onPress={dismissAuth}
-              disabled={isLoading}
-              filled={false}
-            />
-          )}
+          <GuestOptions
+            showGuest={showGuest}
+            isGuest={isGuest}
+            isLoading={isLoading}
+            guest={guest}
+          />
         </VStack>
       </ScrollView>
 

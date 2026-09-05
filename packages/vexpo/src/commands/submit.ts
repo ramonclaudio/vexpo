@@ -4,12 +4,44 @@ import { ascKeyEnv, ensureAscApiKeyInEasJson, ensureAscAppId } from "./asc.ts";
 import { easSpawn } from "../lib/eas-cli.ts";
 import { submitProfileHasAscAppId } from "../lib/eas-submit.ts";
 import { readAll, requireBundleId } from "../lib/env-local.ts";
-import { BOLD, RESET, bad, note, ok, section, yep } from "../lib/output.ts";
+import { BOLD, RESET, bad, errText, note, ok, section, yep } from "../lib/output.ts";
 
 export type SubmitOptions = {
   profile?: string;
   id?: string;
 };
+
+function identityEnv(local: Map<string, string>): Record<string, string> {
+  const identity: Record<string, string> = {};
+  for (const [k, v] of local) {
+    if (k.startsWith("EXPO_PUBLIC_") || k === "EAS_PROJECT_ID") identity[k] = v;
+  }
+  return identity;
+}
+
+async function confirmAscAppId(bundleId: string, profile: string): Promise<boolean> {
+  const resolved = await ensureAscAppId(bundleId);
+  if (resolved.kind === "defer") {
+    bad("no App Store Connect app record for this bundle id yet");
+    note("the app record appears after the first submit, which creates it. run once:");
+    note(`  ${BOLD}npm run eas:tf${RESET}  (builds + submits, creates the app)`);
+    note("then `vexpo submit` handles every submit after, fully non-interactive");
+    return false;
+  }
+  if (resolved.kind === "found") {
+    ok(`ascAppId ${BOLD}${resolved.ascAppId}${RESET} in eas.json submit profiles`);
+    return true;
+  }
+  if (submitProfileHasAscAppId(readFileSync("eas.json", "utf8"), profile)) {
+    yep(`couldn't confirm the app id with App Store Connect, using eas.json's ${profile} ascAppId`);
+    return true;
+  }
+  bad("couldn't look up the App Store Connect app id for this bundle id");
+  if (resolved.kind === "error") note(errText(resolved.error));
+  note("transient ASC API or network error, not a missing app. retry, or set");
+  note(`ascAppId on the ${profile} submit profile in eas.json and re-run`);
+  return false;
+}
 
 export async function runSubmit(opts: SubmitOptions = {}): Promise<number> {
   section("Submit");
@@ -26,37 +58,14 @@ export async function runSubmit(opts: SubmitOptions = {}): Promise<number> {
 
   const local = await readAll();
 
-  const identity: Record<string, string> = {};
-  for (const [k, v] of local) {
-    if (k.startsWith("EXPO_PUBLIC_") || k === "EAS_PROJECT_ID") identity[k] = v;
-  }
+  const identity = identityEnv(local);
 
   if (!existsSync("eas.json")) {
     bad("no eas.json here. Run from your project root.");
     return 1;
   }
 
-  const resolved = await ensureAscAppId(bundleId);
-  if (resolved.kind === "defer") {
-    bad("no App Store Connect app record for this bundle id yet");
-    note("the app record appears after the first submit, which creates it. run once:");
-    note(`  ${BOLD}npm run eas:tf${RESET}  (builds + submits, creates the app)`);
-    note("then `vexpo submit` handles every submit after, fully non-interactive");
-    return 1;
-  }
-  if (resolved.kind === "found") {
-    ok(`ascAppId ${BOLD}${resolved.ascAppId}${RESET} in eas.json submit profiles`);
-  } else if (submitProfileHasAscAppId(readFileSync("eas.json", "utf8"), profile)) {
-    yep(`couldn't confirm the app id with App Store Connect, using eas.json's ${profile} ascAppId`);
-  } else {
-    bad("couldn't look up the App Store Connect app id for this bundle id");
-    if (resolved.kind === "error") {
-      note(resolved.error instanceof Error ? resolved.error.message : String(resolved.error));
-    }
-    note("transient ASC API or network error, not a missing app. retry, or set");
-    note(`ascAppId on the ${profile} submit profile in eas.json and re-run`);
-    return 1;
-  }
+  if (!(await confirmAscAppId(bundleId, profile))) return 1;
 
   await ensureAscApiKeyInEasJson();
 
