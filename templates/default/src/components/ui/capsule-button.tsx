@@ -46,7 +46,13 @@ function CapsuleButton({
         frame({ maxWidth: Infinity }),
         ...(filled ? [background(fill)] : []),
         clipShape("capsule"),
-        ...(disabled === undefined ? [] : [disabledModifier(disabled)]),
+        // The prominent variant always emits .disabled(), so it overrides an
+        // inherited disabled state rather than picking it up from an ancestor.
+        ...(prominent
+          ? [disabledModifier(disabled ?? false)]
+          : disabled === undefined
+            ? []
+            : [disabledModifier(disabled)]),
         ...(inputLabels ? [accessibilityInputLabels(inputLabels)] : []),
       ]}
       onPress={onPress}
