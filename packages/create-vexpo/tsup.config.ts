@@ -20,10 +20,18 @@ export default defineConfig({
     const src = join(process.cwd(), "..", "..", "templates", "default");
     const dest = join(process.cwd(), "dist", "templates", "default");
     await rm(dest, { recursive: true, force: true });
-    // Paths relative to the template root. `.maestro/debug` is where maestro
-    // drops its screenshots and logs, so a scaffold made after a local e2e run
-    // would otherwise ship them.
-    const ROOT_ONLY_DIRS = ["ios", "android", ".expo", ".tanstack", ".output", ".maestro/debug"];
+    // Paths relative to the template root. The last two are what `npm run smoke`
+    // leaves behind: maestro's screenshots and logs, and 3GB of Xcode derived
+    // data. A build after a local smoke run would otherwise ship both.
+    const ROOT_ONLY_DIRS = [
+      "ios",
+      "android",
+      ".expo",
+      ".tanstack",
+      ".output",
+      ".maestro/debug",
+      ".smoke-build",
+    ];
     const SKIP_DIRS = [
       "node_modules",
       ".claude",
