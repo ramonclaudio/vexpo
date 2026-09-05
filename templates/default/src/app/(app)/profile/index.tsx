@@ -49,29 +49,40 @@ type EditableProfile = {
 
 type FieldValues = { name: string; username: string; email: string; bio: string };
 
+function fieldValues(me: EditableProfile | null | undefined): FieldValues {
+  return {
+    name: me?.name ?? "",
+    username: me?.username ?? "",
+    email: me?.email ?? "",
+    bio: me?.bio ?? "",
+  };
+}
+
 function useProfileFields(
   me: (EditableProfile & { _id: string; updatedAt: number }) | null | undefined,
 ) {
-  const nameState = useNativeState(me?.name ?? "");
-  const usernameState = useNativeState(me?.username ?? "");
-  const emailState = useNativeState(me?.email ?? "");
-  const bioState = useNativeState(me?.bio ?? "");
-  const [name, setName] = useState(me?.name ?? "");
-  const [username, setUsername] = useState(me?.username ?? "");
-  const [email, setEmail] = useState(me?.email ?? "");
-  const [bio, setBio] = useState(me?.bio ?? "");
+  const initial = fieldValues(me);
+  const nameState = useNativeState(initial.name);
+  const usernameState = useNativeState(initial.username);
+  const emailState = useNativeState(initial.email);
+  const bioState = useNativeState(initial.bio);
+  const [name, setName] = useState(initial.name);
+  const [username, setUsername] = useState(initial.username);
+  const [email, setEmail] = useState(initial.email);
+  const [bio, setBio] = useState(initial.bio);
 
   const currentKey = me ? `${me._id}:${me.updatedAt}` : null;
   useEffect(() => {
     if (!me) return;
-    setNativeValue(nameState, me.name);
-    setNativeValue(usernameState, me.username ?? "");
-    setNativeValue(emailState, me.email);
-    setNativeValue(bioState, me.bio ?? "");
-    setName(me.name);
-    setUsername(me.username ?? "");
-    setEmail(me.email);
-    setBio(me.bio ?? "");
+    const next = fieldValues(me);
+    setNativeValue(nameState, next.name);
+    setNativeValue(usernameState, next.username);
+    setNativeValue(emailState, next.email);
+    setNativeValue(bioState, next.bio);
+    setName(next.name);
+    setUsername(next.username);
+    setEmail(next.email);
+    setBio(next.bio);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentKey]);
 
