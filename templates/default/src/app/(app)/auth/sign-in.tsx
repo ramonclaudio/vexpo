@@ -48,9 +48,10 @@ import {
   signInEmailSchema,
   signInUsernameSchema,
 } from "@/lib/schemas";
-import { ProminentButton, SecondaryButton } from "@/components/ui/capsule-button";
+import { ProminentButton } from "@/components/ui/capsule-button";
 import { OtpVerification, type OtpFlow } from "@/components/auth/otp-verification";
 import { CapsuleTextField } from "@/components/ui/capsule-text-field";
+import { GuestOptions } from "@/components/auth/guest-options";
 import { HelperText } from "@/components/ui/helper-text";
 import { PasswordField } from "@/components/auth/password-field";
 import { SegmentedToggle } from "@/components/ui/segmented-toggle";
@@ -59,7 +60,7 @@ import { UNEXPECTED_ERROR, fail, succeed } from "@/lib/form-result";
 import { useColors, useThemedAsset } from "@/hooks/use-theme";
 import { useAppleAuth } from "@/hooks/use-apple-auth";
 import { useAuthStatus } from "@/hooks/use-auth-status";
-import { dismissAuth, useGuestSignIn } from "@/hooks/use-guest-sign-in";
+import { useGuestSignIn } from "@/hooks/use-guest-sign-in";
 import { AppleButton } from "@/components/auth/apple-button";
 import { LabeledField } from "@/components/ui/labeled-field";
 
@@ -110,43 +111,6 @@ function ForgotPasswordLink({ testID }: { testID: string }) {
       onPress={() => {
         router.push("/auth/forgot-password");
       }}
-    />
-  );
-}
-
-function GuestOptions({
-  showGuest,
-  isGuest,
-  isLoading,
-  guest,
-}: {
-  showGuest: boolean;
-  isGuest: boolean;
-  isLoading: boolean;
-  guest: ReturnType<typeof useGuestSignIn>;
-}) {
-  if (showGuest) {
-    return (
-      <VStack spacing={6} alignment="leading" modifiers={[frame({ maxWidth: Infinity })]}>
-        <SecondaryButton
-          testID="sign-in-guest"
-          label={guest.isPending ? "Starting..." : "Continue as guest"}
-          onPress={() => startTransition(() => guest.signIn())}
-          disabled={isLoading}
-          inputLabels={["Continue as guest", "Guest", "Skip sign in"]}
-        />
-        <HelperText>You can create an account later and keep what you did.</HelperText>
-      </VStack>
-    );
-  }
-  if (!isGuest) return null;
-  return (
-    <SecondaryButton
-      testID="sign-in-dismiss"
-      label="Not now"
-      onPress={dismissAuth}
-      disabled={isLoading}
-      filled={false}
     />
   );
 }
@@ -478,6 +442,7 @@ export default function SignInScreen() {
           )}
 
           <GuestOptions
+            testIDPrefix="sign-in"
             showGuest={showGuest}
             isGuest={isGuest}
             isLoading={isLoading}

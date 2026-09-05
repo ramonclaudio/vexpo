@@ -31,6 +31,7 @@ import { assets } from "@/lib/assets";
 import { firstError, forgotPasswordSchema } from "@/lib/schemas";
 import { CapsuleTextField } from "@/components/ui/capsule-text-field";
 import { ProminentButton } from "@/components/ui/capsule-button";
+import { LabeledField } from "@/components/ui/labeled-field";
 import { ErrorText } from "@/components/ui/status-text";
 import { announce } from "@/lib/a11y";
 import { UNEXPECTED_ERROR, fail, succeed } from "@/lib/form-result";
@@ -112,8 +113,7 @@ export default function ForgotPasswordScreen() {
 
           {state.error && <ErrorText testID="forgot-password-error">{state.error}</ErrorText>}
 
-          <VStack spacing={6} alignment="leading" modifiers={[frame({ maxWidth: Infinity })]}>
-            <Text modifiers={[dfont({ size: 17, weight: "semibold" })]}>Email</Text>
+          <LabeledField label="Email">
             <CapsuleTextField
               testID="forgot-password-email"
               placeholder="you@example.com"
@@ -130,7 +130,7 @@ export default function ForgotPasswordScreen() {
                 accessibilityHint("Enter the email associated with your account"),
               ]}
             />
-          </VStack>
+          </LabeledField>
 
           <ProminentButton
             testID="forgot-password-submit"

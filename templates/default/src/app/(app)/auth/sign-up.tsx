@@ -23,7 +23,6 @@ import {
   textContentType,
   textInputAutocapitalization,
   padding,
-  frame,
   scrollDismissesKeyboard,
   accessibilityAddTraits,
   accessibilityHidden,
@@ -45,10 +44,11 @@ import { assets } from "@/lib/assets";
 import { haptics } from "@/lib/haptics";
 import { maskUsername } from "@/lib/masks";
 import { setNativeValue } from "@/lib/native-state";
-import { ProminentButton, SecondaryButton } from "@/components/ui/capsule-button";
+import { ProminentButton } from "@/components/ui/capsule-button";
 import { OtpVerification } from "@/components/auth/otp-verification";
 import { CapsuleTextField } from "@/components/ui/capsule-text-field";
 import { DiscardChangesDialog } from "@/components/ui/discard-changes-dialog";
+import { GuestOptions } from "@/components/auth/guest-options";
 import { HelperText } from "@/components/ui/helper-text";
 import { useUnsavedChanges } from "@/hooks/use-unsaved-changes";
 import { PasswordField } from "@/components/auth/password-field";
@@ -60,7 +60,7 @@ import { UNEXPECTED_ERROR, fail, succeed } from "@/lib/form-result";
 import { useColors, useThemedAsset } from "@/hooks/use-theme";
 import { useAppleAuth } from "@/hooks/use-apple-auth";
 import { useAuthStatus } from "@/hooks/use-auth-status";
-import { dismissAuth, useGuestSignIn } from "@/hooks/use-guest-sign-in";
+import { useGuestSignIn } from "@/hooks/use-guest-sign-in";
 import { AppleButton } from "@/components/auth/apple-button";
 import { LabeledField } from "@/components/ui/labeled-field";
 
@@ -106,43 +106,6 @@ function UsernameStatusRow({ status }: { status: UsernameStatus | null }) {
         {status.text}
       </Text>
     </HStack>
-  );
-}
-
-function GuestOptions({
-  showGuest,
-  isGuest,
-  isLoading,
-  guest,
-}: {
-  showGuest: boolean;
-  isGuest: boolean;
-  isLoading: boolean;
-  guest: ReturnType<typeof useGuestSignIn>;
-}) {
-  if (showGuest) {
-    return (
-      <VStack spacing={6} alignment="leading" modifiers={[frame({ maxWidth: Infinity })]}>
-        <SecondaryButton
-          testID="sign-up-guest"
-          label={guest.isPending ? "Starting..." : "Continue as guest"}
-          onPress={() => startTransition(() => guest.signIn())}
-          disabled={isLoading}
-          inputLabels={["Continue as guest", "Guest", "Skip sign up"]}
-        />
-        <HelperText>You can create an account later and keep what you did.</HelperText>
-      </VStack>
-    );
-  }
-  if (!isGuest) return null;
-  return (
-    <SecondaryButton
-      testID="sign-up-dismiss"
-      label="Not now"
-      onPress={dismissAuth}
-      disabled={isLoading}
-      filled={false}
-    />
   );
 }
 
@@ -461,6 +424,7 @@ export default function SignUpScreen() {
           )}
 
           <GuestOptions
+            testIDPrefix="sign-up"
             showGuest={showGuest}
             isGuest={isGuest}
             isLoading={isLoading}

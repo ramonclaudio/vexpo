@@ -1,5 +1,5 @@
 import { type ComponentProps } from "react";
-import { Button, Text, VStack } from "@expo/ui/swift-ui";
+import { Button, VStack } from "@expo/ui/swift-ui";
 import {
   buttonStyle,
   contentShape,
@@ -11,6 +11,7 @@ import {
 
 import { CapsuleTextField } from "@/components/ui/capsule-text-field";
 import { HelperText } from "@/components/ui/helper-text";
+import { LabeledField } from "@/components/ui/labeled-field";
 import { OtpField } from "@/components/ui/otp-field";
 import { ProminentButton } from "@/components/ui/capsule-button";
 import { TouchTarget } from "@/constants/layout";
@@ -42,8 +43,7 @@ export function EmailOtpVerify({
   const colors = useColors();
   return (
     <>
-      <VStack spacing={6} alignment="leading" modifiers={[frame({ maxWidth: Infinity })]}>
-        <Text modifiers={[dfont({ size: 17, weight: "semibold" })]}>Verify new email</Text>
+      <LabeledField label="Verify new email">
         <OtpField
           testID="profile-email-otp"
           text={codeState}
@@ -56,7 +56,7 @@ export function EmailOtpVerify({
         <HelperText testID="profile-email-otp-sent">
           {`A 6-digit code was sent to ${pendingEmail}.`}
         </HelperText>
-      </VStack>
+      </LabeledField>
 
       <ProminentButton
         testID="profile-email-verify"
