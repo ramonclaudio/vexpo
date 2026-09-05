@@ -16,23 +16,43 @@ function channel(value: number): number {
   return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
 }
 
-function luminance(hex: string): number {
-  const m = /^#([\da-f]{2})([\da-f]{2})([\da-f]{2})$/i.exec(hex);
-  if (!m) throw new Error(`not an opaque hex colour: ${hex}`);
-  const [r, g, b] = [1, 2, 3].map((i) => channel(parseInt(m[i]!, 16)));
-  return 0.2126 * r! + 0.7152 * g! + 0.0722 * b!;
+type Rgba = { r: number; g: number; b: number; a: number };
+
+function parse(hex: string): Rgba {
+  const m = /^#([\da-f]{2})([\da-f]{2})([\da-f]{2})([\da-f]{2})?$/i.exec(hex);
+  if (!m) throw new Error(`not a hex colour: ${hex}`);
+  return {
+    r: parseInt(m[1]!, 16),
+    g: parseInt(m[2]!, 16),
+    b: parseInt(m[3]!, 16),
+    a: m[4] ? parseInt(m[4], 16) / 255 : 1,
+  };
 }
 
-function contrastRatio(a: string, b: string): number {
-  const [x, y] = [luminance(a), luminance(b)];
+// Some tones are translucent white, so what the eye gets is the blend over
+// whatever is behind. Measuring the raw hex would flatter them.
+function over(fg: Rgba, bg: Rgba): Rgba {
+  const mix = (f: number, b: number) => f * fg.a + b * (1 - fg.a);
+  return { r: mix(fg.r, bg.r), g: mix(fg.g, bg.g), b: mix(fg.b, bg.b), a: 1 };
+}
+
+function luminance(c: Rgba): number {
+  return 0.2126 * channel(c.r) + 0.7152 * channel(c.g) + 0.0722 * channel(c.b);
+}
+
+function contrastRatio(fg: string, bg: string): number {
+  const back = parse(bg);
+  const [x, y] = [luminance(over(parse(fg), back)), luminance(back)];
   return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05);
 }
 
-// AA wants 4.5:1 for body text and 3:1 for large text, which iOS counts as
-// 18pt and up, or 14pt and up when it is bold. The size in each `where` is the
-// `dfont` size at the call site.
+// Apple's Sufficient Contrast criteria are WCAG's: 4.5:1 for text, 3:1 for
+// large text (iOS counts 18pt and up, or 14pt bold and up) and 3:1 for non-text
+// contrast, meaning controls and anything whose colour carries a state. The
+// size in each `where` is the `dfont` size at the call site.
 const BODY = 4.5;
 const LARGE = 3;
+const NON_TEXT = 3;
 
 type Pair = [keyof typeof TONES, keyof typeof TONES, string, number];
 
@@ -51,9 +71,33 @@ const PAIRS: Pair[] = [
   ["destructiveForeground", "destructive", "the offline banner, 18 bold", LARGE],
 ];
 
+// Non-text contrast. Borders and fills are deliberately absent: the app never
+// uses one as the only way to tell a control from its background, the way
+// Apple's own text fields don't either. Every stroke that does carry meaning
+// draws in `mutedForeground` or `destructive`, which the table above measures.
+const CONTROL_PAIRS: Pair[] = [
+  ["primary", "background", "the filled prominent button", NON_TEXT],
+  ["mutedForeground", "secondary", "control glyphs on a secondary surface", NON_TEXT],
+  ["mutedForeground", "background", "the dashed avatar-picker ring", NON_TEXT],
+  ["destructive", "card", "the invalid-code capsule stroke", NON_TEXT],
+  ["success", "muted", "a success symbol on a capsule", NON_TEXT],
+  ["warning", "background", "a warning symbol", NON_TEXT],
+];
+
 describe.each(APPEARANCES)("%s", (appearance) => {
   it.each(PAIRS)("%s on %s clears AA (%s)", (fg, bg, _where, min) => {
     const ratio = contrastRatio(TONES[fg][appearance], TONES[bg][appearance]);
     expect(ratio).toBeGreaterThanOrEqual(min);
   });
+
+  it.each(CONTROL_PAIRS)("%s on %s clears non-text contrast (%s)", (fg, bg, _where, min) => {
+    const ratio = contrastRatio(TONES[fg][appearance], TONES[bg][appearance]);
+    expect(ratio).toBeGreaterThanOrEqual(min);
+  });
+});
+
+// The translucent tones would measure as their own opaque hex without the
+// compositing above, which is the mistake this guards.
+it("measures a translucent tone against what is behind it", () => {
+  expect(contrastRatio("#FFFFFF1A", "#0A0A0A")).toBeLessThan(1.6);
 });
