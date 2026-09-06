@@ -2,8 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 const ESC = String.fromCharCode(27);
 
-// output.ts reads the stream and the environment once, at import, so each case
-// sets both and then loads a fresh copy of the module.
+// output.ts reads the stream and the environment once, at import, so each case needs a fresh copy.
 async function loadOutput(opts: { isTTY: boolean; noColor?: string; term?: string }) {
   const original = process.stderr.isTTY;
   Object.defineProperty(process.stderr, "isTTY", { value: opts.isTTY, configurable: true });
@@ -31,14 +30,12 @@ function captureStderr(run: () => void): string {
 
 afterEach(() => vi.unstubAllEnvs());
 
-describe("colour", () => {
+describe("color", () => {
   it("writes escapes on a terminal", async () => {
     const { ok } = await loadOutput({ isTTY: true });
     expect(captureStderr(() => ok("linked"))).toContain(ESC);
   });
 
-  // NO_COLOR is the cross-tool opt-out, and a run piped to a file or read back
-  // by a screen reader should not have escapes in it either.
   it("writes none when NO_COLOR is set", async () => {
     const { ok } = await loadOutput({ isTTY: true, noColor: "1" });
     expect(captureStderr(() => ok("linked"))).toBe("  ok   linked\n");
@@ -49,14 +46,11 @@ describe("colour", () => {
     expect(captureStderr(() => ok("linked"))).toBe("  ok   linked\n");
   });
 
-  // An empty NO_COLOR is the same as unset, which is what the convention says.
-  it("keeps colour when NO_COLOR is empty", async () => {
+  it("keeps color when NO_COLOR is empty", async () => {
     const { ok } = await loadOutput({ isTTY: true, noColor: "" });
     expect(captureStderr(() => ok("linked"))).toContain(ESC);
   });
 
-  // A dumb terminal cannot render escapes, and it is what a screen reader runs
-  // its shell under.
   it("writes none under TERM=dumb", async () => {
     const { ok } = await loadOutput({ isTTY: true, term: "dumb" });
     expect(captureStderr(() => ok("linked"))).toBe("  ok   linked\n");
@@ -69,15 +63,13 @@ describe("section", () => {
     expect(captureStderr(() => section("Convex"))).toContain("\u2500");
   });
 
-  // The rule is decoration, and a screen reader reads it one dash at a time.
-  it("drops the rule when there is no colour", async () => {
+  it("drops the rule when there is no color", async () => {
     const { section } = await loadOutput({ isTTY: false });
     expect(captureStderr(() => section("Convex"))).toBe("\nConvex\n");
   });
 });
 
-describe("severity without colour", () => {
-  // Nothing may depend on colour alone: each line keeps its two-character tag.
+describe("severity without color", () => {
   it("keeps a text marker on every line", async () => {
     const { ok, bad, yep, nop } = await loadOutput({ isTTY: false });
     const out = captureStderr(() => {

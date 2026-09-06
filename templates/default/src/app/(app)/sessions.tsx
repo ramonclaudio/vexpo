@@ -105,9 +105,6 @@ export default function SessionsScreen() {
 
   const revoke = async (token: string) => {
     haptics.medium();
-    // The alert has just dismissed and the row is about to go, so VoiceOver
-    // focus is loose. Every other buzz sits on a control that speaks for
-    // itself; this one has nothing to read.
     announce("Revoking session");
     setRevoking(token);
     setRevokeError(null);
@@ -255,10 +252,7 @@ export default function SessionsScreen() {
                             frame({ minHeight: TouchTarget.min }),
                             contentShape(shapes.rectangle()),
                             accessibilityLabel(`Revoke ${deviceLabel(s.userAgent)}`),
-                            // The device name disambiguates the rows for
-                            // VoiceOver, but the word on screen is just
-                            // "Revoke", and Voice Control matches what you
-                            // can see. Both phrases work.
+                            // Voice Control matches the visible word, so "Revoke" has to be here too.
                             accessibilityInputLabels([
                               "Revoke",
                               `Revoke ${deviceLabel(s.userAgent)}`,

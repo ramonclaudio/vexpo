@@ -106,10 +106,6 @@ const cacheAscKey = (creds: AscCredentials, extra: Record<string, unknown> = {})
     ...extra,
   });
 
-/**
- * The cached-key path. Returns an exit code when it settles the run, or null
- * when there is no cache to use and the caller should collect credentials.
- */
 async function tryCachedKey(revalidate: boolean): Promise<number | null> {
   const cached = await loadAscCreds();
   if (!cached) {

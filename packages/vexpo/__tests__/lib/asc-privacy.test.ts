@@ -2,7 +2,6 @@ import { describe, expect, test } from "vitest";
 
 import { lintPrivacyConfig } from "../../src/lib/asc-privacy.ts";
 
-// One valid entry; every case varies the field it is about.
 const entry = (overrides: Record<string, unknown> = {}) => ({
   category: "IDENTIFIERS",
   collected: true,

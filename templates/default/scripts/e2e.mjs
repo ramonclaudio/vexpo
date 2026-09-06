@@ -168,18 +168,12 @@ console.log(`guest   ${env.MAESTRO_GUEST_EMAIL}`);
 console.log(`devUrl  ${env.MAESTRO_DEV_URL}`);
 console.log(`jdk     ${jdk}\n`);
 
-// A `takeScreenshot` path names a file inside the run's own artifact folder, and
-// without --debug-output that folder is thrown away whenever the run passes. So
-// the shots land under .maestro/debug/<flow>/screenshots/ instead, which is
-// gitignored and is the directory CI uploads.
 const args = [
   "test",
   "--debug-output",
   ".maestro/debug",
   "--flatten-debug-output",
-  // smoke.mjs boots one simulator and installs the app on that one, so maestro
-  // has to be told which it is. Left off, it picks a device itself and can land
-  // on one the app was never installed on.
+  // Without --udid maestro picks its own device, which may not have the app installed.
   ...(process.env.MAESTRO_UDID ? ["--udid", process.env.MAESTRO_UDID] : []),
   ...(flows.length ? flows : ORDERED_FLOWS),
 ];

@@ -4,9 +4,6 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { useTmpCwd } from "../helpers/tmp-cwd.ts";
 
-// Only the Resend HTTP client and the `convex env set` shell-out are stubbed.
-// `env-local`, `env-files`, `fs`, `app` and `state` read and write real files
-// in the temp project set up below.
 vi.mock("../../src/lib/convex-env.ts", () => ({ envSet: vi.fn(async () => undefined) }));
 vi.mock("../../src/lib/resend-api.ts", () => ({
   probeAccess: vi.fn(async () => "full"),

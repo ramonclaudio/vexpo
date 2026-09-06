@@ -1,10 +1,5 @@
 import { createInterface } from "node:readline/promises";
 
-// Everything here writes to stderr, so stderr decides. `NO_COLOR` is the
-// cross-tool opt-out (any non-empty value), `TERM=dumb` is what a terminal that
-// cannot handle escapes reports, and a pipe or a log file gets none either.
-// That last one is what a screen reader or a braille display reads.
-// Read once: neither the stream nor the environment changes mid-run.
 const colorEnabled =
   process.stderr.isTTY === true && !process.env.NO_COLOR && process.env.TERM !== "dumb";
 
@@ -40,8 +35,7 @@ export const yep = (m: string): void => line(`  ${YELLOW}!!${RESET}   ${m}`);
 export const bad = (m: string): void => line(`  ${RED}xx${RESET}   ${RED}${m}${RESET}`);
 export const note = (m: string): void => line(`       ${DIM}${m}${RESET}`);
 
-// The only writer here that goes to stdout. Everything else is stderr, which is what
-// keeps `--json` output pipeable while the human-readable chatter stays on the terminal.
+// The only stdout writer here, so `--json` stays pipeable while the rest goes to stderr.
 export function emitJson(value: unknown): number {
   process.stdout.write(JSON.stringify(value, null, 2) + "\n");
   return 0;
@@ -54,9 +48,6 @@ function stringWidth(s: string): number {
   return [...s].length;
 }
 
-// The rule after the title is decoration. Seventy box-drawing dashes read back
-// one at a time is noise, so anything reading this without a terminal gets the
-// title alone.
 export function section(title: string): void {
   if (!colorEnabled) {
     line(`\n${title}`);

@@ -1,20 +1,4 @@
 /// <reference types="vite/client" />
-/**
- * The two ways a guest row leaves the database.
- *
- * `users.discardGuest` is the in-app one. A guest has no email and no
- * password, so the 30-day restore window `deleteAccount` opens would open onto
- * nothing; this purges on the spot instead, which is also what makes leaving
- * guest mode count as in-app account deletion (Apple 5.1.1(v)).
- *
- * `users.purgeAbandonedGuests` is the cron. A guest has no credentials, so once
- * every session of theirs has expired nothing can reach the row again, and
- * nothing in the normal flow deletes it. The rule is "all sessions expired",
- * not an age cap, so a guest who keeps coming back is never swept.
- *
- * Neither writes an `accountDeletionAudit` row: that table records what users
- * asked for, not every row the system drops.
- */
 import { ConvexError } from "convex/values";
 import { describe, expect, test, vi } from "vitest";
 
@@ -33,7 +17,6 @@ describe("users.discardGuest", () => {
     const asGuest = t.withIdentity(identityFor(guest.authUserId, guest.sessionId));
     expect(await asGuest.mutation(api.users.discardGuest, {})).toEqual({ success: true });
 
-    // The onDelete trigger drops the users row when the auth user goes.
     expect(await t.run(async (ctx) => ctx.db.get(guest.appUserId))).toBeNull();
     expect(await t.run(async (ctx) => ctx.db.get(tokenId))).toBeNull();
     expect(await auditRowsFor(t, guest.appUserId)).toHaveLength(0);
@@ -66,8 +49,6 @@ describe("users.purgeAbandonedGuests", () => {
       guestSince: OLD,
       expiresAt: Date.now() - 1000,
     });
-    // Same age, but the session was refreshed by use. This is the row an
-    // age cap would have thrown away.
     const active = await seedAuthedUser(t, { isAnonymous: true, guestSince: OLD });
     const goneToken = await seedToken(t, gone.appUserId, "ExponentPushToken[gone]");
 
@@ -81,8 +62,6 @@ describe("users.purgeAbandonedGuests", () => {
 
   test("skips guests younger than the session lifetime without reading their sessions", async () => {
     const t = initConvexTest();
-    // An expired session on a fresh row cannot happen in production. Seeding
-    // one proves the index range is doing the skipping, not the session check.
     const fresh = await seedAuthedUser(t, { isAnonymous: true, expiresAt: Date.now() - 1000 });
 
     expect(await t.mutation(internal.users.purgeAbandonedGuests, {})).toBe(0);
@@ -102,8 +81,6 @@ describe("users.purgeAbandonedGuests", () => {
 
   test("walks past a full page of live old guests to reach the dead ones behind them", async () => {
     const t = initConvexTest();
-    // Live guests sort first (older guestSince). With `.take(batch)` and a
-    // "stop when nothing purged" rule, these would shadow the dead one forever.
     for (let i = 0; i <= HARD_DELETE_BATCH; i++) {
       await seedAuthedUser(t, { isAnonymous: true, guestSince: OLD - HARD_DELETE_BATCH + i });
     }
@@ -113,7 +90,6 @@ describe("users.purgeAbandonedGuests", () => {
       expiresAt: Date.now() - 1000,
     });
 
-    // First page purges nothing and schedules the continuation.
     vi.useFakeTimers();
     try {
       expect(await t.mutation(internal.users.purgeAbandonedGuests, {})).toBe(0);

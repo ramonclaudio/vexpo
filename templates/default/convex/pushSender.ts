@@ -215,7 +215,6 @@ type PendingReceipt = {
 
 type PermanentError = { details?: { error?: string } };
 
-// Only permanent Expo error codes revoke a token; everything else is transient.
 function bucketPermanentError(
   buckets: Map<string, Id<"pushTokens">[]>,
   result: PermanentError,

@@ -3,8 +3,6 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 const ESC = String.fromCharCode(27);
 const CR = String.fromCharCode(13);
 
-// tty.ts reads the stream and the environment when the spinner starts, so each
-// case sets both, runs a spinner, and reads back what reached stderr.
 function withStderr(
   opts: { isTTY: boolean; noColor?: string; term?: string },
   run: (mod: typeof import("../src/tty.ts")) => Promise<void> | void,
@@ -43,8 +41,6 @@ describe("spinner", () => {
     expect(out).toContain("⠋");
   });
 
-  // A repainted line is read again on every repaint, so the opt-outs have to
-  // reach the animation and not just the colour.
   it("writes one plain line when NO_COLOR is set", async () => {
     const out = await withStderr({ isTTY: true, noColor: "1" }, spin);
     expect(out).toBe("Installing dependencies\n✔ Installed with npm\n");
@@ -61,7 +57,6 @@ describe("spinner", () => {
     expect(out).toBe("Installing dependencies\n✔ Installed with npm\n");
   });
 
-  // Nothing may rest on colour: each outcome keeps its own glyph.
   it("keeps a distinct mark on every outcome", async () => {
     const out = await withStderr({ isTTY: false }, (mod) => {
       mod.spinner("a").succeed("done");

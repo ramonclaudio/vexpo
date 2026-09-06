@@ -2,8 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { Check } from "../../src/lib/verify.ts";
 
-// output.ts reads the stream and the environment once, at import, so the
-// colour-off case needs a fresh copy of both modules.
+// output.ts reads the stream and the environment once, at import, so this needs a fresh copy.
 async function loadRender(isTTY: boolean) {
   const original = process.stderr.isTTY;
   Object.defineProperty(process.stderr, "isTTY", { value: isTTY, configurable: true });
@@ -46,9 +45,7 @@ const checks: Check[] = (
 afterEach(() => vi.unstubAllEnvs());
 
 describe("renderVerifyResults", () => {
-  // Nothing may rest on colour or on a glyph. A check mark and a ballot x are
-  // outside most screen readers' symbol dictionaries.
-  it("tags every severity in words when there is no colour", async () => {
+  it("tags every severity in words when there is no color", async () => {
     const { renderVerifyResults } = await loadRender(false);
     const out = captureStderr(() => renderVerifyResults(checks, "compact"));
     expect(out).toContain("ok convex url");
@@ -63,8 +60,6 @@ describe("renderVerifyResults", () => {
     expect(out).not.toMatch(/[✓✗✔✘]/);
   });
 
-  // The tag went from one character wide to two, so an indent tuned by hand
-  // for the old width would have left the details line short by one.
   it.each(["section", "compact"] as const)(
     "lines the details up under the name in %s",
     async (style) => {

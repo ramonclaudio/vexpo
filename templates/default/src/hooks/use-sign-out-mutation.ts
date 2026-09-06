@@ -8,10 +8,6 @@ import { fail } from "@/lib/form-result";
 
 type Gate = () => Promise<{ ok: true } | { ok: false; error?: string }>;
 
-/**
- * Runs a mutation that ends the session, then signs out. `gate` runs first and
- * can stop the whole thing, which is how the delete flow asks for Face ID.
- */
 export function useSignOutMutation(
   mutation: FunctionReference<"mutation">,
   gate?: Gate,

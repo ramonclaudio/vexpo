@@ -2,7 +2,6 @@ import type { font } from "@expo/ui/swift-ui/modifiers";
 
 type TextStyle = NonNullable<Parameters<typeof font>[0]["textStyle"]>;
 
-// Largest first: the first threshold a size clears wins.
 const STEPS: [number, TextStyle][] = [
   [31, "largeTitle"],
   [26, "title"],

@@ -9,10 +9,7 @@ type Tone = {
   highContrastDark: string;
 };
 
-// SAFETY: DynamicColorIOS returns an OpaqueColorValue that the native side accepts
-// anywhere a color string is accepted. @expo/ui modifiers type their color inputs as
-// string, so the palette is declared as string at this one point instead of at the
-// ~150 call sites. Nothing reads a palette value as text.
+// DynamicColorIOS returns an OpaqueColorValue. @expo/ui types colors as string.
 const tone = (t: Tone): string => DynamicColorIOS(t) as unknown as string;
 
 const NEUTRAL = {
@@ -54,9 +51,6 @@ const ALPHA_DARK = {
   inputHC: "#FFFFFF59",
 } as const;
 
-// Every tone the app draws with, as the four appearances Apple can ask for.
-// Exported raw so `contrast.test.ts` can measure the same values the screens
-// render, instead of a second copy of the palette that could drift from it.
 export const TONES = {
   background: {
     light: NEUTRAL.white,

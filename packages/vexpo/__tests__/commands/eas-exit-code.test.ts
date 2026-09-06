@@ -4,9 +4,6 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { useTmpCwd } from "../helpers/tmp-cwd.ts";
 
-// Only the two modules that shell out to eas-cli are stubbed. `env-files`,
-// `fs`, `state` and `output` run for real against the temp project below, so
-// the real ROUTING table decides which keys reach EAS.
 vi.mock("../../src/lib/eas-cli.ts", () => ({ easSpawn: vi.fn().mockResolvedValue(0) }));
 vi.mock("../../src/lib/eas-project.ts", () => ({
   checkCli: vi.fn().mockResolvedValue({ ok: true, version: "1.0.0" }),
@@ -56,8 +53,6 @@ describe("runEas exit code", () => {
     expect(envPushSpy).not.toHaveBeenCalled();
   });
 
-  // The real ROUTING table is what keeps server secrets out of EAS. With it
-  // mocked to a single key this test could not fail.
   it("does not push a Convex-routed secret to EAS", async () => {
     await writeFile(".env.local", SERVER_SECRET);
     envPushSpy.mockResolvedValue(undefined);

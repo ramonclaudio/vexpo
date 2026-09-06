@@ -93,9 +93,6 @@ function createDevice() {
 
 const udid = bootedDevice();
 
-// --clean deletes ios/ so a stale native project can't survive a config change.
-// On CI the checkout is fresh and the Pods directory comes from a cache, so cleaning
-// only throws that cache away. SMOKE_KEEP_NATIVE=1 skips it.
 console.log("### prebuild");
 const prebuild = ["expo", "prebuild", "--platform", "ios"];
 if (process.env.SMOKE_KEEP_NATIVE !== "1") prebuild.splice(2, 0, "--clean");

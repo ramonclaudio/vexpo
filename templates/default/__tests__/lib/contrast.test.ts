@@ -1,7 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
 
-// theme.ts calls DynamicColorIOS at module load, which needs the native side.
-// TONES is plain data and is what this file measures.
 vi.mock("react-native", () => ({ DynamicColorIOS: (t: unknown) => t }));
 vi.mock("expo-router", () => ({ DefaultTheme: { fonts: {} } }));
 
@@ -10,7 +8,6 @@ const { TONES } = await import("@/constants/theme");
 type Appearance = "light" | "dark" | "highContrastLight" | "highContrastDark";
 const APPEARANCES: Appearance[] = ["light", "dark", "highContrastLight", "highContrastDark"];
 
-// WCAG 2.1 relative luminance and contrast ratio.
 function channel(value: number): number {
   const c = value / 255;
   return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
@@ -20,7 +17,7 @@ type Rgba = { r: number; g: number; b: number; a: number };
 
 function parse(hex: string): Rgba {
   const m = /^#([\da-f]{2})([\da-f]{2})([\da-f]{2})([\da-f]{2})?$/i.exec(hex);
-  if (!m) throw new Error(`not a hex colour: ${hex}`);
+  if (!m) throw new Error(`not a hex color: ${hex}`);
   return {
     r: parseInt(m[1]!, 16),
     g: parseInt(m[2]!, 16),
@@ -29,8 +26,6 @@ function parse(hex: string): Rgba {
   };
 }
 
-// Some tones are translucent white, so what the eye gets is the blend over
-// whatever is behind. Measuring the raw hex would flatter them.
 function over(fg: Rgba, bg: Rgba): Rgba {
   const mix = (f: number, b: number) => f * fg.a + b * (1 - fg.a);
   return { r: mix(fg.r, bg.r), g: mix(fg.g, bg.g), b: mix(fg.b, bg.b), a: 1 };
@@ -46,10 +41,7 @@ function contrastRatio(fg: string, bg: string): number {
   return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05);
 }
 
-// Apple's Sufficient Contrast criteria are WCAG's: 4.5:1 for text, 3:1 for
-// large text (iOS counts 18pt and up, or 14pt bold and up) and 3:1 for non-text
-// contrast, meaning controls and anything whose colour carries a state. The
-// size in each `where` is the `dfont` size at the call site.
+// WCAG AA wants 4.5:1 for text, 3:1 for large text (18pt+ or 14pt bold+) and non-text.
 const BODY = 4.5;
 const LARGE = 3;
 const NON_TEXT = 3;
@@ -71,10 +63,6 @@ const PAIRS: Pair[] = [
   ["destructiveForeground", "destructive", "the offline banner, 18 bold", LARGE],
 ];
 
-// Non-text contrast. Borders and fills are deliberately absent: the app never
-// uses one as the only way to tell a control from its background, the way
-// Apple's own text fields don't either. Every stroke that does carry meaning
-// draws in `mutedForeground` or `destructive`, which the table above measures.
 const CONTROL_PAIRS: Pair[] = [
   ["primary", "background", "the filled prominent button", NON_TEXT],
   ["mutedForeground", "secondary", "control glyphs on a secondary surface", NON_TEXT],
@@ -96,8 +84,6 @@ describe.each(APPEARANCES)("%s", (appearance) => {
   });
 });
 
-// The translucent tones would measure as their own opaque hex without the
-// compositing above, which is the mistake this guards.
 it("measures a translucent tone against what is behind it", () => {
   expect(contrastRatio("#FFFFFF1A", "#0A0A0A")).toBeLessThan(1.6);
 });

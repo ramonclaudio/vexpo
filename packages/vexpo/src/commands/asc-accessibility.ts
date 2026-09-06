@@ -59,7 +59,6 @@ export async function runAccessibilityPush(
   return failed > 0 ? 1 : 0;
 }
 
-/** The entries to send, or null once the reason the file cannot be sent is printed. */
 function readEntries(filePath: string): AccessibilityEntry[] | null {
   const parsed = readJson(filePath);
   if (!parsed.ok) return null;
@@ -79,7 +78,6 @@ async function remoteDeclarations(
   return Array.isArray(res.data) ? res.data : [];
 }
 
-/** False once the reason this entry could not be sent has been printed. */
 async function applyStep(
   client: AscClient,
   appId: string,
@@ -109,7 +107,6 @@ async function applyStep(
   return true;
 }
 
-/** True once the reason the arguments cannot be used has been printed. */
 function urlArgsRejected(value: string | undefined, clear: boolean | undefined): boolean {
   if (value && clear) {
     bad("pass a URL or --clear, not both.");

@@ -3,10 +3,6 @@ import type { Category, Check, Severity } from "./verify.ts";
 
 const RENDER_ORDER: Category[] = ["files", "convex", "resend", "apple", "eas", "coherence"];
 
-// The same two-character tags the rest of the CLI uses. A check mark and a
-// ballot x are outside most screen readers' symbol dictionaries, so at default
-// punctuation they are read as nothing at all and a passing check and a failing
-// one come out identical. Colour cannot carry it either.
 function glyph(severity: Severity): string {
   switch (severity) {
     case "ok":
@@ -22,8 +18,6 @@ function glyph(severity: Severity): string {
 
 type RenderStyle = "section" | "compact";
 
-// Two for the tag and one for the space after it. The details line is derived
-// from those so it keeps sitting under the name if the tag changes width again.
 const TAG_WIDTH = 3;
 const INDENT: Record<RenderStyle, number> = { section: 2, compact: 4 };
 

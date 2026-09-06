@@ -3,14 +3,6 @@ import { join, resolve } from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-// A SwiftUI Button only hit-tests what it draws. A `Spacer` draws nothing and
-// `frame({ minHeight })` reserves height the content does not fill, so either
-// one leaves a strip of the button dead to taps unless `contentShape` claims
-// it. On a settings row that strip is most of the row's width.
-//
-// Nothing in JavaScript can see a native hit test, so this reads the source the
-// way the contrast test reads the palette.
-
 const SRC = resolve(process.cwd(), "src");
 
 const files = readdirSync(SRC, { recursive: true, encoding: "utf8" })

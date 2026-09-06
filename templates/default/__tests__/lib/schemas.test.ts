@@ -15,14 +15,8 @@ import {
   signUpSchema,
 } from "@/lib/schemas";
 
-// Validation behind the auth and profile forms. The screens render
-// @expo/ui SwiftUI (which Maestro can't drive), so this is where the form
-// logic is actually verified: transforms, bounds, format, reserved names,
-// cross-field matching, and the inline-error helpers.
-
 const validPassword = "a".repeat(PASSWORD_MIN_LENGTH);
 
-// Both forms have four fields and every case below varies one of them.
 const signUp = (overrides: Record<string, string> = {}) =>
   signUpSchema.safeParse({
     name: "Ray",
@@ -170,10 +164,6 @@ describe("resetPasswordSchema", () => {
 });
 
 describe("guestProfileSchema", () => {
-  // The guest profile form is name and bio only. The account variants require
-  // an email, and a guest's is a placeholder the anonymous plugin generated,
-  // so parsing one here would pull a field the form never showed into a
-  // mutation.
   it("accepts a name on its own", () => {
     expect(guestProfileSchema.safeParse({ name: "Ada" }).success).toBe(true);
   });

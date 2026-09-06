@@ -5,11 +5,7 @@ import path from "node:path";
 
 import { afterAll, beforeAll } from "vitest";
 
-/**
- * A prime256v1 keypair for the file's lifetime, with the private half written
- * out as a real .p8 so the path-reading branches have something to read.
- * Fields are filled in by `beforeAll`, so read them from inside a test.
- */
+/** Fields are filled in by `beforeAll`, so read them from inside a test. */
 export function useEcKey(prefix: string): {
   pem: string;
   publicPem: string;
@@ -34,7 +30,6 @@ export function useEcKey(prefix: string): {
   return key;
 }
 
-/** Split a compact JWS into its decoded halves, plus what a verifier needs. */
 export function decodeJwt(token: string): {
   header: Record<string, unknown>;
   payload: Record<string, unknown>;

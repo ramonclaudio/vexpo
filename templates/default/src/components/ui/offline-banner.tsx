@@ -21,9 +21,6 @@ export function OfflineBanner({ testID }: { testID?: string } = {}) {
   const dfont = useDynamicFont();
   const motion = useBannerMotion("top");
 
-  // The banner leaves without a word, so the only way back to knowing the app
-  // works again is to see it gone. The ref is so a first render that is already
-  // online says nothing.
   const wasOffline = useRef(false);
   useEffect(() => {
     if (isOffline) announce("You're offline");

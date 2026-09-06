@@ -7,8 +7,6 @@ const run = promisify(execFile);
 const SCRIPT = fileURLToPath(new URL("../../scripts/clean.mjs", import.meta.url));
 const ESC = String.fromCharCode(27);
 
-// A test's stderr is a pipe, never a terminal, which is the case that matters:
-// a run redirected to a log file is what a screen reader reads back.
 async function stderrOf(env: Record<string, string> = {}): Promise<string> {
   try {
     const { stderr } = await run(process.execPath, [SCRIPT, "--not-an-option"], {
@@ -20,7 +18,7 @@ async function stderrOf(env: Record<string, string> = {}): Promise<string> {
   }
 }
 
-describe("clean.mjs colour", () => {
+describe("clean.mjs color", () => {
   it("writes no escapes off a terminal", async () => {
     expect(await stderrOf()).not.toContain(ESC);
   });
@@ -33,7 +31,6 @@ describe("clean.mjs colour", () => {
     expect(await stderrOf({ TERM: "dumb" })).not.toContain(ESC);
   });
 
-  // Nothing may rest on colour: the severity tag has to survive without it.
   it("keeps the text marker on the error", async () => {
     expect(await stderrOf()).toContain("xx   Unknown option");
   });

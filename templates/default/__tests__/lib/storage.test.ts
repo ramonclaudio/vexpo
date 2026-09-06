@@ -2,8 +2,6 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { backing, installLocalStorage } from "../helpers/local-storage.ts";
 
-// storage.ts installs a localStorage global from expo-sqlite at import time;
-// stub the install side-effect and back it with an in-memory map for node.
 vi.mock("expo-sqlite/localStorage/install", () => ({}));
 
 installLocalStorage();
@@ -35,7 +33,6 @@ describe("createStorage", () => {
     a.subscribe(layout);
     b.subscribe(welcome);
 
-    // welcome.markSeen() flips the one shared source; the layout sees it too.
     b.set(true);
 
     expect(welcome).toHaveBeenCalledTimes(1);

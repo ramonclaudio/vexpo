@@ -161,7 +161,6 @@ describe("readSources", () => {
 });
 
 describe("buildPlan routing", () => {
-  // Every case writes one line into one env file and reads back what it routes to.
   const planFor = async (file: ".env.local" | ".env.prod", line: string) => {
     await writeFile(file, `${line}\n`);
     return buildPlan(await readSources());

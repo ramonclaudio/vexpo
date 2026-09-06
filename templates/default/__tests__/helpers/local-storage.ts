@@ -1,10 +1,4 @@
-/**
- * In-memory localStorage for node. `lib/storage.ts` installs a real one from
- * expo-sqlite at import time, so any file importing it has to mock
- * "expo-sqlite/localStorage/install" and install this before the import.
- *
- * `backing` is the map behind it, so a test can assert on the raw stored string.
- */
+// Install before importing lib/storage.ts, which installs the real one at import time.
 export const backing = new Map<string, string>();
 
 export function installLocalStorage(): void {

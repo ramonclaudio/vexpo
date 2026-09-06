@@ -8,7 +8,6 @@ export type LintIssue = { severity: "error" | "warning"; message: string };
 export const error = (message: string): LintIssue => ({ severity: "error", message });
 export const warn = (message: string): LintIssue => ({ severity: "warning", message });
 
-/** Parse a config file, or report why it could not be read. */
 export function readJson(filePath: string): { ok: true; value: unknown } | { ok: false } {
   try {
     return { ok: true, value: JSON.parse(readFileSync(filePath, "utf8")) };
@@ -18,10 +17,6 @@ export function readJson(filePath: string): { ok: true; value: unknown } | { ok:
   }
 }
 
-/**
- * The `entries` array off a config object, or null once the issue explaining
- * what is wrong with the shape has been pushed.
- */
 export function entriesOf(config: unknown, issues: LintIssue[]): unknown[] | null {
   if (!isRecord(config)) {
     issues.push(error("config must be a JSON object"));
@@ -34,7 +29,6 @@ export function entriesOf(config: unknown, issues: LintIssue[]): unknown[] | nul
   return config.entries;
 }
 
-/** Check a value against one of Apple's string enums. `typeName` is the enum's name. */
 export function oneOf(
   issues: LintIssue[],
   where: string,
@@ -49,7 +43,6 @@ export function oneOf(
   return false;
 }
 
-/** True the first time `value` shows up. Warns that later entries win after that. */
 export function firstSeen(
   seen: Set<string>,
   issues: LintIssue[],

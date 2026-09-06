@@ -1,18 +1,4 @@
 /// <reference types="vite/client" />
-/**
- * REAL convexTest coverage for pushTokens.upsert (authMutation).
- *
- * upsert insert-or-updates a single Expo push token row for the current user.
- * It rate-limits on "userAction" (so the rateLimiter component must be
- * registered) and reads existing rows by the "by_token" index, so the same
- * token never duplicates: same owner -> patch + un-revoke; different owner ->
- * reassign to the caller.
- *
- * Auth is driven exactly like _auth-harness.test.ts: seed a Better Auth
- * user + session in the component db (capturing their REAL component ids),
- * seed the mirrored app `users` row keyed by authId, then call with an
- * identity whose subject == better-auth user id and sessionId == session id.
- */
 import { ConvexError } from "convex/values";
 import { describe, expect, test } from "vitest";
 
@@ -33,8 +19,6 @@ describe("pushTokens.upsert", () => {
     });
     const after = Date.now();
 
-    // Real DB effect: exactly one row, keyed to the app user, with the values
-    // the handler wrote.
     const rows = await t.run(async (ctx) => ctx.db.query("pushTokens").collect());
     expect(rows).toHaveLength(1);
     const row = rows[0];
@@ -42,13 +26,10 @@ describe("pushTokens.upsert", () => {
     expect(row.userId).toBe(appUserId);
     expect(row.token).toBe("ExponentPushToken[aaa]");
     expect(row.deviceType).toBe("ios");
-    // Insert path sets createdAt == updatedAt == lastSeenAt to "now".
     expect(row.createdAt).toBeGreaterThanOrEqual(before);
     expect(row.createdAt).toBeLessThanOrEqual(after);
     expect(row.updatedAt).toBe(row.createdAt);
     expect(row.lastSeenAt).toBe(row.createdAt);
-    // Fresh insert is active (revoked: false) so the cleanup index range
-    // [revoked, updatedAt] covers it, and carries no error code.
     expect(row.revoked).toBe(false);
     expect(row.revokedAt).toBeUndefined();
     expect(row.lastErrorCode).toBeUndefined();
@@ -59,15 +40,11 @@ describe("pushTokens.upsert", () => {
     const { authUserId, sessionId, appUserId } = await seedAuthedUser(t);
     const asUser = t.withIdentity(identityFor(authUserId, sessionId));
 
-    // First upsert creates the row.
     const firstId = await asUser.mutation(api.pushTokens.upsert, {
       token: "ExponentPushToken[dup]",
       deviceType: "ios",
     });
 
-    // Simulate a revoked/dead token the way markRevoked would: set the
-    // tombstone fields and a stale createdAt so we can prove createdAt is
-    // preserved across the patch path while updatedAt/lastSeenAt advance.
     const stale = Date.now() - 60_000;
     await t.run(async (ctx) => {
       await ctx.db.patch(firstId, {
@@ -80,25 +57,21 @@ describe("pushTokens.upsert", () => {
       });
     });
 
-    // Second upsert of the SAME token by the SAME user.
     const before = Date.now();
     const secondId = await asUser.mutation(api.pushTokens.upsert, {
       token: "ExponentPushToken[dup]",
       deviceType: "ios",
     });
 
-    // Idempotent: same row id back, still exactly one row in the table.
     expect(secondId).toBe(firstId);
     const rows = await t.run(async (ctx) => ctx.db.query("pushTokens").collect());
     expect(rows).toHaveLength(1);
 
     const row = rows[0];
     expect(row.userId).toBe(appUserId);
-    // createdAt preserved, updatedAt + lastSeenAt refreshed forward.
     expect(row.createdAt).toBe(stale);
     expect(row.updatedAt).toBeGreaterThanOrEqual(before);
     expect(row.lastSeenAt).toBeGreaterThanOrEqual(before);
-    // Revocation cleared: the same-user patch un-revokes and drops the error.
     expect(row.revoked).toBe(false);
     expect(row.revokedAt).toBeUndefined();
     expect(row.lastErrorCode).toBeUndefined();
@@ -112,23 +85,19 @@ describe("pushTokens.upsert", () => {
     const asOwner = t.withIdentity(identityFor(owner.authUserId, owner.sessionId));
     const asTaker = t.withIdentity(identityFor(taker.authUserId, taker.sessionId));
 
-    // Owner registers the token first.
     const ownerTokenId = await asOwner.mutation(api.pushTokens.upsert, {
       token: "ExponentPushToken[shared]",
       deviceType: "ios",
     });
 
-    // Same physical token now upserted by a different signed-in user (device
-    // changed hands). Handler reassigns the existing row rather than inserting.
     const takerTokenId = await asTaker.mutation(api.pushTokens.upsert, {
       token: "ExponentPushToken[shared]",
       deviceType: "ios",
     });
 
-    expect(takerTokenId).toBe(ownerTokenId); // reused, not a new row
+    expect(takerTokenId).toBe(ownerTokenId);
     const rows = await t.run(async (ctx) => ctx.db.query("pushTokens").collect());
     expect(rows).toHaveLength(1);
-    // Ownership transferred to the taker's app user id.
     expect(rows[0].userId).toBe(taker.appUserId);
     expect(rows[0].userId).not.toBe(owner.appUserId);
   });
@@ -139,7 +108,6 @@ describe("pushTokens.upsert", () => {
       t.mutation(api.pushTokens.upsert, { token: "ExponentPushToken[anon]", deviceType: "ios" }),
     ).rejects.toThrowError(ConvexError);
 
-    // And no row leaked into the table from the rejected call.
     const rows = await t.run(async (ctx) => ctx.db.query("pushTokens").collect());
     expect(rows).toHaveLength(0);
   });

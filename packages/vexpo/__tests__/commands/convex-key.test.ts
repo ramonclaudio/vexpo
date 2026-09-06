@@ -4,8 +4,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { useTmpCwd } from "../helpers/tmp-cwd.ts";
 
-// Only the two modules that reach the network are stubbed. The env files are
-// real files in a temp project, so `readEnvFile` and its parser run for real.
 vi.mock("../../src/lib/convex-management.ts", () => ({ mintProdDeployKey: vi.fn() }));
 vi.mock("../../src/lib/eas-project.ts", () => ({
   resolveProjectId: vi.fn().mockResolvedValue("pid"),
@@ -66,9 +64,6 @@ describe("runConvexKey --mint", () => {
     expect(mintProdSpy).not.toHaveBeenCalled();
   });
 
-  // The old fake answered every path, so nothing reached the missing-file case.
-  // `mintProdDeployKey` resolves the project's prod deployment from any
-  // deployment in it, so the dev selector is a usable fallback here.
   it("mints from the dev selector when there is no prod env file", async () => {
     await rm(".env.prod");
     await runConvexKey({ mint: true });

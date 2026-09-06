@@ -4,8 +4,6 @@ import { accessibilityHidden, frame } from "@expo/ui/swift-ui/modifiers";
 
 import { useColors } from "@/hooks/use-theme";
 
-// Decorative both places it is used: the settings row and the picker button
-// each carry their own label, and the fallback symbol below is hidden too.
 export function RemoteAvatar({ url, size }: { url: string; size: number }) {
   const colors = useColors();
   const image = useImage(url, { maxWidth: size * 4 });

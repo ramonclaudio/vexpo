@@ -52,8 +52,6 @@ async function trySignal(pids, signal) {
   }).exited;
 }
 
-// Order matters: npm_execpath names the manager that ran us, and only when it
-// says nothing do we fall back to whichever lockfile is on disk.
 const LOCKFILES = {
   bun: "bun.lock",
   pnpm: "pnpm-lock.yaml",
@@ -81,10 +79,6 @@ function installCmdFor(pm, frozen) {
 const REPO = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 process.chdir(REPO);
 
-// Everything here writes to stderr, so stderr decides. `NO_COLOR` is the
-// cross-tool opt-out (any non-empty value), `TERM=dumb` is what a terminal that
-// cannot handle escapes reports, and a pipe or a log file gets none either.
-// That last one is what a screen reader or a braille display reads.
 const colorEnabled =
   process.stderr.isTTY === true && !process.env.NO_COLOR && process.env.TERM !== "dumb";
 const code = (seq) => (colorEnabled ? seq : "");
@@ -112,8 +106,6 @@ function stringWidth(s) {
   return [...s].length;
 }
 
-// The rule after the title is decoration, and seventy box-drawing dashes read
-// back one at a time is noise. Without colour the title goes out alone.
 function section(title) {
   if (!colorEnabled) {
     line(`\n${title}`);
@@ -183,8 +175,6 @@ if (args.help) {
 
 const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
 
-// Every step below is one of two shapes: clear a single path if it is there, or
-// gather a list of paths and clear that. These hold the common frame.
 async function stepPath(title, path, { missing, done }) {
   section(title);
   if (!(await pathExists(path))) return nop(missing);
@@ -336,8 +326,6 @@ async function stepProjectArtifacts(all) {
   for (const t of existing) ok(`removed ${t.replace(REPO + "/", "")}`);
 }
 
-// Not a stepMatches: an absent .eas/ and one holding only workflows/ are both
-// empty lists, and the skip message should say which.
 async function stepEasState() {
   section(".eas state");
   const easDir = `${REPO}/.eas`;

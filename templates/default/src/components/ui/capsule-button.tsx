@@ -48,8 +48,7 @@ function CapsuleButton({
         frame({ maxWidth: Infinity }),
         ...(filled ? [background(fill)] : []),
         clipShape("capsule"),
-        // The prominent variant always emits .disabled(), so it overrides an
-        // inherited disabled state rather than picking it up from an ancestor.
+        // Prominent always emits .disabled() so it never inherits an ancestor's.
         ...(prominent
           ? [disabledModifier(disabled ?? false)]
           : disabled === undefined

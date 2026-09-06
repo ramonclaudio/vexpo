@@ -58,8 +58,6 @@ function fieldValues(me: EditableProfile | null | undefined): FieldValues {
   };
 }
 
-// Each field is edited natively and mirrored into React state so validation can
-// read it. `set` writes both, which is the only way they stay in agreement.
 function useField(initial: string) {
   const native = useNativeState(initial);
   const [value, setValue] = useState(initial);
@@ -98,7 +96,6 @@ function useProfileFields(
   return fields;
 }
 
-// Returns the trimmed bio to save, or the state to hand straight back to the form.
 function checkBio(bio: string): { bio: string } | { error: string } {
   const trimmed = bio.trim();
   const check = validateBio(trimmed);
@@ -258,12 +255,8 @@ export default function ProfileScreen() {
   const [avatarUpdating, setAvatarUpdating] = useState(false);
   const [avatarError, setAvatarError] = useState<string | null>(null);
 
-  // The avatar paths set their own state instead of returning a form result,
-  // so they go through `fail` for the buzz and the announcement and keep the
-  // message.
   const raiseAvatarError = (message: string) => setAvatarError(fail(message).error);
 
-  // Both avatar mutations set the same three pieces of state around the work.
   const runAvatarTask = async (task: () => Promise<void>) => {
     try {
       setAvatarError(null);

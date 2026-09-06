@@ -1,6 +1,5 @@
 import { vi } from "vitest";
 
-/** A stand-in subprocess for a spawn that only ever gets awaited. */
 export const exitedWith = (code: number) => ({
   exited: Promise.resolve(code),
   stdout: null,
@@ -10,13 +9,7 @@ export const exitedWith = (code: number) => ({
   kill: () => {},
 });
 
-/**
- * The whole `lib/proc.ts` surface, for `vi.mock`. Factories run before imports
- * resolve, so reach it with an async factory:
- *
- *   vi.mock("../../src/lib/proc.ts", async () =>
- *     (await import("../helpers/proc-stub.ts")).procStub());
- */
+/** `vi.mock` factories run before imports resolve, so reach this with an async factory. */
 export const procStub = (code = 0, stdout = "") => ({
   run: vi.fn().mockResolvedValue({ code, stdout, stderr: "" }),
   spawn: vi.fn(() => exitedWith(code)),

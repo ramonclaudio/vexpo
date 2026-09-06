@@ -4,8 +4,7 @@ import { join } from "node:path";
 
 import { fileExists } from "./fs.ts";
 
-// `eq > 0` rather than `>= 0`: a line starting with `=` has no key, and a value
-// may itself contain `=`, so only the first one splits.
+// `eq > 0`, not `>= 0`. A leading `=` has no key, and only the first `=` splits.
 export function parseKeyValueLines(
   stdout: string,
   transform: (value: string) => string = (v) => v,
@@ -45,8 +44,6 @@ export type Destination =
       environments: readonly ("development" | "preview" | "production")[];
     };
 
-// Every key routes to exactly one destination. `key` only differs from the map
-// key for APPLE_SERVICES_ID, which Convex knows as APPLE_CLIENT_ID.
 type RoutingEntry = { type: "eas" | "convex"; key?: string };
 
 const EAS: RoutingEntry = { type: "eas" };

@@ -16,8 +16,6 @@ describe("fail", () => {
     expect(announceForAccessibility).toHaveBeenCalledWith("Error: Invalid email or password");
   });
 
-  // The row that draws the error only re-announced when the copy changed, so
-  // getting the same password wrong twice was silent the second time.
   it("announces again when the same error repeats", () => {
     fail("Invalid email or password");
     fail("Invalid email or password");

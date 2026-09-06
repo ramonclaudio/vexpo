@@ -2,9 +2,6 @@ import { describe, expect, it, vi } from "vitest";
 
 import { backing, installLocalStorage } from "../helpers/local-storage.ts";
 
-// Two import-time side effects have to be neutralised before the module loads:
-// storage.ts installs a localStorage global from expo-sqlite, and use-theme
-// pushes the stored mode at the native window.
 vi.mock("expo-sqlite/localStorage/install", () => ({}));
 
 installLocalStorage();
@@ -15,19 +12,10 @@ vi.mock("react-native", () => ({
   useColorScheme: () => "light",
   DynamicColorIOS: (v: unknown) => v,
 }));
-// The palette pulls the navigation theme through expo-router, which does not
-// parse in node. Nothing here reads a colour, so an empty theme is enough.
 vi.mock("expo-router", () => ({ DefaultTheme: { colors: {} } }));
 
 const { setTheme } = await import("@/hooks/use-theme");
 
-/**
- * `setTheme` is the write half of the theme preference: it persists the choice
- * and pushes it at the native window in the same call. The mapping that
- * matters is "system", which is not a scheme UIKit understands. It has to go
- * over as `unspecified`, or picking System pins the app to whatever was set
- * last instead of following the device.
- */
 const STORAGE_KEY = "pref.theme.mode";
 
 describe("setTheme", () => {

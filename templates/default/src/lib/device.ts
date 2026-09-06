@@ -8,8 +8,7 @@ export const sessionId = Constants.sessionId;
 
 export const expoRuntimeVersion = Constants.expoRuntimeVersion;
 
-// Order matters: an iOS user agent carries Darwin and Mac too, so the narrower
-// patterns have to be tried first.
+// Order matters, an iOS user agent carries Darwin and Mac too.
 const DEVICES: [RegExp, string][] = [
   [/CFNetwork|Darwin|iPhone/i, "iPhone"],
   [/iPad/i, "iPad"],

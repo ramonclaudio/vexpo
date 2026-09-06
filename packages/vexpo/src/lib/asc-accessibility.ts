@@ -4,9 +4,6 @@ import { entriesOf, error, firstSeen, oneOf, warn, type LintIssue } from "./lint
 
 export type { LintIssue };
 
-// Apple's `AccessibilityDeclaration.Attributes` is nine booleans plus the
-// device family. There is no support level: a feature is claimed or it is not,
-// and anything you leave out defaults to false.
 const ACCESSIBILITY_FLAGS = [
   "supportsVoiceover",
   "supportsVoiceControl",
@@ -32,10 +29,7 @@ const ACCESSIBILITY_DEVICE_FAMILIES = [
 
 type DeviceFamily = (typeof ACCESSIBILITY_DEVICE_FAMILIES)[number];
 
-// Not every feature exists on every platform. Claiming one Apple does not offer
-// there is a declaration that cannot be honoured, so it is an error, not a warning.
-// From Apple's own feature-by-platform table: Voice Control is not on tvOS or
-// watchOS, and Larger Text is not on macOS. Everything else is on all six.
+// Apple's feature-by-platform table. These flags do not exist on these families.
 const UNAVAILABLE: Partial<Record<AccessibilityFlag, DeviceFamily[]>> = {
   supportsVoiceControl: ["APPLE_TV", "APPLE_WATCH"],
   supportsLargerText: ["MAC"],
@@ -116,8 +110,7 @@ type RemoteDeclaration = {
   >;
 };
 
-// Apple defaults every unlisted flag to false, so the payload always carries all
-// nine. A half-filled PATCH would silently drop the claims it left out.
+// Apple defaults every unlisted flag to false, so a partial PATCH silently drops claims.
 function attributesOf(entry: AccessibilityEntry): Record<string, boolean> {
   return Object.fromEntries(ACCESSIBILITY_FLAGS.map((f) => [f, entry[f] === true]));
 }
@@ -129,10 +122,6 @@ export type PushPlan = {
   state?: string;
 };
 
-/**
- * What `push` would do to each entry. A declaration Apple has already published
- * is read-only, so it is reported rather than attempted.
- */
 export function planAccessibilityPush(
   entries: AccessibilityEntry[],
   remote: RemoteDeclaration[],
@@ -170,7 +159,6 @@ export async function updateAccessibilityDeclaration(
   });
 }
 
-/** Moves a DRAFT declaration onto the App Store page. */
 export async function publishAccessibilityDeclaration(
   client: AscClient,
   id: string,
@@ -180,12 +168,6 @@ export async function publishAccessibilityDeclaration(
   });
 }
 
-/**
- * The accessibility URL is a link on the App Store page, separate from the
- * declarations. Apple's own overview points here for anything the nine flags
- * cannot say: in-app accessibility settings, caption languages, and the parts
- * of the app that don't support a feature.
- */
 export async function fetchAccessibilityUrl(
   client: AscClient,
   appId: string,
@@ -196,12 +178,6 @@ export async function fetchAccessibilityUrl(
   return res.data?.attributes?.accessibilityUrl ?? null;
 }
 
-/**
- * Passing null clears the link. Apple's schema types the attribute as a plain
- * `uri` and says nothing about nullability, so this follows the App Store
- * Connect convention for clearing an optional attribute. Untested against a
- * real app.
- */
 export async function setAccessibilityUrl(
   client: AscClient,
   appId: string,

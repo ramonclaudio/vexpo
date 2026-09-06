@@ -1,13 +1,5 @@
 /// <reference types="vite/client" />
-/**
- * `GUEST_MODE=false` takes the guest path off the deployment, not just out of
- * the UI. `convex/env.ts` reads the flag once at module load, so this lives in
- * its own file: stubbing it after another test has already pulled the module
- * in would assert nothing.
- *
- * The client half (`getEnabledProviders().guest`) only hides the button. This
- * is the half that matters, because a hidden button is not a closed endpoint.
- */
+// convex/env.ts reads GUEST_MODE once at module load, so this must stay in its own file.
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
 import { api } from "@/convex/_generated/api";

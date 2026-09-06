@@ -215,8 +215,6 @@ type AppConfigMarker = {
   replace: (inputs: RebrandInputs) => string;
 };
 
-// `validateAppConfig` exists to guarantee `rewriteAppConfig` will match. They read
-// the same list so the two cannot drift apart.
 const APP_CONFIG_MARKERS: AppConfigMarker[] = [
   {
     re: new RegExp(

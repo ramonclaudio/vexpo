@@ -195,9 +195,6 @@ export function explainEnvListFailure(environment: string): void {
   note("run `npx eas-cli login` and `npx eas-cli init` first");
 }
 
-// The five EAS production secrets the Apple JWT rotation cron reads. `vexpo apple
-// eas-rotation-secrets` writes them, `vexpo doctor` counts them, and `vexpo setup`
-// probes for them, so the list lives here rather than in each of the three.
 export const EAS_ROTATION_SECRETS = [
   "APPLE_P8_PRIVATE_KEY",
   "APPLE_TEAM_ID",

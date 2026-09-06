@@ -45,8 +45,6 @@ const program = new Command()
   .description("CLI for vexpo projects (Expo + Convex + Better Auth + Resend).")
   .version(pkg.version, "-v, --version");
 
-// commander gives `--no-state` back as `state: false`, so the two setup
-// commands go through one adapter rather than each spelling the mapping out.
 type SetupFlags = {
   new?: boolean;
   force?: boolean;
@@ -77,8 +75,6 @@ const exitWith = (p: Promise<number>): void => {
   });
 };
 
-// The flags `lite` and `full` share. `--new` differs in wording, so it stays
-// on each command.
 const withSetupFlags = (cmd: Command): Command =>
   cmd
     .option("--force", "re-run every step, ignoring the cache", false)

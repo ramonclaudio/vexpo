@@ -36,8 +36,6 @@ describe("lintAccessibilityConfig", () => {
     expect(firstError!.message).toMatch(/not a valid AccessibilityDeclaration attribute/);
   });
 
-  // The old config carried a four-level enum. Apple's model is booleans, so a
-  // level string has to fail rather than pass quietly.
   test("flags a support level where a boolean belongs", () => {
     const issues = lintAccessibilityConfig({
       entries: [{ deviceFamily: "IPHONE", supportsVoiceover: "FULLY_SUPPORTS" }],
@@ -94,8 +92,6 @@ describe("planAccessibilityPush", () => {
     ]);
   });
 
-  // Apple only accepts PATCH and DELETE while a declaration is a draft, so a
-  // published one is reported rather than attempted.
   test("blocks anything that is no longer a draft", () => {
     const remote = [{ id: "abc", attributes: { deviceFamily: "IPHONE", state: "PUBLISHED" } }];
     expect(planAccessibilityPush([entry], remote)[0]!.action).toBe("blocked");
@@ -110,8 +106,6 @@ describe("planAccessibilityPush", () => {
   });
 });
 
-// Apple's own list of states is DRAFT, PUBLISHED and REPLACED, and only a draft
-// accepts PATCH.
 describe("planAccessibilityPush states", () => {
   test("blocks a replaced declaration too", () => {
     const remote = [{ id: "abc", attributes: { deviceFamily: "IPHONE", state: "REPLACED" } }];
@@ -167,8 +161,6 @@ describe("accessibility URL", () => {
     });
   });
 
-  // Clearing sends an explicit null. Omitting the attribute would leave the old
-  // link on the page.
   test("clears with null rather than by omission", async () => {
     const { client, calls } = fakeClient({});
     await setAccessibilityUrl(client, "123", null);

@@ -186,7 +186,6 @@ describe("isStepFresh", () => {
 });
 
 describe("checkConcurrentRun", () => {
-  // Only lastPid and the write age matter, so both are what each case varies.
   const stateAt = (lastPid: number | undefined, agoMs = 0): SetupState => ({
     createdAt: new Date(Date.now() - agoMs).toISOString(),
     updatedAt: new Date(Date.now() - agoMs).toISOString(),

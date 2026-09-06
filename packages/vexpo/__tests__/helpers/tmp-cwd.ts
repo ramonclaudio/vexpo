@@ -4,11 +4,7 @@ import path from "node:path";
 
 import { afterEach, beforeEach } from "vitest";
 
-/**
- * Fresh temp dir as the cwd for every test in the file, removed after each one.
- * Call it before any other `beforeEach` that writes into the cwd, so the chdir
- * lands first.
- */
+/** Call before any other `beforeEach` that writes into the cwd, so the chdir lands first. */
 export function useTmpCwd(prefix: string): { path: string } {
   const dir = { path: "" };
   let originalCwd = "";

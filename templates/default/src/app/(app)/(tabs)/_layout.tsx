@@ -19,8 +19,7 @@ export default function TabLayout() {
         default: colors.tabIconDefault,
         selected: colors.tabIconSelected,
       }}
-      // No fontSize: UIKit sizes tab labels from the text style, and pinning a
-      // point size opts them out of Larger Text.
+      // Don't add fontSize here, it opts tab labels out of Larger Text.
       labelStyle={{ fontFamily: FontFamily.medium }}
       sidebarAdaptable
       minimizeBehavior="automatic"

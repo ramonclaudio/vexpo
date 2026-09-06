@@ -140,7 +140,6 @@ export const mergeGuestData = internalMutation({
 
 type UserDoc = Doc<"users">;
 
-// The guest's bio and avatar fill in only where the account has nothing yet.
 // The avatar moves rather than copies, so the storage id has one owner.
 async function mergeProfile(
   ctx: MutationCtx,
@@ -157,8 +156,7 @@ async function mergeProfile(
   return patch;
 }
 
-// A device the account already registered would come across as a second row for
-// the same token, so those are dropped instead of reassigned.
+// A second row for the same token breaks the .unique() by_token lookups.
 async function movePushTokens(
   ctx: MutationCtx,
   guestId: Id<"users">,

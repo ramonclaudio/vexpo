@@ -145,8 +145,6 @@ type CachedAscKey = AscCredentials & {
   privateKey: Extract<AscCredentials["privateKey"], { path: string }>;
 };
 
-// The `in` check narrows `asc.privateKey`, not `asc`, so callers that need the
-// whole credential typed with a file path go through this instead of re-asserting.
 function hasKeyPath(asc: AscCredentials): asc is CachedAscKey {
   return "path" in asc.privateKey;
 }

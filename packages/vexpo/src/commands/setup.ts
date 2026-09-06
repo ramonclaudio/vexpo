@@ -699,7 +699,6 @@ function reportNothingToDo(): void {
   note("standalone subcommands (e.g. `vexpo resend`) re-run a single step");
 }
 
-/** Returns an exit code when the run is a preview or already complete, else null. */
 async function exitBeforeRunning(probe: Probe, options: SetupOptions): Promise<number | null> {
   if (options.plan) {
     printJourneyPlan(options.lite === true);

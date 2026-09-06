@@ -68,16 +68,9 @@ export function AvatarPickerRow({
             buttonStyle("plain"),
             frame({ maxWidth: Infinity, minHeight: TouchTarget.min }),
             contentShape(shapes.rectangle()),
-            // A hint, not a label: a label here would replace the name and
-            // email the children already say, and this row is the only place
-            // VoiceOver meets them before the fields below.
+            // A label here would replace the name and email the children announce.
             accessibilityHint("Change your profile photo"),
-            accessibilityInputLabels([
-              "Change profile photo",
-              "Profile photo",
-              // What a guest actually reads on this row.
-              "Add a photo",
-            ]),
+            accessibilityInputLabels(["Change profile photo", "Profile photo", "Add a photo"]),
           ]}
           onPress={() => {
             setAvatarPicker(true);

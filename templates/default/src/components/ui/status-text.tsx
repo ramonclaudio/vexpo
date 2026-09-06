@@ -14,8 +14,6 @@ type Tone = {
 const ERROR: Tone = { icon: "exclamationmark.triangle.fill", color: "destructive" };
 const SUCCESS: Tone = { icon: "checkmark.circle.fill", color: "success" };
 
-// The row only draws. Whoever raises the error or the success announces it, so
-// two failures in a row are two announcements even when the copy is identical.
 function StatusText({ children, size = 14, testID, tone }: Props & { tone: Tone }) {
   const dfont = useDynamicFont();
   const colors = useColors();

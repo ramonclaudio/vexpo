@@ -258,9 +258,6 @@ function OtaStatusCard({ updates }: { updates: Updates }) {
               progressViewStyle("linear"),
               frame({ maxWidth: Infinity }),
               accessibilityLabel("Downloading update"),
-              // The bar carries the only copy of how far along it is, and
-              // whether SwiftUI's own percentage survives the bridge is not
-              // something this side can see.
               accessibilityValue(`${Math.round((updates.downloadProgress ?? 0) * 100)} percent`),
             ]}
           />

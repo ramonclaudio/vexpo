@@ -4,9 +4,6 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { useTmpCwd } from "../helpers/tmp-cwd.ts";
 
-// Only the `convex run` shell-out is stubbed. store.config.json and the env
-// files are real files in the temp project, so the read, the rewrite and the
-// prod-scope check all run against what the command actually wrote.
 vi.mock("../../src/lib/pkg-manager.ts", () => ({ dlx: () => "bunx" }));
 vi.mock("../../src/lib/proc.ts", () => ({
   run: vi.fn().mockResolvedValue({ code: 0, stdout: "", stderr: "" }),
@@ -94,8 +91,6 @@ describe("runReviewAccount", () => {
     expect(seedCalls()).toHaveLength(0);
   });
 
-  // The old test mocked node:fs/promises wholesale, so a missing or malformed
-  // file was unreachable and the command threw a raw ENOENT instead of exiting.
   it("returns 1 when store.config.json is missing entirely", async () => {
     await rm("store.config.json");
     expect(await runReviewAccount({})).toBe(1);

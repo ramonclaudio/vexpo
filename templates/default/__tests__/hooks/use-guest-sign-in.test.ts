@@ -14,14 +14,6 @@ vi.mock("@/hooks/use-auth-status", () => ({ useAuthStatus: () => ({ isGuest: fal
 
 const { dismissAuth, guestSignInError } = await import("@/hooks/use-guest-sign-in");
 
-/**
- * `dismissAuth` is "Not now" on the sign-in and sign-up screens. It only
- * renders for a guest, so there is always an app behind it, but how it gets
- * back depends on how they arrived: pushed from settings (pop) or landed on
- * the auth stack as the anchor (replace to the tabs root). Getting this wrong
- * makes the wall a one-way door for anyone who taps "Create an account" to see
- * what it says.
- */
 describe("dismissAuth", () => {
   it("pops when there is somewhere to go back to", () => {
     back.mockClear();
@@ -46,13 +38,6 @@ describe("dismissAuth", () => {
   });
 });
 
-/**
- * The only failure a guest can act on is the rate limit, and they share an IP
- * with everyone behind the same NAT, so that line has to say "wait" rather
- * than "something went wrong". Everything else is one plain line: the button
- * gives no way to tell an offline phone from a 5xx, so the copy should not
- * pretend otherwise.
- */
 describe("guestSignInError", () => {
   it("tells a rate-limited caller to wait", () => {
     expect(guestSignInError(429)).toBe("Too many tries. Wait a minute and tap it again.");

@@ -13,8 +13,6 @@ useTmpCwd("verify-test-");
 
 const key = useEcKey("verify-test-key-");
 
-// Default for every test. The describes that care about a specific response
-// overwrite globalThis.fetch in the test body.
 beforeEach(() => {
   globalThis.fetch = vi
     .fn()
@@ -63,8 +61,6 @@ describe("Apple JWT verification", () => {
     servicesId: "com.x.app.signin",
   };
 
-  // Convex env holds what the deployment believes; the JWT holds what was signed.
-  // Each test below moves one of the two and asserts which check notices.
   async function siwaContext(
     signed: Partial<typeof SIWA> & { expirationDays: number },
     env: Partial<typeof SIWA> = {},

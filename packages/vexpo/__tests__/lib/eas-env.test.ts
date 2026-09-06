@@ -23,7 +23,6 @@ afterEach(() => {
   }
 });
 
-// app.json with a projectId under expo.extra.eas, which is where the real one lives.
 const writeAppJson = (projectId: string) =>
   writeFile("app.json", JSON.stringify({ expo: { extra: { eas: { projectId } } } }));
 

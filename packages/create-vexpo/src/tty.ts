@@ -1,8 +1,5 @@
 import { createInterface } from "node:readline/promises";
 
-// `NO_COLOR` is the cross-tool opt-out (any non-empty value) and `TERM=dumb` is
-// what a terminal that cannot handle escapes reports, which is what a screen
-// reader runs under. A pipe or a log file gets none either.
 const plain = (): boolean => !!process.env.NO_COLOR || process.env.TERM === "dumb";
 
 const colorOn = (stream: NodeJS.WriteStream): boolean => stream.isTTY === true && !plain();
@@ -18,7 +15,6 @@ export const gray = wrap(90, 39);
 export const bold = wrap(1, 22);
 export const dim = wrap(2, 22);
 
-// The spinner writes to stderr, so its symbols follow stderr, not stdout.
 const errRed = wrap(31, 39, process.stderr);
 const errGreen = wrap(32, 39, process.stderr);
 const errYellow = wrap(33, 39, process.stderr);
@@ -32,11 +28,6 @@ export type Spinner = {
   warn: (text: string) => void;
 };
 
-// A repainting line is re-announced on every repaint, so twelve braille frames
-// a second is twelve announcements a second for the length of an install. The
-// same signals that turn colour off turn the animation off, and `TERM=dumb` is
-// what a screen reader's terminal sets. Everyone who opts out gets the one-line
-// form below instead.
 export function spinner(text: string): Spinner {
   const animate = process.stderr.isTTY === true && !plain();
   let timer: NodeJS.Timeout | null = null;
@@ -77,8 +68,7 @@ export async function askText(opts: {
 }): Promise<string> {
   const rl = createInterface({ input: process.stdin, output: process.stdout });
   let settled = false;
-  // Ctrl-C and Ctrl-D close the interface without answering. Without this the
-  // question promise never settles and the scaffolder hangs.
+  // Ctrl-C and Ctrl-D close without answering, so without this the promise never settles.
   rl.once("close", () => {
     if (!settled) process.exit(1);
   });

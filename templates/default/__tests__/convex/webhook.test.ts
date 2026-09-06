@@ -3,10 +3,6 @@ import { afterEach, beforeEach, describe, expect, test } from "vitest";
 import { isRecord } from "@/convex/json";
 import { withWebhook, type WebhookHandler, type WithWebhookOptions } from "@/convex/webhook";
 
-// Stub Convex action context. The webhook factory doesn't use it (the inner
-// handler does, if it needs to call queries/mutations), so an empty object
-// satisfies the type for these unit tests. Cast through `unknown` rather than
-// importing the Convex generic action type, which would bloat the test deps.
 const ctx = {} as unknown as Parameters<ReturnType<typeof withWebhook>>[0];
 
 async function sign(algorithm: "sha1" | "sha256", secret: string, body: string): Promise<string> {
@@ -57,7 +53,6 @@ describe("withWebhook (HMAC signature verification)", () => {
     process.env.TEST_WEBHOOK_SECRET = SECRET;
   });
 
-  // Every case below builds the same handler and changes at most two options.
   const testHandler = (
     overrides: Partial<WithWebhookOptions<Record<string, unknown>>> = {},
     handler: WebhookHandler<Record<string, unknown>> = () => new Response("ok"),
@@ -74,8 +69,6 @@ describe("withWebhook (HMAC signature verification)", () => {
       handler,
     );
 
-  // Sign a body with the real secret and drive the handler with it. Every 200
-  // case and every post-signature rejection goes through here.
   const signedCall = async (
     handler: ReturnType<typeof testHandler>,
     body = "{}",
@@ -184,10 +177,6 @@ describe("withWebhook (HMAC signature verification)", () => {
   });
 
   test("413 while streaming when a body with no content-length exceeds the cap", async () => {
-    // No content-length header, so the up-front check is bypassed and the cap is
-    // enforced while reading. The reader must cancel once it crosses the cap
-    // instead of buffering the whole body; the stub stream errors if pulled a
-    // third time (past the two chunks needed to cross a 100-byte cap).
     let canceled = false;
     let pulls = 0;
     const body = new ReadableStream<Uint8Array>({
@@ -227,7 +216,7 @@ describe("withWebhook (HMAC signature verification)", () => {
 
   test("401 when replay timestamp is stale", async () => {
     const handler = testHandler({ replay: { header: "x-timestamp", maxAgeSeconds: 60 } });
-    const stale = Date.now() - 120_000; // 2 minutes ago, exceeds 60s window
+    const stale = Date.now() - 120_000;
     const res = await signedCall(handler, "{}", {
       timestampHeader: "x-timestamp",
       timestampValue: String(stale),
@@ -250,11 +239,8 @@ describe("withWebhook (HMAC signature verification)", () => {
   });
 
   test("401 when replay timestamp is in the future", async () => {
-    // The window is two-sided (Math.abs of the age), so a forward-skewed clock
-    // is rejected too. A one-sided `age > max` check would pass every other
-    // replay test but accept arbitrarily-future timestamps; this pins that.
     const handler = testHandler({ replay: { header: "x-timestamp", maxAgeSeconds: 60 } });
-    const future = Date.now() + 120_000; // 2 minutes ahead, exceeds 60s window
+    const future = Date.now() + 120_000;
     const res = await signedCall(handler, "{}", {
       timestampHeader: "x-timestamp",
       timestampValue: String(future),

@@ -79,10 +79,6 @@ describe("resolveDeepLink", () => {
   });
 
   it("drops nullish query values and joins array values", () => {
-    // URLSearchParams only yields strings, so the real source's `value == null`
-    // skip and `Array.isArray` join branches are unreachable through a real URL.
-    // Drive them directly via the parse mock. `undefined` takes the same `== null`
-    // branch as null and is the shape expo-linking's own QueryParams type allows.
     parseMock.mockReturnValueOnce({
       scheme: "test",
       hostname: "app",

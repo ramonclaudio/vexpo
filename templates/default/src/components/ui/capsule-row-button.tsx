@@ -34,8 +34,6 @@ export function CapsuleRowButton({
   label: string;
   systemImage: SFSymbol;
   onPress: () => void;
-  // What the row does when the label alone doesn't say, which is every row
-  // that leaves the app.
   hint?: string;
   inputLabels?: string[];
   role?: "destructive";
@@ -63,10 +61,7 @@ export function CapsuleRowButton({
         modifiers={[
           frame({ maxWidth: Infinity, minHeight: ButtonTokens.height }),
           padding({ horizontal: 16 }),
-          // After the frame and the padding, so the shape is the row you see
-          // rather than what the label alone measures. It sits on the content
-          // and not the Button, because a confirmation dialog anchors to the
-          // Button's own frame.
+          // Must sit on the content, not the Button, or the dialog anchor breaks.
           contentShape(shapes.capsule()),
         ]}
       >
