@@ -141,6 +141,7 @@ const stopFaceId = () => {
 process.on("exit", stopFaceId);
 
 const ORDERED_FLOWS = [
+  ".maestro/links.yaml",
   ".maestro/guest.yaml",
   ".maestro/auth.yaml",
   ".maestro/launch.yaml",
