@@ -18,6 +18,7 @@ import type * as env from "../env.js";
 import type * as errors from "../errors.js";
 import type * as functions from "../functions.js";
 import type * as http from "../http.js";
+import type * as json from "../json.js";
 import type * as log from "../log.js";
 import type * as pushSender from "../pushSender.js";
 import type * as pushTokens from "../pushTokens.js";
@@ -43,6 +44,7 @@ declare const fullApi: ApiFromModules<{
   errors: typeof errors;
   functions: typeof functions;
   http: typeof http;
+  json: typeof json;
   log: typeof log;
   pushSender: typeof pushSender;
   pushTokens: typeof pushTokens;
