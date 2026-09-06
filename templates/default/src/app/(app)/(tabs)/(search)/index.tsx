@@ -6,6 +6,7 @@ import {
   background,
   buttonStyle,
   clipShape,
+  contentShape,
   foregroundStyle,
   frame,
   imageScale,
@@ -13,6 +14,7 @@ import {
   scrollDismissesKeyboard,
   scrollTargetBehavior,
   scrollTargetLayout,
+  shapes,
   tint,
 } from "@expo/ui/swift-ui/modifiers";
 import type { SFSymbol } from "sf-symbols-typescript";
@@ -199,6 +201,7 @@ export default function SearchScreen() {
                       modifiers={[
                         frame({ maxWidth: Infinity }),
                         padding({ horizontal: 16, vertical: 12 }),
+                        contentShape(shapes.capsule()),
                       ]}
                     >
                       <Image

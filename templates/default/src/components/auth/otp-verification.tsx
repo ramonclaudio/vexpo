@@ -198,6 +198,7 @@ export function OtpVerification({ email, onBack, flow = "verify-email" }: OtpVer
               <Text
                 modifiers={[
                   frame({ maxWidth: Infinity, minHeight: ButtonTokens.height }),
+                  contentShape(shapes.rectangle()),
                   multilineTextAlignment("center"),
                   dfont({ size: ButtonTokens.fontSize, weight: ButtonTokens.secondaryFontWeight }),
                   foregroundStyle(colors.primary),

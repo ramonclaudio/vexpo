@@ -4,10 +4,12 @@ import {
   background,
   buttonStyle,
   clipShape,
+  contentShape,
   disabled as disabledModifier,
   foregroundStyle,
   frame,
   multilineTextAlignment,
+  shapes,
 } from "@expo/ui/swift-ui/modifiers";
 
 import { Button as ButtonTokens } from "@/constants/layout";
@@ -60,6 +62,7 @@ function CapsuleButton({
       <Text
         modifiers={[
           frame({ maxWidth: Infinity, minHeight: ButtonTokens.height }),
+          contentShape(shapes.capsule()),
           multilineTextAlignment("center"),
           dfont({
             size: ButtonTokens.fontSize,

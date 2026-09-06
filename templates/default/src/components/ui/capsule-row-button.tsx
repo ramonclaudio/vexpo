@@ -7,10 +7,12 @@ import {
   background,
   buttonStyle,
   clipShape,
+  contentShape,
   foregroundStyle,
   frame,
   imageScale,
   padding,
+  shapes,
 } from "@expo/ui/swift-ui/modifiers";
 
 import { useDynamicFont } from "@/lib/dynamic-font";
@@ -61,6 +63,11 @@ export function CapsuleRowButton({
         modifiers={[
           frame({ maxWidth: Infinity, minHeight: ButtonTokens.height }),
           padding({ horizontal: 16 }),
+          // After the frame and the padding, so the shape is the row you see
+          // rather than what the label alone measures. It sits on the content
+          // and not the Button, because a confirmation dialog anchors to the
+          // Button's own frame.
+          contentShape(shapes.capsule()),
         ]}
       >
         <Image

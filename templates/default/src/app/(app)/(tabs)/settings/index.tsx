@@ -21,6 +21,7 @@ import {
   background,
   buttonStyle,
   clipShape,
+  contentShape,
   foregroundStyle,
   frame,
   imageScale,
@@ -32,6 +33,7 @@ import {
   truncationMode,
   textSelection,
   scrollDismissesKeyboard,
+  shapes,
   tint,
 } from "@expo/ui/swift-ui/modifiers";
 import { useDynamicFont } from "@/lib/dynamic-font";
@@ -109,6 +111,7 @@ export default function SettingsScreen() {
               modifiers={[
                 frame({ maxWidth: Infinity, minHeight: 80 }),
                 padding({ leading: 8, trailing: 16 }),
+                contentShape(shapes.capsule()),
               ]}
             >
               <ProfileHeaderAvatar avatarUrl={me?.avatarUrl ?? null} />
