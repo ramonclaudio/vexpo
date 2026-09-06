@@ -1,4 +1,3 @@
-
 # The two screens nothing else reaches. Forgot password and reset password sit
 # behind the email-features flag on the sign-in screen, so a deployment without
 # it never draws the link. Both are in DeepLinkRoutes, so openLink gets to them
