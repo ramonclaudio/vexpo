@@ -3,10 +3,12 @@
 # Fills the sign-up form and submits it, from the sign-up screen. Each field
 # needs a swipe to dismiss the keyboard and a scroll to bring the next one up,
 # because the form is taller than the screen once the keyboard is open.
+#
+# NAME and EMAIL come from the caller and there are no defaults here on purpose.
+# A default in this block wins over the `env:` on the runFlow that calls it, so
+# guest.yaml signed up with auth.yaml's address and auth.yaml then failed on an
+# email that was already taken.
 appId: ${MAESTRO_APP_ID}
-env:
-  NAME: "Maestro E2E"
-  EMAIL: ${MAESTRO_TEST_EMAIL}
 ---
 - tapOn:
     id: "sign-up-name"
