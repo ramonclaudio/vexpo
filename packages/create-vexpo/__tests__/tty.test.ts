@@ -43,7 +43,7 @@ describe("spinner", () => {
 
   it("writes one plain line when NO_COLOR is set", async () => {
     const out = await withStderr({ isTTY: true, noColor: "1" }, spin);
-    expect(out).toBe("Installing dependencies\n✔ Installed with npm\n");
+    expect(out).toBe("Installing dependencies\nok Installed with npm\n");
   });
 
   it("writes one plain line under TERM=dumb", async () => {
@@ -54,7 +54,7 @@ describe("spinner", () => {
 
   it("writes one plain line off a terminal", async () => {
     const out = await withStderr({ isTTY: false }, spin);
-    expect(out).toBe("Installing dependencies\n✔ Installed with npm\n");
+    expect(out).toBe("Installing dependencies\nok Installed with npm\n");
   });
 
   it("keeps a distinct mark on every outcome", async () => {
@@ -63,8 +63,8 @@ describe("spinner", () => {
       mod.spinner("b").fail("broke");
       mod.spinner("c").warn("careful");
     });
-    expect(out).toContain("✔ done");
-    expect(out).toContain("✖ broke");
-    expect(out).toContain("⚠ careful");
+    expect(out).toContain("ok done");
+    expect(out).toContain("xx broke");
+    expect(out).toContain("!! careful");
   });
 });

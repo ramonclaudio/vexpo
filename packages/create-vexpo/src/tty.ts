@@ -55,9 +55,9 @@ export function spinner(text: string): Spinner {
   };
 
   return {
-    succeed: (m) => done(errGreen("✔"), m),
-    fail: (m) => done(errRed("✖"), m),
-    warn: (m) => done(errYellow("⚠"), m),
+    succeed: (m) => done(errGreen("ok"), m),
+    fail: (m) => done(errRed("xx"), m),
+    warn: (m) => done(errYellow("!!"), m),
   };
 }
 
@@ -81,7 +81,7 @@ export async function askText(opts: {
         settled = true;
         return value;
       }
-      process.stdout.write(`${red("✖")} ${check}\n`);
+      process.stdout.write(`${red("xx")} ${check}\n`);
     }
   } finally {
     settled = true;
