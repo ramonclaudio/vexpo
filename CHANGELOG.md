@@ -4,6 +4,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Pre
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-09-08
+
 - Add `vite` to the template's devDependencies. vitest 5 moved it to a peer dependency and the template's `.npmrc` sets `legacy-peer-deps`, so a fresh scaffold installed without it. `npm test` failed at startup with `Cannot find package 'vite'`, and `tsc` failed on the `vite/client` reference in the Convex tests. Inside this repo both passed, because the root install had a copy to fall back on.
 - Drop the leading blank line in `.maestro/links.yaml`. It was the only flow file that started blank, so a fresh scaffold failed its own `npm run format:check`.
 - Remove 1,012 comment lines across the template and both packages. What stays is the tooling directives and one line each for a trap someone would otherwise walk into, like `expo-image` ignoring `accessibilityLabel` without `accessible`.
@@ -411,7 +413,8 @@ First public release.
 
 See [`README.md`](./README.md) for the feature list and [`SECURITY.md`](./SECURITY.md) for the threat model.
 
-[Unreleased]: https://github.com/ramonclaudio/vexpo/compare/v0.3.3...HEAD
+[Unreleased]: https://github.com/ramonclaudio/vexpo/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/ramonclaudio/vexpo/releases/tag/v0.4.0
 [0.3.3]: https://github.com/ramonclaudio/vexpo/releases/tag/v0.3.3
 [0.3.2]: https://github.com/ramonclaudio/vexpo/releases/tag/v0.3.2
 [0.3.1]: https://github.com/ramonclaudio/vexpo/releases/tag/v0.3.1
