@@ -4,6 +4,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Pre
 
 ## [Unreleased]
 
+- Add `vite` to the template's devDependencies. vitest 5 moved it to a peer dependency and the template's `.npmrc` sets `legacy-peer-deps`, so a fresh scaffold installed without it. `npm test` failed at startup with `Cannot find package 'vite'`, and `tsc` failed on the `vite/client` reference in the Convex tests. Inside this repo both passed, because the root install had a copy to fall back on.
 - Drop the leading blank line in `.maestro/links.yaml`. It was the only flow file that started blank, so a fresh scaffold failed its own `npm run format:check`.
 - Remove 1,012 comment lines across the template and both packages. What stays is the tooling directives and one line each for a trap someone would otherwise walk into, like `expo-image` ignoring `accessibilityLabel` without `accessible`.
 - Use American spellings in the source. `colour`, `grey`, `labelled` and `recognise` were in comments, test names and the accessibility notes Apple reads.

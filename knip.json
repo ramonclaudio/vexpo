@@ -16,8 +16,7 @@
         "scripts/*.mjs",
         "__tests__/**/*.{ts,tsx}"
       ],
-      "project": ["src/**/*.{ts,tsx}", "convex/**/*.ts"],
-      "ignoreDependencies": ["vite"]
+      "project": ["src/**/*.{ts,tsx}", "convex/**/*.ts"]
     }
   }
 }
