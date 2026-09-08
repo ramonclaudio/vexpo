@@ -31,6 +31,7 @@ vexpo accounts                    sign up for Apple, Expo, Convex, and Resend (s
 vexpo rebrand                     replace template defaults with your identity
 vexpo review-account              create the App Review demo account on Convex
 vexpo convex                      create or connect a Convex deployment
+vexpo convex --eas                connect through the EAS integration instead of `convex dev`
 vexpo better-auth                 set SITE_URL, BETTER_AUTH_SECRET, APP_NAME on Convex
 vexpo resend                      create the Resend sending key + webhook, write to Convex env
 vexpo env push                    push .env.local + .env.prod to Convex + EAS env
@@ -63,6 +64,8 @@ vexpo testflight testers list                list beta testers
 vexpo testflight invite <email>              add a tester + send a TestFlight invite
 vexpo testflight whats-new <buildId> <text>  set the "What's new" notes on a build already up
                                              (at submit time use `eas submit --what-to-test`)
+vexpo testflight feedback                    recent tester screenshot feedback, newest first
+vexpo testflight crashes                     recent tester crash reports, newest first
 
 vexpo submit                                 submit the latest build to TestFlight, no prompts
 vexpo submit --id <buildId>                  submit a specific build
@@ -71,7 +74,9 @@ vexpo submit --profile <name>                pick an eas.json submit profile
 vexpo asc privacy show [file]                show the declared privacy.config.json
 vexpo asc privacy lint <file>                validate privacy.config.json against Apple's enums
 vexpo asc accessibility show                 fetch the app's accessibility declarations
-vexpo asc accessibility lint <file>          validate accessibility.config.json against Apple's enums
+vexpo asc accessibility lint <file>          validate accessibility.config.json against Apple's AccessibilityDeclaration
+vexpo asc accessibility push <file>          send accessibility.config.json to App Store Connect (--dry-run, --publish)
+vexpo asc accessibility url [url]            show or set the accessibility URL on the App Store page (--clear)
 ```
 
 ## What vexpo doesn't do

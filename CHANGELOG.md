@@ -19,6 +19,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Pre
 - Write the smoke flow's screenshot somewhere that survives the run. Maestro 2.8 deletes its artifact folder on a pass, so `scripts/e2e.mjs` sets `--debug-output` to `.maestro/debug`, the path the job already uploads.
 - Exclude `.maestro/debug` from the scaffolder payload and assert that in the e2e. A local e2e run was leaving the screenshot and command log in every new project.
 - Replace the glyphs in `vexpo doctor` and `vexpo env push` with the `ok`, `!!`, `xx` and `--` tags. Most screen readers read a check mark and a ballot x as nothing, so a pass and a fail sounded the same. Three tests pin it.
+- Use the same tags in `create-vexpo`. Every scaffold step ended on a check mark, a cross or a warning sign, and the name prompt's validation error started with the cross.
 - Use one accessibility hint per field across sign in, sign up and the profile. The email field had four wordings, the username three and the new password three.
 - Raise the verification code field's Dynamic Type cap from xxLarge to AX3, so it meets Apple's Larger Text bar. The tracking between the six digits narrows as the size climbs. The fit is arithmetic and has not been measured on a device.
 - Announce when the app is back online, not only when it goes offline.
@@ -34,7 +35,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Pre
 - Add `contentShape` to Go Home, Skip, Cancel and Back to sign in. Those four plain-style buttons only responded on their glyphs.
 - Move the widget's detail color into `constants/theme.ts`. The hard-coded `#8E8E93` was 3.26:1 on a light widget and the contrast test never saw it.
 - Route the error boundary's announcement through `announce` in `lib/a11y.ts`.
-- Match `accessibility.config.json` and `vexpo asc accessibility lint` to Apple's `AccessibilityDeclaration`, nine booleans plus a device family. The old four-level enum does not exist in the API. The linter also rejects a feature the device family does not have.
+- **Breaking:** match `accessibility.config.json` and `vexpo asc accessibility lint` to Apple's `AccessibilityDeclaration`, nine booleans plus a device family. The old four-level enum does not exist in the API, and `lint` rejects the old `features` map, so a project scaffolded before this release has to rewrite `app-store/accessibility.config.json` to the new shape. The template's copy is the reference. The linter also rejects a feature the device family does not have.
 - Add `vexpo asc accessibility push` to send the declaration. `--dry-run` prints the plan, `--publish` moves the draft onto the App Store page, and a published declaration is reported instead of attempted. Every push sends all nine booleans.
 - Measure non-text contrast in the contrast test, six control pairings at 3:1 next to the twelve text ones. `contrastRatio` blends a see-through color with what is behind it.
 - Stop the `create-vexpo` spinner repainting for screen readers and `TERM=dumb`. It follows the same opt-outs color does and falls back to one plain line. `TERM=dumb` also stops getting color escapes, and `section()` no longer draws a box-drawing rule off a terminal. Eight new tests.
@@ -63,8 +64,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Pre
 - Go through the search tab and back out of sign-up with "Not now" in `guest.yaml`.
 - Document two Maestro traps in `docs/troubleshooting.md`. A `testID` on a `Text` never shows up in Maestro with `@expo/ui`, and the deep-link alert needs a simulator reboot.
 
-- Catch the template up to the SDK 57 patch matrix, with `expo` 57.0.20, `expo-updates` 57.0.21, `expo-router` 57.0.19, `expo-dev-client` 57.0.18, `@expo/ui` 57.0.15 and eleven more. `expo-doctor` passes 21/21.
-- Bring seven more SDK packages back into range after upstream shipped patches. `expo`, `expo-build-properties`, `expo-image-picker`, `expo-insights`, `expo-notifications`, `expo-router` and `expo-task-manager` each move up one patch.
+- Catch the template up to the SDK 57 patch matrix, with `expo` 57.0.21, `expo-updates` 57.0.21, `expo-router` 57.0.20, `expo-dev-client` 57.0.18, `@expo/ui` 57.0.17 and the other `expo-*` packages. `expo-doctor` passes 21/21.
 - Move the toolchain to `vitest` 5 and `oxfmt` 0.66 in both trees, with `@vitest/coverage-v8` 5 alongside it, and re-pin the codeql, release and scorecard actions.
 - Leave the fourteen advisories in the template lockfile. Three are `decode-uri-component` under `expo-router`, whose fix is pure ESM and would break the install. The other eleven are `uuid` under `xcode`, which never ends up in the app binary.
 
