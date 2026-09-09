@@ -68,7 +68,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Pre
 - Document two Maestro traps in `docs/troubleshooting.md`. A `testID` on a `Text` never shows up in Maestro with `@expo/ui`, and the deep-link alert needs a simulator reboot.
 
 - Catch the template up to the SDK 57 patch matrix, with `expo` 57.0.21, `expo-updates` 57.0.21, `expo-router` 57.0.20, `expo-dev-client` 57.0.18, `@expo/ui` 57.0.17 and the other `expo-*` packages. `expo-doctor` passes 21/21.
-- Move the toolchain to `vitest` 5 and `oxfmt` 0.66 in both trees, with `@vitest/coverage-v8` 5 alongside it, and re-pin the codeql, release and scorecard actions.
+- Move the toolchain to `vitest` 5, `oxfmt` 0.67 and `oxlint` 1.82 in both trees, `knip` 6.35 and `@vitest/coverage-v8` 5 at the root, and `jose` 6.2.12 and `convex-helpers` 0.1.124 in the template. Re-pin the codeql, release and scorecard actions, with `codeql-action` at v4.37.9.
 - Leave the fourteen advisories in the template lockfile. Three are `decode-uri-component` under `expo-router`, whose fix is pure ESM and would break the install. The other eleven are `uuid` under `xcode`, which never ends up in the app binary.
 
 - Keep `.disabled()` on the prominent button whatever the caller passes. It emitted `disabled ?? false` on every render, so leaving the prop off overrode an inherited disabled state rather than picking it up. Welcome, the error boundary and `+not-found` all leave it off.
