@@ -10,6 +10,8 @@ import {
 } from "@expo/ui/swift-ui";
 import {
   accessibilityHidden,
+  accessibilityHint,
+  accessibilityInputLabels,
   accessibilityLabel,
   buttonStyle,
   clipShape,
@@ -66,7 +68,9 @@ export function AvatarPickerRow({
             buttonStyle("plain"),
             frame({ maxWidth: Infinity, minHeight: TouchTarget.min }),
             contentShape(shapes.rectangle()),
-            accessibilityLabel("Change profile photo"),
+            // A label here would replace the name and email the children announce.
+            accessibilityHint("Change your profile photo"),
+            accessibilityInputLabels(["Change profile photo", "Profile photo", "Add a photo"]),
           ]}
           onPress={() => {
             setAvatarPicker(true);

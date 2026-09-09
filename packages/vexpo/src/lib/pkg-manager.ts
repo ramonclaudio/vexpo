@@ -15,17 +15,7 @@ export function dlx(): string {
 }
 
 export function installCmdFor(pm: PackageManager): string {
-  switch (pm) {
-    case "bun":
-      return "bun install";
-    case "pnpm":
-      return "pnpm install";
-    case "yarn":
-      return "yarn install";
-    case "npm":
-    default:
-      return "npm install";
-  }
+  return `${pm} install`;
 }
 
 export function currentRuntime(): "bun" | "node" {

@@ -55,7 +55,7 @@ export async function ensureAscAppId(bundleId: string): Promise<AscAppResolution
 export async function ensureAscApiKeyInEasJson(): Promise<void> {
   if (!existsSync("eas.json")) return;
   const asc = await loadAscCreds();
-  if (!asc || !("path" in asc.privateKey)) return;
+  if (!asc || !hasKeyPath(asc)) return;
   const rel = relative(process.cwd(), asc.privateKey.path);
   if (rel.startsWith("..")) {
     nop("ASC .p8 lives outside the repo; leaving eas.json submit-key fields unset");
@@ -77,14 +77,18 @@ export async function ensureAscApiKeyInEasJson(): Promise<void> {
   }
 }
 
-export async function ascKeyEnv(): Promise<Record<string, string> | null> {
-  const asc = await loadAscCreds();
-  if (!asc || !("path" in asc.privateKey)) return null;
+export function ascKeyEnvFrom(asc: CachedAscKey): Record<string, string> {
   return {
     EXPO_ASC_API_KEY_PATH: asc.privateKey.path,
     EXPO_ASC_KEY_ID: asc.keyId,
     EXPO_ASC_ISSUER_ID: asc.issuerId,
   };
+}
+
+export async function ascKeyEnv(): Promise<Record<string, string> | null> {
+  const asc = await loadAscCreds();
+  if (!asc || !hasKeyPath(asc)) return null;
+  return ascKeyEnvFrom(asc);
 }
 
 async function reuseExistingLink(): Promise<boolean> {
@@ -141,9 +145,13 @@ type CachedAscKey = AscCredentials & {
   privateKey: Extract<AscCredentials["privateKey"], { path: string }>;
 };
 
-async function reportCachedAscKey(): Promise<CachedAscKey | null> {
+function hasKeyPath(asc: AscCredentials): asc is CachedAscKey {
+  return "path" in asc.privateKey;
+}
+
+export async function reportCachedAscKey(): Promise<CachedAscKey | null> {
   const asc = await loadAscCreds();
-  if (!asc || !("path" in asc.privateKey)) {
+  if (!asc || !hasKeyPath(asc)) {
     bad("no cached ASC creds. Run `vexpo apple asc-key` first to validate one.");
     return null;
   }
@@ -151,7 +159,7 @@ async function reportCachedAscKey(): Promise<CachedAscKey | null> {
   note(`  issuerId: ${BOLD}${asc.issuerId}${RESET}`);
   note(`  keyId:    ${BOLD}${asc.keyId}${RESET}`);
   note(`  .p8:      ${BOLD}${asc.privateKey.path}${RESET}`);
-  return { issuerId: asc.issuerId, keyId: asc.keyId, privateKey: asc.privateKey };
+  return asc;
 }
 
 export async function runAscConnect(opts: { force?: boolean } = {}): Promise<number> {
@@ -161,7 +169,6 @@ export async function runAscConnect(opts: { force?: boolean } = {}): Promise<num
 
   const asc = await reportCachedAscKey();
   if (!asc) return 1;
-  const p8Path = asc.privateKey.path;
 
   const bundleId = await requireBundleId();
   if (!bundleId) return 1;
@@ -184,9 +191,7 @@ export async function runAscConnect(opts: { force?: boolean } = {}): Promise<num
 
   const env: Record<string, string> = {
     ...(process.env as Record<string, string>),
-    EXPO_ASC_API_KEY_PATH: p8Path,
-    EXPO_ASC_KEY_ID: asc.keyId,
-    EXPO_ASC_ISSUER_ID: asc.issuerId,
+    ...ascKeyEnvFrom(asc),
   };
 
   line();

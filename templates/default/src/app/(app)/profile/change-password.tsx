@@ -6,11 +6,13 @@ import {
   accessibilityAddTraits,
   accessibilityLabel,
   buttonStyle,
+  contentShape,
   defaultScrollAnchorForRole,
   disabled,
   foregroundStyle,
   frame,
   padding,
+  shapes,
   scrollDismissesKeyboard,
   textContentType,
   tint,
@@ -18,21 +20,21 @@ import {
 
 import { api } from "@/convex/_generated/api";
 import { authClient } from "@/lib/auth-client";
-import { announce } from "@/lib/a11y";
-import { haptics } from "@/lib/haptics";
 import { TouchTarget } from "@/constants/layout";
 import { PasswordField } from "@/components/auth/password-field";
 import { CapsuleTextField } from "@/components/ui/capsule-text-field";
 import { DiscardChangesDialog } from "@/components/ui/discard-changes-dialog";
 import { HelperText } from "@/components/ui/helper-text";
-import { ProminentButton } from "@/components/ui/prominent-button";
+import { ProminentButton } from "@/components/ui/capsule-button";
 import { ErrorText } from "@/components/ui/status-text";
 import { LoadingScreen } from "@/components/ui/loading-screen";
+import { LabeledField } from "@/components/ui/labeled-field";
 import { useColors } from "@/hooks/use-theme";
 import { useUnsavedChanges } from "@/hooks/use-unsaved-changes";
 import { useDynamicFont } from "@/lib/dynamic-font";
+import { fail, succeed } from "@/lib/form-result";
 
-type ChangePasswordState = { error?: string; ok?: boolean; attempt?: number };
+type ChangePasswordState = { error?: string; ok?: boolean };
 const initialState: ChangePasswordState = {};
 
 export default function ChangePasswordScreen() {
@@ -49,19 +51,15 @@ function ChangePasswordForm({ email }: { email: string }) {
   const [confirm, setConfirm] = useState("");
   const emailState = useNativeState(email);
 
-  const [state, submit, isPending] = useActionState<ChangePasswordState, void>(async (prev) => {
-    const attempt = (prev.attempt ?? 0) + 1;
+  const [state, submit, isPending] = useActionState<ChangePasswordState, void>(async () => {
     if (!current || !next || !confirm) {
-      haptics.error();
-      return { error: "Fill in every field", attempt };
+      return fail("Fill in every field");
     }
     if (next.length < 10 || next.length > 128) {
-      haptics.error();
-      return { error: "Password must be 10-128 characters", attempt };
+      return fail("Password must be 10-128 characters");
     }
     if (next !== confirm) {
-      haptics.error();
-      return { error: "Passwords do not match", attempt };
+      return fail("Passwords do not match");
     }
     try {
       const res = await authClient.changePassword({
@@ -70,15 +68,12 @@ function ChangePasswordForm({ email }: { email: string }) {
         revokeOtherSessions: true,
       });
       if (res.error) {
-        haptics.error();
-        return { error: res.error.message ?? "Failed to change password", attempt };
+        return fail(res.error.message ?? "Failed to change password");
       }
-      haptics.success();
-      announce("Password changed. Other sessions have been signed out.");
+      succeed("Password changed. Other sessions have been signed out.");
       return { ok: true };
     } catch {
-      haptics.error();
-      return { error: "An unexpected error occurred", attempt };
+      return fail("An unexpected error occurred");
     }
   }, initialState);
 
@@ -88,8 +83,6 @@ function ChangePasswordForm({ email }: { email: string }) {
   useEffect(() => {
     if (state.ok) router.back();
   }, [state.ok]);
-
-  const labelModifiers = [dfont({ size: 17, weight: "semibold" })];
 
   return (
     <Host testID="change-password-screen" style={{ flex: 1, backgroundColor: colors.background }}>
@@ -120,8 +113,7 @@ function ChangePasswordForm({ email }: { email: string }) {
             </Text>
           </VStack>
 
-          <VStack spacing={6} alignment="leading" modifiers={[frame({ maxWidth: Infinity })]}>
-            <Text modifiers={labelModifiers}>Account</Text>
+          <LabeledField label="Account">
             <CapsuleTextField
               testID="change-password-account"
               text={emailState}
@@ -132,22 +124,20 @@ function ChangePasswordForm({ email }: { email: string }) {
                 accessibilityLabel("Account email"),
               ]}
             />
-          </VStack>
+          </LabeledField>
 
-          <VStack spacing={6} alignment="leading" modifiers={[frame({ maxWidth: Infinity })]}>
-            <Text modifiers={labelModifiers}>Current password</Text>
+          <LabeledField label="Current password">
             <PasswordField
               testID="change-password-current"
               onTextChange={setCurrent}
               disabled={isPending}
               submitLabelType="next"
               accessibilityLabel="Current password"
-              accessibilityHint="Enter your existing password"
+              accessibilityHint="Enter your current password"
             />
-          </VStack>
+          </LabeledField>
 
-          <VStack spacing={6} alignment="leading" modifiers={[frame({ maxWidth: Infinity })]}>
-            <Text modifiers={labelModifiers}>New password</Text>
+          <LabeledField label="New password">
             <PasswordField
               testID="change-password-new"
               onTextChange={setNext}
@@ -158,10 +148,9 @@ function ChangePasswordForm({ email }: { email: string }) {
               accessibilityHint="Choose a new password with at least 10 characters"
             />
             <HelperText>At least 10 characters.</HelperText>
-          </VStack>
+          </LabeledField>
 
-          <VStack spacing={6} alignment="leading" modifiers={[frame({ maxWidth: Infinity })]}>
-            <Text modifiers={labelModifiers}>Confirm new password</Text>
+          <LabeledField label="Confirm new password">
             <PasswordField
               testID="change-password-confirm"
               onTextChange={setConfirm}
@@ -171,13 +160,9 @@ function ChangePasswordForm({ email }: { email: string }) {
               accessibilityLabel="Confirm new password"
               accessibilityHint="Re-enter the new password to confirm"
             />
-          </VStack>
+          </LabeledField>
 
-          {state.error ? (
-            <ErrorText testID="change-password-error" attempt={state.attempt}>
-              {state.error}
-            </ErrorText>
-          ) : null}
+          {state.error ? <ErrorText testID="change-password-error">{state.error}</ErrorText> : null}
 
           <ProminentButton
             testID="change-password-submit"
@@ -195,6 +180,7 @@ function ChangePasswordForm({ email }: { email: string }) {
                 foregroundStyle(colors.mutedForeground),
                 dfont({ size: 14, weight: "semibold" }),
                 frame({ minHeight: TouchTarget.min }),
+                contentShape(shapes.rectangle()),
                 disabled(isPending),
               ]}
               onPress={() => {

@@ -13,8 +13,8 @@ import { ensureIdentity } from "../../src/commands/convex.ts";
 import { envSet } from "../../src/lib/convex-env.ts";
 import { ensureLine } from "../../src/lib/env-local.ts";
 
-const envSetSpy = envSet as unknown as ReturnType<typeof vi.fn>;
-const ensureLineSpy = ensureLine as unknown as ReturnType<typeof vi.fn>;
+const envSetSpy = vi.mocked(envSet);
+const ensureLineSpy = vi.mocked(ensureLine);
 
 beforeEach(() => {
   vi.clearAllMocks();

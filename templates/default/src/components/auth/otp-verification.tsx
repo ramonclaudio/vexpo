@@ -9,45 +9,33 @@ import {
   Image,
   useNativeState,
 } from "@expo/ui/swift-ui";
-import { scheduleOnRN } from "react-native-worklets";
 import {
   foregroundStyle,
   buttonStyle,
   contentShape,
   disabled,
-  keyboardType,
-  monospacedDigit,
-  kerning,
   multilineTextAlignment,
-  onSubmit,
-  submitLabel,
   padding,
   frame,
   shapes,
   accessibilityAddTraits,
   accessibilityElement,
   accessibilityHidden,
-  accessibilityLabel,
-  accessibilityHint,
   defaultScrollAnchorForRole,
   dynamicTypeSize,
   scrollDismissesKeyboard,
-  strokeBorder,
   tint,
-  textContentType,
 } from "@expo/ui/swift-ui/modifiers";
+import { OtpField } from "@/components/ui/otp-field";
 import { useDynamicFont } from "@/lib/dynamic-font";
 import { Button as ButtonTokens, TouchTarget } from "@/constants/layout";
 import { DynamicType } from "@/constants/ui";
 
 import { authClient } from "@/lib/auth-client";
-import { haptics } from "@/lib/haptics";
 import { useColors } from "@/hooks/use-theme";
-import { maskOtp } from "@/lib/masks";
-import { CapsuleTextField } from "@/components/ui/capsule-text-field";
-import { ProminentButton } from "@/components/ui/prominent-button";
+import { ProminentButton } from "@/components/ui/capsule-button";
 import { ErrorText } from "@/components/ui/status-text";
-import { announce } from "@/lib/a11y";
+import { fail, succeed } from "@/lib/form-result";
 
 export type OtpFlow = "verify-email" | "sign-in";
 
@@ -57,7 +45,7 @@ type OtpVerificationProps = {
   flow?: OtpFlow;
 };
 
-type OtpState = { error?: string; ok?: boolean; attempt?: number };
+type OtpState = { error?: string; ok?: boolean };
 const initialState: OtpState = {};
 
 export function OtpVerification({ email, onBack, flow = "verify-email" }: OtpVerificationProps) {
@@ -68,13 +56,10 @@ export function OtpVerification({ email, onBack, flow = "verify-email" }: OtpVer
   const [lastAction, setLastAction] = useState<"verify" | "resend">("verify");
   const isSignIn = flow === "sign-in";
 
-  const [verifyState, verify, isVerifying] = useActionState<OtpState, void>(async (prev) => {
-    const attempt = (prev.attempt ?? 0) + 1;
-
+  const [verifyState, verify, isVerifying] = useActionState<OtpState, void>(async () => {
     const code = otpState.value;
     if (code.length !== 6) {
-      haptics.error();
-      return { error: "Please enter the 6-digit code", attempt };
+      return fail("Please enter the 6-digit code");
     }
 
     try {
@@ -83,41 +68,31 @@ export function OtpVerification({ email, onBack, flow = "verify-email" }: OtpVer
         : await authClient.emailOtp.verifyEmail({ email: email.trim(), otp: code });
 
       if (response.error) {
-        haptics.error();
-        return { error: "Invalid or expired code. Please try again.", attempt };
+        return fail("Invalid or expired code. Please try again.");
       }
 
-      haptics.success();
-      announce(isSignIn ? "Signed in" : "Email verified");
+      succeed(isSignIn ? "Signed in" : "Email verified");
       return { ok: true };
     } catch {
-      haptics.error();
-      return {
-        error: isSignIn
-          ? "Sign in failed. Please try again."
-          : "Verification failed. Please try again.",
-        attempt,
-      };
+      return fail(
+        isSignIn ? "Sign in failed. Please try again." : "Verification failed. Please try again.",
+      );
     }
   }, initialState);
 
-  const [resendState, resend, isResending] = useActionState<OtpState, void>(async (prev) => {
-    const attempt = (prev.attempt ?? 0) + 1;
+  const [resendState, resend, isResending] = useActionState<OtpState, void>(async () => {
     try {
       const response = await authClient.emailOtp.sendVerificationOtp({
         email: email.trim(),
         type: isSignIn ? "sign-in" : "email-verification",
       });
       if (response.error) {
-        haptics.error();
-        return { error: "Failed to send code. Please try again.", attempt };
+        return fail("Failed to send code. Please try again.");
       }
-      haptics.success();
-      announce("New verification code sent");
+      succeed("New verification code sent");
       return { ok: true };
     } catch {
-      haptics.error();
-      return { error: "Failed to send code. Please try again.", attempt };
+      return fail("Failed to send code. Please try again.");
     }
   }, initialState);
 
@@ -131,7 +106,6 @@ export function OtpVerification({ email, onBack, flow = "verify-email" }: OtpVer
   };
 
   const error = lastAction === "resend" ? resendState.error : verifyState.error;
-  const attempt = lastAction === "resend" ? resendState.attempt : verifyState.attempt;
   const invalidCode = lastAction === "verify" && !!verifyState.error;
 
   const verifyLabel = (() => {
@@ -192,46 +166,17 @@ export function OtpVerification({ email, onBack, flow = "verify-email" }: OtpVer
             <Text modifiers={[dfont({ size: 15, weight: "semibold" })]}>{email}</Text>
           </VStack>
 
-          {error && (
-            <ErrorText testID="otp-error" attempt={attempt}>
-              {error}
-            </ErrorText>
-          )}
+          {error && <ErrorText testID="otp-error">{error}</ErrorText>}
 
           <VStack spacing={12} modifiers={[frame({ maxWidth: Infinity })]}>
-            <CapsuleTextField
+            <OtpField
               testID="otp-field"
               text={otpState}
-              placeholder="000000"
-              onTextChange={(text) => {
-                "worklet";
-                const digits = maskOtp(text);
-                otpState.value = digits;
-                scheduleOnRN(setOtp, digits);
-              }}
-              autoFocus
-              modifiers={[
-                dfont({ size: 24, design: "monospaced" }),
-                monospacedDigit(),
-                kerning(8),
-                multilineTextAlignment("center"),
-                dynamicTypeSize({ max: DynamicType.otp }),
-                keyboardType("numeric"),
-                textContentType("oneTimeCode"),
-                onSubmit(runVerify),
-                submitLabel("done"),
-                accessibilityLabel("Verification code"),
-                accessibilityHint("Enter the 6 digit code sent to your email"),
-                ...(invalidCode
-                  ? [
-                      strokeBorder({
-                        color: colors.destructive,
-                        shape: "capsule",
-                        style: { lineWidth: 2 },
-                      }),
-                    ]
-                  : []),
-              ]}
+              hint="Enter the 6 digit code sent to your email"
+              onChange={setOtp}
+              onVerify={runVerify}
+              isVerifying={isVerifying}
+              invalidCode={invalidCode}
             />
 
             <ProminentButton
@@ -253,6 +198,7 @@ export function OtpVerification({ email, onBack, flow = "verify-email" }: OtpVer
               <Text
                 modifiers={[
                   frame({ maxWidth: Infinity, minHeight: ButtonTokens.height }),
+                  contentShape(shapes.rectangle()),
                   multilineTextAlignment("center"),
                   dfont({ size: ButtonTokens.fontSize, weight: ButtonTokens.secondaryFontWeight }),
                   foregroundStyle(colors.primary),

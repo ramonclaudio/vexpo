@@ -25,12 +25,12 @@ import { envCreate, envList } from "../../src/lib/eas-project.ts";
 import { readOne } from "../../src/lib/env-local.ts";
 import { load as loadState, lookupOutput } from "../../src/lib/state.ts";
 
-const envListSpy = envList as unknown as ReturnType<typeof vi.fn>;
-const envCreateSpy = envCreate as unknown as ReturnType<typeof vi.fn>;
-const readOneSpy = readOne as unknown as ReturnType<typeof vi.fn>;
-const mintProdSpy = mintProdDeployKey as unknown as ReturnType<typeof vi.fn>;
-const loadSpy = loadState as unknown as ReturnType<typeof vi.fn>;
-const lookupOutputSpy = lookupOutput as unknown as ReturnType<typeof vi.fn>;
+const envListSpy = vi.mocked(envList);
+const envCreateSpy = vi.mocked(envCreate);
+const readOneSpy = vi.mocked(readOne);
+const mintProdSpy = vi.mocked(mintProdDeployKey);
+const loadSpy = vi.mocked(loadState);
+const lookupOutputSpy = vi.mocked(lookupOutput);
 
 const P8 = "/tmp/AuthKey_ABC.p8";
 

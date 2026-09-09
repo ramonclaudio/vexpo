@@ -1,17 +1,8 @@
 import { startTransition, useActionState, useState } from "react";
 import * as AppleAuthentication from "expo-apple-authentication";
-import { Image as ExpoImage } from "expo-image";
 import { router } from "expo-router";
 import { useQuery } from "convex/react";
-import {
-  Host,
-  ScrollView,
-  VStack,
-  Button,
-  Text,
-  RNHostView,
-  useNativeState,
-} from "@expo/ui/swift-ui";
+import { Host, ScrollView, VStack, Button, Text, useNativeState } from "@expo/ui/swift-ui";
 import { scheduleOnRN } from "react-native-worklets";
 import {
   autocorrectionDisabled,
@@ -39,8 +30,6 @@ import { TouchTarget } from "@/constants/layout";
 
 import { api } from "@/convex/_generated/api";
 import { authClient } from "@/lib/auth-client";
-import { assets } from "@/lib/assets";
-import { haptics } from "@/lib/haptics";
 import { maskUsername } from "@/lib/masks";
 import {
   firstError,
@@ -48,20 +37,22 @@ import {
   signInEmailSchema,
   signInUsernameSchema,
 } from "@/lib/schemas";
+import BrandIcon from "@/components/ui/brand-icon";
+import { ProminentButton } from "@/components/ui/capsule-button";
 import { OtpVerification, type OtpFlow } from "@/components/auth/otp-verification";
 import { CapsuleTextField } from "@/components/ui/capsule-text-field";
+import { GuestOptions } from "@/components/auth/guest-options";
 import { HelperText } from "@/components/ui/helper-text";
 import { PasswordField } from "@/components/auth/password-field";
 import { SegmentedToggle } from "@/components/ui/segmented-toggle";
-import { ProminentButton } from "@/components/ui/prominent-button";
-import { SecondaryButton } from "@/components/ui/secondary-button";
 import { ErrorText } from "@/components/ui/status-text";
-import { announce } from "@/lib/a11y";
-import { useColors, useThemedAsset } from "@/hooks/use-theme";
+import { UNEXPECTED_ERROR, fail, succeed } from "@/lib/form-result";
+import { useColors } from "@/hooks/use-theme";
 import { useAppleAuth } from "@/hooks/use-apple-auth";
 import { useAuthStatus } from "@/hooks/use-auth-status";
-import { dismissAuth, useGuestSignIn } from "@/hooks/use-guest-sign-in";
+import { useGuestSignIn } from "@/hooks/use-guest-sign-in";
 import { AppleButton } from "@/components/auth/apple-button";
+import { LabeledField } from "@/components/ui/labeled-field";
 
 type SignInState = { error?: string };
 const initialState: SignInState = {};
@@ -114,47 +105,9 @@ function ForgotPasswordLink({ testID }: { testID: string }) {
   );
 }
 
-function GuestOptions({
-  showGuest,
-  isGuest,
-  isLoading,
-  guest,
-}: {
-  showGuest: boolean;
-  isGuest: boolean;
-  isLoading: boolean;
-  guest: ReturnType<typeof useGuestSignIn>;
-}) {
-  if (showGuest) {
-    return (
-      <VStack spacing={6} alignment="leading" modifiers={[frame({ maxWidth: Infinity })]}>
-        <SecondaryButton
-          testID="sign-in-guest"
-          label={guest.isPending ? "Starting..." : "Continue as guest"}
-          onPress={() => startTransition(() => guest.signIn())}
-          disabled={isLoading}
-          inputLabels={["Continue as guest", "Guest", "Skip sign in"]}
-        />
-        <HelperText>You can create an account later and keep what you did.</HelperText>
-      </VStack>
-    );
-  }
-  if (!isGuest) return null;
-  return (
-    <SecondaryButton
-      testID="sign-in-dismiss"
-      label="Not now"
-      onPress={dismissAuth}
-      disabled={isLoading}
-      filled={false}
-    />
-  );
-}
-
 export default function SignInScreen() {
   const dfont = useDynamicFont();
   const colors = useColors();
-  const brandIcon = useThemedAsset(assets.brandIconLight, assets.brandIconDark);
 
   const [signInMethod, setSignInMethod] = useState<SignInMethod>("email");
   const [emailValue, setEmailValue] = useState("");
@@ -179,14 +132,11 @@ export default function SignInScreen() {
       type: "email-verification",
     });
     if (sent.error) {
-      haptics.error();
-      return {
-        error:
-          "Your email still needs verifying, and the code wouldn't send. Wait a minute and try again.",
-      };
+      return fail(
+        "Your email still needs verifying, and the code wouldn't send. Wait a minute and try again.",
+      );
     }
-    haptics.success();
-    announce("Verification code sent");
+    succeed("Verification code sent");
     setOtpEmail(email);
     setOtpFlow("verify-email");
     setShowOtpVerification(true);
@@ -197,8 +147,7 @@ export default function SignInScreen() {
     async () => {
       const parsed = signInEmailSchema.safeParse({ email: emailValue, password });
       if (!parsed.success) {
-        haptics.error();
-        return { error: firstError(parsed)! };
+        return fail(firstError(parsed)!);
       }
       try {
         const response = await authClient.signIn.email({
@@ -209,15 +158,12 @@ export default function SignInScreen() {
           if (response.error.code === NOT_VERIFIED) {
             return await startEmailVerification(parsed.data.email);
           }
-          haptics.error();
-          return { error: response.error.message ?? "Invalid email or password" };
+          return fail(response.error.message ?? "Invalid email or password");
         }
-        haptics.success();
-        announce("Signed in");
+        succeed("Signed in");
         return {};
       } catch {
-        haptics.error();
-        return { error: "An unexpected error occurred. Please try again." };
+        return fail(UNEXPECTED_ERROR);
       }
     },
     initialState,
@@ -227,8 +173,7 @@ export default function SignInScreen() {
     async () => {
       const parsed = signInUsernameSchema.safeParse({ username: usernameValue, password });
       if (!parsed.success) {
-        haptics.error();
-        return { error: firstError(parsed)! };
+        return fail(firstError(parsed)!);
       }
       try {
         const response = await authClient.signIn.username({
@@ -236,21 +181,17 @@ export default function SignInScreen() {
           password: parsed.data.password,
         });
         if (response.error) {
-          haptics.error();
           if (response.error.code === NOT_VERIFIED) {
-            return {
-              error:
-                "This account still needs its email verified. Sign in with your email address and we'll send a new code.",
-            };
+            return fail(
+              "This account still needs its email verified. Sign in with your email address and we'll send a new code.",
+            );
           }
-          return { error: response.error.message ?? "Invalid username or password" };
+          return fail(response.error.message ?? "Invalid username or password");
         }
-        haptics.success();
-        announce("Signed in");
+        succeed("Signed in");
         return {};
       } catch {
-        haptics.error();
-        return { error: "An unexpected error occurred. Please try again." };
+        return fail(UNEXPECTED_ERROR);
       }
     },
     initialState,
@@ -260,8 +201,7 @@ export default function SignInScreen() {
     async () => {
       const parsed = forgotPasswordSchema.safeParse({ email: otpEmail });
       if (!parsed.success) {
-        haptics.error();
-        return { error: firstError(parsed)! };
+        return fail(firstError(parsed)!);
       }
       try {
         const response = await authClient.emailOtp.sendVerificationOtp({
@@ -269,17 +209,14 @@ export default function SignInScreen() {
           type: "sign-in",
         });
         if (response.error) {
-          haptics.error();
-          return { error: response.error.message ?? "Failed to send sign-in code" };
+          return fail(response.error.message ?? "Failed to send sign-in code");
         }
-        haptics.success();
-        announce("Sign-in code sent");
+        succeed("Sign-in code sent");
         setOtpFlow("sign-in");
         setShowOtpVerification(true);
         return {};
       } catch {
-        haptics.error();
-        return { error: "An unexpected error occurred. Please try again." };
+        return fail(UNEXPECTED_ERROR);
       }
     },
     initialState,
@@ -322,8 +259,6 @@ export default function SignInScreen() {
     return isUsernamePending ? "Signing in..." : "Sign in";
   })();
 
-  const labelModifiers = [dfont({ size: 17, weight: "semibold" })];
-
   return (
     <Host testID="sign-in-screen" style={{ flex: 1, backgroundColor: colors.background }}>
       <ScrollView
@@ -338,14 +273,7 @@ export default function SignInScreen() {
           alignment="leading"
           modifiers={[padding({ horizontal: 24, top: 60, bottom: 40 })]}
         >
-          <RNHostView matchContents>
-            <ExpoImage
-              source={brandIcon}
-              style={{ width: 56, height: 56 }}
-              accessibilityLabel=""
-              contentFit="contain"
-            />
-          </RNHostView>
+          <BrandIcon />
 
           <VStack spacing={6} alignment="leading">
             <Text
@@ -385,8 +313,7 @@ export default function SignInScreen() {
 
           {signInMethod === "email" && (
             <>
-              <VStack spacing={6} alignment="leading" modifiers={[frame({ maxWidth: Infinity })]}>
-                <Text modifiers={labelModifiers}>Email</Text>
+              <LabeledField label="Email">
                 <CapsuleTextField
                   testID="sign-in-email"
                   placeholder="you@example.com"
@@ -399,29 +326,26 @@ export default function SignInScreen() {
                     disabled(isLoading),
                     submitLabel("next"),
                     accessibilityLabel("Email address"),
-                    accessibilityHint("Enter the email for your account"),
+                    accessibilityHint("Enter the email address for your account"),
                   ]}
                 />
-              </VStack>
-              <VStack spacing={6} alignment="leading" modifiers={[frame({ maxWidth: Infinity })]}>
-                <Text modifiers={labelModifiers}>Password</Text>
+              </LabeledField>
+              <LabeledField label="Password">
                 <PasswordField
                   testID="sign-in-email-password"
                   onTextChange={setPassword}
                   onSubmit={() => startTransition(() => signInWithEmail())}
                   disabled={isLoading}
                   accessibilityLabel="Password"
-                  accessibilityHint="Enter your account password"
                 />
-              </VStack>
+              </LabeledField>
               {emailFeatures && <ForgotPasswordLink testID="sign-in-email-forgot-password" />}
             </>
           )}
 
           {signInMethod === "username" && (
             <>
-              <VStack spacing={6} alignment="leading" modifiers={[frame({ maxWidth: Infinity })]}>
-                <Text modifiers={labelModifiers}>Username</Text>
+              <LabeledField label="Username">
                 <CapsuleTextField
                   testID="sign-in-username"
                   text={usernameFieldState}
@@ -443,25 +367,22 @@ export default function SignInScreen() {
                     accessibilityHint("Enter the username for your account"),
                   ]}
                 />
-              </VStack>
-              <VStack spacing={6} alignment="leading" modifiers={[frame({ maxWidth: Infinity })]}>
-                <Text modifiers={labelModifiers}>Password</Text>
+              </LabeledField>
+              <LabeledField label="Password">
                 <PasswordField
                   testID="sign-in-username-password"
                   onTextChange={setPassword}
                   onSubmit={() => startTransition(() => signInWithUsername())}
                   disabled={isLoading}
                   accessibilityLabel="Password"
-                  accessibilityHint="Enter your account password"
                 />
-              </VStack>
+              </LabeledField>
               {emailFeatures && <ForgotPasswordLink testID="sign-in-username-forgot-password" />}
             </>
           )}
 
           {signInMethod === "otp" && (
-            <VStack spacing={6} alignment="leading" modifiers={[frame({ maxWidth: Infinity })]}>
-              <Text modifiers={labelModifiers}>Email</Text>
+            <LabeledField label="Email">
               <CapsuleTextField
                 testID="sign-in-otp-email"
                 placeholder="you@example.com"
@@ -479,7 +400,7 @@ export default function SignInScreen() {
                 ]}
               />
               <HelperText>We&apos;ll email you a 6-digit code. No password needed.</HelperText>
-            </VStack>
+            </LabeledField>
           )}
 
           <ProminentButton
@@ -499,6 +420,7 @@ export default function SignInScreen() {
           )}
 
           <GuestOptions
+            testIDPrefix="sign-in"
             showGuest={showGuest}
             isGuest={isGuest}
             isLoading={isLoading}

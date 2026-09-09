@@ -2,14 +2,17 @@ import { type ComponentProps } from "react";
 import { Button, HStack, Image, Spacer, Text } from "@expo/ui/swift-ui";
 import {
   accessibilityHidden,
+  accessibilityHint,
   accessibilityInputLabels,
   background,
   buttonStyle,
   clipShape,
+  contentShape,
   foregroundStyle,
   frame,
   imageScale,
   padding,
+  shapes,
 } from "@expo/ui/swift-ui/modifiers";
 
 import { useDynamicFont } from "@/lib/dynamic-font";
@@ -23,6 +26,7 @@ export function CapsuleRowButton({
   label,
   systemImage,
   onPress,
+  hint,
   inputLabels,
   role,
 }: {
@@ -30,6 +34,7 @@ export function CapsuleRowButton({
   label: string;
   systemImage: SFSymbol;
   onPress: () => void;
+  hint?: string;
   inputLabels?: string[];
   role?: "destructive";
 }) {
@@ -45,6 +50,7 @@ export function CapsuleRowButton({
         frame({ maxWidth: Infinity }),
         background(colors.muted),
         clipShape("capsule"),
+        ...(hint ? [accessibilityHint(hint)] : []),
         ...(inputLabels ? [accessibilityInputLabels(inputLabels)] : []),
       ]}
       onPress={onPress}
@@ -55,6 +61,8 @@ export function CapsuleRowButton({
         modifiers={[
           frame({ maxWidth: Infinity, minHeight: ButtonTokens.height }),
           padding({ horizontal: 16 }),
+          // Must sit on the content, not the Button, or the dialog anchor breaks.
+          contentShape(shapes.capsule()),
         ]}
       >
         <Image

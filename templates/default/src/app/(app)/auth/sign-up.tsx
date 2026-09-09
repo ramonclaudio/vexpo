@@ -1,18 +1,8 @@
 import { startTransition, useActionState, useCallback, useEffect, useRef, useState } from "react";
 import * as AppleAuthentication from "expo-apple-authentication";
-import { Image as ExpoImage } from "expo-image";
 import { router } from "expo-router";
 import { useQuery } from "convex/react";
-import {
-  Host,
-  ScrollView,
-  VStack,
-  HStack,
-  Text,
-  Image,
-  RNHostView,
-  useNativeState,
-} from "@expo/ui/swift-ui";
+import { Host, ScrollView, VStack, HStack, Text, Image, useNativeState } from "@expo/ui/swift-ui";
 import {
   autocorrectionDisabled,
   foregroundStyle,
@@ -23,7 +13,6 @@ import {
   textContentType,
   textInputAutocapitalization,
   padding,
-  frame,
   scrollDismissesKeyboard,
   accessibilityAddTraits,
   accessibilityHidden,
@@ -41,27 +30,28 @@ import { GUEST_NAME, isReservedUsername, isValidUsernameFormat } from "@/convex/
 import { scheduleOnRN } from "react-native-worklets";
 
 import { authClient } from "@/lib/auth-client";
-import { assets } from "@/lib/assets";
-import { haptics } from "@/lib/haptics";
 import { maskUsername } from "@/lib/masks";
 import { setNativeValue } from "@/lib/native-state";
+import BrandIcon from "@/components/ui/brand-icon";
+import { ProminentButton } from "@/components/ui/capsule-button";
 import { OtpVerification } from "@/components/auth/otp-verification";
 import { CapsuleTextField } from "@/components/ui/capsule-text-field";
 import { DiscardChangesDialog } from "@/components/ui/discard-changes-dialog";
+import { GuestOptions } from "@/components/auth/guest-options";
 import { HelperText } from "@/components/ui/helper-text";
 import { useUnsavedChanges } from "@/hooks/use-unsaved-changes";
 import { PasswordField } from "@/components/auth/password-field";
 import { SegmentedToggle } from "@/components/ui/segmented-toggle";
-import { ProminentButton } from "@/components/ui/prominent-button";
-import { SecondaryButton } from "@/components/ui/secondary-button";
 import { firstError, firstErrorField, signUpSchema } from "@/lib/schemas";
 import { ErrorText } from "@/components/ui/status-text";
 import { announce } from "@/lib/a11y";
-import { useColors, useThemedAsset } from "@/hooks/use-theme";
+import { UNEXPECTED_ERROR, fail, succeed } from "@/lib/form-result";
+import { useColors } from "@/hooks/use-theme";
 import { useAppleAuth } from "@/hooks/use-apple-auth";
 import { useAuthStatus } from "@/hooks/use-auth-status";
-import { dismissAuth, useGuestSignIn } from "@/hooks/use-guest-sign-in";
+import { useGuestSignIn } from "@/hooks/use-guest-sign-in";
 import { AppleButton } from "@/components/auth/apple-button";
+import { LabeledField } from "@/components/ui/labeled-field";
 
 type SignUpState = { error?: string };
 const initialState: SignUpState = {};
@@ -108,47 +98,9 @@ function UsernameStatusRow({ status }: { status: UsernameStatus | null }) {
   );
 }
 
-function GuestOptions({
-  showGuest,
-  isGuest,
-  isLoading,
-  guest,
-}: {
-  showGuest: boolean;
-  isGuest: boolean;
-  isLoading: boolean;
-  guest: ReturnType<typeof useGuestSignIn>;
-}) {
-  if (showGuest) {
-    return (
-      <VStack spacing={6} alignment="leading" modifiers={[frame({ maxWidth: Infinity })]}>
-        <SecondaryButton
-          testID="sign-up-guest"
-          label={guest.isPending ? "Starting..." : "Continue as guest"}
-          onPress={() => startTransition(() => guest.signIn())}
-          disabled={isLoading}
-          inputLabels={["Continue as guest", "Guest", "Skip sign up"]}
-        />
-        <HelperText>You can create an account later and keep what you did.</HelperText>
-      </VStack>
-    );
-  }
-  if (!isGuest) return null;
-  return (
-    <SecondaryButton
-      testID="sign-up-dismiss"
-      label="Not now"
-      onPress={dismissAuth}
-      disabled={isLoading}
-      filled={false}
-    />
-  );
-}
-
 export default function SignUpScreen() {
   const dfont = useDynamicFont();
   const colors = useColors();
-  const brandIcon = useThemedAsset(assets.brandIconLight, assets.brandIconDark);
   const nameFieldState = useNativeState("");
   const [name, setName] = useState("");
   const [prefilledName, setPrefilledName] = useState("");
@@ -234,10 +186,9 @@ export default function SignUpScreen() {
   const [state, signUp, isPending] = useActionState<SignUpState, void>(async () => {
     const parsed = signUpSchema.safeParse({ name, username, email, password });
     if (!parsed.success) {
-      haptics.error();
       const field = firstErrorField(parsed);
       if (field) setNativeValue(activeField, `field-${field}`);
-      return { error: firstError(parsed)! };
+      return fail(firstError(parsed)!);
     }
 
     try {
@@ -255,37 +206,32 @@ export default function SignUpScreen() {
             type: "email-verification",
           });
           if (sent.error) {
-            haptics.error();
-            return { error: "That code wouldn't send. Wait a minute and try again." };
+            return fail("That code wouldn't send. Wait a minute and try again.");
           }
-          haptics.success();
-          announce("Verification code sent");
+          succeed("Verification code sent");
           setShowVerification(true);
           return {};
         }
-        haptics.error();
         if (response.error.code === USERNAME_TAKEN) {
           setNativeValue(activeField, "field-username");
-          return {
-            error: emailFeatures
+          return fail(
+            emailFeatures
               ? "That username is taken. If the account is yours, sign in with your email and we'll send a new code."
               : "That username is taken. Please choose another.",
-          };
+          );
         }
-        return { error: "Unable to create account. Please try a different email or username." };
+        return fail("Unable to create account. Please try a different email or username.");
       }
 
-      haptics.success();
       if (emailFeatures) {
-        announce("Account created. Check your email for the verification code.");
+        succeed("Account created. Check your email for the verification code.");
         setShowVerification(true);
         return {};
       }
-      announce("Account created. You're signed in.");
+      succeed("Account created. You're signed in.");
       return {};
     } catch {
-      haptics.error();
-      return { error: "An unexpected error occurred. Please try again." };
+      return fail(UNEXPECTED_ERROR);
     }
   }, initialState);
 
@@ -321,8 +267,6 @@ export default function SignUpScreen() {
     return <OtpVerification email={email} onBack={() => setShowVerification(false)} />;
   }
 
-  const labelModifiers = [dfont({ size: 17, weight: "semibold" })];
-
   return (
     <Host testID="sign-up-screen" style={{ flex: 1, backgroundColor: colors.background }}>
       <ScrollView
@@ -338,14 +282,7 @@ export default function SignUpScreen() {
           alignment="leading"
           modifiers={[padding({ horizontal: 24, top: 60, bottom: 40 }), scrollTargetLayout()]}
         >
-          <RNHostView matchContents>
-            <ExpoImage
-              source={brandIcon}
-              style={{ width: 56, height: 56 }}
-              accessibilityLabel="App icon"
-              contentFit="contain"
-            />
-          </RNHostView>
+          <BrandIcon />
 
           <VStack spacing={6} alignment="leading">
             <Text
@@ -375,12 +312,7 @@ export default function SignUpScreen() {
 
           {error && <ErrorText testID="sign-up-error">{error}</ErrorText>}
 
-          <VStack
-            spacing={6}
-            alignment="leading"
-            modifiers={[frame({ maxWidth: Infinity }), id("field-name")]}
-          >
-            <Text modifiers={labelModifiers}>Name</Text>
+          <LabeledField label="Name" modifiers={[id("field-name")]}>
             <CapsuleTextField
               testID="sign-up-name"
               text={nameFieldState}
@@ -392,17 +324,12 @@ export default function SignUpScreen() {
                 disabled(isLoading),
                 submitLabel("next"),
                 accessibilityLabel("Full name"),
-                accessibilityHint("Enter the name to display on your account"),
+                accessibilityHint("Enter the display name for your account"),
               ]}
             />
-          </VStack>
+          </LabeledField>
 
-          <VStack
-            spacing={6}
-            alignment="leading"
-            modifiers={[frame({ maxWidth: Infinity }), id("field-username")]}
-          >
-            <Text modifiers={labelModifiers}>Username (optional)</Text>
+          <LabeledField label="Username (optional)" modifiers={[id("field-username")]}>
             <CapsuleTextField
               testID="sign-up-username"
               text={usernameState}
@@ -425,14 +352,9 @@ export default function SignUpScreen() {
               ]}
             />
             <UsernameStatusRow status={usernameStatus} />
-          </VStack>
+          </LabeledField>
 
-          <VStack
-            spacing={6}
-            alignment="leading"
-            modifiers={[frame({ maxWidth: Infinity }), id("field-email")]}
-          >
-            <Text modifiers={labelModifiers}>Email</Text>
+          <LabeledField label="Email" modifiers={[id("field-email")]}>
             <CapsuleTextField
               testID="sign-up-email"
               placeholder="you@example.com"
@@ -448,14 +370,9 @@ export default function SignUpScreen() {
                 accessibilityHint("Enter the email address you want to use for your account"),
               ]}
             />
-          </VStack>
+          </LabeledField>
 
-          <VStack
-            spacing={6}
-            alignment="leading"
-            modifiers={[frame({ maxWidth: Infinity }), id("field-password")]}
-          >
-            <Text modifiers={labelModifiers}>Password</Text>
+          <LabeledField label="Password" modifiers={[id("field-password")]}>
             <PasswordField
               testID="sign-up-password"
               onTextChange={setPassword}
@@ -463,10 +380,10 @@ export default function SignUpScreen() {
               contentType="newPassword"
               disabled={isLoading}
               accessibilityLabel="Password"
-              accessibilityHint="Enter a password with at least 10 characters"
+              accessibilityHint="Choose a password with at least 10 characters"
             />
             <HelperText>At least 10 characters.</HelperText>
-          </VStack>
+          </LabeledField>
 
           <ProminentButton
             testID="sign-up-submit"
@@ -485,6 +402,7 @@ export default function SignUpScreen() {
           )}
 
           <GuestOptions
+            testIDPrefix="sign-up"
             showGuest={showGuest}
             isGuest={isGuest}
             isLoading={isLoading}

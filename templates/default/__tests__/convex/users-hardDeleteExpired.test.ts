@@ -1,15 +1,4 @@
 /// <reference types="vite/client" />
-/**
- * convexTest coverage for `internal.users.hardDeleteExpired`, the irreversible
- * 30-day account purge (the highest-stakes data-loss path in the template).
- *
- * It scans the `by_deletedAt` index for tombstoned users past the grace window
- * and permanently purges them. The index is on the OPTIONAL `deletedAt` field,
- * and Convex sorts `undefined < null < numbers`, so an unbounded scan returns
- * every ACTIVE user (deletedAt unset) before any tombstone. These tests seed
- * MORE active users than the batch size: a regression to an unbounded scan
- * would starve the tombstone and purge nothing, failing the first test.
- */
 import { describe, expect, test } from "vitest";
 
 import { internal } from "@/convex/_generated/api";
@@ -22,8 +11,7 @@ describe("users.hardDeleteExpired", () => {
     const t = initConvexTest();
     const now = Date.now();
 
-    // Active (deletedAt unset) users overfilling the batch. Under an unbounded
-    // `by_deletedAt` scan these sort ahead of any tombstone and crowd it out.
+    // Overfill the batch. Unset deletedAt sorts before any tombstone in Convex's index order.
     await t.run(async (ctx) => {
       for (let i = 0; i <= HARD_DELETE_BATCH; i++) {
         await ctx.db.insert("users", { authId: `active_${i}`, createdAt: now, updatedAt: now });
@@ -42,16 +30,11 @@ describe("users.hardDeleteExpired", () => {
     const purged = await t.mutation(internal.users.hardDeleteExpired, {});
     expect(purged).toBe(1);
 
-    // Expired tombstone: a "permanent" audit row was written.
     const expiredAudit = await auditRowsFor(t, expired.appUserId);
     expect(expiredAudit.some((r) => r.event === "permanent")).toBe(true);
 
-    // And the app row is actually gone. Purging goes through the component
-    // adapter, which does not run the `onDelete` trigger, so the row and its
-    // avatar blob only disappear because `purgeUser` frees them by hand.
     expect(await t.run(async (ctx) => ctx.db.get(expired.appUserId))).toBeNull();
 
-    // In-grace tombstone: untouched, no permanent purge.
     const inGraceRow = await t.run(async (ctx) => ctx.db.get(inGrace.appUserId));
     expect(inGraceRow?.deletedAt).toBe(now - 60_000);
     const inGraceAudit = await auditRowsFor(t, inGrace.appUserId);
@@ -62,7 +45,7 @@ describe("users.hardDeleteExpired", () => {
     const t = initConvexTest();
     const now = Date.now();
     await seedAuthedUser(t, { deletedAt: now - 60_000, email: "recent@example.com" });
-    await seedAuthedUser(t, { email: "active@example.com" }); // not tombstoned
+    await seedAuthedUser(t, { email: "active@example.com" });
 
     const purged = await t.mutation(internal.users.hardDeleteExpired, {});
     expect(purged).toBe(0);

@@ -1,24 +1,12 @@
-import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
-import { tmpdir } from "node:os";
-import path from "node:path";
+import { readFile, writeFile } from "node:fs/promises";
 
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
+
+import { useTmpCwd } from "../helpers/tmp-cwd.ts";
 
 import { ENV_FILE, ensureLine, readAll, readOne, removeLines } from "../../src/lib/env-local";
 
-let workdir: string;
-let originalCwd: string;
-
-beforeEach(async () => {
-  originalCwd = process.cwd();
-  workdir = await mkdtemp(path.join(tmpdir(), "env-local-test-"));
-  process.chdir(workdir);
-});
-
-afterEach(async () => {
-  process.chdir(originalCwd);
-  await rm(workdir, { recursive: true, force: true });
-});
+useTmpCwd("env-local-test-");
 
 describe("readAll", () => {
   it("returns an empty map when the file is absent", async () => {

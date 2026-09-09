@@ -1,8 +1,13 @@
 import { createInterface } from "node:readline/promises";
 
-export const RESET = "\x1b[0m";
-export const BOLD = "\x1b[1m";
-export const DIM = "\x1b[2m";
+const colorEnabled =
+  process.stderr.isTTY === true && !process.env.NO_COLOR && process.env.TERM !== "dumb";
+
+const code = (seq: string): string => (colorEnabled ? seq : "");
+
+export const RESET = code("\x1b[0m");
+export const BOLD = code("\x1b[1m");
+export const DIM = code("\x1b[2m");
 
 function ansiHex(hex: string): string {
   const m = /^#?([\da-f]{2})([\da-f]{2})([\da-f]{2})$/i.exec(hex);
@@ -10,7 +15,7 @@ function ansiHex(hex: string): string {
   const r = parseInt(m[1], 16);
   const g = parseInt(m[2], 16);
   const b = parseInt(m[3], 16);
-  return `\x1b[38;2;${r};${g};${b}m`;
+  return code(`\x1b[38;2;${r};${g};${b}m`);
 }
 
 export const GREEN = ansiHex("#22c55e");
@@ -30,6 +35,12 @@ export const yep = (m: string): void => line(`  ${YELLOW}!!${RESET}   ${m}`);
 export const bad = (m: string): void => line(`  ${RED}xx${RESET}   ${RED}${m}${RESET}`);
 export const note = (m: string): void => line(`       ${DIM}${m}${RESET}`);
 
+// The only stdout writer here, so `--json` stays pipeable while the rest goes to stderr.
+export function emitJson(value: unknown): number {
+  process.stdout.write(JSON.stringify(value, null, 2) + "\n");
+  return 0;
+}
+
 export const errText = (err: unknown): string => (err instanceof Error ? err.message : String(err));
 export const plural = (n: number): string => (n === 1 ? "" : "s");
 
@@ -38,6 +49,10 @@ function stringWidth(s: string): number {
 }
 
 export function section(title: string): void {
+  if (!colorEnabled) {
+    line(`\n${title}`);
+    return;
+  }
   const w = process.stderr.columns ?? process.stdout.columns ?? 80;
   const fill = "─".repeat(Math.max(0, w - stringWidth(title) - 3));
   line(`\n${BOLD}${VIOLET}${title}${RESET} ${DIM}${fill}${RESET}`);

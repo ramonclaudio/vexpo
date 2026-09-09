@@ -19,6 +19,7 @@ import { ascStatus } from "./eas-integrations.ts";
 import { fetchWithTimeout } from "./http-retry.ts";
 import { submitProfilesMissingAscAppId } from "./eas-submit.ts";
 import {
+  EAS_ROTATION_SECRETS,
   envList as easEnvList,
   resolveProjectId,
   projectInfo as easProjectInfo,
@@ -64,37 +65,20 @@ type StoreConfigFacts = {
   reviewEmail?: string;
 };
 
-const ok = (category: Category, name: string, message: string, details?: string): Check => ({
-  category,
-  name,
-  severity: "ok",
-  message,
-  details,
-});
+const check =
+  (severity: Severity) =>
+  (category: Category, name: string, message: string, details?: string): Check => ({
+    category,
+    name,
+    severity,
+    message,
+    details,
+  });
 
-const warn = (category: Category, name: string, message: string, details?: string): Check => ({
-  category,
-  name,
-  severity: "warn",
-  message,
-  details,
-});
-
-const fail = (category: Category, name: string, message: string, details?: string): Check => ({
-  category,
-  name,
-  severity: "fail",
-  message,
-  details,
-});
-
-const skip = (category: Category, name: string, message: string, details?: string): Check => ({
-  category,
-  name,
-  severity: "skip",
-  message,
-  details,
-});
+const ok = check("ok");
+const warn = check("warn");
+const fail = check("fail");
+const skip = check("skip");
 
 function decodeJwt(
   jwt: string,
@@ -610,14 +594,12 @@ function convexUrlDriftChecks(env: EasEnvName, expected?: string, actual?: strin
 }
 
 function rotationSecretChecks(list: Map<string, string>): Check[] {
-  const missing = [
-    "CONVEX_DEPLOY_KEY",
-    "APPLE_P8_PRIVATE_KEY",
-    "APPLE_TEAM_ID",
-    "APPLE_KEY_ID",
-    "APPLE_SERVICES_ID",
-  ].filter((k) => !list.has(k));
-  if (missing.length === 0) return [ok("eas", "rotation-secrets", "all 5 present (production)")];
+  const missing = EAS_ROTATION_SECRETS.filter((k) => !list.has(k));
+  if (missing.length === 0) {
+    return [
+      ok("eas", "rotation-secrets", `all ${EAS_ROTATION_SECRETS.length} present (production)`),
+    ];
+  }
   return [
     warn(
       "eas",
@@ -824,7 +806,6 @@ function verifyCoherence(ctx: VerifyContext): Check[] {
 }
 
 function verifyFiles(ctx: VerifyContext): Check[] {
-  const checks: Check[] = [];
   const expectedKeys = [
     "CONVEX_DEPLOYMENT",
     "EXPO_PUBLIC_CONVEX_URL",
@@ -836,21 +817,18 @@ function verifyFiles(ctx: VerifyContext): Check[] {
   const source = ctx.channel === "prod" ? ctx.envProd : ctx.envLocal;
   const sourceName = ctx.channel === "prod" ? ".env.prod" : ".env.local";
   if (source.size === 0) {
-    checks.push(skip("files", `${sourceName}-present`, `no ${sourceName} file`));
-    return checks;
+    return [skip("files", `${sourceName}-present`, `no ${sourceName} file`)];
   }
   const missing = expectedKeys.filter((k) => !source.has(k));
-  if (missing.length === 0) checks.push(ok("files", `${sourceName}-keys`, "all expected keys"));
-  else
-    checks.push(
-      warn(
-        "files",
-        `${sourceName}-keys`,
-        `missing ${missing.length} key${plural(missing.length)}`,
-        missing.join(", "),
-      ),
-    );
-  return checks;
+  if (missing.length === 0) return [ok("files", `${sourceName}-keys`, "all expected keys")];
+  return [
+    warn(
+      "files",
+      `${sourceName}-keys`,
+      `missing ${missing.length} key${plural(missing.length)}`,
+      missing.join(", "),
+    ),
+  ];
 }
 
 export async function readContext(channel: Channel): Promise<VerifyContext> {
@@ -914,10 +892,7 @@ export function summarize(checks: Check[]): {
   fail: number;
   skip: number;
 } {
-  return {
-    ok: checks.filter((c) => c.severity === "ok").length,
-    warn: checks.filter((c) => c.severity === "warn").length,
-    fail: checks.filter((c) => c.severity === "fail").length,
-    skip: checks.filter((c) => c.severity === "skip").length,
-  };
+  const counts = { ok: 0, warn: 0, fail: 0, skip: 0 };
+  for (const c of checks) counts[c.severity]++;
+  return counts;
 }

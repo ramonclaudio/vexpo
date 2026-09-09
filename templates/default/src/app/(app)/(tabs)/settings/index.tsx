@@ -21,6 +21,7 @@ import {
   background,
   buttonStyle,
   clipShape,
+  contentShape,
   foregroundStyle,
   frame,
   imageScale,
@@ -32,21 +33,22 @@ import {
   truncationMode,
   textSelection,
   scrollDismissesKeyboard,
+  shapes,
   tint,
 } from "@expo/ui/swift-ui/modifiers";
 import { useDynamicFont } from "@/lib/dynamic-font";
 
 import { api } from "@/convex/_generated/api";
-import { haptics } from "@/lib/haptics";
-import { announce } from "@/lib/a11y";
 import { CapsuleRowButton } from "@/components/ui/capsule-row-button";
 import { RemoteAvatar } from "@/components/ui/remote-avatar";
+import { SectionLabel } from "@/components/ui/section-label";
 import { ErrorText } from "@/components/ui/status-text";
 import { useAuthStatus } from "@/hooks/use-auth-status";
 import { useColors } from "@/hooks/use-theme";
 import { useScenePrivacy } from "@/hooks/use-scene-privacy";
 import { useSignOut } from "@/hooks/use-sign-out";
 import { useDebugEnabled } from "@/lib/preferences";
+import { succeed } from "@/lib/form-result";
 
 const PROFILE_HREF = "/profile" as Href;
 const DEBUG_HREF = "/debug" as Href;
@@ -77,8 +79,7 @@ export default function SettingsScreen() {
 
   const handleCopyVersion = async () => {
     await Clipboard.setStringAsync(`v${version}`);
-    haptics.success();
-    announce("Version copied");
+    succeed("Version copied");
   };
 
   return (
@@ -93,7 +94,6 @@ export default function SettingsScreen() {
           alignment="leading"
           modifiers={[padding({ horizontal: 24, top: 24, bottom: 40 })]}
         >
-          {}
           <Button
             testID="settings-profile"
             modifiers={[
@@ -111,6 +111,7 @@ export default function SettingsScreen() {
               modifiers={[
                 frame({ maxWidth: Infinity, minHeight: 80 }),
                 padding({ leading: 8, trailing: 16 }),
+                contentShape(shapes.capsule()),
               ]}
             >
               <ProfileHeaderAvatar avatarUrl={me?.avatarUrl ?? null} />
@@ -162,7 +163,8 @@ export default function SettingsScreen() {
             </HStack>
           </Button>
 
-          <VStack spacing={8} modifiers={[frame({ maxWidth: Infinity })]}>
+          <VStack spacing={8} alignment="leading" modifiers={[frame({ maxWidth: Infinity })]}>
+            <SectionLabel>ACCOUNT</SectionLabel>
             {isGuest ? (
               <CapsuleRowButton
                 testID="settings-create-account"
@@ -187,7 +189,8 @@ export default function SettingsScreen() {
             />
           </VStack>
 
-          <VStack spacing={8} modifiers={[frame({ maxWidth: Infinity })]}>
+          <VStack spacing={8} alignment="leading" modifiers={[frame({ maxWidth: Infinity })]}>
+            <SectionLabel>SUPPORT</SectionLabel>
             <CapsuleRowButton
               testID="settings-help"
               label="Help & Feedback"
@@ -217,8 +220,8 @@ export default function SettingsScreen() {
             ) : null}
           </VStack>
 
-          <VStack spacing={8} modifiers={[frame({ maxWidth: Infinity })]}>
-            {}
+          <VStack spacing={8} alignment="leading" modifiers={[frame({ maxWidth: Infinity })]}>
+            <SectionLabel>DANGER ZONE</SectionLabel>
             {isGuest ? (
               <Alert
                 title="Discard guest data?"
@@ -285,7 +288,6 @@ export default function SettingsScreen() {
                   </ConfirmationDialog.Message>
                 </ConfirmationDialog>
 
-                {}
                 <Alert
                   title="Delete account?"
                   isPresented={showDeleteAccount}
@@ -329,7 +331,7 @@ export default function SettingsScreen() {
             <Spacer />
             <Text
               testID="settings-version"
-              modifiers={[dfont({ size: 12 }), foregroundStyle(colors.tertiaryLabel)]}
+              modifiers={[dfont({ size: 12 }), foregroundStyle(colors.mutedForeground)]}
             >
               v{version}
             </Text>

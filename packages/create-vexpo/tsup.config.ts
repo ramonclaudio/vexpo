@@ -20,7 +20,15 @@ export default defineConfig({
     const src = join(process.cwd(), "..", "..", "templates", "default");
     const dest = join(process.cwd(), "dist", "templates", "default");
     await rm(dest, { recursive: true, force: true });
-    const ROOT_ONLY_DIRS = ["ios", "android", ".expo", ".tanstack", ".output"];
+    const ROOT_ONLY_DIRS = [
+      "ios",
+      "android",
+      ".expo",
+      ".tanstack",
+      ".output",
+      ".maestro/debug",
+      ".smoke-build",
+    ];
     const SKIP_DIRS = [
       "node_modules",
       ".claude",

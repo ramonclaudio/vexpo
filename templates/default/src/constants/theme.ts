@@ -9,10 +9,7 @@ type Tone = {
   highContrastDark: string;
 };
 
-// SAFETY: DynamicColorIOS returns an OpaqueColorValue that the native side accepts
-// anywhere a color string is accepted. @expo/ui modifiers type their color inputs as
-// string, so the palette is declared as string at this one point instead of at the
-// ~150 call sites. Nothing reads a palette value as text.
+// DynamicColorIOS returns an OpaqueColorValue. @expo/ui types colors as string.
 const tone = (t: Tone): string => DynamicColorIOS(t) as unknown as string;
 
 const NEUTRAL = {
@@ -54,110 +51,132 @@ const ALPHA_DARK = {
   inputHC: "#FFFFFF59",
 } as const;
 
-const t = {
-  background: tone({
+export const TONES = {
+  background: {
     light: NEUTRAL.white,
     dark: NEUTRAL.n950,
     highContrastLight: NEUTRAL.white,
     highContrastDark: NEUTRAL.black,
-  }),
-  foreground: tone({
+  },
+  foreground: {
     light: NEUTRAL.n950,
     dark: NEUTRAL.n50,
     highContrastLight: NEUTRAL.black,
     highContrastDark: NEUTRAL.white,
-  }),
-  card: tone({
+  },
+  card: {
     light: NEUTRAL.white,
     dark: NEUTRAL.n900,
     highContrastLight: NEUTRAL.white,
     highContrastDark: NEUTRAL.n850,
-  }),
-  primary: tone({
+  },
+  primary: {
     light: NEUTRAL.n900,
     dark: NEUTRAL.n200,
     highContrastLight: NEUTRAL.black,
     highContrastDark: NEUTRAL.white,
-  }),
-  primaryForeground: tone({
+  },
+  primaryForeground: {
     light: NEUTRAL.n50,
     dark: NEUTRAL.n900,
     highContrastLight: NEUTRAL.white,
     highContrastDark: NEUTRAL.black,
-  }),
-  secondary: tone({
+  },
+  secondary: {
     light: NEUTRAL.n100,
     dark: NEUTRAL.n800,
     highContrastLight: NEUTRAL.n150,
     highContrastDark: NEUTRAL.n850,
-  }),
-  secondaryForeground: tone({
+  },
+  secondaryForeground: {
     light: NEUTRAL.n900,
     dark: NEUTRAL.n50,
     highContrastLight: NEUTRAL.black,
     highContrastDark: NEUTRAL.white,
-  }),
-  muted: tone({
+  },
+  muted: {
     light: NEUTRAL.n100,
     dark: NEUTRAL.n800,
     highContrastLight: NEUTRAL.n150,
     highContrastDark: NEUTRAL.n850,
-  }),
-  mutedForeground: tone({
+  },
+  mutedForeground: {
     light: NEUTRAL.n600,
     dark: NEUTRAL.n400,
     highContrastLight: NEUTRAL.n700,
     highContrastDark: NEUTRAL.n300,
-  }),
-  accent: tone({
+  },
+  accent: {
     light: NEUTRAL.n100,
     dark: NEUTRAL.n800,
     highContrastLight: NEUTRAL.n150,
     highContrastDark: NEUTRAL.n850,
-  }),
-  accentForeground: tone({
+  },
+  accentForeground: {
     light: NEUTRAL.n900,
     dark: NEUTRAL.n50,
     highContrastLight: NEUTRAL.black,
     highContrastDark: NEUTRAL.white,
-  }),
-  destructive: tone({
+  },
+  destructive: {
     light: DESTRUCTIVE.light,
     dark: DESTRUCTIVE.dark,
     highContrastLight: DESTRUCTIVE.hcLight,
     highContrastDark: DESTRUCTIVE.hcDark,
-  }),
-  border: tone({
+  },
+  destructiveForeground: {
+    light: NEUTRAL.white,
+    dark: NEUTRAL.n900,
+    highContrastLight: NEUTRAL.white,
+    highContrastDark: NEUTRAL.black,
+  },
+  border: {
     light: NEUTRAL.n200,
     dark: ALPHA_DARK.border,
     highContrastLight: NEUTRAL.n400,
     highContrastDark: ALPHA_DARK.borderHC,
-  }),
-  input: tone({
+  },
+  input: {
     light: NEUTRAL.n200,
     dark: ALPHA_DARK.input,
     highContrastLight: NEUTRAL.n400,
     highContrastDark: ALPHA_DARK.inputHC,
-  }),
-  primaryFill: tone({
+  },
+  success: {
+    light: "#15803D",
+    dark: "#22C55E",
+    highContrastLight: "#166534",
+    highContrastDark: "#4ADE80",
+  },
+  warning: {
+    light: WARNING.light,
+    dark: WARNING.dark,
+    highContrastLight: WARNING.hcLight,
+    highContrastDark: WARNING.hcDark,
+  },
+  primaryFill: {
     light: "rgba(23,23,23,0.06)",
     dark: "rgba(229,229,229,0.10)",
     highContrastLight: "rgba(0,0,0,0.10)",
     highContrastDark: "rgba(255,255,255,0.18)",
-  }),
-  destructiveFill: tone({
+  },
+  destructiveFill: {
     light: "rgba(231,0,11,0.10)",
     dark: "rgba(255,100,103,0.15)",
     highContrastLight: "rgba(179,0,9,0.18)",
     highContrastDark: "rgba(255,160,162,0.25)",
-  }),
-  overlay: tone({
+  },
+  overlay: {
     light: "rgba(0,0,0,0.40)",
     dark: "rgba(0,0,0,0.60)",
     highContrastLight: "rgba(0,0,0,0.55)",
     highContrastDark: "rgba(0,0,0,0.75)",
-  }),
-} as const;
+  },
+} as const satisfies Record<string, Tone>;
+
+const t = Object.fromEntries(Object.entries(TONES).map(([key, value]) => [key, tone(value)])) as {
+  [K in keyof typeof TONES]: string;
+};
 
 export const Colors = {
   ...t,
@@ -166,34 +185,6 @@ export const Colors = {
 
   tabIconDefault: t.mutedForeground,
   tabIconSelected: t.primary,
-
-  tertiaryLabel: tone({
-    light: NEUTRAL.n400,
-    dark: NEUTRAL.n500,
-    highContrastLight: NEUTRAL.n500,
-    highContrastDark: NEUTRAL.n400,
-  }),
-
-  destructiveForeground: tone({
-    light: NEUTRAL.white,
-    dark: NEUTRAL.n900,
-    highContrastLight: NEUTRAL.white,
-    highContrastDark: NEUTRAL.black,
-  }),
-
-  success: tone({
-    light: "#15803D",
-    dark: "#22C55E",
-    highContrastLight: "#166534",
-    highContrastDark: "#4ADE80",
-  }),
-
-  warning: tone({
-    light: WARNING.light,
-    dark: WARNING.dark,
-    highContrastLight: WARNING.hcLight,
-    highContrastDark: WARNING.hcDark,
-  }),
 } as const;
 
 export const HeaderTint = Colors.foreground;

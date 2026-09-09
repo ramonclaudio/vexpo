@@ -1,6 +1,5 @@
 {
   "$schema": "https://unpkg.com/knip@6/schema.json",
-  "ignore": ["templates/**"],
   "workspaces": {
     "packages/vexpo": {
       "entry": ["__tests__/**/*.test.ts"],
@@ -8,6 +7,16 @@
     },
     "packages/create-vexpo": {
       "project": ["src/**/*.ts"]
+    },
+    "templates/default": {
+      "entry": [
+        "src/app/**/*.{ts,tsx}",
+        "src/widgets/**/*.tsx",
+        "convex/*.ts",
+        "scripts/*.mjs",
+        "__tests__/**/*.{ts,tsx}"
+      ],
+      "project": ["src/**/*.{ts,tsx}", "convex/**/*.ts"]
     }
   }
 }

@@ -1,5 +1,5 @@
 import { startTransition, useActionState, useEffect, useState } from "react";
-import { Image as ExpoImage } from "expo-image";
+import { useWindowDimensions } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
 import {
   Host,
@@ -9,7 +9,6 @@ import {
   Text,
   Image,
   Spacer,
-  RNHostView,
   useNativeState,
 } from "@expo/ui/swift-ui";
 import {
@@ -37,24 +36,25 @@ import {
 } from "@expo/ui/swift-ui/modifiers";
 import { useDynamicFont } from "@/lib/dynamic-font";
 import { TouchTarget } from "@/constants/layout";
-import { DynamicType } from "@/constants/ui";
+import { DynamicType, otpKerning } from "@/constants/ui";
 
 import { scheduleOnRN } from "react-native-worklets";
 
 import { authClient } from "@/lib/auth-client";
-import { assets } from "@/lib/assets";
-import { haptics } from "@/lib/haptics";
 import { maskOtp } from "@/lib/masks";
 import { firstError, resetPasswordSchema } from "@/lib/schemas";
+import BrandIcon from "@/components/ui/brand-icon";
 import { PasswordField } from "@/components/auth/password-field";
 import { CapsuleTextField } from "@/components/ui/capsule-text-field";
 import { DiscardChangesDialog } from "@/components/ui/discard-changes-dialog";
 import { HelperText } from "@/components/ui/helper-text";
-import { ProminentButton } from "@/components/ui/prominent-button";
+import { ProminentButton } from "@/components/ui/capsule-button";
 import { ErrorText } from "@/components/ui/status-text";
+import { LabeledField } from "@/components/ui/labeled-field";
 import { useUnsavedChanges } from "@/hooks/use-unsaved-changes";
 import { announce } from "@/lib/a11y";
-import { useColors, useThemedAsset } from "@/hooks/use-theme";
+import { UNEXPECTED_ERROR, fail, succeed } from "@/lib/form-result";
+import { useColors } from "@/hooks/use-theme";
 import { useQuery } from "convex/react";
 
 import { api } from "@/convex/_generated/api";
@@ -64,8 +64,8 @@ const initialState: ResetState = {};
 
 export default function ResetPasswordScreen() {
   const dfont = useDynamicFont();
+  const { fontScale } = useWindowDimensions();
   const colors = useColors();
-  const brandIcon = useThemedAsset(assets.brandIconLight, assets.brandIconDark);
   const { email = "" } = useLocalSearchParams<{ email: string }>();
   const providers = useQuery(api.auth.getEnabledProviders);
   useEffect(() => {
@@ -85,14 +85,12 @@ export default function ResetPasswordScreen() {
 
   const [state, submit, isPending] = useActionState<ResetState, void>(async () => {
     if (!email) {
-      haptics.error();
-      return { error: "Missing email. Start over from forgot password.", expired: true };
+      return { ...fail("Missing email. Start over from forgot password."), expired: true };
     }
 
     const parsed = resetPasswordSchema.safeParse({ email, otp, password, confirmPassword });
     if (!parsed.success) {
-      haptics.error();
-      return { error: firstError(parsed)! };
+      return fail(firstError(parsed)!);
     }
 
     try {
@@ -103,20 +101,17 @@ export default function ResetPasswordScreen() {
       });
 
       if (response.error) {
-        haptics.error();
         const message = response.error.message ?? "Failed to reset password";
         const lower = message.toLowerCase();
         if (lower.includes("expired") || lower.includes("invalid")) {
-          return { error: "This code has expired. Request a new one.", expired: true };
+          return { ...fail("This code has expired. Request a new one."), expired: true };
         }
-        return { error: message };
+        return fail(message);
       }
-      haptics.success();
-      announce("Password reset");
+      succeed("Password reset");
       return { ok: true };
     } catch {
-      haptics.error();
-      return { error: "An unexpected error occurred. Please try again." };
+      return fail(UNEXPECTED_ERROR);
     }
   }, initialState);
 
@@ -176,8 +171,6 @@ export default function ResetPasswordScreen() {
     );
   }
 
-  const labelModifiers = [dfont({ size: 17, weight: "semibold" })];
-
   return (
     <Host testID="reset-password-screen" style={{ flex: 1, backgroundColor: colors.background }}>
       <ScrollView
@@ -192,14 +185,7 @@ export default function ResetPasswordScreen() {
           alignment="leading"
           modifiers={[padding({ horizontal: 24, top: 60, bottom: 40 })]}
         >
-          <RNHostView matchContents>
-            <ExpoImage
-              source={brandIcon}
-              style={{ width: 56, height: 56 }}
-              accessibilityLabel="App icon"
-              contentFit="contain"
-            />
-          </RNHostView>
+          <BrandIcon />
 
           <VStack spacing={6} alignment="leading">
             <Text
@@ -216,8 +202,7 @@ export default function ResetPasswordScreen() {
             </Text>
           </VStack>
 
-          <VStack spacing={6} alignment="leading" modifiers={[frame({ maxWidth: Infinity })]}>
-            <Text modifiers={labelModifiers}>Account</Text>
+          <LabeledField label="Account">
             <CapsuleTextField
               testID="reset-password-account"
               text={emailIdentityState}
@@ -228,7 +213,7 @@ export default function ResetPasswordScreen() {
                 accessibilityLabel("Account email"),
               ]}
             />
-          </VStack>
+          </LabeledField>
 
           {error && (
             <VStack spacing={8} alignment="leading">
@@ -251,8 +236,7 @@ export default function ResetPasswordScreen() {
             </VStack>
           )}
 
-          <VStack spacing={6} alignment="leading" modifiers={[frame({ maxWidth: Infinity })]}>
-            <Text modifiers={labelModifiers}>Verification code</Text>
+          <LabeledField label="Verification code">
             <CapsuleTextField
               testID="reset-password-code"
               text={otpState}
@@ -269,7 +253,7 @@ export default function ResetPasswordScreen() {
                 textContentType("oneTimeCode"),
                 dfont({ size: 24, design: "monospaced" }),
                 monospacedDigit(),
-                kerning(8),
+                kerning(otpKerning(fontScale)),
                 multilineTextAlignment("center"),
                 dynamicTypeSize({ max: DynamicType.otp }),
                 submitLabel("next"),
@@ -278,10 +262,9 @@ export default function ResetPasswordScreen() {
                 accessibilityHint("Enter the 6 digit code sent to your email"),
               ]}
             />
-          </VStack>
+          </LabeledField>
 
-          <VStack spacing={6} alignment="leading" modifiers={[frame({ maxWidth: Infinity })]}>
-            <Text modifiers={labelModifiers}>New password</Text>
+          <LabeledField label="New password">
             <PasswordField
               testID="reset-password-new"
               onTextChange={setPassword}
@@ -289,13 +272,12 @@ export default function ResetPasswordScreen() {
               disabled={isPending}
               submitLabelType="next"
               accessibilityLabel="New password"
-              accessibilityHint="Choose a password with at least 10 characters"
+              accessibilityHint="Choose a new password with at least 10 characters"
             />
             <HelperText>At least 10 characters.</HelperText>
-          </VStack>
+          </LabeledField>
 
-          <VStack spacing={6} alignment="leading" modifiers={[frame({ maxWidth: Infinity })]}>
-            <Text modifiers={labelModifiers}>Confirm password</Text>
+          <LabeledField label="Confirm password">
             <PasswordField
               testID="reset-password-confirm"
               onTextChange={setConfirmPassword}
@@ -305,7 +287,7 @@ export default function ResetPasswordScreen() {
               accessibilityLabel="Confirm new password"
               accessibilityHint="Re-enter the new password to confirm"
             />
-          </VStack>
+          </LabeledField>
 
           <ProminentButton
             testID="reset-password-submit"

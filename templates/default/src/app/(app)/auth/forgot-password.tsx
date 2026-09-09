@@ -1,14 +1,14 @@
 import { startTransition, useActionState, useEffect, useState } from "react";
 import { useQuery } from "convex/react";
-import { Image as ExpoImage } from "expo-image";
 import { router } from "expo-router";
 
 import { api } from "@/convex/_generated/api";
-import { Host, ScrollView, VStack, Button, Text, RNHostView } from "@expo/ui/swift-ui";
+import { Host, ScrollView, VStack, Button, Text } from "@expo/ui/swift-ui";
 import {
   autocorrectionDisabled,
   foregroundStyle,
   buttonStyle,
+  contentShape,
   disabled,
   keyboardType,
   onSubmit,
@@ -16,6 +16,7 @@ import {
   textContentType,
   textInputAutocapitalization,
   padding,
+  shapes,
   frame,
   scrollDismissesKeyboard,
   accessibilityAddTraits,
@@ -27,14 +28,15 @@ import { useDynamicFont } from "@/lib/dynamic-font";
 import { TouchTarget } from "@/constants/layout";
 
 import { authClient } from "@/lib/auth-client";
-import { assets } from "@/lib/assets";
-import { haptics } from "@/lib/haptics";
 import { firstError, forgotPasswordSchema } from "@/lib/schemas";
+import BrandIcon from "@/components/ui/brand-icon";
 import { CapsuleTextField } from "@/components/ui/capsule-text-field";
-import { ProminentButton } from "@/components/ui/prominent-button";
+import { ProminentButton } from "@/components/ui/capsule-button";
+import { LabeledField } from "@/components/ui/labeled-field";
 import { ErrorText } from "@/components/ui/status-text";
 import { announce } from "@/lib/a11y";
-import { useColors, useThemedAsset } from "@/hooks/use-theme";
+import { UNEXPECTED_ERROR, fail, succeed } from "@/lib/form-result";
+import { useColors } from "@/hooks/use-theme";
 
 type ForgotState = { error?: string };
 const initialState: ForgotState = {};
@@ -42,7 +44,6 @@ const initialState: ForgotState = {};
 export default function ForgotPasswordScreen() {
   const dfont = useDynamicFont();
   const colors = useColors();
-  const brandIcon = useThemedAsset(assets.brandIconLight, assets.brandIconDark);
   const [email, setEmail] = useState("");
   const providers = useQuery(api.auth.getEnabledProviders);
 
@@ -58,8 +59,7 @@ export default function ForgotPasswordScreen() {
   const [state, submit, isPending] = useActionState<ForgotState, void>(async () => {
     const parsed = forgotPasswordSchema.safeParse({ email });
     if (!parsed.success) {
-      haptics.error();
-      return { error: firstError(parsed)! };
+      return fail(firstError(parsed)!);
     }
 
     try {
@@ -69,16 +69,13 @@ export default function ForgotPasswordScreen() {
       });
 
       if (response.error) {
-        haptics.error();
-        return { error: response.error.message ?? "Failed to send reset code" };
+        return fail(response.error.message ?? "Failed to send reset code");
       }
-      haptics.success();
-      announce("Reset code sent");
+      succeed("Reset code sent");
       router.push({ pathname: "/auth/reset-password", params: { email: parsed.data.email } });
       return {};
     } catch {
-      haptics.error();
-      return { error: "An unexpected error occurred. Please try again." };
+      return fail(UNEXPECTED_ERROR);
     }
   }, initialState);
 
@@ -90,14 +87,7 @@ export default function ForgotPasswordScreen() {
           alignment="leading"
           modifiers={[padding({ horizontal: 24, top: 60, bottom: 40 })]}
         >
-          <RNHostView matchContents>
-            <ExpoImage
-              source={brandIcon}
-              style={{ width: 56, height: 56 }}
-              accessibilityLabel="App icon"
-              contentFit="contain"
-            />
-          </RNHostView>
+          <BrandIcon />
 
           <VStack spacing={6} alignment="leading">
             <Text
@@ -116,8 +106,7 @@ export default function ForgotPasswordScreen() {
 
           {state.error && <ErrorText testID="forgot-password-error">{state.error}</ErrorText>}
 
-          <VStack spacing={6} alignment="leading" modifiers={[frame({ maxWidth: Infinity })]}>
-            <Text modifiers={[dfont({ size: 17, weight: "semibold" })]}>Email</Text>
+          <LabeledField label="Email">
             <CapsuleTextField
               testID="forgot-password-email"
               placeholder="you@example.com"
@@ -131,10 +120,10 @@ export default function ForgotPasswordScreen() {
                 disabled(isPending),
                 submitLabel("send"),
                 accessibilityLabel("Email address"),
-                accessibilityHint("Enter the email associated with your account"),
+                accessibilityHint("Enter the email address for your account"),
               ]}
             />
-          </VStack>
+          </LabeledField>
 
           <ProminentButton
             testID="forgot-password-submit"
@@ -152,6 +141,7 @@ export default function ForgotPasswordScreen() {
                 foregroundStyle(colors.mutedForeground),
                 dfont({ size: 14, weight: "semibold" }),
                 frame({ minHeight: TouchTarget.min }),
+                contentShape(shapes.rectangle()),
               ]}
               onPress={() => {
                 router.back();

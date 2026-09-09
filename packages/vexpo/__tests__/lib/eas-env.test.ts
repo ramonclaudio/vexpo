@@ -1,43 +1,34 @@
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
-import { tmpdir } from "node:os";
-import path from "node:path";
+import { writeFile } from "node:fs/promises";
 
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
+import { useTmpCwd } from "../helpers/tmp-cwd.ts";
+
 import { resolveProjectId } from "../../src/lib/eas-project";
 
-let workdir: string;
-let originalCwd: string;
+useTmpCwd("eas-env-test-");
+
 let originalEnv: string | undefined;
 
-beforeEach(async () => {
-  originalCwd = process.cwd();
+beforeEach(() => {
   originalEnv = process.env.EAS_PROJECT_ID;
   delete process.env.EAS_PROJECT_ID;
-  workdir = await mkdtemp(path.join(tmpdir(), "eas-env-test-"));
-  process.chdir(workdir);
 });
 
-afterEach(async () => {
-  process.chdir(originalCwd);
+afterEach(() => {
   if (originalEnv === undefined) {
     delete process.env.EAS_PROJECT_ID;
   } else {
     process.env.EAS_PROJECT_ID = originalEnv;
   }
-  await rm(workdir, { recursive: true, force: true });
 });
+
+const writeAppJson = (projectId: string) =>
+  writeFile("app.json", JSON.stringify({ expo: { extra: { eas: { projectId } } } }));
 
 describe("resolveProjectId / app.json source", () => {
   it("returns the projectId from a well-formed app.json", async () => {
-    await writeFile(
-      "app.json",
-      JSON.stringify({
-        expo: {
-          extra: { eas: { projectId: "abc-123-def-456" } },
-        },
-      }),
-    );
+    await writeAppJson("abc-123-def-456");
     expect(await resolveProjectId()).toBe("abc-123-def-456");
   });
 
@@ -56,7 +47,7 @@ describe("resolveProjectId / app.json source", () => {
   });
 
   it("falls through when expo.extra.eas.projectId is empty string", async () => {
-    await writeFile("app.json", JSON.stringify({ expo: { extra: { eas: { projectId: "" } } } }));
+    await writeAppJson("");
     expect(await resolveProjectId()).toBeNull();
   });
 
@@ -97,10 +88,7 @@ describe("resolveProjectId / env var source", () => {
   });
 
   it("app.json wins over env when both are set", async () => {
-    await writeFile(
-      "app.json",
-      JSON.stringify({ expo: { extra: { eas: { projectId: "from-json" } } } }),
-    );
+    await writeAppJson("from-json");
     process.env.EAS_PROJECT_ID = "from-env";
     expect(await resolveProjectId()).toBe("from-json");
   });
@@ -119,10 +107,7 @@ describe("resolveProjectId / .env.local source", () => {
   });
 
   it("app.json wins over .env.local", async () => {
-    await writeFile(
-      "app.json",
-      JSON.stringify({ expo: { extra: { eas: { projectId: "from-json" } } } }),
-    );
+    await writeAppJson("from-json");
     await writeFile(".env.local", "EAS_PROJECT_ID=from-dotenv\n");
     expect(await resolveProjectId()).toBe("from-json");
   });
@@ -145,10 +130,7 @@ describe("resolveProjectId / .env.local source", () => {
   });
 
   it("does not overwrite process.env when app.json wins", async () => {
-    await writeFile(
-      "app.json",
-      JSON.stringify({ expo: { extra: { eas: { projectId: "from-json" } } } }),
-    );
+    await writeAppJson("from-json");
     await writeFile(".env.local", "EAS_PROJECT_ID=from-dotenv\n");
     expect(process.env.EAS_PROJECT_ID).toBeUndefined();
     expect(await resolveProjectId()).toBe("from-json");

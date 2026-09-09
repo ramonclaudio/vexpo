@@ -23,7 +23,6 @@ export function RemoteAvatar({ url, size }: { url: string; size: number }) {
         source={image}
         style={{ width: size, height: size, borderRadius: size / 2 }}
         contentFit="cover"
-        accessibilityLabel="Profile photo"
       />
     </RNHostView>
   );

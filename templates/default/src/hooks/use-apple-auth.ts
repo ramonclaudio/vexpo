@@ -2,8 +2,7 @@ import { useActionState, useEffect, useState } from "react";
 import * as AppleAuthentication from "expo-apple-authentication";
 
 import { authClient } from "@/lib/auth-client";
-import { haptics } from "@/lib/haptics";
-import { announce } from "@/lib/a11y";
+import { fail, succeed } from "@/lib/form-result";
 
 type AppleState = { error?: string };
 const initialState: AppleState = {};
@@ -41,8 +40,7 @@ export function useAppleAuth({ successMessage }: { successMessage: string }) {
       });
 
       if (!credential.identityToken) {
-        haptics.error();
-        return { error: "Apple didn't return an identity token. Please try again." };
+        return fail("Apple didn't return an identity token. Please try again.");
       }
 
       const { givenName, familyName } = credential.fullName ?? {};
@@ -57,22 +55,18 @@ export function useAppleAuth({ successMessage }: { successMessage: string }) {
       });
 
       if (response.error) {
-        haptics.error();
         if (__DEV__) console.warn("[AppleAuth] server", response.error.status, response.error.code);
-        return {
-          error:
-            response.error.status === 429
-              ? "Too many sign-in attempts. Please wait a minute and try again."
-              : "We couldn't finish signing you in with Apple. Please try again, or use your email.",
-        };
+        return fail(
+          response.error.status === 429
+            ? "Too many sign-in attempts. Please wait a minute and try again."
+            : "We couldn't finish signing you in with Apple. Please try again, or use your email.",
+        );
       }
-      haptics.success();
-      announce(successMessage);
+      succeed(successMessage);
       return {};
     } catch (e) {
       if (e instanceof Error && "code" in e && e.code === "ERR_REQUEST_CANCELED") return {};
-      haptics.error();
-      return { error: appleErrorMessage(e) };
+      return fail(appleErrorMessage(e));
     }
   }, initialState);
 

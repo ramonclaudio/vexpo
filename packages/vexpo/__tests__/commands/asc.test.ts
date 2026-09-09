@@ -1,20 +1,12 @@
-import { mkdtemp, rm } from "node:fs/promises";
-import { tmpdir } from "node:os";
-import path from "node:path";
-
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("../../src/lib/proc.ts", () => ({
-  run: vi.fn().mockResolvedValue({ code: 0, stdout: "{}", stderr: "" }),
-  spawn: vi.fn(() => ({
-    exited: Promise.resolve(0),
-    stdout: null,
-    stderr: null,
-    stdin: null,
-    pid: 1,
-    kill: () => {},
-  })),
-}));
+import { exitedWith } from "../helpers/proc-stub.ts";
+
+import { useTmpCwd } from "../helpers/tmp-cwd.ts";
+
+vi.mock("../../src/lib/proc.ts", async () =>
+  (await import("../helpers/proc-stub.ts")).procStub(0, "{}"),
+);
 
 vi.mock("../../src/lib/pkg-manager.ts", () => ({
   dlx: () => "bunx",
@@ -45,26 +37,23 @@ vi.mock("node:fs", async () => {
   };
 });
 
-import { runAscConnect } from "../../src/commands/asc.ts";
+import { ascKeyEnv, runAscConnect } from "../../src/commands/asc.ts";
 import { loadAscCreds } from "../../src/lib/asc-state.ts";
 import { ascStatus } from "../../src/lib/eas-integrations.ts";
 import { requireBundleId } from "../../src/lib/env-local.ts";
 import { spawn } from "../../src/lib/proc.ts";
 import { save } from "../../src/lib/state.ts";
 
-const ascStatusSpy = ascStatus as unknown as ReturnType<typeof vi.fn>;
-const requireBundleIdSpy = requireBundleId as unknown as ReturnType<typeof vi.fn>;
-const spawnSpy = spawn as unknown as ReturnType<typeof vi.fn>;
-const loadAscCredsSpy = loadAscCreds as unknown as ReturnType<typeof vi.fn>;
+const ascStatusSpy = vi.mocked(ascStatus);
+const requireBundleIdSpy = vi.mocked(requireBundleId);
+const spawnSpy = vi.mocked(spawn);
+const loadAscCredsSpy = vi.mocked(loadAscCreds);
 
-let originalCwd: string;
-let workdir: string;
+useTmpCwd("asc-connect-test-");
+
 let originalEnv: Record<string, string | undefined>;
 
 beforeEach(async () => {
-  originalCwd = process.cwd();
-  workdir = await mkdtemp(path.join(tmpdir(), "asc-connect-test-"));
-  process.chdir(workdir);
   originalEnv = { ...process.env };
   Object.defineProperty(process.stdin, "isTTY", { value: true, configurable: true });
 
@@ -79,14 +68,7 @@ beforeEach(async () => {
   });
   appsListSpy.mockResolvedValue([{ type: "apps", id: "app-1", attributes: { bundleId: "x" } }]);
   spawnSpy.mockReset();
-  spawnSpy.mockReturnValue({
-    exited: Promise.resolve(0),
-    stdout: null,
-    stderr: null,
-    stdin: null,
-    pid: 1,
-    kill: () => {},
-  });
+  spawnSpy.mockReturnValue(exitedWith(0));
 
   await save({
     schemaVersion: 1,
@@ -105,38 +87,40 @@ beforeEach(async () => {
   });
 });
 
-afterEach(async () => {
-  process.chdir(originalCwd);
-  await rm(workdir, { recursive: true, force: true });
+afterEach(() => {
   process.env = originalEnv;
   vi.clearAllMocks();
 });
 
+const NOT_CONNECTED = {
+  action: "status",
+  project: "@testuser/testapp",
+  status: "not-connected",
+} as const;
+
+const connected = (name: string | null) => ({
+  action: "status",
+  project: "@testuser/testapp",
+  status: "connected",
+  appStoreConnectApp: {
+    id: "asc-app-link-id",
+    ascAppIdentifier: "1234567890",
+    name,
+    bundleIdentifier: "com.test.app",
+    appleUrl: "https://apps.apple.com/app/id1234567890",
+  },
+});
+
 describe("runAscConnect", () => {
   it("skips with a no-op when ascStatus reports status='connected'", async () => {
-    ascStatusSpy.mockResolvedValueOnce({
-      action: "status",
-      project: "@testuser/testapp",
-      status: "connected",
-      appStoreConnectApp: {
-        id: "asc-app-link-id",
-        ascAppIdentifier: "1234567890",
-        name: "Test App",
-        bundleIdentifier: "com.test.app",
-        appleUrl: "https://apps.apple.com/app/id1234567890",
-      },
-    });
+    ascStatusSpy.mockResolvedValueOnce(connected("Test App"));
     const exit = await runAscConnect({});
     expect(exit).toBe(0);
     expect(spawnSpy).not.toHaveBeenCalled();
   });
 
   it("falls through to spawn when ascStatus reports 'not-connected'", async () => {
-    ascStatusSpy.mockResolvedValueOnce({
-      action: "status",
-      project: "@testuser/testapp",
-      status: "not-connected",
-    });
+    ascStatusSpy.mockResolvedValueOnce(NOT_CONNECTED);
     requireBundleIdSpy.mockResolvedValueOnce("com.vexpo.vexpo");
 
     const exit = await runAscConnect({});
@@ -165,11 +149,7 @@ describe("runAscConnect", () => {
   });
 
   it("does NOT pass --api-key-id (the original PR #49 bug)", async () => {
-    ascStatusSpy.mockResolvedValueOnce({
-      action: "status",
-      project: "@testuser/testapp",
-      status: "not-connected",
-    });
+    ascStatusSpy.mockResolvedValueOnce(NOT_CONNECTED);
     requireBundleIdSpy.mockResolvedValueOnce("com.vexpo.vexpo");
 
     await runAscConnect({});
@@ -179,11 +159,7 @@ describe("runAscConnect", () => {
   });
 
   it("returns 1 when no cached ASC key in state.json", async () => {
-    ascStatusSpy.mockResolvedValueOnce({
-      action: "status",
-      project: "@testuser/testapp",
-      status: "not-connected",
-    });
+    ascStatusSpy.mockResolvedValueOnce(NOT_CONNECTED);
     await save({ schemaVersion: 1, steps: {}, audit: [] });
 
     const exit = await runAscConnect({});
@@ -192,11 +168,7 @@ describe("runAscConnect", () => {
   });
 
   it("returns 1 when no EXPO_PUBLIC_APP_BUNDLE_ID in .env.local", async () => {
-    ascStatusSpy.mockResolvedValueOnce({
-      action: "status",
-      project: "@testuser/testapp",
-      status: "not-connected",
-    });
+    ascStatusSpy.mockResolvedValueOnce(NOT_CONNECTED);
     requireBundleIdSpy.mockResolvedValueOnce(undefined);
 
     const exit = await runAscConnect({});
@@ -205,20 +177,9 @@ describe("runAscConnect", () => {
   });
 
   it("already-connected still writes ascAppId into eas.json (doctor loop fix)", async () => {
-    ascStatusSpy.mockResolvedValue({
-      action: "status",
-      project: "@testuser/testapp",
-      status: "connected",
-      appStoreConnectApp: {
-        id: "asc-app-link-id",
-        ascAppIdentifier: "1234567890",
-        name: null,
-        bundleIdentifier: "com.test.app",
-        appleUrl: "https://apps.apple.com/app/id1234567890",
-      },
-    });
+    ascStatusSpy.mockResolvedValue(connected(null));
     const fs = await import("node:fs");
-    const existsSpy = fs.existsSync as unknown as ReturnType<typeof vi.fn>;
+    const existsSpy = vi.mocked(fs.existsSync);
     existsSpy.mockImplementation(() => true);
     fs.writeFileSync("eas.json", JSON.stringify({ submit: { production: { ios: {} } } }, null, 2));
 
@@ -234,18 +195,7 @@ describe("runAscConnect", () => {
   });
 
   it("force=true bypasses the idempotency skip", async () => {
-    ascStatusSpy.mockResolvedValueOnce({
-      action: "status",
-      project: "@testuser/testapp",
-      status: "connected",
-      appStoreConnectApp: {
-        id: "asc-app-link-id",
-        ascAppIdentifier: "1234567890",
-        name: null,
-        bundleIdentifier: "com.test.app",
-        appleUrl: "https://apps.apple.com/app/id1234567890",
-      },
-    });
+    ascStatusSpy.mockResolvedValueOnce(connected(null));
     requireBundleIdSpy.mockResolvedValueOnce("com.vexpo.vexpo");
 
     await runAscConnect({ force: true });
@@ -255,17 +205,13 @@ describe("runAscConnect", () => {
 
   it("headless with an app record: lands ascAppId in eas.json, returns 0, no wizard", async () => {
     Object.defineProperty(process.stdin, "isTTY", { value: false, configurable: true });
-    ascStatusSpy.mockResolvedValueOnce({
-      action: "status",
-      project: "@testuser/testapp",
-      status: "not-connected",
-    });
+    ascStatusSpy.mockResolvedValueOnce(NOT_CONNECTED);
     requireBundleIdSpy.mockResolvedValueOnce("com.vexpo.vexpo");
     appsListSpy.mockResolvedValueOnce([
       { type: "apps", id: "1234567890", attributes: { bundleId: "com.vexpo.vexpo" } },
     ]);
     const fs = await import("node:fs");
-    const existsSpy = fs.existsSync as unknown as ReturnType<typeof vi.fn>;
+    const existsSpy = vi.mocked(fs.existsSync);
     existsSpy.mockImplementation(() => true);
     fs.writeFileSync(
       "eas.json",
@@ -286,11 +232,7 @@ describe("runAscConnect", () => {
 
   it("headless without cached creds: returns 1, no wizard", async () => {
     Object.defineProperty(process.stdin, "isTTY", { value: false, configurable: true });
-    ascStatusSpy.mockResolvedValueOnce({
-      action: "status",
-      project: "@testuser/testapp",
-      status: "not-connected",
-    });
+    ascStatusSpy.mockResolvedValueOnce(NOT_CONNECTED);
     requireBundleIdSpy.mockResolvedValueOnce("com.vexpo.vexpo");
     loadAscCredsSpy.mockResolvedValueOnce(null);
 
@@ -300,11 +242,7 @@ describe("runAscConnect", () => {
   });
 
   it("defers (returns 0, no spawn) when the bundle id has no ASC app record yet", async () => {
-    ascStatusSpy.mockResolvedValueOnce({
-      action: "status",
-      project: "@testuser/testapp",
-      status: "not-connected",
-    });
+    ascStatusSpy.mockResolvedValueOnce(NOT_CONNECTED);
     requireBundleIdSpy.mockResolvedValueOnce("com.vexpo.vexpo");
     appsListSpy.mockResolvedValueOnce([]);
 
@@ -321,11 +259,7 @@ describe("runAscConnect", () => {
   });
 
   it("proceeds to spawn when at least one ASC app matches the bundle id", async () => {
-    ascStatusSpy.mockResolvedValueOnce({
-      action: "status",
-      project: "@testuser/testapp",
-      status: "not-connected",
-    });
+    ascStatusSpy.mockResolvedValueOnce(NOT_CONNECTED);
     requireBundleIdSpy.mockResolvedValueOnce("com.vexpo.vexpo");
     appsListSpy.mockResolvedValueOnce([
       { type: "apps", id: "app-1", attributes: { bundleId: "com.vexpo.vexpo" } },
@@ -337,11 +271,7 @@ describe("runAscConnect", () => {
   });
 
   it("returns 1 without spawning when no cached ASC creds", async () => {
-    ascStatusSpy.mockResolvedValueOnce({
-      action: "status",
-      project: "@testuser/testapp",
-      status: "not-connected",
-    });
+    ascStatusSpy.mockResolvedValueOnce(NOT_CONNECTED);
     loadAscCredsSpy.mockResolvedValue(null);
 
     const exit = await runAscConnect({});
@@ -351,11 +281,7 @@ describe("runAscConnect", () => {
   });
 
   it("falls through to spawn when the pre-check apps lookup errors", async () => {
-    ascStatusSpy.mockResolvedValueOnce({
-      action: "status",
-      project: "@testuser/testapp",
-      status: "not-connected",
-    });
+    ascStatusSpy.mockResolvedValueOnce(NOT_CONNECTED);
     requireBundleIdSpy.mockResolvedValueOnce("com.vexpo.vexpo");
     appsListSpy.mockRejectedValueOnce(new Error("network down"));
 
@@ -365,22 +291,35 @@ describe("runAscConnect", () => {
   });
 
   it("propagates non-zero exit from eas integrations:asc:connect", async () => {
-    ascStatusSpy.mockResolvedValueOnce({
-      action: "status",
-      project: "@testuser/testapp",
-      status: "not-connected",
-    });
+    ascStatusSpy.mockResolvedValueOnce(NOT_CONNECTED);
     requireBundleIdSpy.mockResolvedValueOnce("com.vexpo.vexpo");
-    spawnSpy.mockReturnValueOnce({
-      exited: Promise.resolve(42),
-      stdout: null,
-      stderr: null,
-      stdin: null,
-      pid: 1,
-      kill: () => {},
-    });
+    spawnSpy.mockReturnValueOnce(exitedWith(42));
 
     const exit = await runAscConnect({});
     expect(exit).toBe(42);
+  });
+});
+
+describe("ascKeyEnv", () => {
+  it("maps a cached .p8 path to the three EXPO_ASC_* vars", async () => {
+    await expect(ascKeyEnv()).resolves.toEqual({
+      EXPO_ASC_API_KEY_PATH: "/tmp/fake.p8",
+      EXPO_ASC_KEY_ID: "ABCDE12345",
+      EXPO_ASC_ISSUER_ID: "11111111-2222-3333-4444-555555555555",
+    });
+  });
+
+  it("returns null when the cached key is inline contents with no path", async () => {
+    loadAscCredsSpy.mockResolvedValueOnce({
+      issuerId: "11111111-2222-3333-4444-555555555555",
+      keyId: "ABCDE12345",
+      privateKey: { contents: "-----BEGIN PRIVATE KEY-----" },
+    });
+    await expect(ascKeyEnv()).resolves.toBeNull();
+  });
+
+  it("returns null when nothing is cached", async () => {
+    loadAscCredsSpy.mockResolvedValueOnce(null);
+    await expect(ascKeyEnv()).resolves.toBeNull();
   });
 });

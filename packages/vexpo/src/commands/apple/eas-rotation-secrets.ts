@@ -2,7 +2,13 @@ import { access } from "node:fs/promises";
 
 import { deploymentSlug } from "../../lib/convex-env.ts";
 import { mintProdDeployKey } from "../../lib/convex-management.ts";
-import { envCreate, envList, envUpdate, type EasEnvironment } from "../../lib/eas-project.ts";
+import {
+  envCreate,
+  envList,
+  envUpdate,
+  explainEnvListFailure,
+  type EasEnvironment,
+} from "../../lib/eas-project.ts";
 import { readOne } from "../../lib/env-local.ts";
 import {
   BOLD,
@@ -164,8 +170,7 @@ export async function runEasRotationSecrets(options: RotationSecretsOptions): Pr
 
   const existing = await envList("production");
   if (existing === null) {
-    bad("could not list EAS production env");
-    note("run `npx eas-cli login` and `npx eas-cli init` first");
+    explainEnvListFailure("production");
     return 1;
   }
 

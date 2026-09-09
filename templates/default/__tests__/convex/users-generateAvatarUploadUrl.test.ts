@@ -1,10 +1,4 @@
 /// <reference types="vite/client" />
-/**
- * `users.generateAvatarUploadUrl` hands the client a one-shot Convex storage
- * URL to POST a photo to. It is the only mutation on the `avatarUpload` bucket
- * (30/hour, capacity 10), which is what stops a loop in the picker from
- * filling storage.
- */
 import { ConvexError } from "convex/values";
 import { describe, expect, test } from "vitest";
 

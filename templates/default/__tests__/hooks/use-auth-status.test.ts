@@ -1,23 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
 
-// The hook's import chain pulls in the Better Auth Expo client, which the node
-// test env can't parse. Stub it and drive `useSession` directly.
 const useSession = vi.fn();
 vi.mock("@/lib/auth-client", () => ({ authClient: { useSession: () => useSession() } }));
 
 const { useAuthStatus } = await import("@/hooks/use-auth-status");
 
-/**
- * `useAuthStatus` is the single place the app tells a guest from an account,
- * and six files read it: the router guards, settings, search, the profile
- * screen, and both auth screens. It calls no React hooks of its own, so it can
- * be driven straight from a stubbed session.
- *
- * The distinction that matters: a guest IS authenticated. They hold a real JWT
- * and every Convex authQuery works for them. Collapsing `isAuthenticated` and
- * `hasAccount` into one flag is what would put a guest behind the wall or an
- * account-only screen in front of one.
- */
 const session = (user: Record<string, unknown> | null) =>
   user ? { session: { id: "sess_1" }, user } : null;
 
@@ -72,16 +59,11 @@ describe("useAuthStatus", () => {
   });
 
   it("treats a missing isAnonymous as an account, not a guest", () => {
-    // Every account created before the anonymous plugin landed has no such
-    // field. Reading undefined as truthy would lock all of them out of
-    // sessions, password change and the account half of settings.
     useSession.mockReturnValue({ data: session({ id: "u_3", name: "Ada" }), isPending: false });
     expect(useAuthStatus()).toMatchObject({ isGuest: false, hasAccount: true });
   });
 
   it("only trusts isAnonymous when it is exactly true", () => {
-    // Better Auth stores this on its own user row and the Convex adapter can
-    // hand back null for an unset column. Anything but `true` is an account.
     for (const value of [null, undefined, 0, "", "false"]) {
       useSession.mockReturnValue({
         data: session({ id: "u_4", name: "Ada", isAnonymous: value }),
@@ -92,7 +74,6 @@ describe("useAuthStatus", () => {
   });
 
   it("never claims a session from a user object with no session", () => {
-    // The store can hold a stale user between a sign-out and the next render.
     useSession.mockReturnValue({ data: { user: { id: "u_5", name: "Ada" } }, isPending: false });
     expect(useAuthStatus()).toMatchObject({ isAuthenticated: false, hasAccount: false });
   });

@@ -1,5 +1,4 @@
 import { useEffect } from "react";
-import { AccessibilityInfo } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { router, type ErrorBoundaryProps } from "expo-router";
 import { Host, ScrollView, VStack, Text, Button, Image } from "@expo/ui/swift-ui";
@@ -8,15 +7,18 @@ import {
   accessibilityHidden,
   foregroundStyle,
   buttonStyle,
+  contentShape,
   frame,
   padding,
+  shapes,
   multilineTextAlignment,
   dynamicTypeSize,
   defaultScrollAnchor,
   tint,
 } from "@expo/ui/swift-ui/modifiers";
+import { announce } from "@/lib/a11y";
 import { useDynamicFont } from "@/lib/dynamic-font";
-import { ProminentButton } from "@/components/ui/prominent-button";
+import { ProminentButton } from "@/components/ui/capsule-button";
 import { useColors } from "@/hooks/use-theme";
 import { TouchTarget } from "@/constants/layout";
 import { DynamicType } from "@/constants/ui";
@@ -32,7 +34,7 @@ export function AppErrorBoundary({
 
   useEffect(() => {
     if (__DEV__) console.error("[ErrorBoundary]", error);
-    AccessibilityInfo.announceForAccessibility("Error: something went wrong");
+    announce("Error: something went wrong");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -86,6 +88,7 @@ export function AppErrorBoundary({
                 dfont({ size: 16, weight: "medium" }),
                 foregroundStyle(colors.mutedForeground),
                 frame({ minHeight: TouchTarget.min }),
+                contentShape(shapes.rectangle()),
               ]}
               onPress={() => router.replace("/")}
             />

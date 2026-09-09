@@ -50,6 +50,7 @@ jobs:
     params:
       build_id: ${{ needs.build_ios_simulator.outputs.build_id }}
       flow_path:
+        - .maestro/links.yaml
         - .maestro/guest.yaml
         - .maestro/auth.yaml
         - .maestro/launch.yaml

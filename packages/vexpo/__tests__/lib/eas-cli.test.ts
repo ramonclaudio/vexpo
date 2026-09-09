@@ -1,16 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("../../src/lib/proc.ts", () => ({
-  run: vi.fn().mockResolvedValue({ code: 0, stdout: "{}", stderr: "" }),
-  spawn: vi.fn(() => ({
-    exited: Promise.resolve(0),
-    stdout: null,
-    stderr: null,
-    stdin: null,
-    pid: 1,
-    kill: () => {},
-  })),
-}));
+import { exitedWith } from "../helpers/proc-stub.ts";
+
+vi.mock("../../src/lib/proc.ts", async () =>
+  (await import("../helpers/proc-stub.ts")).procStub(0, "{}"),
+);
 
 vi.mock("../../src/lib/pkg-manager.ts", () => ({
   dlx: () => "bunx",
@@ -19,8 +13,8 @@ vi.mock("../../src/lib/pkg-manager.ts", () => ({
 import { easJson, easSpawn, easText } from "../../src/lib/eas-cli.ts";
 import { run, spawn } from "../../src/lib/proc.ts";
 
-const runSpy = run as unknown as ReturnType<typeof vi.fn>;
-const spawnSpy = spawn as unknown as ReturnType<typeof vi.fn>;
+const runSpy = vi.mocked(run);
+const spawnSpy = vi.mocked(spawn);
 
 beforeEach(() => {
   runSpy.mockReset();
@@ -103,14 +97,7 @@ describe("errorTail", () => {
 
 describe("easSpawn", () => {
   it("forwards argv to spawn with stdio inherit", async () => {
-    spawnSpy.mockReturnValueOnce({
-      exited: Promise.resolve(0),
-      stdout: null,
-      stderr: null,
-      stdin: null,
-      pid: 1,
-      kill: () => {},
-    });
+    spawnSpy.mockReturnValueOnce(exitedWith(0));
     const code = await easSpawn(["build", "--platform", "ios"]);
     expect(code).toBe(0);
     const args = spawnSpy.mock.calls[0];

@@ -17,6 +17,7 @@ import {
 import {
   accessibilityHidden,
   accessibilityLabel,
+  accessibilityValue,
   background,
   clipShape,
   cornerRadius,
@@ -41,7 +42,7 @@ import { useColors } from "@/hooks/use-theme";
 import { useScenePrivacy } from "@/hooks/use-scene-privacy";
 import { useDynamicFont } from "@/lib/dynamic-font";
 import { Button as ButtonTokens } from "@/constants/layout";
-import { SecondaryButton } from "@/components/ui/secondary-button";
+import { SecondaryButton } from "@/components/ui/capsule-button";
 import { SectionLabel } from "@/components/ui/section-label";
 
 const RELEASE_TYPE_LABELS: Record<number, string> = {
@@ -257,6 +258,7 @@ function OtaStatusCard({ updates }: { updates: Updates }) {
               progressViewStyle("linear"),
               frame({ maxWidth: Infinity }),
               accessibilityLabel("Downloading update"),
+              accessibilityValue(`${Math.round((updates.downloadProgress ?? 0) * 100)} percent`),
             ]}
           />
         </HStack>

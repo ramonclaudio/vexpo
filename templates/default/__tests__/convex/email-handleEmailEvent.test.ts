@@ -1,18 +1,4 @@
 /// <reference types="vite/client" />
-/**
- * `email.handleEmailEvent` is where the Resend delivery webhook lands. It warns
- * on the events that mean a real person is not receiving mail and stays quiet
- * for the rest, so the deployment logs only carry what someone would act on.
- *
- * Worth knowing while reading `ACTIONABLE_FAILURE_EVENTS`: the component's
- * `vOnEmailEventArgs` union has no `email.suppressed` member, so that entry can
- * never match. It is left in place for when the component adds it; the args
- * validator rejects the call before the handler runs, which is what the last
- * test here pins.
- *
- * `crons.cleanupResend` is the other half of this file. The Resend component
- * retains finalized emails and it is the app's job to clear them.
- */
 import { afterEach, describe, expect, test, vi } from "vitest";
 
 import { internal } from "@/convex/_generated/api";
@@ -82,7 +68,6 @@ describe("crons.cleanupResend", () => {
     vi.useFakeTimers();
     try {
       expect(await t.mutation(internal.crons.cleanupResend, {})).toBeNull();
-      // The handler only schedules, so a throw inside either sweep lands here.
       await t.finishAllScheduledFunctions(vi.runAllTimers);
     } finally {
       vi.useRealTimers();

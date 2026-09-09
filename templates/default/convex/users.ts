@@ -1,7 +1,8 @@
+import type { FunctionArgs } from "convex/server";
 import { v } from "convex/values";
 
 import { components, internal } from "./_generated/api";
-import type { Id } from "./_generated/dataModel";
+import type { Doc, Id } from "./_generated/dataModel";
 import type { MutationCtx } from "./_generated/server";
 import { internalMutation } from "./_generated/server";
 import {
@@ -131,32 +132,51 @@ export const mergeGuestData = internalMutation({
     if (!guest) return null;
 
     const now = Date.now();
-    const patch: { bio?: string; avatar?: Id<"_storage">; updatedAt: number } = { updatedAt: now };
-
-    if (guest.bio !== undefined && target.bio === undefined) patch.bio = guest.bio;
-    if (guest.avatar !== undefined && target.avatar === undefined) {
-      patch.avatar = guest.avatar;
-      await ctx.db.patch(guest._id, { avatar: undefined });
-    }
-
-    const guestTokens = await ctx.db
-      .query("pushTokens")
-      .withIndex("by_userId", (q) => q.eq("userId", guest._id))
-      .collect();
-    for (const token of guestTokens) {
-      const sameToken = await ctx.db
-        .query("pushTokens")
-        .withIndex("by_token", (q) => q.eq("token", token.token))
-        .collect();
-      const duplicate = sameToken.some((r) => r._id !== token._id && r.userId === target._id);
-      if (duplicate) await ctx.db.delete(token._id);
-      else await ctx.db.patch(token._id, { userId: target._id, updatedAt: now });
-    }
-
-    await ctx.db.patch(target._id, patch);
+    await ctx.db.patch(target._id, await mergeProfile(ctx, guest, target, now));
+    await movePushTokens(ctx, guest._id, target._id, now);
     return null;
   },
 });
+
+type UserDoc = Doc<"users">;
+
+// The avatar moves rather than copies, so the storage id has one owner.
+async function mergeProfile(
+  ctx: MutationCtx,
+  guest: UserDoc,
+  target: UserDoc,
+  now: number,
+): Promise<{ bio?: string; avatar?: Id<"_storage">; updatedAt: number }> {
+  const patch: { bio?: string; avatar?: Id<"_storage">; updatedAt: number } = { updatedAt: now };
+  if (guest.bio !== undefined && target.bio === undefined) patch.bio = guest.bio;
+  if (guest.avatar !== undefined && target.avatar === undefined) {
+    patch.avatar = guest.avatar;
+    await ctx.db.patch(guest._id, { avatar: undefined });
+  }
+  return patch;
+}
+
+// A second row for the same token breaks the .unique() by_token lookups.
+async function movePushTokens(
+  ctx: MutationCtx,
+  guestId: Id<"users">,
+  targetId: Id<"users">,
+  now: number,
+): Promise<void> {
+  const guestTokens = await ctx.db
+    .query("pushTokens")
+    .withIndex("by_userId", (q) => q.eq("userId", guestId))
+    .collect();
+  for (const token of guestTokens) {
+    const sameToken = await ctx.db
+      .query("pushTokens")
+      .withIndex("by_token", (q) => q.eq("token", token.token))
+      .collect();
+    const duplicate = sameToken.some((r) => r._id !== token._id && r.userId === targetId);
+    if (duplicate) await ctx.db.delete(token._id);
+    else await ctx.db.patch(token._id, { userId: targetId, updatedAt: now });
+  }
+}
 
 export const discardGuest = authMutation({
   args: {},
@@ -228,7 +248,10 @@ export const deleteAccount = authMutation({
       .collect();
     await Promise.all(pushTokens.map((t) => ctx.db.delete(t._id)));
 
-    await deleteAllByUserId(ctx, "session", authUserId);
+    await deleteAllWhere(ctx, {
+      model: "session",
+      where: [{ field: "userId", value: authUserId }],
+    });
 
     await ctx.db.patch(userId, { deletedAt: now, updatedAt: now });
 
@@ -320,13 +343,15 @@ async function purgeUser(
     }
   }
 
-  await deleteAllByUserId(ctx, "session", authUserId);
-  await deleteAllByUserId(ctx, "account", authUserId);
-  await deleteAllByUserId(ctx, "twoFactor", authUserId);
-  await deleteAllByUserId(ctx, "oauthAccessToken", authUserId);
-  await deleteAllByUserId(ctx, "oauthConsent", authUserId);
-  await deleteAllByUserId(ctx, "oauthApplication", authUserId);
-  if (authUser?.email) await deleteVerificationByIdentifier(ctx, authUser.email);
+  for (const model of USER_ID_MODELS) {
+    await deleteAllWhere(ctx, { model, where: [{ field: "userId", value: authUserId }] });
+  }
+  if (authUser?.email) {
+    await deleteAllWhere(ctx, {
+      model: "verification",
+      where: [{ field: "identifier", value: authUser.email }],
+    });
+  }
 
   await ctx.runMutation(components.betterAuth.adapter.deleteOne, {
     input: { model: "user", where: [{ field: "_id", value: authUserId }] },
@@ -344,33 +369,23 @@ async function purgeUser(
   }
 }
 
-type UserIdModel =
-  | "session"
-  | "account"
-  | "twoFactor"
-  | "oauthAccessToken"
-  | "oauthConsent"
-  | "oauthApplication";
+const USER_ID_MODELS = [
+  "session",
+  "account",
+  "twoFactor",
+  "oauthAccessToken",
+  "oauthConsent",
+  "oauthApplication",
+] as const;
 
-const deleteAllByUserId = async (ctx: MutationCtx, model: UserIdModel, userId: string) => {
+type DeleteManyInput = FunctionArgs<typeof components.betterAuth.adapter.deleteMany>["input"];
+
+const deleteAllWhere = async (ctx: MutationCtx, input: DeleteManyInput) => {
   let cursor: string | null = null;
   let isDone = false;
   while (!isDone) {
     const result = (await ctx.runMutation(components.betterAuth.adapter.deleteMany, {
-      input: { model, where: [{ field: "userId", value: userId }] },
-      paginationOpts: { numItems: 100, cursor },
-    })) as { isDone: boolean; continueCursor: string };
-    isDone = result.isDone;
-    cursor = result.continueCursor;
-  }
-};
-
-const deleteVerificationByIdentifier = async (ctx: MutationCtx, identifier: string) => {
-  let cursor: string | null = null;
-  let isDone = false;
-  while (!isDone) {
-    const result = (await ctx.runMutation(components.betterAuth.adapter.deleteMany, {
-      input: { model: "verification", where: [{ field: "identifier", value: identifier }] },
+      input,
       paginationOpts: { numItems: 100, cursor },
     })) as { isDone: boolean; continueCursor: string };
     isDone = result.isDone;

@@ -1,32 +1,25 @@
-import { generateKeyPairSync } from "node:crypto";
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
-import { tmpdir } from "node:os";
-import path from "node:path";
+import { writeFile } from "node:fs/promises";
 
-import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+import { useEcKey } from "../helpers/ec-key.ts";
+
+import { useTmpCwd } from "../helpers/tmp-cwd.ts";
 
 import { signClientSecret } from "../../src/lib/apple-jwt";
 import { readAppConfigFacts, summarize, verifyAll, type VerifyContext } from "../../src/lib/verify";
 
-let workdir: string;
-let originalCwd: string;
+useTmpCwd("verify-test-");
 
-beforeEach(async () => {
-  originalCwd = process.cwd();
-  workdir = await mkdtemp(path.join(tmpdir(), "verify-test-"));
-  process.chdir(workdir);
-});
+const key = useEcKey("verify-test-key-");
 
-afterEach(async () => {
-  process.chdir(originalCwd);
-  await rm(workdir, { recursive: true, force: true });
-});
-
-let p8Pem: string;
-
-beforeAll(() => {
-  const { privateKey } = generateKeyPairSync("ec", { namedCurve: "prime256v1" });
-  p8Pem = privateKey.export({ format: "pem", type: "pkcs8" }).toString();
+beforeEach(() => {
+  globalThis.fetch = vi
+    .fn()
+    .mockImplementation(
+      async () =>
+        new Response("[]", { status: 200, headers: { "content-type": "application/json" } }),
+    ) as unknown as typeof fetch;
 });
 
 function signSiwaJwt(opts: {
@@ -35,7 +28,7 @@ function signSiwaJwt(opts: {
   servicesId: string;
   expirationDays: number;
 }): Promise<string> {
-  return signClientSecret({ privateKey: { contents: p8Pem }, ...opts });
+  return signClientSecret({ privateKey: { contents: key.pem }, ...opts });
 }
 
 function emptyContext(overrides: Partial<VerifyContext> = {}): VerifyContext {
@@ -52,15 +45,6 @@ function emptyContext(overrides: Partial<VerifyContext> = {}): VerifyContext {
 }
 
 describe("verifyAll - empty context", () => {
-  beforeEach(() => {
-    globalThis.fetch = vi
-      .fn()
-      .mockImplementation(
-        async () =>
-          new Response("[]", { status: 200, headers: { "content-type": "application/json" } }),
-      ) as unknown as typeof fetch;
-  });
-
   it("emits checks even with no env data", async () => {
     const ctx = emptyContext();
     const checks = await verifyAll(ctx);
@@ -71,144 +55,70 @@ describe("verifyAll - empty context", () => {
 });
 
 describe("Apple JWT verification", () => {
-  beforeEach(() => {
-    globalThis.fetch = vi
-      .fn()
-      .mockImplementation(
-        async () =>
-          new Response("[]", { status: 200, headers: { "content-type": "application/json" } }),
-      ) as unknown as typeof fetch;
-  });
+  const SIWA = {
+    teamId: "ABCDE12345",
+    keyId: "FGHIJ67890",
+    servicesId: "com.x.app.signin",
+  };
 
-  it("ok when JWT claims match Convex env", async () => {
-    const teamId = "ABCDE12345";
-    const keyId = "FGHIJ67890";
-    const servicesId = "com.example.app.signin";
-    const jwt = await signSiwaJwt({
-      teamId,
-      keyId,
-      servicesId,
-      expirationDays: 90,
-    });
-    const ctx = emptyContext({
+  async function siwaContext(
+    signed: Partial<typeof SIWA> & { expirationDays: number },
+    env: Partial<typeof SIWA> = {},
+  ): Promise<VerifyContext> {
+    const claims = { ...SIWA, ...signed };
+    const believed = { ...SIWA, ...env };
+    return emptyContext({
       convexEnv: new Map([
-        ["APPLE_TEAM_ID", teamId],
-        ["APPLE_KEY_ID", keyId],
-        ["APPLE_CLIENT_ID", servicesId],
-        ["APPLE_CLIENT_SECRET", jwt],
+        ["APPLE_TEAM_ID", believed.teamId],
+        ["APPLE_KEY_ID", believed.keyId],
+        ["APPLE_CLIENT_ID", believed.servicesId],
+        ["APPLE_CLIENT_SECRET", await signSiwaJwt(claims)],
       ]),
     });
-    const checks = await verifyAll(ctx);
-    const expiry = checks.find((c) => c.name === "jwt-expiry");
-    expect(expiry?.severity).toBe("ok");
-    const kid = checks.find((c) => c.name === "jwt-kid-matches");
-    expect(kid?.severity).toBe("ok");
-    const iss = checks.find((c) => c.name === "jwt-iss-matches");
-    expect(iss?.severity).toBe("ok");
-    const sub = checks.find((c) => c.name === "jwt-sub-matches");
-    expect(sub?.severity).toBe("ok");
+  }
+
+  const checkNamed = (checks: Awaited<ReturnType<typeof verifyAll>>, name: string) =>
+    checks.find((c) => c.name === name);
+
+  it("ok when JWT claims match Convex env", async () => {
+    const checks = await verifyAll(await siwaContext({ expirationDays: 90 }));
+    for (const name of ["jwt-expiry", "jwt-kid-matches", "jwt-iss-matches", "jwt-sub-matches"]) {
+      expect(checkNamed(checks, name)?.severity, name).toBe("ok");
+    }
   });
 
   it("fails when JWT.kid does not match APPLE_KEY_ID", async () => {
-    const jwt = await signSiwaJwt({
-      teamId: "ABCDE12345",
-      keyId: "WRONG12345",
-      servicesId: "com.x.app.signin",
-      expirationDays: 1,
-    });
-    const ctx = emptyContext({
-      convexEnv: new Map([
-        ["APPLE_TEAM_ID", "ABCDE12345"],
-        ["APPLE_KEY_ID", "FGHIJ67890"],
-        ["APPLE_CLIENT_ID", "com.x.app.signin"],
-        ["APPLE_CLIENT_SECRET", jwt],
-      ]),
-    });
-    const checks = await verifyAll(ctx);
-    const kid = checks.find((c) => c.name === "jwt-kid-matches");
+    const checks = await verifyAll(await siwaContext({ keyId: "WRONG12345", expirationDays: 1 }));
+    const kid = checkNamed(checks, "jwt-kid-matches");
     expect(kid?.severity).toBe("fail");
     expect(kid?.message).toContain("WRONG12345");
   });
 
   it("fails when JWT is expired", async () => {
-    const jwt = await signSiwaJwt({
-      teamId: "ABCDE12345",
-      keyId: "FGHIJ67890",
-      servicesId: "com.x.app.signin",
-      expirationDays: -1,
-    });
-    const ctx = emptyContext({
-      convexEnv: new Map([
-        ["APPLE_TEAM_ID", "ABCDE12345"],
-        ["APPLE_KEY_ID", "FGHIJ67890"],
-        ["APPLE_CLIENT_ID", "com.x.app.signin"],
-        ["APPLE_CLIENT_SECRET", jwt],
-      ]),
-    });
-    const checks = await verifyAll(ctx);
-    const expiry = checks.find((c) => c.name === "jwt-expiry");
-    expect(expiry?.severity).toBe("fail");
+    const checks = await verifyAll(await siwaContext({ expirationDays: -1 }));
+    expect(checkNamed(checks, "jwt-expiry")?.severity).toBe("fail");
   });
 
   it("warns when JWT expires within 30 days", async () => {
-    const jwt = await signSiwaJwt({
-      teamId: "ABCDE12345",
-      keyId: "FGHIJ67890",
-      servicesId: "com.x.app.signin",
-      expirationDays: 14.5,
-    });
-    const ctx = emptyContext({
-      convexEnv: new Map([
-        ["APPLE_TEAM_ID", "ABCDE12345"],
-        ["APPLE_KEY_ID", "FGHIJ67890"],
-        ["APPLE_CLIENT_ID", "com.x.app.signin"],
-        ["APPLE_CLIENT_SECRET", jwt],
-      ]),
-    });
-    const checks = await verifyAll(ctx);
-    const expiry = checks.find((c) => c.name === "jwt-expiry");
+    const checks = await verifyAll(await siwaContext({ expirationDays: 14.5 }));
+    const expiry = checkNamed(checks, "jwt-expiry");
     expect(expiry?.severity).toBe("warn");
     expect(expiry?.message).toMatch(/14d/);
   });
 
   it("fails when JWT.iss != APPLE_TEAM_ID", async () => {
-    const jwt = await signSiwaJwt({
-      teamId: "WRONGTEAM1",
-      keyId: "FGHIJ67890",
-      servicesId: "com.x.app.signin",
-      expirationDays: 1,
-    });
-    const ctx = emptyContext({
-      convexEnv: new Map([
-        ["APPLE_TEAM_ID", "ABCDE12345"],
-        ["APPLE_KEY_ID", "FGHIJ67890"],
-        ["APPLE_CLIENT_ID", "com.x.app.signin"],
-        ["APPLE_CLIENT_SECRET", jwt],
-      ]),
-    });
-    const checks = await verifyAll(ctx);
-    const iss = checks.find((c) => c.name === "jwt-iss-matches");
-    expect(iss?.severity).toBe("fail");
+    const checks = await verifyAll(await siwaContext({ teamId: "WRONGTEAM1", expirationDays: 1 }));
+    expect(checkNamed(checks, "jwt-iss-matches")?.severity).toBe("fail");
   });
 
   it("fails when JWT.sub != APPLE_CLIENT_ID", async () => {
-    const jwt = await signSiwaJwt({
-      teamId: "ABCDE12345",
-      keyId: "FGHIJ67890",
-      servicesId: "com.wrong.app.signin",
-      expirationDays: 1,
-    });
-    const ctx = emptyContext({
-      convexEnv: new Map([
-        ["APPLE_TEAM_ID", "ABCDE12345"],
-        ["APPLE_KEY_ID", "FGHIJ67890"],
-        ["APPLE_CLIENT_ID", "com.right.app.signin"],
-        ["APPLE_CLIENT_SECRET", jwt],
-      ]),
-    });
-    const checks = await verifyAll(ctx);
-    const sub = checks.find((c) => c.name === "jwt-sub-matches");
-    expect(sub?.severity).toBe("fail");
+    const checks = await verifyAll(
+      await siwaContext(
+        { servicesId: "com.wrong.app.signin", expirationDays: 1 },
+        { servicesId: "com.right.app.signin" },
+      ),
+    );
+    expect(checkNamed(checks, "jwt-sub-matches")?.severity).toBe("fail");
   });
 
   it("fails when JWT body is corrupt", async () => {
@@ -231,15 +141,6 @@ describe("Apple JWT verification", () => {
 });
 
 describe("Coherence checks", () => {
-  beforeEach(() => {
-    globalThis.fetch = vi
-      .fn()
-      .mockImplementation(
-        async () =>
-          new Response("[]", { status: 200, headers: { "content-type": "application/json" } }),
-      ) as unknown as typeof fetch;
-  });
-
   it("ok when bundle id matches across local + convex", async () => {
     const ctx = emptyContext({
       envLocal: new Map([["EXPO_PUBLIC_APP_BUNDLE_ID", "com.foo.bar"]]),
@@ -375,15 +276,6 @@ describe("Convex deployment checks", () => {
 });
 
 describe("unreadable Convex env", () => {
-  beforeEach(() => {
-    globalThis.fetch = vi
-      .fn()
-      .mockImplementation(
-        async () =>
-          new Response("[]", { status: 200, headers: { "content-type": "application/json" } }),
-      ) as unknown as typeof fetch;
-  });
-
   it("warns env-read on prod instead of failing per-var checks", async () => {
     const ctx = emptyContext({ channel: "prod", convexProdEnv: null });
     const checks = await verifyAll(ctx);

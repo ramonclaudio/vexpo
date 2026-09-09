@@ -1,6 +1,8 @@
 import { access, readFile } from "node:fs/promises";
 
 import { easJson, easRun, easSpawn, easText } from "./eas-cli.ts";
+import { parseKeyValueLines } from "./env-files.ts";
+import { bad, note } from "./output.ts";
 
 export async function checkCli(): Promise<{ ok: true; version: string } | { ok: false }> {
   const v = await version();
@@ -60,14 +62,7 @@ export async function envList(
     "short",
   ]);
   if (code !== 0) return null;
-  const out = new Map<string, string>();
-  for (const raw of stdout.split("\n")) {
-    const trimmed = raw.trim();
-    if (!trimmed) continue;
-    const eq = trimmed.indexOf("=");
-    if (eq > 0) out.set(trimmed.slice(0, eq), trimmed.slice(eq + 1));
-  }
-  return out;
+  return parseKeyValueLines(stdout);
 }
 
 export type EasEnvironment = "production" | "preview" | "development";
@@ -143,54 +138,33 @@ export async function init(): Promise<{ ok: boolean; projectId?: string }> {
   return { ok: !!id, projectId: id ?? undefined };
 }
 
-async function listChannels(): Promise<string[]> {
-  const parsed = await easJson<{ currentPage?: Array<{ name?: string }> }>([
-    "channel:list",
-    "--limit",
-    "25",
-  ]);
-  return (parsed.currentPage ?? []).map((c) => c.name ?? "").filter(Boolean);
-}
+type NamedResource = "channel" | "branch";
 
-async function createChannel(name: string): Promise<boolean> {
-  const { code } = await easText(["channel:create", name, "--non-interactive", "--json"]);
-  return code === 0;
-}
-
-export async function ensureChannels(names: readonly string[]): Promise<string[]> {
-  const existing = new Set(await listChannels());
-  const created: string[] = [];
-  for (const name of names) {
-    if (existing.has(name)) continue;
-    if (!(await createChannel(name))) throw new Error(`eas channel:create ${name} failed`);
-    created.push(name);
-  }
-  return created;
-}
-
-async function listBranches(): Promise<string[]> {
+async function listNamed(kind: NamedResource): Promise<string[]> {
   const parsed = await easJson<
     Array<{ name?: string }> | { currentPage?: Array<{ name?: string }> }
-  >(["branch:list", "--limit", "25"]);
-  if (Array.isArray(parsed)) return parsed.map((b) => b.name ?? "").filter(Boolean);
-  return (parsed.currentPage ?? []).map((b) => b.name ?? "").filter(Boolean);
+  >([`${kind}:list`, "--limit", "25"]);
+  const rows = Array.isArray(parsed) ? parsed : (parsed.currentPage ?? []);
+  return rows.map((r) => r.name ?? "").filter(Boolean);
 }
 
-async function createBranch(name: string): Promise<boolean> {
-  const { code } = await easText(["branch:create", name, "--non-interactive", "--json"]);
-  return code === 0;
-}
-
-export async function ensureBranches(names: readonly string[]): Promise<string[]> {
-  const existing = new Set(await listBranches());
+async function ensureNamed(kind: NamedResource, names: readonly string[]): Promise<string[]> {
+  const existing = new Set(await listNamed(kind));
   const created: string[] = [];
   for (const name of names) {
     if (existing.has(name)) continue;
-    if (!(await createBranch(name))) throw new Error(`eas branch:create ${name} failed`);
+    const { code } = await easText([`${kind}:create`, name, "--non-interactive", "--json"]);
+    if (code !== 0) throw new Error(`eas ${kind}:create ${name} failed`);
     created.push(name);
   }
   return created;
 }
+
+export const ensureChannels = (names: readonly string[]): Promise<string[]> =>
+  ensureNamed("channel", names);
+
+export const ensureBranches = (names: readonly string[]): Promise<string[]> =>
+  ensureNamed("branch", names);
 
 export async function projectInfo(): Promise<{ fullName: string; id: string } | null> {
   const { code, stdout } = await easText(["project:info"]);
@@ -215,3 +189,16 @@ export async function version(): Promise<string | null> {
   const m = /eas-cli\/([^\s]+)/.exec(text);
   return m?.[1] ?? text;
 }
+
+export function explainEnvListFailure(environment: string): void {
+  bad(`could not list EAS ${environment} env`);
+  note("run `npx eas-cli login` and `npx eas-cli init` first");
+}
+
+export const EAS_ROTATION_SECRETS = [
+  "APPLE_P8_PRIVATE_KEY",
+  "APPLE_TEAM_ID",
+  "APPLE_KEY_ID",
+  "APPLE_SERVICES_ID",
+  "CONVEX_DEPLOY_KEY",
+] as const;

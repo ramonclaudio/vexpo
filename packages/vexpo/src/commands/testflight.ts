@@ -1,7 +1,7 @@
 import { AscApiError } from "../lib/asc-api.ts";
 import { ascBootstrap } from "../lib/asc-state.ts";
 import { testflight } from "../lib/asc-testflight.ts";
-import { BOLD, DIM, RESET, line, nop, note, ok, section } from "../lib/output.ts";
+import { BOLD, DIM, RESET, emitJson, line, nop, note, ok, section } from "../lib/output.ts";
 
 async function bootstrap() {
   const { client, ascAppId, bundleId } = await ascBootstrap();
@@ -16,10 +16,7 @@ async function bootstrap() {
 export async function runTestflightGroupsList(opts: { json?: boolean } = {}): Promise<number> {
   const { tf, ascAppId } = await bootstrap();
   const groups = await tf.betaGroups.list({ appId: ascAppId });
-  if (opts.json) {
-    process.stdout.write(JSON.stringify(groups, null, 2) + "\n");
-    return 0;
-  }
+  if (opts.json) return emitJson(groups);
   section("Beta groups");
   if (groups.length === 0) {
     nop("no groups");
@@ -57,10 +54,7 @@ export async function runTestflightGroupsView(
     tf.betaGroups.get(groupId),
     tf.betaGroups.listTesters(groupId).catch(() => []),
   ]);
-  if (opts.json) {
-    process.stdout.write(JSON.stringify({ group, testers }, null, 2) + "\n");
-    return 0;
-  }
+  if (opts.json) return emitJson({ group, testers });
   section(`Group ${group.attributes.name ?? groupId}`);
   line(`  id: ${group.id}`);
   line(`  internal: ${group.attributes.isInternalGroup ? "yes" : "no"}`);
@@ -88,10 +82,7 @@ export async function runTestflightTestersList(opts: {
 }): Promise<number> {
   const { tf, ascAppId } = await bootstrap();
   const testers = await tf.betaTesters.list({ appId: ascAppId, email: opts.email });
-  if (opts.json) {
-    process.stdout.write(JSON.stringify(testers, null, 2) + "\n");
-    return 0;
-  }
+  if (opts.json) return emitJson(testers);
   section("Beta testers");
   if (testers.length === 0) {
     nop("none");
@@ -239,10 +230,7 @@ function feedbackLine(a: {
 export async function runTestflightFeedback(opts: FeedbackOpts): Promise<number> {
   const { tf, ascAppId } = await bootstrap();
   const items = await tf.betaFeedback.screenshots(ascAppId, opts.limit);
-  if (opts.json) {
-    process.stdout.write(JSON.stringify(items, null, 2) + "\n");
-    return 0;
-  }
+  if (opts.json) return emitJson(items);
   section("TestFlight feedback");
   if (items.length === 0) {
     nop("no screenshot feedback yet");
@@ -260,10 +248,7 @@ export async function runTestflightFeedback(opts: FeedbackOpts): Promise<number>
 export async function runTestflightCrashes(opts: FeedbackOpts): Promise<number> {
   const { tf, ascAppId } = await bootstrap();
   const items = await tf.betaFeedback.crashes(ascAppId, opts.limit);
-  if (opts.json) {
-    process.stdout.write(JSON.stringify(items, null, 2) + "\n");
-    return 0;
-  }
+  if (opts.json) return emitJson(items);
   section("TestFlight crashes");
   if (items.length === 0) {
     nop("no crash reports yet");

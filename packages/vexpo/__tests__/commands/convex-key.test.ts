@@ -1,4 +1,8 @@
+import { rm, writeFile } from "node:fs/promises";
+
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+import { useTmpCwd } from "../helpers/tmp-cwd.ts";
 
 vi.mock("../../src/lib/convex-management.ts", () => ({ mintProdDeployKey: vi.fn() }));
 vi.mock("../../src/lib/eas-project.ts", () => ({
@@ -7,42 +11,31 @@ vi.mock("../../src/lib/eas-project.ts", () => ({
   envCreate: vi.fn().mockResolvedValue(undefined),
   envUpdate: vi.fn().mockResolvedValue(undefined),
 }));
-vi.mock("../../src/lib/env-files.ts", async () => ({
-  ...(await vi.importActual("../../src/lib/env-files.ts")),
-  readEnvFile: vi.fn(),
-}));
-vi.mock("node:fs/promises", async () => ({
-  ...(await vi.importActual("node:fs/promises")),
-  access: vi.fn().mockResolvedValue(undefined),
-}));
 
 import { runConvexKey } from "../../src/commands/env/convex-key.ts";
 import { mintProdDeployKey } from "../../src/lib/convex-management.ts";
 import { envCreate, envList } from "../../src/lib/eas-project.ts";
-import { readEnvFile } from "../../src/lib/env-files.ts";
 
-const mintProdSpy = mintProdDeployKey as unknown as ReturnType<typeof vi.fn>;
-const envListSpy = envList as unknown as ReturnType<typeof vi.fn>;
-const envCreateSpy = envCreate as unknown as ReturnType<typeof vi.fn>;
-const readEnvFileSpy = readEnvFile as unknown as ReturnType<typeof vi.fn>;
+const mintProdSpy = vi.mocked(mintProdDeployKey);
+const envListSpy = vi.mocked(envList);
+const envCreateSpy = vi.mocked(envCreate);
 
-beforeEach(() => {
-  vi.clearAllMocks();
-  readEnvFileSpy.mockImplementation((p: string) =>
-    Promise.resolve(
-      p.includes("prod")
-        ? new Map([["CONVEX_DEPLOYMENT", "prod:lucky-fox-1"]])
-        : new Map([
-            ["CONVEX_DEPLOY_KEY", "dev:merry-otter-1|x"],
-            ["CONVEX_DEPLOYMENT", "dev:merry-otter-1"],
-          ]),
-    ),
+useTmpCwd("convex-key-");
+
+beforeEach(async () => {
+  await writeFile(
+    ".env.local",
+    "CONVEX_DEPLOY_KEY=dev:merry-otter-1|x\nCONVEX_DEPLOYMENT=dev:merry-otter-1\n",
   );
+  await writeFile(".env.prod", "CONVEX_DEPLOYMENT=prod:lucky-fox-1\n");
+  vi.clearAllMocks();
   envListSpy.mockResolvedValue(new Map());
   mintProdSpy.mockResolvedValue({ key: "prod:lucky-fox-1|eyMINT", deployment: "lucky-fox-1" });
 });
 
-afterEach(() => vi.clearAllMocks());
+afterEach(() => {
+  vi.clearAllMocks();
+});
 
 describe("runConvexKey --mint", () => {
   it("mints the prod key and sets it on EAS production when EAS lacks one", async () => {
@@ -68,6 +61,19 @@ describe("runConvexKey --mint", () => {
 
   it("without --mint, never mints", async () => {
     await runConvexKey({});
+    expect(mintProdSpy).not.toHaveBeenCalled();
+  });
+
+  it("mints from the dev selector when there is no prod env file", async () => {
+    await rm(".env.prod");
+    await runConvexKey({ mint: true });
+    expect(mintProdSpy).toHaveBeenCalledWith("merry-otter-1", "convex-key");
+  });
+
+  it("does not mint when neither env file names a deployment", async () => {
+    await rm(".env.prod");
+    await writeFile(".env.local", "CONVEX_DEPLOY_KEY=dev:merry-otter-1|x\n");
+    await runConvexKey({ mint: true });
     expect(mintProdSpy).not.toHaveBeenCalled();
   });
 });

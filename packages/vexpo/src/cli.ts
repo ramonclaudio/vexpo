@@ -9,7 +9,12 @@ import { runAscKey } from "./commands/apple/asc-key.ts";
 import { runEasRotationSecrets } from "./commands/apple/eas-rotation-secrets.ts";
 import { runServicesId } from "./commands/apple/services-id.ts";
 import { runAscConnect } from "./commands/asc.ts";
-import { runAccessibilityLint, runAccessibilityShow } from "./commands/asc-accessibility.ts";
+import {
+  runAccessibilityLint,
+  runAccessibilityPush,
+  runAccessibilityShow,
+  runAccessibilityUrl,
+} from "./commands/asc-accessibility.ts";
 import { runPrivacyLint, runPrivacyShow } from "./commands/asc-privacy.ts";
 import {
   runTestflightGroupsCreate,
@@ -23,15 +28,15 @@ import {
   runTestflightWhatsNew,
 } from "./commands/testflight.ts";
 import { runBetterAuth } from "./commands/better-auth.ts";
-import { runConvex } from "./commands/convex.ts";
+import { runConvex, type ConvexOptions } from "./commands/convex.ts";
 import { runConvexMigrate } from "./commands/convex-migrate.ts";
 import { runDoctor } from "./commands/doctor.ts";
 import { runConvexKey } from "./commands/env/convex-key.ts";
 import { runEnvPush } from "./commands/env/push.ts";
 import { runRebrand } from "./commands/rebrand.ts";
-import { runResend } from "./commands/resend.ts";
+import { runResend, type ResendOptions } from "./commands/resend.ts";
 import { runReviewAccount } from "./commands/review-account.ts";
-import { runSetup } from "./commands/setup.ts";
+import { runSetup, type SetupOptions } from "./commands/setup.ts";
 import { runSubmit } from "./commands/submit.ts";
 import { bad, errText } from "./lib/output.ts";
 
@@ -40,6 +45,29 @@ const program = new Command()
   .description("CLI for vexpo projects (Expo + Convex + Better Auth + Resend).")
   .version(pkg.version, "-v, --version");
 
+type SetupFlags = {
+  new?: boolean;
+  force?: boolean;
+  fresh?: boolean;
+  local?: boolean;
+  dryRun?: boolean;
+  plan?: boolean;
+  state?: boolean;
+  skipRebrand?: boolean;
+};
+
+const setupOptions = (lite: boolean, o: SetupFlags): SetupOptions => ({
+  lite,
+  isNew: o.new,
+  force: o.force,
+  fresh: o.fresh,
+  local: o.local,
+  dryRun: o.dryRun,
+  plan: o.plan,
+  noState: o.state === false,
+  skipRebrand: o.skipRebrand,
+});
+
 const exitWith = (p: Promise<number>): void => {
   p.then((code) => process.exit(code)).catch((err) => {
     bad(errText(err));
@@ -47,82 +75,34 @@ const exitWith = (p: Promise<number>): void => {
   });
 };
 
-program
-  .command("lite")
-  .description(
-    "Dev-mode setup. Provisions Convex and Better Auth only. The first `npm run ios` native build takes a few minutes on top. No Apple Developer account, no domain, no EAS, no Resend. Sign-up auto-verifies (no OTP). Re-run `vexpo full` later to provision the rest.",
-  )
-  .option("--new", "walk Convex signup before provisioning", false)
-  .option("--force", "re-run every step, ignoring the cache", false)
-  .option("--fresh", "wipe state and reprovision Convex from scratch", false)
-  .option("--local", "self-hosted Convex backend", false)
-  .option("--dry-run", "print what each phase would do, exit without changes", false)
-  .option("--plan", "print the full setup journey upfront, exit without changes", false)
-  .option("--no-state", "ignore .setup-state.json (CI-friendly)")
-  .action(
-    (options: {
-      new?: boolean;
-      force?: boolean;
-      fresh?: boolean;
-      local?: boolean;
-      dryRun?: boolean;
-      plan?: boolean;
-      state?: boolean;
-    }) => {
-      exitWith(
-        runSetup({
-          lite: true,
-          isNew: options.new,
-          force: options.force,
-          fresh: options.fresh,
-          local: options.local,
-          dryRun: options.dryRun,
-          plan: options.plan,
-          noState: options.state === false,
-        }),
-      );
-    },
-  );
+const withSetupFlags = (cmd: Command): Command =>
+  cmd
+    .option("--force", "re-run every step, ignoring the cache", false)
+    .option("--fresh", "wipe state and reprovision Convex from scratch", false)
+    .option("--local", "self-hosted Convex backend", false)
+    .option("--dry-run", "print what each phase would do, exit without changes", false)
+    .option("--plan", "print the full setup journey upfront, exit without changes", false)
+    .option("--no-state", "ignore .setup-state.json (CI-friendly)");
 
-program
-  .command("full")
-  .description(
-    "Provisions Convex, Better Auth, Resend, Apple Sign In, the ASC API key, EAS init, and rebrand. Assumes you already have Apple, Convex, Expo and Resend accounts and API keys. Pass `--new` to walk every signup first. On completion, prints the `eas build` command to run when you're ready. vexpo doesn't invoke `eas build` itself.",
-  )
-  .option("--new", "walk Apple, Convex, Expo and Resend signups before provisioning", false)
-  .option("--force", "re-run every step, ignoring the cache", false)
-  .option("--fresh", "wipe state and reprovision Convex from scratch", false)
-  .option("--local", "self-hosted Convex backend", false)
-  .option("--dry-run", "print what each phase would do, exit without changes", false)
-  .option("--plan", "print the full setup journey upfront, exit without changes", false)
-  .option("--no-state", "ignore .setup-state.json (CI-friendly)")
+withSetupFlags(
+  program
+    .command("lite")
+    .description(
+      "Dev-mode setup. Provisions Convex and Better Auth only. The first `npm run ios` native build takes a few minutes on top. No Apple Developer account, no domain, no EAS, no Resend. Sign-up auto-verifies (no OTP). Re-run `vexpo full` later to provision the rest.",
+    )
+    .option("--new", "walk Convex signup before provisioning", false),
+).action((options: SetupFlags) => exitWith(runSetup(setupOptions(true, options))));
+
+withSetupFlags(
+  program
+    .command("full")
+    .description(
+      "Provisions Convex, Better Auth, Resend, Apple Sign In, the ASC API key, EAS init, and rebrand. Assumes you already have Apple, Convex, Expo and Resend accounts and API keys. Pass `--new` to walk every signup first. On completion, prints the `eas build` command to run when you're ready. vexpo doesn't invoke `eas build` itself.",
+    )
+    .option("--new", "walk Apple, Convex, Expo and Resend signups before provisioning", false),
+)
   .option("--skip-rebrand", "skip the rebrand wizard (useful if you've already rebranded)", false)
-  .action(
-    (options: {
-      new?: boolean;
-      force?: boolean;
-      fresh?: boolean;
-      local?: boolean;
-      dryRun?: boolean;
-      plan?: boolean;
-      state?: boolean;
-      skipRebrand?: boolean;
-    }) => {
-      exitWith(
-        runSetup({
-          lite: false,
-          isNew: options.new,
-          force: options.force,
-          fresh: options.fresh,
-          local: options.local,
-          dryRun: options.dryRun,
-          plan: options.plan,
-          noState: options.state === false,
-          skipRebrand: options.skipRebrand,
-        }),
-      );
-    },
-  );
+  .action((options: SetupFlags) => exitWith(runSetup(setupOptions(false, options))));
 
 program
   .command("accounts")
@@ -196,15 +176,7 @@ const convex = program
     false,
   )
   .option("--region <region>", "Convex deployment region for --eas, e.g. aws-us-east-1")
-  .action(
-    (options: {
-      fresh?: boolean;
-      local?: boolean;
-      name?: string;
-      eas?: boolean;
-      region?: string;
-    }) => exitWith(runConvex(options)),
-  );
+  .action((options: ConvexOptions) => exitWith(runConvex(options)));
 
 convex
   .command("migrate")
@@ -245,15 +217,7 @@ program
     "--force",
     "with --repoint, recreate the webhook even if it already points at the endpoint",
   )
-  .action(
-    (options: {
-      name?: string;
-      from?: string;
-      repoint?: boolean;
-      prod?: boolean;
-      force?: boolean;
-    }) => exitWith(runResend(options)),
-  );
+  .action((options: ResendOptions) => exitWith(runResend(options)));
 
 const apple = program.command("apple").description("Apple-side provisioning.");
 
@@ -419,8 +383,26 @@ ascA11y
 
 ascA11y
   .command("lint <file>")
-  .description("Validate a local accessibility.config.json against Apple's enums.")
+  .description("Validate a local accessibility.config.json against Apple's schema.")
   .action((file: string) => exitWith(runAccessibilityLint(file)));
+
+ascA11y
+  .command("push <file>")
+  .description("Send a local accessibility.config.json to App Store Connect.")
+  .option("--publish", "also move the draft onto the App Store page", false)
+  .option("--dry-run", "print what would change and send nothing", false)
+  .action((file: string, options: { publish?: boolean; dryRun?: boolean }) =>
+    exitWith(runAccessibilityPush(file, options)),
+  );
+
+ascA11y
+  .command("url [url]")
+  .description("Show or set the accessibility URL on the App Store page.")
+  .option("--clear", "remove the URL instead of setting one", false)
+  .option("--json", "JSON output", false)
+  .action((url: string | undefined, options: { clear?: boolean; json?: boolean }) =>
+    exitWith(runAccessibilityUrl(url, options)),
+  );
 
 const testflight = program
   .command("testflight")

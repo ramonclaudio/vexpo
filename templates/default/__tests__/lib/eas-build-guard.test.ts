@@ -1,11 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-// The EAS build guard in `app.config.ts` runs at module load and throws when a
-// build is missing env that would otherwise silently fall back to placeholder
-// values. Missing Convex endpoints crash the app on launch; missing identity
-// vars ship a binary under the template bundle id / team. This locks in that
-// the identity vars are guarded alongside the Convex ones.
-
 const GUARDED = [
   "EXPO_PUBLIC_CONVEX_URL",
   "EXPO_PUBLIC_CONVEX_SITE_URL",

@@ -1,13 +1,4 @@
 /// <reference types="vite/client" />
-/**
- * The receipt parking lot. Expo accepts a push at send time (an "ok" ticket)
- * and only reports a dead device later, in the RECEIPT, so each ok ticket is
- * parked with the token it went to and `pushSender.reconcileReceipts` polls
- * for it. These three are that table's whole surface.
- *
- * `listPendingReceipts` is oldest-first on purpose: receipts expire on Expo's
- * side, so the batch has to drain from the front or the oldest never resolve.
- */
 import { describe, expect, test } from "vitest";
 
 import { internal } from "@/convex/_generated/api";
@@ -29,8 +20,7 @@ describe("pushTokens receipts", () => {
     });
     expect(written).toBe(3);
 
-    // Age them apart so the ordering assertion means something. Rows written
-    // in one mutation share a timestamp otherwise.
+    // Rows written in one mutation share a timestamp, so age them apart.
     const rows = await t.run(async (ctx) => ctx.db.query("pushReceipts").collect());
     const base = Date.now() - 10_000;
     await t.run(async (ctx) => {

@@ -5,9 +5,6 @@ import { formatError } from "@/lib/convex-error";
 
 const GENERIC = "Something went wrong. Please try again.";
 
-// Every string this returns goes on screen. Convex errors are ours and carry
-// copy written for the user; anything else came from the transport and would
-// put "Network request failed" or a raw stack under a form.
 describe("formatError", () => {
   it("uses the message a ConvexError carries in its data", () => {
     expect(formatError(new ConvexError({ message: "Username already taken" }))).toBe(

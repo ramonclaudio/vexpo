@@ -1,49 +1,18 @@
 import { createVerify, generateKeyPairSync } from "node:crypto";
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
-import { homedir, tmpdir } from "node:os";
-import path from "node:path";
+import { homedir } from "node:os";
 
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
+
+import { decodeJwt, useEcKey } from "../helpers/ec-key.ts";
 
 import { signClientSecret } from "../../src/lib/apple-jwt";
 
-let workdir: string;
-let pemPath: string;
-let pemContents: string;
-let publicPem: string;
-
-beforeAll(async () => {
-  const { privateKey, publicKey } = generateKeyPairSync("ec", { namedCurve: "prime256v1" });
-  pemContents = privateKey.export({ format: "pem", type: "pkcs8" }).toString();
-  publicPem = publicKey.export({ format: "pem", type: "spki" }).toString();
-  workdir = await mkdtemp(path.join(tmpdir(), "apple-jwt-test-"));
-  pemPath = path.join(workdir, "AuthKey.p8");
-  await writeFile(pemPath, pemContents);
-});
-
-afterAll(async () => {
-  await rm(workdir, { recursive: true, force: true });
-});
-
-function decodeJwt(token: string): {
-  header: Record<string, unknown>;
-  payload: Record<string, unknown>;
-  signingInput: string;
-  signature: Buffer;
-} {
-  const [h, p, s] = token.split(".");
-  return {
-    header: JSON.parse(Buffer.from(h, "base64url").toString()),
-    payload: JSON.parse(Buffer.from(p, "base64url").toString()),
-    signingInput: `${h}.${p}`,
-    signature: Buffer.from(s, "base64url"),
-  };
-}
+const key = useEcKey("apple-jwt-test-");
 
 describe("signClientSecret", () => {
   it("produces a JWT with the expected header (alg, kid)", async () => {
     const token = await signClientSecret({
-      privateKey: { contents: pemContents },
+      privateKey: { contents: key.pem },
       teamId: "ABCDE12345",
       keyId: "FGHIJ67890",
       servicesId: "com.example.signin",
@@ -55,7 +24,7 @@ describe("signClientSecret", () => {
   it("produces a payload matching Apple's SIWA spec", async () => {
     const before = Math.floor(Date.now() / 1000);
     const token = await signClientSecret({
-      privateKey: { contents: pemContents },
+      privateKey: { contents: key.pem },
       teamId: "ABCDE12345",
       keyId: "FGHIJ67890",
       servicesId: "com.example.signin",
@@ -74,7 +43,7 @@ describe("signClientSecret", () => {
 
   it("verifies against the matching public key (ES256 signature is valid)", async () => {
     const token = await signClientSecret({
-      privateKey: { contents: pemContents },
+      privateKey: { contents: key.pem },
       teamId: "ABCDE12345",
       keyId: "FGHIJ67890",
       servicesId: "com.example.signin",
@@ -83,7 +52,7 @@ describe("signClientSecret", () => {
     const verifier = createVerify("SHA256");
     verifier.update(signingInput);
     verifier.end();
-    const ok = verifier.verify({ key: publicPem, dsaEncoding: "ieee-p1363" }, signature);
+    const ok = verifier.verify({ key: key.publicPem, dsaEncoding: "ieee-p1363" }, signature);
     expect(ok).toBe(true);
   });
 
@@ -99,19 +68,19 @@ describe("signClientSecret", () => {
     const verifier = createVerify("SHA256");
     verifier.update(signingInput);
     verifier.end();
-    const ok = verifier.verify({ key: publicPem, dsaEncoding: "ieee-p1363" }, signature);
+    const ok = verifier.verify({ key: key.publicPem, dsaEncoding: "ieee-p1363" }, signature);
     expect(ok).toBe(false);
   });
 
   it("accepts a `.p8` file path and produces an equivalent token", async () => {
     const fromContents = await signClientSecret({
-      privateKey: { contents: pemContents },
+      privateKey: { contents: key.pem },
       teamId: "T",
       keyId: "K",
       servicesId: "S",
     });
     const fromPath = await signClientSecret({
-      privateKey: { path: pemPath },
+      privateKey: { path: key.pemPath },
       teamId: "T",
       keyId: "K",
       servicesId: "S",
@@ -154,7 +123,7 @@ describe("signClientSecret", () => {
 
   it("respects a custom expiration shorter than the 180-day default", async () => {
     const token = await signClientSecret({
-      privateKey: { contents: pemContents },
+      privateKey: { contents: key.pem },
       teamId: "T",
       keyId: "K",
       servicesId: "S",
@@ -168,7 +137,7 @@ describe("signClientSecret", () => {
 
   it("respects a custom expiration of 1 day", async () => {
     const token = await signClientSecret({
-      privateKey: { contents: pemContents },
+      privateKey: { contents: key.pem },
       teamId: "T",
       keyId: "K",
       servicesId: "S",
@@ -182,7 +151,7 @@ describe("signClientSecret", () => {
 
   it("produces valid base64url segments (no padding, no `+` or `/`)", async () => {
     const token = await signClientSecret({
-      privateKey: { contents: pemContents },
+      privateKey: { contents: key.pem },
       teamId: "ABCDE12345",
       keyId: "FGHIJ67890",
       servicesId: "com.example.signin",
@@ -197,7 +166,7 @@ describe("signClientSecret", () => {
 
   it("signature segment has the IEEE P1363 size for P-256 (64 bytes, 86 base64url chars)", async () => {
     const token = await signClientSecret({
-      privateKey: { contents: pemContents },
+      privateKey: { contents: key.pem },
       teamId: "ABCDE12345",
       keyId: "FGHIJ67890",
       servicesId: "com.example.signin",

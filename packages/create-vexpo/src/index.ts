@@ -4,12 +4,10 @@ import { basename, dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { Command } from "commander";
-import { execa } from "execa";
-import kleur from "kleur";
-import ora from "ora";
-import prompts from "prompts";
 
 import { STRIPPED_DOTFILES, strippedToUnderscore } from "./dotfiles.ts";
+import { run } from "./proc.ts";
+import { askText, bold, cyan, dim, gray, red, spinner, type Spinner } from "./tty.ts";
 
 import pkg from "../package.json" with { type: "json" };
 
@@ -50,7 +48,7 @@ async function main() {
   const target = resolve(process.cwd(), name);
 
   if (existsSync(target)) {
-    console.error(kleur.red(`\nTarget ${target} already exists. Pick a different name.`));
+    console.error(red(`\nTarget ${target} already exists. Pick a different name.`));
     process.exit(1);
   }
 
@@ -68,9 +66,7 @@ async function main() {
 }
 
 async function copyTemplate(target: string, name: string): Promise<void> {
-  const spin = ora(
-    `Copying template to ${kleur.cyan(relative(process.cwd(), target) || ".")}`,
-  ).start();
+  const spin = spinner(`Copying template to ${cyan(relative(process.cwd(), target) || ".")}`);
   try {
     await cp(TEMPLATE_DIR, target, { recursive: true });
     await restoreStrippedDotfiles(target);
@@ -84,13 +80,11 @@ async function copyTemplate(target: string, name: string): Promise<void> {
 }
 
 async function install(target: string, pm: PM): Promise<boolean> {
-  const spin = ora(`Installing dependencies with ${kleur.cyan(pm)}`).start();
-  try {
-    await execa(pm, ["install"], { cwd: target, stdout: "ignore" });
-  } catch (err) {
-    spin.fail(`Install failed. Run ${kleur.cyan(`${pm} install`)} manually.`);
-    const stderr = installFailureStderr(err);
-    if (stderr) console.error(kleur.gray(tail(stderr, 20)));
+  const spin = spinner(`Installing dependencies with ${cyan(pm)}`);
+  const { code, stderr } = await run([pm, "install"], { cwd: target });
+  if (code !== 0) {
+    spin.fail(`Install failed. Run ${cyan(`${pm} install`)} manually.`);
+    if (stderr.trim()) console.error(gray(tail(stderr.trim(), 20)));
     return false;
   }
   spin.succeed(`Installed with ${pm}`);
@@ -101,52 +95,53 @@ async function brand(target: string): Promise<void> {
   const bin = join(target, "node_modules", ".bin", "vexpo");
   if (!existsSync(bin) || process.stdin.isTTY !== true) return;
   console.log();
-  try {
-    await execa(bin, ["rebrand"], { cwd: target, stdio: "inherit" });
-  } catch {
+  const { code } = await run([bin, "rebrand"], { cwd: target, stdio: "inherit" });
+  if (code !== 0) {
     console.error(
-      kleur.gray("  Rebrand skipped. Run ") +
-        kleur.cyan("npx vexpo rebrand") +
-        kleur.gray(" in the project when you are ready."),
+      gray("  Rebrand skipped. Run ") +
+        cyan("npx vexpo rebrand") +
+        gray(" in the project when you are ready."),
     );
   }
 }
 
-async function commitAll(target: string, spin: ReturnType<typeof ora>): Promise<void> {
-  await execa("git", ["add", "-A"], { cwd: target, stdio: "ignore" });
-  const email = await execa("git", ["config", "user.email"], { cwd: target, reject: false });
-  const uname = await execa("git", ["config", "user.name"], { cwd: target, reject: false });
+async function commitAll(target: string, spin: Spinner): Promise<void> {
+  await run(["git", "add", "-A"], { cwd: target, stdio: "ignore" });
+  const email = await run(["git", "config", "user.email"], { cwd: target });
+  const uname = await run(["git", "config", "user.name"], { cwd: target });
   if (!email.stdout.trim() || !uname.stdout.trim()) {
     spin.warn("Git repo initialized, commit skipped (no git identity)");
-    console.error(kleur.gray("  Set git config user.name and user.email, then commit yourself."));
+    console.error(gray("  Set git config user.name and user.email, then commit yourself."));
     return;
   }
-  await execa("git", ["commit", "-m", "feat: initial commit", "--no-gpg-sign"], {
+  const commit = await run(["git", "commit", "-m", "feat: initial commit", "--no-gpg-sign"], {
     cwd: target,
     stdio: "ignore",
   });
+  if (commit.code !== 0) {
+    spin.warn("Git repo initialized, commit failed");
+    console.error(gray("  Commit yourself once the working tree is ready."));
+    return;
+  }
   spin.succeed("Git repo initialized");
 }
 
 async function initGit(target: string, pm: PM, depsReady: boolean): Promise<void> {
-  const spin = ora("Initializing git").start();
-  try {
-    await execa("git", ["init", "--initial-branch=main"], { cwd: target, stdio: "ignore" });
-  } catch {
+  const spin = spinner("Initializing git");
+  const init = await run(["git", "init", "--initial-branch=main"], {
+    cwd: target,
+    stdio: "ignore",
+  });
+  if (init.code !== 0) {
     spin.warn("Git init skipped");
     return;
   }
   if (!depsReady) {
     spin.warn("Git repo initialized, commit skipped (install failed)");
-    console.error(kleur.gray(`  Commit yourself after ${pm} install lands.`));
+    console.error(gray(`  Commit yourself after ${pm} install lands.`));
     return;
   }
-  try {
-    await commitAll(target, spin);
-  } catch {
-    spin.warn("Git repo initialized, commit failed");
-    console.error(kleur.gray("  Commit yourself once the working tree is ready."));
-  }
+  await commitAll(target, spin);
 }
 
 const NAME_RE = /^[a-z0-9][a-z0-9-]*$/;
@@ -165,9 +160,9 @@ async function resolveName(argDir: string | undefined, yes: boolean): Promise<st
   if (argDir) {
     const check = validateNameSegment(argDir);
     if (!check.ok) {
-      console.error(kleur.red(`\nInvalid project directory '${argDir}'. ${check.reason}.`));
+      console.error(red(`\nInvalid project directory '${argDir}'. ${check.reason}.`));
       console.error(
-        kleur.gray(`Examples: my-app, my-cool-app, project1. Avoid spaces, unicode, npm scopes.`),
+        gray(`Examples: my-app, my-cool-app, project1. Avoid spaces, unicode, npm scopes.`),
       );
       process.exit(1);
     }
@@ -175,21 +170,14 @@ async function resolveName(argDir: string | undefined, yes: boolean): Promise<st
   }
   if (yes) return "my-vexpo-app";
 
-  const res = await prompts(
-    {
-      type: "text",
-      name: "name",
-      message: "Project directory",
-      initial: "my-vexpo-app",
-      validate: (v: string) => {
-        const check = validateNameSegment(v);
-        return check.ok ? true : check.reason;
-      },
+  return askText({
+    message: "Project directory",
+    initial: "my-vexpo-app",
+    validate: (value) => {
+      const check = validateNameSegment(value);
+      return check.ok ? true : check.reason;
     },
-    { onCancel: () => process.exit(1) },
-  );
-
-  return res.name as string;
+  });
 }
 
 async function restoreStrippedDotfiles(target: string): Promise<void> {
@@ -253,15 +241,7 @@ function detectPackageManager(): PM {
 
 function intro(): void {
   console.log();
-  console.log(kleur.bold().cyan("create-vexpo") + kleur.gray(` v${pkg.version}`));
-}
-
-function installFailureStderr(err: unknown): string {
-  if (err && typeof err === "object" && "stderr" in err) {
-    const stderr = (err as { stderr?: unknown }).stderr;
-    if (typeof stderr === "string") return stderr.trim();
-  }
-  return "";
+  console.log(bold(cyan("create-vexpo")) + gray(` v${pkg.version}`));
 }
 
 function tail(text: string, n: number): string {
@@ -271,33 +251,31 @@ function tail(text: string, n: number): string {
 function nextSteps(target: string, pm: PM, depsReady: boolean): void {
   const cdPath = relative(process.cwd(), target) || ".";
   console.log();
-  console.log(kleur.bold("Next steps:"));
-  console.log(kleur.gray("  cd ") + kleur.cyan(cdPath));
-  if (!depsReady) console.log(kleur.gray(`  ${pm} install`));
+  console.log(bold("Next steps:"));
+  console.log(gray("  cd ") + cyan(cdPath));
+  if (!depsReady) console.log(gray(`  ${pm} install`));
+  console.log(gray(`  npx vexpo lite         ${dim("# provisions Convex and Better Auth")}`));
   console.log(
-    kleur.gray(`  npx vexpo lite         ${kleur.dim("# provisions Convex and Better Auth")}`),
-  );
-  console.log(
-    kleur.gray(
-      `  npx vexpo full         ${kleur.dim("# adds Resend, Apple Sign In, the ASC key, and eas init")}`,
+    gray(
+      `  npx vexpo full         ${dim("# adds Resend, Apple Sign In, the ASC key, and eas init")}`,
     ),
   );
   console.log(
-    kleur.gray(
-      `  npx vexpo full --new   ${kleur.dim("# same, plus walks Apple, Convex, Expo, and Resend signups")}`,
+    gray(
+      `  npx vexpo full --new   ${dim("# same, plus walks Apple, Convex, Expo, and Resend signups")}`,
     ),
   );
   console.log();
-  console.log(kleur.bold("Then in two terminals:"));
-  console.log(kleur.gray(`  ${pm} run convex:dev   ${kleur.dim("# terminal 1")}`));
-  console.log(kleur.gray(`  ${pm} run ios          ${kleur.dim("# terminal 2")}`));
+  console.log(bold("Then in two terminals:"));
+  console.log(gray(`  ${pm} run convex:dev   ${dim("# terminal 1")}`));
+  console.log(gray(`  ${pm} run ios          ${dim("# terminal 2")}`));
   console.log();
   console.log(
-    kleur.gray("Using an AI agent? The setup playbook and the paste-in prompt are in ") +
-      kleur.cyan("README.md") +
-      kleur.gray("."),
+    gray("Using an AI agent? The setup playbook and the paste-in prompt are in ") +
+      cyan("README.md") +
+      gray("."),
   );
-  console.log(kleur.gray("Docs: ") + kleur.cyan("https://github.com/ramonclaudio/vexpo"));
+  console.log(gray("Docs: ") + cyan("https://github.com/ramonclaudio/vexpo"));
   console.log();
 }
 

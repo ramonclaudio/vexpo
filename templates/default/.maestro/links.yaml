@@ -1,0 +1,58 @@
+# The two screens nothing else reaches. Forgot password and reset password sit
+# behind the email-features flag on the sign-in screen, so a deployment without
+# it never draws the link. Both are in DeepLinkRoutes, so openLink gets to them
+# either way. The linked screen is behind the signed-in guard, so screens.yaml
+# has it.
+#
+# An openLink can be answered by SpringBoard's "Open in ...?" prompt, and iOS
+# stops asking once the choice is made, so the tap sits behind a `when: visible`
+# rather than being marked optional. An optional tapOn that finds nothing keeps
+# retrying, and with the keypad up on the reset screen one of them sat there for
+# sixteen minutes before it gave up.
+#
+# The paths carry three slashes. With two, the first segment parses as the host
+# and the path comes back empty, so the link resolves to the root instead.
+appId: ${MAESTRO_APP_ID}
+---
+- runFlow:
+    when:
+      visible: "Cancel"
+    commands:
+      - tapOn: "Cancel"
+- runFlow: _cold-start.yaml
+
+- openLink: vexpo:///forgot-password
+- waitForAnimationToEnd:
+    timeout: 5000
+- runFlow:
+    when:
+      visible: "Open"
+    commands:
+      - tapOn: "Open"
+- extendedWaitUntil:
+    visible:
+      id: "forgot-password-screen"
+    timeout: 20000
+- assertVisible:
+    id: "forgot-password-email"
+- assertVisible:
+    id: "forgot-password-submit"
+- takeScreenshot: .maestro/screenshots/forgot-password
+
+- openLink: vexpo:///reset-password?email=${MAESTRO_TEST_EMAIL}
+- waitForAnimationToEnd:
+    timeout: 5000
+- runFlow:
+    when:
+      visible: "Open"
+    commands:
+      - tapOn: "Open"
+- extendedWaitUntil:
+    visible:
+      id: "reset-password-screen"
+    timeout: 20000
+- assertVisible:
+    id: "reset-password-account"
+- assertVisible:
+    id: "reset-password-code"
+- takeScreenshot: .maestro/screenshots/reset-password

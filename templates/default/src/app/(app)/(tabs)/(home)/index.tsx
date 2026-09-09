@@ -47,7 +47,6 @@ export default function HomeScreen() {
             >
               <Text date={now} dateStyle="date" />
             </Text>
-            {}
             <Text
               testID="home-greeting"
               modifiers={[

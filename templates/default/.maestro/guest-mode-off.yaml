@@ -1,25 +1,6 @@
 appId: ${MAESTRO_APP_ID}
 ---
-- launchApp:
-    clearState: true
-    permissions:
-      notifications: deny
-- waitForAnimationToEnd:
-    timeout: 15000
-- runFlow:
-    when:
-      visible: "DEVELOPMENT SERVERS"
-    commands:
-      - openLink: ${MAESTRO_DEV_URL}
-      - extendedWaitUntil:
-          notVisible: "DEVELOPMENT SERVERS"
-          timeout: 30000
-      - waitForAnimationToEnd:
-          timeout: 15000
-- extendedWaitUntil:
-    visible:
-      id: "sign-in-screen"
-    timeout: 20000
+- runFlow: _cold-start.yaml
 
 - extendedWaitUntil:
     visible:

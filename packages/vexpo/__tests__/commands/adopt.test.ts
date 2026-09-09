@@ -25,8 +25,8 @@ vi.mock("../../src/lib/convex-env.ts", async (importOriginal) => ({
 import { runAdopt } from "../../src/commands/adopt.ts";
 import { ensureLine, readAll } from "../../src/lib/env-local.ts";
 
-const readAllSpy = readAll as unknown as ReturnType<typeof vi.fn>;
-const ensureLineSpy = ensureLine as unknown as ReturnType<typeof vi.fn>;
+const readAllSpy = vi.mocked(readAll);
+const ensureLineSpy = vi.mocked(ensureLine);
 
 beforeEach(() => {
   vi.clearAllMocks();

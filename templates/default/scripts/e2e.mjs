@@ -141,6 +141,7 @@ const stopFaceId = () => {
 process.on("exit", stopFaceId);
 
 const ORDERED_FLOWS = [
+  ".maestro/links.yaml",
   ".maestro/guest.yaml",
   ".maestro/auth.yaml",
   ".maestro/launch.yaml",
@@ -167,11 +168,17 @@ console.log(`guest   ${env.MAESTRO_GUEST_EMAIL}`);
 console.log(`devUrl  ${env.MAESTRO_DEV_URL}`);
 console.log(`jdk     ${jdk}\n`);
 
-const run = spawnSync(maestro, ["test", ...(flows.length ? flows : ORDERED_FLOWS)], {
-  cwd: PROJECT,
-  stdio: "inherit",
-  env,
-});
+const args = [
+  "test",
+  "--debug-output",
+  ".maestro/debug",
+  "--flatten-debug-output",
+  // Without --udid maestro picks its own device, which may not have the app installed.
+  ...(process.env.MAESTRO_UDID ? ["--udid", process.env.MAESTRO_UDID] : []),
+  ...(flows.length ? flows : ORDERED_FLOWS),
+];
+
+const run = spawnSync(maestro, args, { cwd: PROJECT, stdio: "inherit", env });
 stopFaceId();
 if (run.error) {
   console.error(

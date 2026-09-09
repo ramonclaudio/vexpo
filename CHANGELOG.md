@@ -4,339 +4,417 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Pre
 
 ## [Unreleased]
 
-- Every Convex function has a test now, 31 of 31, up from 16. The fifteen that had none were the ones nothing else exercises: the two ops tools run by hand (`admin.resetRateLimit`, `auth.rotateKeys`), the App Review account seeder and its idempotency, record, list and delete on push receipts, the daily token cleanup, `auth.hasPassword` on all four session shapes, the avatar upload URL and its rate limit, which Resend events the webhook warns on and which it stays quiet for, and Apple's token revoke including the two failure paths that must log rather than throw so an account purge can finish. 205 tests, up from 164.
-- `.maestro/screens.yaml` covers the screens no flow reached: help, debug, and change-password. It changes nothing, so it slots between tour and zz-delete-restore. `linked`, `forgot-password` and `reset-password` stay out, and the flow says why: all three are deep-link-only, and expo-dev-launcher claims the app's scheme on a development build, so `vexpo://linked` opens the launcher and raises an "Open in Vexpo?" SpringBoard alert that sits outside the accessibility tree and wedges every flow after it until the simulator is rebooted. They are reachable from the release build the EAS job makes.
-- `guest.yaml` also walks the search tab, where a guest gets "Create an account" and loses "Active sessions", and backs out of the sign-up screen with "Not now" before going through it for real.
-- `docs/troubleshooting.md` picks up the two traps those runs cost the most time on. A `testID` on a `Text` never reaches Maestro's hierarchy in `@expo/ui` at any nesting depth, so the settings name and email lines, the version footer, the debug rows and every HelperText are unassertable by id or by copy, and the fix is to assert the component around them or a structural consequence. And the deep-link alert above, with the reboot that clears it.
+## [0.4.0] - 2026-09-08
 
-- Caught the template back up to the SDK 57 patch matrix, with `expo` at 57.0.19, `expo-updates` 57.0.21, `expo-router` 57.0.18, `expo-dev-client` 57.0.18, `@expo/ui` 57.0.15 and eleven more. `expo-doctor` was failing its version check on sixteen packages and passes 21/21. `react-native`, `react`, `better-auth` and `@convex-dev/better-auth` are untouched: none of them is in the matrix, and the last three are pinned exactly for the reasons in 0.3.1 and 0.3.3.
-- The template lockfile picks up a fourteenth advisory and it stays. Three of them are new, all `decode-uri-component` under `query-string` under `expo-router`, which has depended on `query-string@^7.1.3` since before this release. The fix is `decode-uri-component@0.5.0`, which is pure ESM where `query-string@7` requires CommonJS, so an override would break the resolve rather than the advisory. npm's own suggestion is downgrading `expo-router` to 5.1.11, four majors back. The other eleven still trace to `uuid` under the `xcode` package that `@expo/config-plugins` uses at prebuild, which never reaches the app binary.
+- Add `vite` to the template's devDependencies. vitest 5 moved it to a peer dependency and the template's `.npmrc` sets `legacy-peer-deps`, so a fresh scaffold installed without it. `npm test` failed at startup with `Cannot find package 'vite'`, and `tsc` failed on the `vite/client` reference in the Convex tests. Inside this repo both passed, because the root install had a copy to fall back on.
+- Drop the leading blank line in `.maestro/links.yaml`. It was the only flow file that started blank, so a fresh scaffold failed its own `npm run format:check`.
+- Remove 1,012 comment lines across the template and both packages. What stays is the tooling directives and one line each for a trap someone would otherwise walk into, like `expo-image` ignoring `accessibilityLabel` without `accessible`.
+- Use American spellings in the source. `colour`, `grey`, `labelled` and `recognise` were in comments, test names and the accessibility notes Apple reads.
+- Rewrite all nine READMEs and every entry in this changelog as short bullets and plain sentences.
+- Make the whole row tappable on `CapsuleRowButton`, the settings profile row and the search results. A SwiftUI `Button` only responds where it draws something, so the gap between the label and the chevron took the tap.
+- Add `contentShape` to `CapsuleButton` and the resend row on the code screen too. Both had dead bands above and below the label.
+- Add `__tests__/lib/hit-area.test.ts`, which reads the source for buttons missing `contentShape`.
+- Tap the Debug row by id in `screens.yaml`. A tap by visible text goes to the label, which is why the flows never caught the dead rows.
+- Cover forgot password, reset password and the linked screen in the flows. `links.yaml` opens the first two by deep link, and `screens.yaml` reaches the linked screen and turns the debug preference on before it taps the Debug row.
+- Leave `+not-found` uncovered on purpose. `+native-intent.tsx` sends every unknown path to the root.
+- Run the flows on the simulator the app was installed on. `smoke.mjs` handed `maestro test` no device, so a run after a clean build could pick a different one and fail with "Package com.vexpo.smoke is not installed".
+- Exclude `.smoke-build` and `dist` from the published scaffolder. A local `npm run smoke` left 3GB there and the tarball packed at 1.2GB.
+- Write the smoke flow's screenshot somewhere that survives the run. Maestro 2.8 deletes its artifact folder on a pass, so `scripts/e2e.mjs` sets `--debug-output` to `.maestro/debug`, the path the job already uploads.
+- Exclude `.maestro/debug` from the scaffolder payload and assert that in the e2e. A local e2e run was leaving the screenshot and command log in every new project.
+- Replace the glyphs in `vexpo doctor` and `vexpo env push` with the `ok`, `!!`, `xx` and `--` tags. Most screen readers read a check mark and a ballot x as nothing, so a pass and a fail sounded the same. Three tests pin it.
+- Use the same tags in `create-vexpo`. Every scaffold step ended on a check mark, a cross or a warning sign, and the name prompt's validation error started with the cross.
+- Use one accessibility hint per field across sign in, sign up and the profile. The email field had four wordings, the username three and the new password three.
+- Raise the verification code field's Dynamic Type cap from xxLarge to AX3, so it meets Apple's Larger Text bar. The tracking between the six digits narrows as the size climbs. The fit is arithmetic and has not been measured on a device.
+- Announce when the app is back online, not only when it goes offline.
+- Make the debug screen's download bar announce its own percentage. The JavaScript side cannot see whether SwiftUI's value survives the `@expo/ui` bridge.
+- Fix three rows in `docs/accessibility-audit.md` that said pass and were wrong. Larger Text, the VoiceOver banner row and the state row.
+- Pull every Apple accessibility and nutrition label doc, 425 pages, into `refs/xcode-docs` and check the repo against it. `docs/accessibility-audit.md` lists one Apple rule per row with the file and line that satisfies it.
+- Fix two Voice Control input labels that did not match the visible text. The revoke button and the guest avatar row now answer to what you can read on them.
+- Add `vexpo asc accessibility url` to read and write the App Store accessibility link. Pass a URL to set it and `--clear` to remove it. It rejects anything that is not https.
+- Note in `accessibility.config.json` that an app set to Dark under a Light system flashes white on launch. `userInterfaceStyle` is automatic and the in-app preference runs later, in JavaScript.
+- Give the avatar row a hint and Voice Control input labels. Its `accessibilityLabel` on the container replaced what its children said, so VoiceOver never read the name or email.
+- Announce "Revoking session..." when a session is revoked. Nothing read it before.
+- Add `SectionLabel` headings to the three settings groups, so the headings rotor has something on that screen. `auth.yaml` and `guest.yaml` now scroll to the sign-out row.
+- Add `contentShape` to Go Home, Skip, Cancel and Back to sign in. Those four plain-style buttons only responded on their glyphs.
+- Move the widget's detail color into `constants/theme.ts`. The hard-coded `#8E8E93` was 3.26:1 on a light widget and the contrast test never saw it.
+- Route the error boundary's announcement through `announce` in `lib/a11y.ts`.
+- **Breaking:** match `accessibility.config.json` and `vexpo asc accessibility lint` to Apple's `AccessibilityDeclaration`, nine booleans plus a device family. The old four-level enum does not exist in the API, and `lint` rejects the old `features` map, so a project scaffolded before this release has to rewrite `app-store/accessibility.config.json` to the new shape. The template's copy is the reference. The linter also rejects a feature the device family does not have.
+- Add `vexpo asc accessibility push` to send the declaration. `--dry-run` prints the plan, `--publish` moves the draft onto the App Store page, and a published declaration is reported instead of attempted. Every push sends all nine booleans.
+- Measure non-text contrast in the contrast test, six control pairings at 3:1 next to the twelve text ones. `contrastRatio` blends a see-through color with what is behind it.
+- Stop the `create-vexpo` spinner repainting for screen readers and `TERM=dumb`. It follows the same opt-outs color does and falls back to one plain line. `TERM=dumb` also stops getting color escapes, and `section()` no longer draws a box-drawing rule off a terminal. Eight new tests.
+- Gate the colors in the template's `scripts/clean.mjs` the same way, with the `ok`, `xx`, `!!` and `--` tags.
+- Document the accessibility rules in the template README. It has `useDynamicFont`, the color tokens and contrast test, `fail()` and `succeed()`, when to override SwiftUI's labels, and `accessible` on an `expo-image` `Image`.
+- Drop `tertiaryLabel` from the palette. It was 2.58:1 in light and 4.18:1 in dark, under the 4.5:1 WCAG AA asks for. `__tests__/lib/contrast.test.ts` measures twelve pairs across all four appearances.
+- Stop pinning a point size on the tab labels. A fixed `fontSize` on a native tab label opts it out of Dynamic Type.
+- Say what backs each feature in the accessibility declaration note, and that all of it was verified statically. `app-store/README.md` notes that nothing ships the declaration automatically.
+- Stop `vexpo` writing color when stderr is not a terminal or `NO_COLOR` is set. The `ok`, `xx`, `!!` and `--` tags keep the meaning with the escapes off.
 
-- An account is optional. The sign-in screen has a "Continue as guest" button under the other providers, and it mints a real Better Auth session through the anonymous plugin rather than a local pretend-signed-in mode. A guest holds a real JWT, so every `authQuery` and `authMutation` in the template works for one with no branching, and the tabs, onboarding, preferences, avatar and push registration all work the day they install. Apple's guideline 5.1.1 asks for this, that people reach whatever isn't account-based without handing over anything. `GUEST_MODE=false` on the Convex deployment turns it off, which hides the button and stops registering the endpoint.
-- Signing up or signing in from a guest session carries the guest's data onto the account. Better Auth's `onLinkAccount` fires in the same request, after the real account exists and before it deletes the guest, and `users.mergeGuestData` moves the bio, the avatar blob and the push tokens across in that window. It never overwrites: someone signing in to an account they already had keeps the profile they already had. A push token the account already holds is dropped rather than duplicated, which is the common case, since the guest and the account are the same device. The name is the one thing that doesn't move, because it lives on the Better Auth user rather than the app row and overwriting whatever they type on the sign-up form with the old one would be worse. The form pre-fills it instead.
-- Guest sessions get swept. A guest has no credentials, so once every session of theirs has expired nothing can reach the row again, and nothing in the app flow deletes it. `purgeAbandonedGuests` runs daily and purges exactly those: it skips guests younger than the session lifetime by index range, asks the Better Auth component about each older one, and walks the index with a cursor so old guests with live sessions don't hide the ones behind them. There is no age cap. A guest who keeps opening the app is kept for as long as they do, and a one-visit install is gone after `session.expiresIn` (7 days) of idle. Leaving guest mode from settings purges on the spot instead of soft-deleting, because a guest has nothing to sign back in with, so the account path's 30-day restore window has nothing to restore.
-- A guest gets the profile screen, minus the parts that need an account. The avatar header shows "Tap to add a photo" where an account shows its email, because a guest's is a 40-character placeholder that reads like an address they could use. Name, photo and bio are theirs to edit and are exactly what the merge carries over, so keeping them behind the account guard would have made the merge code unreachable in the stock app. Username and email are gone from the form, and the save path only touches what the form showed: a guest's email is a throwaway the plugin generated, and once Resend is configured, editing it would send a verification code to an address nobody reads.
-- Settings, search and the router tell a guest from an account. Sessions and password change sit behind a new `hasAccount` guard, settings picks up a "Create an account" row and drops the email line from the profile card, and the destructive block is one "Discard guest data" instead of a sign-out that cannot be undone and a delete that cannot be restored. `useAuthStatus` is the one place that reads the difference.
-- Hard-deleting an account actually deletes its row. `purgeUser` goes through the Better Auth component adapter, which is the only way to purge a user with no live session, and that path does not run the `user.onDelete` trigger. So every account past the 30-day window left an orphan `users` row and an avatar blob that nothing collected. The row, the blob and the push tokens now come off in one `purgeAppUser`, which the trigger and `purgeUser` both call, so Better Auth's own deletes (a guest linking, the plugin's `/delete-anonymous-user`) and the app's clean up the same tables. `users-hardDeleteExpired.test.ts` asserts the row is gone rather than only asserting the audit trail.
-- The Convex socket picks up the new JWT when a guest becomes an account. `useBetterAuthForConvex` keyed `fetchAccessToken` on nothing, so its identity never changed, and `isAuthenticated` is true on both sides of the upgrade. Convex had nothing telling it to re-fetch, kept the guest's token after Better Auth deleted that user, and every authed query came back as signed out: the profile card sat on "Loading..." until the app was force-quit. It keys on the signed-in user id now, which is stable per account, unlike the server-side session id that rotates on every `/convex/token` call and is what makes the upstream provider loop. The in-flight de-dup is tagged with the user it belongs to, so a call started for the guest cannot be handed to the account.
-- The guest sign-in copy moved out of the hook as `guestSignInError`, the same shape `use-apple-auth` uses for `appleErrorMessage`. Every hook in this template that has a test has it because what it tests is a pure export, and this one had the branch buried in a `useActionState` callback where nothing without a React renderer could reach it. The branch is the rate limit: guests share an IP with everyone behind the same NAT, so that line has to say "wait" rather than "something went wrong", and every other status gets one plain line because the button gives no way to tell an offline phone from a 5xx.
-- `use-theme`'s `setTheme` picks up a test as well. It persists the mode and pushes it at the native window in one call, and "system" is not a scheme UIKit understands: it has to go over as `unspecified`, or choosing System pins the app to whatever was set last instead of following the device.
-- `useAuthStatus` gets its own tests, because six files read it and a guest reaching an account-only screen (or an account landing behind the guest gate) shows up as a routing bug rather than an auth one. An account created before the anonymous plugin landed has no `isAnonymous` field at all, and the Convex adapter can hand back `null` for an unset column, so anything but exactly `true` has to read as an account. `dismissAuth` is covered too, since "Not now" has to pop when it was pushed and replace to the tabs root when it was the anchor.
-- `GUEST_MODE=false` is provable end to end, not just in convexTest. `.maestro/guest-mode-off.yaml` asserts both entry points lose the button. It is deliberately off the suite list in `scripts/e2e.mjs`: it only means anything against a deployment with the flag set, every other flow assumes the default, and setting it is a change to the deployment rather than something a flow can do to itself. The two commands are in its header.
-- `.maestro/guest.yaml` drives the guest path on the simulator. On its first run it caught three things nothing else did. The JWT bug above is one. The profile screen was registered behind the account guard while the code comment above it said the opposite, so the guest profile was unreachable. And the avatar header printed the placeholder email. Typecheck, lint and 164 unit tests were green through all three. It browses as a guest, lands on the tabs, checks the upgrade card and the missing account rows, then discards. It runs first in the suite, since it starts from a wiped state and ends signed out, which is what `auth.yaml` expects to find. Unlike the delete flow it has no Face ID gate, so it runs on EAS too.
+- Announce every error every time it happens. `StatusText` announced from an effect keyed on the message, so a repeated identical error was silent. The announcement moved to `fail()`, every raise site goes through it, and `form-result.test.ts` covers the repeat.
+- Announce success once. `succeed()` and `SuccessText` both announced, so saving a profile spoke twice. The email change branch now announces the verify step it opens.
+- Stop a successful account delete firing the error haptic. `useSignOutMutation` buzzed on entry, before the Face ID gate.
+- Add `accessibilityState` to the Apple button, so VoiceOver says when it is disabled.
+- Scale the widget text with Larger Text. Its two rows passed `font({ size })` with no text style, which is a fixed size.
+- Add a `hint` to `CapsuleRowButton` and use it on the five rows that open the Settings app or a support link.
+- Drop three `accessibilityLabel`s on images that did nothing. expo-image ignores a label without `accessible`, and none of the three should be read anyway.
+
+- Drop every runtime dependency from `npx create-vexpo`. execa, kleur, ora and prompts brought 31 packages. `tty.ts` handles colors, the spinner and the prompt in 87 lines, and `proc.ts` returns an exit code in 27.
+- Run knip over the template. `knip.json` ignored `templates/**`, so 12,000 lines shipped with no dead-code check. The knip job installs the template's dependencies first, about 45 seconds on a job that was 14.
+- Remove 1,454 lines of duplication across 152 files. The tests shared temp-directory fixtures, process stubs, push-token seeding and auth env setup. 48 hand-cast mocks moved to `vi.mocked`, which caught a bad fixture in `deep-link.test.ts`.
+- Share the linters' guards, declare the six setup flags once, publish both packages in one release step, draw the app icon through one `BrandIcon`, and move the Maestro flows onto four shared subflows.
+
+- Test every Convex function, 31 of 31, up from 16. 205 tests, up from 164.
+- Cover help, debug and change-password in `.maestro/screens.yaml`. `linked`, `forgot-password` and `reset-password` stay out because they are deep-link-only and expo-dev-launcher claims the scheme on a development build.
+- Go through the search tab and back out of sign-up with "Not now" in `guest.yaml`.
+- Document two Maestro traps in `docs/troubleshooting.md`. A `testID` on a `Text` never shows up in Maestro with `@expo/ui`, and the deep-link alert needs a simulator reboot.
+
+- Catch the template up to the SDK 57 patch matrix, with `expo` 57.0.21, `expo-updates` 57.0.21, `expo-router` 57.0.20, `expo-dev-client` 57.0.18, `@expo/ui` 57.0.17 and the other `expo-*` packages. `expo-doctor` passes 21/21.
+- Move the toolchain to `vitest` 5, `oxfmt` 0.67 and `oxlint` 1.82 in both trees, `knip` 6.35 and `@vitest/coverage-v8` 5 at the root, and `jose` 6.2.12 and `convex-helpers` 0.1.124 in the template. Re-pin the codeql, release and scorecard actions, with `codeql-action` at v4.37.9.
+- Leave the fourteen advisories in the template lockfile. Three are `decode-uri-component` under `expo-router`, whose fix is pure ESM and would break the install. The other eleven are `uuid` under `xcode`, which never ends up in the app binary.
+
+- Keep `.disabled()` on the prominent button whatever the caller passes. It emitted `disabled ?? false` on every render, so leaving the prop off overrode an inherited disabled state rather than picking it up. Welcome, the error boundary and `+not-found` all leave it off.
+
+- Verify the webhook and push payloads instead of casting them. `withWebhook` took its type from the caller and got there with `JSON.parse(rawBody) as T`, so a verified sender could still send the wrong shape. Options carry a `parse` now, and a body that fails it gets a 400 before the handler runs. `pushSender` checks the Expo tickets and receipts the same way.
+- Give the sessions load a stable identity with `useCallback`. The effect captured the first render of `load`, which works only while it closes over nothing but setters. `useNetwork` moves its settle-flag reset into the cleanup that already clears the timer.
+- Cache the iOS build in CI and skip it when nothing native changed. The job took 22 minutes and `xcodebuild` was 15 of them, on pull requests that mostly never touch native code. Derived data moves to `.smoke-build` next to the native project, and CI keys the cache on `package-lock.json` and `app.config.ts`.
+- Derive the details indent in `vexpo doctor` from the tag width. The severity tag went from one character to two and the line under it was a hardcoded seven spaces.
+
+- Add a home screen widget. `src/widgets/status-widget.tsx` is `@expo/ui/swift-ui` components with a `'widget'` directive, so the layout is TypeScript rather than Swift, and `use-widget-sync.ts` sends a new snapshot whenever auth state changes. Prebuild puts the app group entitlement on both targets, so the dev variant gets its own.
+- Report startup metrics with `expo-observe`. `ObserveRoot` wraps the root layout and `markInteractive()` fires in the same effect that hides the splash, so Time to First Render and Time to Interactive both land. Release builds only.
+- Install the dev and production builds side by side. `APP_VARIANT` was read in `app.config.ts` and written nowhere, so a dev build and a TestFlight build collided on device. The dev scripts and the EAS `development` profile set it now, and it adds `.dev` to the bundle id and the URL scheme and `(Dev)` to the name.
+- Add `npm run atlas`, `atlas:export` and `repack`. Atlas serves the bundle explorer in production mode, and repack puts a fresh JS bundle into a build you already have, so a JS-only change can be checked against a real signed binary without another EAS build.
+- Add `vexpo testflight feedback` and `vexpo testflight crashes`. Both print the date, tester email, device, OS and comment, newest first. Reading what a tester sent used to mean opening App Store Connect.
+- Add `.eas/workflows/register-device.yml`. It pauses on an Apple device registration request, shows a QR code on the run page, then builds `development:device` with a refreshed provisioning profile.
+- Add `npx vexpo convex --eas` for an EAS-managed Convex team. Creating a project directly fails there with `is managed by oauth:...`, so this runs `eas integrations:convex:connect` and carries on with the rest of setup. It reads `eas integrations:convex:project` first and stops if the app already has one.
+- Ship a `.mcp.json` pointing at the Expo MCP server, and point the README at Expo Skills. A fresh scaffold had no agent config at all.
+- Gate the rollout and the store submit on approval. `rollout.yml` is three jobs now, publish, wait, then take it to 100%, and `deploy-production.yml` waits between the build and the submit. `development-builds.yml` is gone, since it did what `npm run eas:dev` already does from a terminal.
+- Run `vexpo rebrand` during the scaffold, so the first commit carries your identity instead of the template's. It skips under `-y`, `--no-install`, the new `--no-brand`, and anything without a TTY.
+
+- Add guest mode. "Continue as guest" on the sign-in screen creates a real Better Auth session through the anonymous plugin, so every `authQuery` and `authMutation` works with no branching. `GUEST_MODE=false` on the Convex deployment turns it off.
+- Move a guest's bio, avatar and push tokens to the account on sign-up or sign-in. `users.mergeGuestData` runs in Better Auth's `onLinkAccount` and never overwrites. The name stays on the sign-up form, pre-filled.
+- Sweep abandoned guests daily with `purgeAbandonedGuests`. A guest is gone after `session.expiresIn` (7 days) of idle. Leaving guest mode from settings purges on the spot.
+- Give a guest the profile screen minus username and email. The avatar header shows "Tap to add a photo" instead of the placeholder address.
+- Add a `hasAccount` guard for sessions and password change. Settings gets a "Create an account" row and one "Discard guest data" action. `useAuthStatus` is the one place that reads the difference.
+- Delete the `users` row, the avatar blob and the push tokens when an account is hard-deleted. `purgeUser` skipped the `user.onDelete` trigger, so every purge left an orphan row. Both paths call `purgeAppUser` now.
+- Re-fetch the Convex JWT when a guest becomes an account. `useBetterAuthForConvex` keyed `fetchAccessToken` on nothing, so Convex kept the guest's token and the profile card stayed on "Loading...". It keys on the user id now.
+- Move the guest sign-in copy out of the hook as `guestSignInError`, with a test. The rate-limit line says "wait" because guests share an IP behind a NAT.
+- Test `use-theme`'s `setTheme`. "system" has to go to UIKit as `unspecified`, or choosing System pins the app to the last scheme.
+- Test `useAuthStatus` and `dismissAuth`. An account from before the anonymous plugin has no `isAnonymous` field, so anything but exactly `true` reads as an account.
+- Add `.maestro/guest-mode-off.yaml`, which asserts both entry points lose the button. It is off the suite list because it only means anything against a deployment with the flag set.
+- Add `.maestro/guest.yaml`. Its first run caught the JWT bug, the profile screen behind the wrong guard, and the placeholder email in the header. It runs first in the suite and has no Face ID gate, so it runs on EAS.
 
 ## [0.3.3] - 2026-08-30
 
-- The Maestro suite passes end to end for the first time. 4/4 locally on iPhone 17 and iOS 26.5, and 3/3 on EAS on iPhone 16 and iOS 18.3.
-- Maestro plans a folder in reverse alphabetical order, so `auth.yaml` ran last, after the three flows that need the session it creates. `scripts/e2e.mjs` owns the flow order and runs `auth.yaml` first.
-- The dev menu no longer covers the app during a run. Its sheet opens about 13 seconds into every relaunch and does not close on its own, and no screen id resolves while it is open. `scripts/e2e.mjs` turns the dev menu off through the `EXDevMenu*` defaults instead of dismissing the sheet in each flow, which also removes the floating gear that sat over the page titles in every screenshot.
-- The delete step gets past Face ID without anyone watching the simulator. `scripts/e2e.mjs` enrolls a biometric and answers the match prompt for the length of the run.
-- Three flow bugs came out with the order fix. `launch.yaml` only took a screenshot, so it passed while photographing the dev menu, the search dismiss reads `Close` on one simulator and `Cancel` on another, and the edge swipe back does not register everywhere.
-- The EAS end-to-end job runs against a release build. It used the `development:simulator` profile, which inherits `developmentClient: true`, so the app came up on the server picker with no Metro to reach. A `preview:simulator` profile in `eas.json` builds the release flavor for the simulator instead.
-- `zz-delete-restore.yaml` stays a local check. The simulator that job gets has no enrolled biometric, and the job runs Maestro directly, so nothing can enroll one.
-- `tour.yaml` asserts the privacy rows instead of the disclaimer under them. Dropping the analytics toggle swapped a real control for a `HelperText`, and an inner `Text` reaches Maestro's hierarchy by neither `testID` nor copy, so that assert could not pass from the day it landed.
-- `docs/troubleshooting.md` picks up what the runs showed. Copy you can read in the failure screenshot is not always matchable, and a flow run on its own starts signed out because the runner resets the keychain on every invocation.
-- The template's Vitest config is `vitest.config.mts`, and the CommonJS deprecation warning it printed on every `npm run test` is gone. Vite loads a `.ts` config through its CommonJS path when nothing tells it the file is an ES module, and the template's `package.json` has no `"type": "module"` to tell it. The `.mts` extension says it directly. `__dirname` becomes `import.meta.dirname`, and `tsconfig.json` picks up `**/*.mts` so the config still typechecks.
-- The worklets behind the native text fields stop calling a deprecated scheduler. Reanimated 4 renamed `runOnJS` to `scheduleOnRN` and `runOnUI` to `scheduleOnUI`, and `react-native-worklets` marks both old names `@deprecated` in its own typings. Six field handlers and the `setNativeValue` helper moved over. The behavior is the same, and the call shape flattens on the way, so `runOnJS(fn)(arg)` becomes `scheduleOnRN(fn, arg)`.
-- Reduce Motion keeps the cross-fade into onboarding. The welcome screen branched to `animation: "none"` when the setting is on, but the other branch was already `fade`, which is opacity with no travel and is what the setting asks for. Both branches are one `fade`.
-- The banner enter and exit animations get built once. The builder chain was constructed inside `useBannerMotion`, so every render allocated a fresh one, and the update banner re-renders on every download tick. The three variants sit at module scope and the hook picks one.
-- The onboarding progress bar and the sessions list animate instead of jumping. The bar snapped between steps while the page slid under it, and revoking a session dropped its row so everything below cut upward. Both take SwiftUI's `animation()` modifier at 200ms ease-out, and both fall back to the jump under Reduce Motion, because a filling bar and a closing gap are travel either way. `@expo/ui` measures animations in seconds where the rest of the app uses milliseconds, so a `toSeconds` helper sits next to the `Duration` tokens.
-- Pushes use the platform transition again. The app stack forced `slide_from_right` at 300ms where iOS pushes at 350, and the auth stack was on `fade_from_bottom`, so moving forward from sign-in to forgot-password did not slide and the back swipe had nothing to reverse. Both stacks pass `default` and let iOS pick the curve and the duration. Reduce Motion still swaps in the 150ms cross-fade through `useMotionScreenOptions`, and the three modal presentations (welcome, restore-account, the auth gate) keep the animations they were given.
-- The offline and update banners slide in and out instead of appearing at full size. Both render `null` when they have nothing to say, so they arrived and left with no motion at all. Each one sits in an `Animated.View` that holds the position, entering from the edge it is pinned to and leaving the same way, 200ms in and 150ms out with ease-out in both directions. The motion has to live on a React Native view around the content rather than on the content itself, because `@expo/ui` exposes no `transition` modifier and a SwiftUI subtree inside `Host` cannot animate its own insertion. Reduce Motion drops the travel and keeps the cross-fade, read through the app's own hook so the in-app preference counts with the system setting.
-- Haptics fire on outcomes and on value changes, and on nothing else. All 40 `haptics.light()` calls were on plain taps. Most submits buzzed twice for one action, once when the handler started and again on the success or error at the end. 35 are gone, including every tap-then-navigate. Four moved to `selection()`. Those are the two preferences toggles, the password reveal, and the onboarding Next button, which matches what a swipe between the same steps already fired. The email-change branch that signaled "code sent" with a light tap moved to `success()`, the same as the other send paths. Tab presses lost theirs too, because iOS's own tab bar fires nothing and it is the highest-frequency action in the app.
-- Profile photos upload again. Since SDK 56 the global `fetch` on native is `expo/fetch`, and `normalizeBodyInitAsync` replaces an explicit `Content-Type` with the blob's own `type`. A blob read off a `file://` URI has an empty type, so every avatar POST left with an empty `Content-Type` and Convex answered `400 BadHeader`. Every photo failed, on every account, since the SDK 56 upgrade. The upload sends `arrayBuffer()` bytes instead, which leaves the header alone, and a read that fails says so separately from an upload that fails. The 0.3.2 entry described the avatar throwing a ConvexError rather than `Upload failed: 413`, which hid the real problem, because the screen asked for a different photo when no photo would have worked.
-- A phone coming back from lock stops sitting on the profile skeleton. The Better Auth bridge returned `null` for any failed `/convex/token` call, and Convex treats one `null` as signed out, clears auth, and does not retry (`refetchToken` in `authentication_manager`). The first call after a resume races the radio waking up, so a single dropped request left the socket unauthenticated, and every query returned early as signed out until something else moved auth. Transient failures retry three times with backoff, and only a 4xx returns `null`.
-- Caught the template up to the SDK 57 patch matrix again, with `expo` at 57.0.18, `expo-router` 57.0.17, `expo-updates` 57.0.19, `@expo/ui` 57.0.14, and twelve more. `expo-doctor` was failing its version-matrix check on all of them and passes 21/21. `react-native` moves with them, 0.86.2 to 0.86.3. It is the one exact pin in the set, so a scaffold takes that version rather than resolving into it. The toolchain moved to `oxlint` 1.80 and `oxfmt` 0.65 in both trees, and `jose` 6.2.10 in the template.
-- `better-auth` and `@better-auth/expo` hold at 1.6.23 for a second reason. Beyond the TypeScript 6 break noted in 0.3.1, `@convex-dev/better-auth@0.12.5` declares `better-auth >=1.6.11 <1.7.0`, so the released 1.7.1 is out of range until the adapter moves. `@types/node` stays on 22 against `engines.node >= 22.12` and the 22.12 leg of CI, and the template stays on TypeScript 6.
-- The eleven moderate advisories left in the template lockfile stay. All eleven trace to one root, `uuid` under the `xcode` package that `@expo/config-plugins` uses at prebuild, so none of them reaches the app binary. npm's own fix downgrades `expo` to 46. The `image-size` root under Metro is gone, and with it the high advisories, because the SDK 57 patch bumps moved Metro past it.
+- Pass the Maestro suite end to end, 4/4 locally on iPhone 17 and iOS 26.5, 3/3 on EAS on iPhone 16 and iOS 18.3.
+- Run `auth.yaml` first from `scripts/e2e.mjs`. Maestro plans a folder in reverse alphabetical order, so it ran last.
+- Turn the dev menu off through the `EXDevMenu*` defaults in `scripts/e2e.mjs`. Its sheet opened 13 seconds into every relaunch and blocked every screen id.
+- Enroll a biometric and answer the Face ID prompt in `scripts/e2e.mjs`, so the delete step runs unattended.
+- Fix three flow bugs. `launch.yaml` only took a screenshot, the search dismiss reads `Close` or `Cancel` depending on the simulator, and the edge swipe back does not register everywhere.
+- Build the EAS end-to-end job from a new `preview:simulator` profile. The development profile came up on the server picker with no Metro.
+- Keep `zz-delete-restore.yaml` local. The EAS simulator has no enrolled biometric.
+- Assert the privacy rows in `tour.yaml` instead of the disclaimer, which an inner `Text` never exposes to Maestro.
+- Add two findings to `docs/troubleshooting.md`. Copy in a screenshot is not always matchable, and a flow run alone starts signed out.
+- Rename the template's Vitest config to `vitest.config.mts`, which drops the CommonJS deprecation warning on every `npm run test`.
+- Move six field handlers and `setNativeValue` from `runOnJS` and `runOnUI` to `scheduleOnRN` and `scheduleOnUI`, which Reanimated 4 renamed.
+- Keep the cross-fade into onboarding under Reduce Motion. Both branches were already opacity only.
+- Build the banner animations once at module scope instead of on every render.
+- Animate the onboarding progress bar and the sessions list at 200ms ease-out, with a jump under Reduce Motion. A `toSeconds` helper is next to the `Duration` tokens because `@expo/ui` measures in seconds.
+- Use the platform push transition on both stacks. The forced `slide_from_right` and `fade_from_bottom` broke the back swipe.
+- Slide the offline and update banners in and out through an `Animated.View`, 200ms in and 150ms out. `@expo/ui` has no `transition` modifier. Reduce Motion keeps the cross-fade.
+- Fire haptics on outcomes and value changes only. 35 `haptics.light()` calls on plain taps are gone, four moved to `selection()`, and tab presses lost theirs.
+- Fix profile photo uploads, broken since SDK 56. `expo/fetch` replaced the `Content-Type` with the blob's empty type, so Convex answered `400 BadHeader`. The upload sends `arrayBuffer()` bytes now.
+- Retry a failed `/convex/token` call three times with backoff, and only return `null` on a 4xx. A phone coming back from lock stayed on the profile skeleton after one dropped request.
+- Catch the template up to the SDK 57 patch matrix, with `expo` 57.0.18, `expo-router` 57.0.17, `expo-updates` 57.0.19, `@expo/ui` 57.0.14, `react-native` 0.86.3 and twelve more. `expo-doctor` passes 21/21. The toolchain moves to `oxlint` 1.80 and `oxfmt` 0.65.
+- Hold `better-auth` and `@better-auth/expo` at 1.6.23. `@convex-dev/better-auth@0.12.5` declares `better-auth <1.7.0`.
+- Leave the eleven moderate advisories in the template lockfile. All trace to `uuid` under `xcode`, which never ends up in the app binary. The `image-size` root under Metro is gone.
 
 ## [0.3.2] - 2026-08-23
 
-- If the first sign-up code never shows up, you can get back to the verify screen. Better Auth answers a password sign-in on an unverified account with a 403 and nothing else. Its resend path is the link-based `sendVerificationEmail`, and this template verifies through the OTP plugin instead, so someone who left the OTP screen had no way back to it. Signing in with email and password now sends a fresh code and opens the verify screen, which mints the session inline on success (`autoSignInAfterVerification`). Signing up again with the same address does the same thing instead of answering "try a different email or username". Both paths are enumeration-safe. `sendVerificationOtp` deletes the record and returns success without sending for an address it doesn't know, so the screen opens for any input and only whoever reads that mailbox gets further. A send that does error is a rate limit or a dropped request, never an answer about the address, so both paths say that rather than open a screen no code will reach. Lite-mode scaffolds don't change. The sign-up branch is gated on `emailFeatures`, and lite-mode sign-in never returns the unverified error in the first place because verification is off on the deployment.
-- A taken username on sign-up says so and focuses the field instead of falling into the generic "different email or username" line. The username plugin checks availability in a `before` hook on `/sign-up/email`, so it throws ahead of the core email-exists check and retyping a whole form lands there first. It does not send a code. A username collision is usually someone else's handle on a fresh address, so the code would never arrive.
-- Apple sign-in errors read as English instead of Swift. `expo-apple-authentication` rejects with an ExpoModulesCore exception whose `message` is the Swift reason plus the throwing file and line, and the hook was putting that straight in the red row: "RequestUnknownException: The authorization attempt failed for an unknown reason (at ExpoAppleAuthentication/AppleAuthenticationExceptions.swift:61)". `appleErrorMessage` maps the codes and falls back to one plain line, with the raw text kept behind a `__DEV__` warn. Cancel is still a no-op. A rejected identity token comes back on `response.error` rather than the catch, and Better Auth's string for it is the bare "Invalid token", so that branch gets plain copy too, with 429 broken out because a rate limit is the one thing there a user can act on.
-- The name Apple returns on the first authorization reaches the account. Apple hands back `fullName` once and never again, and the identity token carries no name claim, so an account created without forwarding it keeps an empty name forever. The credential's `givenName`/`familyName` now ride along on `signIn.social`.
-- Native Sign in with Apple is pinned end to end over the Better Auth HTTP routes, with a locally minted ES256 token and Apple's JWKS stubbed. Apple's token carries the bundle id in `aud` while `APPLE_CLIENT_ID` holds the Services ID, and Better Auth verifies against `audience ?? appBundleIdentifier ?? clientId`, so dropping `appBundleIdentifier` from `convex/auth.ts` 401s every native sign-in while the button and the sheet both still work. Both directions are covered, plus the full-name payload. `jose` is a declared devDependency now, since the test imports it and it was only resolving through better-auth.
-- Transport errors stop reaching the user as error text. Four catch blocks were showing a raw `Error.message`, so a dropped connection put "Network request failed" under the sign-in form. `formatError` keeps both ConvexError branches, which are the template's own copy, and gives everything else one plain line. It doesn't guess at a cause. A photo rejected on size is not a connection problem, so the avatar upload throws a ConvexError that says what actually happened instead of `Upload failed: 413`.
-- `docs/troubleshooting.md` covers two Maestro traps. `clearState: true` re-raises the first permission alert, SpringBoard draws it outside the accessibility tree, it survives an app terminate, and every conditional block silently SKIPs until the simulator is rebooted. And `scrollUntilVisible` reports COMPLETED without moving, because it matches rows the screen isn't showing.
-- `convex-helpers` is pinned exact, and the pair moved together to `convex@~1.45.0` with `convex-helpers@0.1.123`. From 0.1.121 it declares `peer convex@^1.43.0` while the template held convex at ~1.42.3, and no lockfile ships with a scaffold, so `^0.1.120` resolved to a mismatched 0.1.122 on every fresh install, which `legacy-peer-deps` installed without a word. The same trap had opened on `@convex-dev/resend`, whose in-range 0.2.7 also wants convex ^1.43. A fresh scaffold now resolves the whole set against convex 1.45, and it passes strict peer resolution with the flag off.
-- Caught the template up to the current SDK 57 patch matrix, with expo and expo-router at 57.0.15, expo-updates 57.0.16, `@expo/ui` 57.0.12, and eleven more. `expo-doctor` was failing its version-matrix check on all fifteen.
-- The toolchain and template devDeps caught up too. oxlint 1.79, oxfmt 0.64, vitest 4.1.11, knip 6.32 and convex-test 0.0.56, with the template's Convex codegen output refreshed against 1.45.
-- The four react rules new in oxlint 1.79 are off in the template config. `react-hooks/exhaustive-deps` and `rules-of-hooks` keep the real coverage, and the newcomers misfire on the template's shared-value worklets, the sessions mount fetch, and Convex's `useAuth` prop.
-- Bumped two transitive packages with advisories in the template lockfile: nanoid 3.3.18 and postcss 8.5.26.
-- Patched the one high advisory in the toolchain lockfile too: nanoid 3.3.16 to 3.3.18, which `npm audit --audit-level=high` was failing on at the repo root. Transitive and lockfile-only, no `package.json` moves. The low esbuild advisory under it stays, since the fix is a major.
-- `plugins/README.md` says why the pod plugin isn't redundant. React Native's own `updateOSDeploymentTarget` floors each pod at `max(15.1, whatever the pod declares)`, which the old wording ("can fall back to a lower minimum") didn't say. The pinning docs also called typescript `~6.0.3` where the package.json has `^6.0.3`.
-- The CLI help, the scaffold's next-steps block and `.env.example` got a copy pass. `vexpo full --new` has its own line in next-steps now instead of sitting in a parenthetical, and the "~60 seconds" provisioning claim is gone from `vexpo lite`, the setup plan and the scaffold output. Nothing measured it, and the first `npm run ios` native build takes longer than provisioning does anyway.
-- Every README and guide got a wording pass so they read as sentences instead of fragments, on the npm pages and in the scaffold.
+- Send a fresh code and open the verify screen when someone signs in with an unverified account, or signs up again with the same address. Better Auth answered with a bare 403 before. Neither path reveals whether the address exists. Lite-mode scaffolds don't change.
+- Say a username is taken and focus the field, instead of the generic "different email or username" line.
+- Map Apple sign-in errors to plain English through `appleErrorMessage`. The red row was showing a Swift exception with a file and line. Cancel stays a no-op and a 429 says to wait.
+- Forward Apple's `givenName` and `familyName` on `signIn.social`. Apple sends the name once and never again.
+- Test native Sign in with Apple over the Better Auth HTTP routes, with a locally signed ES256 token and Apple's JWKS stubbed. `jose` is a declared devDependency now.
+- Stop showing raw transport errors. Four catch blocks showed `Error.message`, so a dropped connection put "Network request failed" under the form. `formatError` gives everything but a ConvexError one plain line.
+- Document two Maestro traps in `docs/troubleshooting.md`. `clearState: true` re-raises the first permission alert, and `scrollUntilVisible` reports COMPLETED without moving.
+- Pin `convex-helpers` exact and move the pair to `convex@~1.45.0` with `convex-helpers@0.1.123`. A fresh scaffold now passes strict peer resolution.
+- Catch the template up to the SDK 57 patch matrix, with expo and expo-router at 57.0.15, expo-updates 57.0.16, `@expo/ui` 57.0.12 and eleven more.
+- Bump oxlint 1.79, oxfmt 0.64, vitest 4.1.11, knip 6.32 and convex-test 0.0.56, and refresh the template's Convex codegen output.
+- Turn off the four react rules new in oxlint 1.79. They misfire on the worklets, the sessions mount fetch and Convex's `useAuth` prop.
+- Bump nanoid 3.3.18 and postcss 8.5.26 in the template lockfile.
+- Bump nanoid to 3.3.18 in the toolchain lockfile. The low esbuild advisory stays because the fix is a major.
+- Say why the pod plugin isn't redundant in `plugins/README.md`, and fix the typescript range the pinning docs quoted.
+- Rewrite the CLI help, the next-steps block and `.env.example`. The "~60 seconds" claim is gone because nothing measured it.
+- Rewrite every README and guide as sentences.
 
 ## [0.3.1] - 2026-07-31
 
-- `create-vexpo` runs on execa 10. Same error shape, so the install-failure path still reads the captured stderr off the thrown `ExecaError`, verified against a real failing install and the happy path.
-- Template scaffolds get oxfmt 0.61. The old `^0.58.0` couldn't reach it, since a caret never crosses the minor while the major is 0, so this is the one template dependency a release had to carry.
-- Refreshed the ranges that already resolved on their own: convex 1.42.3, `@convex-dev/resend` 0.2.6, `@types/react` 19.2.18, oxlint 1.76. No lockfile ships, so a 0.3.0 scaffold was already installing these.
-- The CLI builds and typechecks on TypeScript 7.0.2, with knip 6.30, oxfmt 0.61 and oxlint 1.76 on the toolchain. The template stays on TypeScript 6.0.3, which is what SDK 57 pins.
-- `better-auth` and `@better-auth/expo` hold at 1.6.23 on purpose. 1.6.24 drops every plugin action off the client type under TypeScript 6 (`emailOtp`, `username`, `convex`, twelve errors in all) and only TypeScript 7 resolves it, which the SDK's typescript pin rules out. Both stay exact rather than caret so a fresh scaffold can't float onto the broken pair.
-- Re-pinned the five GitHub Actions: checkout v7.0.1, setup-node v7.0.0, the three codeql-action entry points to v4.37.2, and gh-release v3.0.2. Every SHA checked against the tag it claims, which caught a setup-node pin labelled v6 while pointing at v7.
+- Run `create-vexpo` on execa 10.
+- Ship oxfmt 0.61 in template scaffolds. `^0.58.0` never allows 0.61.
+- Refresh convex 1.42.3, `@convex-dev/resend` 0.2.6, `@types/react` 19.2.18 and oxlint 1.76.
+- Build the CLI on TypeScript 7.0.2, with knip 6.30, oxfmt 0.61 and oxlint 1.76. The template stays on TypeScript 6.0.3, which SDK 57 pins.
+- Hold `better-auth` and `@better-auth/expo` at 1.6.23, pinned exact. 1.6.24 drops every plugin action off the client type under TypeScript 6.
+- Re-pin the five GitHub Actions and check every SHA against its tag. That caught a setup-node pin labeled v6 pointing at v7.
 
 ## [0.3.0] - 2026-07-30
 
-- A fresh scaffold passes its own `npm run format:check` again. `create-vexpo` rewrote `eas.json` on every scaffold to strip the App Store Connect identity, and `JSON.stringify` never inlines arrays while the template's oxfmt does, so `cache.paths` came back reflowed and the first command a new project runs failed. It only rewrites when there was something to strip now, which is never on the published payload since that's built from a clean checkout. The scaffold e2e runs oxfmt over a whole scaffolded project now, so the next file the scaffolder touches can't repeat it.
-- `store.config.json` ships from a tracked `store.config.example.json` instead of the working tree. The working copy is gitignored (`vexpo review-account` writes a generated App Review password into it), so the release runner's fresh checkout had no file to copy and would have published a `create-vexpo` whose scaffolds fail `eas:tf` before rebrand. A scaffold gets both now, the example tracked so a second clone can restore the ignored copy. `vexpo rebrand` rewrites the example and the working file, so what a clone restores carries your identity and not the template's. The build fails loud if the example goes missing, and the payload e2e asserts the placeholder.
-- The template declares `engines.node >= 22.12`, the floor the `vexpo` devDependency has required since 0.2.0. It was documented as Node 20 and enforced nowhere, so a scaffold on 20 got no warning and found out when oxlint failed to load its platform binding. Not a fingerprint source, `packageJson:scripts` is the only package.json input, so no runtime version bump.
-- Patched the one high advisory in both lockfiles: postcss 8.5.25 (path traversal in source-map auto-loading) plus nanoid, and brace-expansion 5.0.9 in the template (two DoS advisories). Transitive and lockfile-only, no `package.json` moves, so the fingerprint holds. The eleven moderates left in the template all sit inside Expo's own CLI toolchain and npm's suggested fix is a downgrade to SDK 46, so they stay.
-- **Breaking:** `scripts/clean.ts` is now `scripts/clean.mjs`, and `scripts/_run.mjs` and the `tsx` devDependency are gone with it. `_run.mjs` existed to pick bun or tsx for the one TypeScript file in a directory of `.mjs`, so `node scripts/clean.mjs` replaces a runtime selector, a dependency, and a "needs bun or tsx" failure mode. The script's output and its wipe are unchanged, verified against the old one in a sandbox.
-- Six npm scripts that were one-to-one aliases are gone: `convex:logs`, `convex:insights`, `convex:dashboard`, `convex:codegen`, `metadata:lint` and `metadata:pull`. Run `npx convex logs` or `npx eas-cli metadata:lint` directly. The ones carrying a flag you would otherwise have to remember stay, including `convex:dev`, `convex:deploy` and `metadata:push`.
-- `sf-symbols-typescript` is a declared devDependency. Two files import `SFSymbol` from it and nothing declared it, so it only resolved because expo-router, expo-image, expo-symbols and `@expo/ui` all depend on it and npm hoists it.
-- Dropped two dead exports: `Haptics` from `src/lib/haptics.ts` (nothing imported it, `h` is the API) and the `export` on `DeepLinkRoutes`, which is only used inside its own module.
-- `.env.example` warns that a `CONVEX_DEPLOY_KEY` there beats `--prod` on every convex command, so `convex env list --prod` reports dev and a prod-vs-dev diff compares dev to itself.
-- Maestro screenshots land in `.maestro/screenshots/` instead of the repo root, and the flows' run instructions point at `npm run e2e` rather than hand-rolled `JAVA_HOME=... maestro test` incantations.
-- The auth flow opens the dev bundle by deep link instead of tapping the launcher's server row. That row is found by scanning the local network, which never resolves on a simulator, so the flow died on "Element not found" with Metro perfectly healthy.
-- The auth flow denies the push permission alert at launch. iOS draws it over the app from SpringBoard, so it is absent from the accessibility tree and every assert after it failed on a simulator that had not already answered.
-- New `npm run e2e` runs the Maestro flows locally. The template shipped four flows and no way to run them. `scripts/e2e.mjs` finds a JDK (macOS ships none), reads the bundle id from `.env.local`, mints a unique test email, builds the dev-client deep link and resets the simulator keychain, which `clearState` does not.
-- Every index follows one `by_<field>` shape, which is the convention Convex's own generated `guidelines.md` states. Five of eight broke it, so a fresh scaffold shipped a guidelines file contradicting the schema it came with.
-- `pushTokens.revoked` is a required boolean. `cleanupStale` covers the table with two exact index ranges, `eq(true)` and `eq(false)`, so a row written without the field matched neither and could never be cleaned up. Two of the template's own test fixtures were building exactly that row.
-- The sessions list names the device behind the app's own sessions. iOS reports them as `<AppName>/1 CFNetwork/... Darwin/...`, which fell through every platform check and printed raw. `deviceLabel` moved to `src/lib/device.ts` with a test.
-- `<Material>` falls back to the theme's `card` colour under Reduce Transparency instead of a hardcoded near-black, which painted an opaque dark panel under near-black text in light mode whenever the caller passed no tint.
-- The FAQ said deleting your account "will permanently remove all your data". `convex/users.ts` gives you a 30-day grace window and both delete screens say so, leaving the help screen as the one place contradicting the code.
-- The privacy screen no longer has a Share Analytics toggle. It wrote to a preference nothing read, so the app was telling users it shared data it never collected.
-- `store.config.json` is gitignored. `vexpo review-account` writes a generated App Review demo password into it, and following the setup as documented used to commit that password.
-- Native Sign in with Apple could not verify its identity token. Better Auth resolves the expected audience as `audience ?? appBundleIdentifier ?? clientId`, and `clientId` holds the Services ID (the web flow's audience) while a native token carries the bundle id, so every native sign-in failed audience verification. `convex/auth.ts` now passes `appBundleIdentifier`. `APP_BUNDLE_ID` was already on Convex, so nothing else moves.
-- `create-vexpo` strips the App Store Connect identity out of `eas.json` when it scaffolds. `vexpo asc connect` writes a real `ascAppId` and ASC key id into the submit profiles because `eas submit` reads them from nowhere else, and the template shares a directory with a real shipping project, so a scaffold was copying them straight into every new app. The `.p8` stays gitignored, so the existing key-leak check passed the whole time. Guarded two ways now: the scaffold e2e asserts a scaffolded `eas.json` is clean, and a gitleaks rule fails the secret scan if those keys reach the template's own `eas.json`. Neither an app id nor a key id is secret-shaped, which is why the default ruleset never flagged them.
-- The pre-push hook runs the secret scan too, not just `npm run validate`, so a finding lands before the push rather than in CI after it. It scans only the commits being pushed, since a full-history scan reports four old canary version strings that read like API keys. A finding prints what to do next: deleting the value in a follow-up commit doesn't clear it, the commit that added it has to be rewritten. Without gitleaks installed the hook says so and continues.
-- `vexpo doctor` no longer guesses that your EAS project was deleted when you are simply logged out. `project-info` now defers to the `signed-in` check above it and skips.
-- Every eas-cli failure caused by being logged out now says so and names the fix. With stdin ignored, eas-cli puts "An Expo user account is required" on stdout and keeps only "<cmd> command failed." on stderr, so the tail vexpo printed threw away the useful half. A live `vexpo env push` reported nothing but the generic line.
-- `testflight invite` now handles three Apple rules the first live 0.2.3 run hit. An internal group only takes App Store Connect team members, so an outside email now falls through to the external group when the group was auto-resolved, and an explicit `--group` gets the explanation instead of a bare 409.
-- `testflight invite` checks group membership before adding a tester that already exists. Re-adding a member 409s.
-- `testflight invite` reports a pending Beta App Review as success. The tester is durably in the group, Apple just can't send the invite email until the group has an installable build.
-- **Breaking:** `vexpo eas` is no longer a command. Every part of it was eas-cli (`login`, `init`, `channel:create`, `branch:create`, `env:push`), so the EAS bootstrap stays as a phase of `vexpo full` and the standalone entry is gone. Run `eas init` yourself, or `vexpo full`, and `vexpo env push` for the env sync.
-- `vexpo testflight whats-new --help` now says when to reach for it. `eas submit --what-to-test` covers the submit-time case, so this is for a build that's already up or a locale other than en-US.
-- `testflight groups list` prints the whole group id. It printed the first 8 characters, and that value is what you paste into `groups view`, `groups delete` and `invite --group`, all of which 404 on a prefix.
-- Template `ios`, `ios:dev` and `ios:device` no longer open the app before Metro exists. They chained `expo run:ios --no-bundler && npm run dev`, so the app launched against a dead port every time and landed on "There was a problem loading the project" until you hit Reload. `scripts/dev.mjs` takes a new `--build <cmd...>` that starts Metro, waits for `/status` to answer, then runs the build. A Metro already on that port gets reused instead of raced, which is the everyday `ios:dev` case. Metro also warms the bundler while Xcode compiles, so the first load after install is a cache hit.
-- Template deps caught up to the SDK 57 versions Expo expects, 34 packages in all, including `expo` 57.0.9, `expo-router` 57.0.9, `expo-updates` 57.0.11 and `react-native` 0.86.2. `npx expo-doctor` is 20/20 again.
-- Both template changes above move the `@expo/fingerprint` hash, since `packageJson:scripts` and the dependency versions are both sources. Expect a one-time runtime version bump and a cold EAS build cache after upgrading.
+- Stop `create-vexpo` reflowing `eas.json` on every scaffold, so a fresh scaffold passes `npm run format:check`. The scaffold e2e runs oxfmt over a whole project now.
+- Ship `store.config.json` from a tracked `store.config.example.json`. The working copy is gitignored, so the release runner had nothing to copy. `vexpo rebrand` rewrites both.
+- Declare `engines.node >= 22.12` in the template. It was documented as Node 20 and enforced nowhere.
+- Patch postcss 8.5.25, nanoid and brace-expansion 5.0.9 in the lockfiles. The eleven moderates stay because npm's fix is a downgrade to SDK 46.
+- **Breaking:** rename `scripts/clean.ts` to `scripts/clean.mjs`, and drop `scripts/_run.mjs` and the `tsx` devDependency.
+- Drop six npm scripts that were plain aliases. `convex:logs`, `convex:insights`, `convex:dashboard`, `convex:codegen`, `metadata:lint` and `metadata:pull`. Run the underlying command directly.
+- Declare `sf-symbols-typescript` as a devDependency. Two files import it and it only worked because npm happened to put it at the top level.
+- Drop the dead `Haptics` export and the `export` on `DeepLinkRoutes`.
+- Warn in `.env.example` that a `CONVEX_DEPLOY_KEY` there beats `--prod` on every convex command.
+- Write Maestro screenshots to `.maestro/screenshots/`, and point the flows at `npm run e2e`.
+- Open the dev bundle by deep link in the auth flow. The launcher's server row never resolves on a simulator.
+- Deny the push permission alert at launch in the auth flow. SpringBoard draws it outside the accessibility tree.
+- Add `npm run e2e` to run the Maestro flows locally. `scripts/e2e.mjs` finds a JDK, reads the bundle id, makes up a test email, builds the deep link and resets the simulator keychain.
+- Name every index `by_<field>`, the convention Convex's own `guidelines.md` states. Five of eight broke it.
+- Make `pushTokens.revoked` a required boolean. A row without it matched neither of `cleanupStale`'s index ranges.
+- Name the device behind the app's own sessions. iOS reports them as `<AppName>/1 CFNetwork/...`, which printed raw. `deviceLabel` moved to `src/lib/device.ts` with a test.
+- Fall back to the theme's `card` color in `<Material>` under Reduce Transparency, instead of a hardcoded near-black.
+- Fix the FAQ's delete-account answer. It said "permanently" where the code gives a 30-day grace window.
+- Drop the Share Analytics toggle. It wrote to a preference nothing read.
+- Gitignore `store.config.json`. `vexpo review-account` writes a generated password into it.
+- Pass `appBundleIdentifier` in `convex/auth.ts`, so Better Auth accepts a native Sign in with Apple token.
+- Strip the App Store Connect identity out of `eas.json` when `create-vexpo` scaffolds. The scaffold e2e and a gitleaks rule both guard it.
+- Run the secret scan in the pre-push hook, on the pushed commits only. Without gitleaks installed the hook says so and continues.
+- Skip doctor's `project-info` check when you are logged out, instead of guessing the project was deleted.
+- Say "logged out" and name the fix on every eas-cli failure caused by it. The useful line was on stdout and vexpo only printed stderr.
+- Fall through to the external group in `testflight invite` when an outside email hits an internal group. An explicit `--group` gets the explanation instead of a bare 409.
+- Check group membership in `testflight invite` before adding a tester. Re-adding a member 409s.
+- Report a pending Beta App Review as success in `testflight invite`. The tester is in the group, and Apple sends the email once a build is installable.
+- **Breaking:** drop `vexpo eas`. Every part of it was eas-cli. Run `eas init` yourself or `vexpo full`, and `vexpo env push` for the env sync.
+- Say in `vexpo testflight whats-new --help` when to use it. It is for a build that's already up, or a locale other than en-US.
+- Print the whole group id in `testflight groups list`. The 8-character prefix 404s everywhere you paste it.
+- Start Metro before the build in the template's `ios`, `ios:dev` and `ios:device` scripts, through a new `--build` flag on `scripts/dev.mjs`. The app was launching against a dead port.
+- Catch template deps up to SDK 57, 34 packages, including `expo` 57.0.9, `expo-router` 57.0.9, `expo-updates` 57.0.11 and `react-native` 0.86.2. `expo-doctor` is 20/20.
+- Expect a one-time runtime version bump from the two template changes above. Scripts and dependency versions are both fingerprint sources.
 
 ## [0.2.3] - 2026-07-14
 
-- Fix `vexpo asc connect` guidance for a non-empty EAS key store: the wizard shows a picker there (not the generate prompt), a stored key deleted at Apple 401s at discover-apps, and the create-or-upload entry is the escape. The command now says so up front and prints the recovery on failure, and doctor's `asc-integration` hint matches.
-- Document the two-key end state so nobody collapses it: the local `credentials/` key serves `eas.json` and CLI submits, the EAS-managed key the wizard generates serves cloud auto-submits and the integration.
-- Catalog the ASC dashboard's manual half in a new template `app-store/README.md`: privacy nutrition labels, pricing, content rights, age rating, accessibility declarations, and TestFlight Test Information, split by what `metadata:push` re-pushes later versus what stays manual forever.
-- Write the cached ASC key's `ascApiKeyPath`/`ascApiKeyId`/`ascApiKeyIssuerId` into eas.json submit profiles from `vexpo submit` and `vexpo asc connect`: `eas submit` has no env-var key source, so without the fields a stale EAS-stored key wins silently (a deleted key failed a live submit with altool -26000). Only written when the `.p8` lives inside the repo.
-- Fix `vexpo testflight invite`: drop the `apps` relationship App Store Connect forbids on tester creation (409), attach through `betaGroups`, and resolve the app's internal group when `--group` is omitted.
-- Fix `vexpo testflight whats-new`: the build localizations endpoint rejects `filter[locale]` (400), so list and match the locale client-side.
-- Keep the dev loop working after `updates:gen-cert`: new template `scripts/dev.mjs` passes `--private-key-path` to Metro automatically once the OTA cert is wired (the dev client demands signed manifests), and `dev`/`start`/`ios` route through it. Expect a one-time fingerprint bump from the script changes.
-- Make prod Convex deploys immune to the dev deploy key in `.env.local`: template `convex:deploy` reads `.env.prod`, and the adopt runbook clears `CONVEX_DEPLOY_KEY` for the first prod deploy (a bare `convex deploy` silently landed on dev).
-- Overhaul `vexpo review-account`: generates a real password when the placeholder is still in `store.config.json` (and writes it back so `metadata:push` matches the deployment), seeds prod through a prod-scoped `.env.prod` in the same run, and the template action now rotates an existing account's password via `reset`.
-- Check `eas login` in setup Prerequisites and as a doctor `eas`/`signed-in` check, so a logged-out eas-cli surfaces at the start instead of failing phases mid-run.
-- Document the Maestro limits found live: the auth flow is lite-mode-only once email verification is on, and synthetic taps on the SwiftUI submit button can complete without firing on local dev clients (test on EAS release builds).
-- Document the real 0→1 road: the template README's Ship path walks scaffold to TestFlight in order, marking the four human moments (EAS login, the one-time ASC `.p8` download, the Resend key paste, the first build's credentials wizard with reuse-the-cert answers), and `AGENTS.md` gains a Ship path playbook with the human/agent split per step.
-- Wire `vexpo resend` to both channels: the full flow now provisions the prod deployment too (same scoped sending key, its own webhook and env copy) whenever a prod site URL exists, instead of silently ignoring `--prod`.
-- Stop `vexpo resend --repoint` retiring the sibling channel's live webhook: a prod repoint no longer deletes the dev hook, and vice versa.
-- Report an unreadable Convex env as a doctor warn instead of failing every var as "not set" (the prod deploy-key read path false-negatived a set `BETTER_AUTH_SECRET`).
-- Move template store metadata to the shape `eas metadata:lint` accepts: `releaseNotes` and `promoText` under `info.<locale>`, dropping the rejected top-level blocks.
-- Drop the placeholder App Review notes key on rebrand instead of blanking it, since an empty string fails `eas metadata:lint`.
-- Un-ignore `certs/certificate.pem` in the template `.gitignore` so a global `*.pem` rule can't block committing the OTA public cert.
-- Document the Resend key gotcha in troubleshooting: editing a key's permission rotates its token, so the bootstrapper key must be born full-access and left untouched.
-- Fix `vexpo adopt` and `vexpo lite` after `eas integrations:convex:connect`: eas-cli 21 writes only `CONVEX_DEPLOY_KEY` to `.env.local`, so both now derive `CONVEX_DEPLOYMENT` from the key's prefix and connect to the existing deployment instead of bailing (`adopt`) or trying to create a project the EAS-managed team rejects (`lite`).
-- Stop passing `--deployment` to the Convex CLI for the ambient deployment: the flag resolves through the platform API and needs a user login, which broke `convex env set` under deploy-key auth on integration-created deployments. Cross-deployment reads (`convex migrate --from`, `apple jwt --copy-from`) keep the explicit flag.
-- Extend `vexpo rebrand` to the whole scaffold: rewrite the `convex/env.ts` `SITE_URL` and `APP_NAME` fallbacks, retitle `README.md` and strip the template hero images (a hand-written README is never touched), update the `.env.example` doc lines, and sync `package-lock.json` name and version with `package.json`.
-- Write the bare app name as the App Store title instead of `App | Convex on Expo`, and blank the placeholder App Review notes while preserving notes a user wrote.
-- Hand every file rebrand rewrites to the project formatter so a fresh rebrand passes its own `format:check`.
-- Fix `create-vexpo` inserting the `@ramonclaudio/vexpo` devDependency unsorted, which failed a fresh scaffold's `format:check`.
-- Derive the template `clean.ts` DerivedData match from the package name, case-insensitive, so rebranded projects and dev-variant builds (`FoobarDev-*`) get their Xcode caches cleaned.
-- Swap the template deep-link test fixtures to a brand-neutral `test://` scheme.
-- Point the template README's App Attest recovery steps at the vexpo repo's removal commit, since scaffolds start with fresh git history.
-- Add an agent setup path: a fresh-scaffold playbook in the template `AGENTS.md`, a paste-in prompt in both READMEs, and a pointer in the scaffold's next-steps output.
-- Bump the toolchain and template deps: convex 1.42.2, oxlint 1.74, oxfmt 0.58, vitest 4.1.10, knip 6.26, tsx 4.23.1, and the codeql action pins. `expo install --check` aligned, `expo-doctor` 20/20.
+- Explain the key picker in `vexpo asc connect` when the EAS key store isn't empty, and print the recovery on failure. Doctor's `asc-integration` hint matches.
+- Document the two-key end state. The local `credentials/` key serves `eas.json` and CLI submits, and the EAS-managed key serves cloud auto-submits.
+- Catalog the manual half of the ASC dashboard in `app-store/README.md`, split by what `metadata:push` re-pushes and what stays manual.
+- Write the cached ASC key's `ascApiKeyPath`, `ascApiKeyId` and `ascApiKeyIssuerId` into the `eas.json` submit profiles from `vexpo submit` and `vexpo asc connect`. Without them a stale EAS-stored key wins silently.
+- Fix `vexpo testflight invite`. Attach through `betaGroups`, drop the `apps` relationship App Store Connect rejects, and resolve the app's internal group when `--group` is omitted.
+- Fix `vexpo testflight whats-new`. The localizations endpoint rejects `filter[locale]`, so the locale is matched client-side.
+- Pass `--private-key-path` to Metro from the new `scripts/dev.mjs` once the OTA cert is wired. `dev`, `start` and `ios` route through it.
+- Read `.env.prod` in the template's `convex:deploy`, so the dev deploy key in `.env.local` can't send a prod deploy to dev.
+- Generate a real password in `vexpo review-account` when the placeholder is still in `store.config.json`, create the account on prod in the same run, and rotate an existing account's password.
+- Check `eas login` in setup prerequisites and in doctor, so a logged-out eas-cli fails at the start.
+- Document the Maestro limits found live. The auth flow is lite-mode-only once verification is on, and synthetic taps can miss the SwiftUI submit button on local dev clients.
+- List every step from scaffold to TestFlight in the template README's Ship path, with the four human moments marked, and add a Ship path playbook to `AGENTS.md`.
+- Provision the prod deployment in `vexpo resend` too, whenever a prod site URL exists.
+- Stop `vexpo resend --repoint` deleting the other channel's live webhook.
+- Report an unreadable Convex env as a doctor warn instead of failing every var as "not set".
+- Move `releaseNotes` and `promoText` under `info.<locale>`, the shape `eas metadata:lint` accepts.
+- Drop the placeholder App Review notes key on rebrand instead of blanking it. An empty string fails `eas metadata:lint`.
+- Un-ignore `certs/certificate.pem` in the template `.gitignore`.
+- Document in troubleshooting that editing a Resend key's permission rotates its token.
+- Derive `CONVEX_DEPLOYMENT` from the deploy key's prefix in `vexpo adopt` and `vexpo lite`. eas-cli 21 writes only `CONVEX_DEPLOY_KEY` to `.env.local`.
+- Stop passing `--deployment` to the Convex CLI for the deployment in `.env.local`. The flag needs a user login. Cross-deployment reads keep it.
+- Extend `vexpo rebrand` to the whole scaffold. It now rewrites the `convex/env.ts` fallbacks, the README title and hero images, `.env.example` and `package-lock.json`.
+- Write the bare app name as the App Store title, and keep App Review notes a user wrote.
+- Run the project formatter over every file rebrand rewrites.
+- Insert the `@ramonclaudio/vexpo` devDependency sorted in `create-vexpo`.
+- Match DerivedData by package name, case-insensitive, in the template `clean.ts`.
+- Change the deep-link test fixtures to a `test://` scheme.
+- Point the README's App Attest recovery steps at the vexpo repo's removal commit.
+- Add an agent setup path, with a fresh-scaffold playbook in the template `AGENTS.md`, a paste-in prompt in both READMEs, and a pointer in the next-steps output.
+- Bump convex 1.42.2, oxlint 1.74, oxfmt 0.58, vitest 4.1.10, knip 6.26, tsx 4.23.1 and the codeql action pins. `expo-doctor` 20/20.
 
 ## [0.2.2] - 2026-07-08
 
 - Put every section label and plain-text screen title in the VoiceOver Headings rotor with `accessibilityAddTraits(["isHeader"])`, and mark the update banner `updatesFrequently` while a download runs ([expo/expo#47387](https://github.com/expo/expo/pull/47387), shipped in `@expo/ui` 57.0.3).
-- Flag an invalid OTP code with a destructive capsule ring on the auth and email-change fields via `strokeBorder`, each gated on its own verify error, and keep the avatar slot's footprint during upload with a dashed circle stroke ([expo/expo#47426](https://github.com/expo/expo/pull/47426), shipped in `@expo/ui` 57.0.3). Both had waited on a release since 0.1.11.
-- Bump the template to Expo SDK 57.0.4: `expo install --fix` aligns 14 drifted packages, `expo install --check` and `expo-doctor` (20/20) pass clean.
+- Flag an invalid OTP code with a destructive capsule ring via `strokeBorder`, and keep the avatar slot's footprint during upload with a dashed circle stroke ([expo/expo#47426](https://github.com/expo/expo/pull/47426), shipped in `@expo/ui` 57.0.3). Both had waited on a release since 0.1.11.
+- Bump the template to Expo SDK 57.0.4. `expo install --fix` aligns 14 drifted packages, and `expo-doctor` passes 20/20.
 - Bump template `better-auth` and `@better-auth/expo` to 1.6.23, `@convex-dev/better-auth` to 0.12.5, and `convex` to `~1.42.1`.
 
 ## [0.2.1] - 2026-07-03
 
-- Fix `rebrand --force` re-runs after a rebrand whose app name carried quotes or backslashes: the config markers are now escape-aware, so validation passes and the name rewrite no longer silently no-ops.
-- `vexpo review-account` refuses the template's placeholder demo password instead of seeding a guessable login.
-- Point accounts whose Convex team is managed by the EAS integration at the working path (`eas integrations:convex:connect` + `vexpo adopt`) when provisioning fails, in the CLI hint and the troubleshooting guide.
-- Drop `doctor --redact`. It was an internal screenshot helper, not a product feature.
-- Slim the template: drop the unused `react-dom` and `expo-symbols` dependencies (and the now-dead `react-dom` override) plus a handful of dead exports.
-- Trim `notifications.ts` to the surface the app uses: drop 19 uncalled `expo-notifications` wrappers (scheduling, badges, dismiss, presented).
+- Fix `rebrand --force` re-runs after a rebrand whose app name had quotes or backslashes. The config markers are escape-aware now.
+- Refuse the template's placeholder demo password in `vexpo review-account`.
+- Point accounts whose Convex team is managed by the EAS integration at `eas integrations:convex:connect` and `vexpo adopt` when provisioning fails.
+- Drop `doctor --redact`. It was an internal screenshot helper.
+- Drop the unused `react-dom` and `expo-symbols` dependencies, the dead `react-dom` override, and a handful of dead exports.
+- Drop 19 uncalled `expo-notifications` wrappers from `notifications.ts`.
 
 ## [0.2.0] - 2026-07-03
 
-- **Breaking:** colon commands are gone. `asc:connect`, `asc:privacy`, `asc:accessibility`, and `convex:migrate` are now `asc connect`, `asc privacy`, `asc accessibility`, and `convex migrate`, matching the other command groups. `vexpo eas` (EAS link, channels, branches, env push) is a registered command instead of a setup-only step.
-- **Breaking:** the Node floor is `>=22.12`, what `commander@15` and oxlint's platform binding actually require. CI tests the exact floor.
-- Convex env writes never touch argv: values go through a `0600` temp file with dotenv-safe quoting, including the CI JWT rotation script.
-- Retries are bounded: `Retry-After` caps at 30s, exhaustion throws the real status, and a transient Resend 429 no longer reports "invalid key".
-- CLI plumbing fails loud: an `eas env:list` failure is distinct from an empty deployment, garbled JSON throws, spawn errors carry the real cause, and ASC auth errors propagate.
-- `vexpo rebrand` survives quotes and backslashes in app names, and a re-run on a rebranded project is a clean no-op.
-- One error boundary in `cli.ts` replaces ten per-command `try/catch` copies.
-- Shared SwiftUI form primitives (capsule field, row button, toggle row, secondary button, section label, helper text, avatar) replace per-screen copies. The profile screen drops from 858 lines to composed sections.
-- OTP verify reads the native field so a same-frame submit sees all six digits, repeated errors re-announce to VoiceOver, notification listeners stop re-subscribing, and stale delete-account errors clear on retry.
-- Push sends chunk at Expo's 100-message limit with tickets aligned per chunk, the webhook body cap is enforced while streaming, and `sent` counts accepted tickets only.
+- **Breaking:** rename the colon commands. `asc:connect`, `asc:privacy`, `asc:accessibility` and `convex:migrate` are now `asc connect`, `asc privacy`, `asc accessibility` and `convex migrate`. `vexpo eas` is a registered command.
+- **Breaking:** raise the Node floor to `>=22.12`, which `commander@15` and oxlint's platform binding require. CI tests the exact floor.
+- Write Convex env values through a `0600` temp file instead of argv, including in the CI JWT rotation script.
+- Cap `Retry-After` at 30s, throw the real status on exhaustion, and stop reporting a transient Resend 429 as "invalid key".
+- Fail loud in the CLI plumbing. An `eas env:list` failure is distinct from an empty deployment, garbled JSON throws, spawn errors include the real cause, and ASC auth errors propagate.
+- Survive quotes and backslashes in app names in `vexpo rebrand`, and make a re-run a clean no-op.
+- Replace ten per-command `try/catch` copies with one error boundary in `cli.ts`.
+- Share the SwiftUI form primitives across screens. The profile screen drops from 858 lines to composed sections.
+- Read the native OTP field on submit so all six digits are seen, re-announce repeated errors to VoiceOver, stop notification listeners re-subscribing, and clear stale delete-account errors on retry.
+- Chunk push sends at Expo's 100-message limit, enforce the webhook body cap while streaming, and count only accepted tickets as `sent`.
 - Bump template `better-auth` and `@better-auth/expo` to 1.6.22 and `convex` to `~1.42.0`.
-- Every scaffold gets lighter: unused `expo-sharing`, 15 unreferenced fonts (~2.1MB per app binary), dead design tokens, and the template author's LICENSE no longer ship.
-- CI drives the locally packed CLI in the template job, `pack-guard` matches npm's forced-include rules exactly, and a half-failed publish is re-runnable.
-- Docs verified against source: the stale App Attest section is gone, CI token scopes are cataloged, and the 60-second claim covers provisioning, not the native build.
+- Drop `expo-sharing`, 15 unreferenced fonts (about 2.1MB per binary), dead design tokens and the template author's LICENSE from every scaffold.
+- Use the locally packed CLI in the template CI job, match npm's forced-include rules in `pack-guard`, and make a half-failed publish re-runnable.
+- Fix the docs against source. The stale App Attest section is gone, CI token scopes are cataloged, and the 60-second claim is about provisioning only.
 
 ## [0.1.11] - 2026-07-02
 
-- Move every SF Symbol off the JS `fontScale` multiply onto native `font` and `dynamicTypeSize` scaling and delete the `useSymbolSize` workaround, so icons ride the same Dynamic Type curve as their labels ([expo/expo#46714](https://github.com/expo/expo/pull/46714), [#46774](https://github.com/expo/expo/pull/46774)).
-- Rebuild the loading skeletons on `redacted("placeholder")` so placeholders track the live layout instead of hand-drawn bars ([expo/expo#47269](https://github.com/expo/expo/pull/47269)).
-- Add an app-switcher privacy shield: backgrounding redacts emails, session IPs, and device identifiers in the iOS switcher snapshot via `privacySensitive`, and the debug OTA status gets the `invalidatableContent` treatment while a check runs.
-- Wire the template against released `@expo/ui` only. Merged-but-unreleased upstream modifiers (`accessibilityAddTraits` from [expo/expo#47387](https://github.com/expo/expo/pull/47387), `strokeBorder` from [#47426](https://github.com/expo/expo/pull/47426)) stay documented in the ledger and land when a release ships them.
-- Announce async state changes to VoiceOver on iOS: the offline and update banners, username availability results, OTA check outcomes, and session revoke failures all spoke nothing before.
-- Collapse fragmented VoiceOver stops (session identity rows, empty states, label-value pairs) with `accessibilityElement`, alias unspeakable Voice Control labels (ampersands, duplicate "Revoke" buttons), and meet the 44pt touch-target minimum on every plain text button.
-- Scroll the OTP, restore-account, and crash screens at accessibility type sizes so no control can scale off-screen. The restore modal previously stranded the user with unreachable buttons.
-- Give the welcome hero a mirrored reflection via per-axis `scaleEffect`, settle search flicks on row boundaries with `scrollTargetBehavior("viewAligned")`, and bold the name in the home greeting through the fixed `Text` concatenation path.
-- Anchor the `ios/` excludes in the template `.gitignore`, `.easignore`, and the create-vexpo copy filter so a local expo module's `modules/*/ios` sources survive packaging instead of being gutted by an unanchored `ios` match.
-- Skip Scorecard analysis and npm publish on forks, the same fork-safety guards we shipped upstream in [expo/expo#45782](https://github.com/expo/expo/pull/45782) and [#45859](https://github.com/expo/expo/pull/45859).
+- Move every SF Symbol onto native `font` and `dynamicTypeSize` scaling and delete the `useSymbolSize` workaround ([expo/expo#46714](https://github.com/expo/expo/pull/46714), [#46774](https://github.com/expo/expo/pull/46774)).
+- Rebuild the loading skeletons on `redacted("placeholder")` so they track the live layout ([expo/expo#47269](https://github.com/expo/expo/pull/47269)).
+- Redact emails, session IPs and device identifiers in the app switcher snapshot via `privacySensitive`, and mark the debug OTA status `invalidatableContent` while a check runs.
+- Wire the template against released `@expo/ui` only. `accessibilityAddTraits` and `strokeBorder` stay documented until a release ships them.
+- Announce async state changes to VoiceOver. The offline and update banners, username availability, OTA check outcomes and session revoke failures.
+- Collapse fragmented VoiceOver stops with `accessibilityElement`, alias unspeakable Voice Control labels, and meet the 44pt touch target on every plain text button.
+- Scroll the OTP, restore-account and crash screens at accessibility type sizes so no control can scale off-screen.
+- Mirror the welcome hero with per-axis `scaleEffect`, settle search flicks on row boundaries with `scrollTargetBehavior("viewAligned")`, and bold the name in the home greeting.
+- Anchor the `ios/` excludes in `.gitignore`, `.easignore` and the create-vexpo copy filter so a local module's `modules/*/ios` sources survive packaging.
+- Skip Scorecard analysis and npm publish on forks, the same guards as [expo/expo#45782](https://github.com/expo/expo/pull/45782) and [#45859](https://github.com/expo/expo/pull/45859).
 
 ## [0.1.10] - 2026-06-30
 
-- Upgrade the template to Expo SDK 57: React Native 0.85 to 0.86, React unchanged at 19.2. Moves `react-native-reanimated` to 4.5, `react-native-worklets` to 0.10, and `react-native-gesture-handler` to 2.32 via `expo install --fix`, and registers the `expo-asset` and `expo-status-bar` config plugins SDK 57 expects. `expo install --check` and `expo-doctor` (20/20) pass clean. RN 0.86 ships no breaking changes, so a scaffold rolls forward with a single `npx expo install expo@latest --fix`.
+- Upgrade the template to Expo SDK 57. React Native moves 0.85 to 0.86, `react-native-reanimated` to 4.5, `react-native-worklets` to 0.10 and `react-native-gesture-handler` to 2.32, and the `expo-asset` and `expo-status-bar` config plugins are registered. `expo-doctor` passes 20/20.
 
 ## [0.1.9] - 2026-06-30
 
-- Fix the template's auth surface, which was dead out of the box. `expectAuth: true` on the Convex client paused the socket until sign-in, so every pre-auth query hung and Apple Sign In, OTP, email verification, and full-tier sign-up never worked. Dropping it lets the public pre-auth queries run.
-- Forward the `.env.local` public identity into the `eas submit` subprocess so it resolves the real app instead of the `com.example.*` placeholder.
-- Source `apple eas-rotation-secrets` identity from saved state instead of `.env.local`, where nothing writes it, so it no longer aborts `vexpo full`.
-- Stop `vexpo env push` from printing raw Convex secrets in the plan, force the Convex overwrite so a re-push doesn't fail, and exit nonzero when an env push fails.
-- Surface a transient App Store Connect lookup error in `vexpo submit` instead of misreporting "no app record". Preserve cached step outputs on a live-check refresh so a later `vexpo full` no longer wipes the saved Apple identity. Redact identifiers in `vexpo doctor --json --redact` too.
-- Poll Expo push receipts on a cron so `DeviceNotRegistered` tokens get tombstoned promptly, and bundle the brand icons in OTA updates so a rebranded icon doesn't resolve stale on device.
+- Fix the template's auth, which did not work out of the box. `expectAuth: true` paused the Convex socket until sign-in, so every pre-auth query hung.
+- Forward the `.env.local` public identity into the `eas submit` subprocess, so it resolves the real app instead of `com.example.*`.
+- Read the `apple eas-rotation-secrets` identity from saved state instead of `.env.local`, so it no longer aborts `vexpo full`.
+- Stop `vexpo env push` printing raw Convex secrets in the plan, force the Convex overwrite on re-push, and exit nonzero on failure.
+- Report a transient App Store Connect lookup error in `vexpo submit` instead of "no app record", keep cached step outputs on a live-check refresh, and redact identifiers in `vexpo doctor --json --redact`.
+- Poll Expo push receipts on a cron so `DeviceNotRegistered` tokens get marked dead, and bundle the brand icons in OTA updates.
 - Cut the unwired App Attest stack to a documented optional add-on, and drop the `fingerprint:diff` CI job that failed on every scaffold.
-- Patch the `shell-quote` (critical), esbuild, and `@babel/core` advisories in the template build tooling. Update the template's Convex, Better Auth, and Resend deps to the latest SDK 56 compatible versions. `expo install --check` and `expo-doctor` pass clean.
-- Harden CI to the 2026 baseline: SHA-pin every action (Dependabot-maintained), `dependency-review` on PRs, OpenSSF Scorecard, a Dependabot cooldown, a Node 20/22/24 matrix, an `npm pack` guard, and a `knip` gate.
-- Slim the CLI by collapsing duplicated helpers and dropping re-wraps of the `eas` and `convex` CLIs. Rewrite `CONTRIBUTING` around an issue-first flow with a one-command `npm run validate` and a pre-push hook, and add structured issue forms, a PR template, and a troubleshooting guide.
+- Patch the `shell-quote`, esbuild and `@babel/core` advisories in the template tooling, and update Convex, Better Auth and Resend to the latest SDK 56 compatible versions.
+- Harden CI. SHA-pin every action, add `dependency-review`, OpenSSF Scorecard, a Dependabot cooldown, a Node 20/22/24 matrix, an `npm pack` guard and a `knip` gate.
+- Slim the CLI by collapsing duplicated helpers, rewrite `CONTRIBUTING` around an issue-first flow with `npm run validate` and a pre-push hook, and add issue forms, a PR template and a troubleshooting guide.
 
 ## [0.1.8] - 2026-06-24
 
-- Skip the Convex team picker when provisioning a new project non-interactively. `vexpo lite`/`full` died on convex's raw `(Team:)` prompt in CI or a scripted run. `planConvexDev` now passes `--team` when `CONVEX_TEAM` is set (read from the env or `.env.local`), and the failure path points at `CONVEX_TEAM` instead of letting the prompt fail blind.
-- Never ship `.env.convex.local` in the `create-vexpo` template payload. It was gitignored but listed in the dotfile-ship set, so it was dead on CI and a leak on a local publish. It's now excluded from the payload like `.env.local` and `.env.prod`.
-- Add orchestration coverage for the `lite`/`full` setup engine (`runSetup`), which had no tests that imported it: the lite-vs-full scope matrix, step ordering, the `--plan`/`--dry-run` short-circuits, and the failure path, plus a reversible live `convex env` e2e and `lite`/`full` `--plan` cases in the CLI harness.
-- 540 tests (391 vexpo unit + 113 template + 16 cli e2e + 20 scaffold e2e), plus opt-in live suites (Convex Platform API, Maestro).
+- Pass `--team` to Convex when `CONVEX_TEAM` is set, so `vexpo lite` and `full` stop dying on the raw `(Team:)` prompt in CI.
+- Exclude `.env.convex.local` from the `create-vexpo` payload, like `.env.local` and `.env.prod`.
+- Add tests for the `lite` and `full` setup engine (`runSetup`), covering the scope matrix, step ordering, `--plan` and `--dry-run`, and the failure path.
+- Bring the suite to 540 tests, 391 vexpo unit, 113 template, 16 cli e2e and 20 scaffold e2e, plus the opt-in live suites.
 
 ## [0.1.7] - 2026-06-24
 
-- Fail an EAS build that's missing `EXPO_PUBLIC_CONVEX_URL` or `EXPO_PUBLIC_CONVEX_SITE_URL` instead of shipping a binary that throws at startup in `src/lib/env.ts` before React mounts, an uncatchable launch crash. That shipped once and got the app rejected at App Review. Local dev (no `EAS_BUILD`) loads these from `.env.local` and is unaffected.
-- Invoke eas-cli as `npx eas-cli`, not bare `npx eas`, everywhere (CLI helpers, every user-facing hint, the template's `npm run eas:*` scripts). Bare `npx eas` can't resolve the binary unless eas-cli is a local dependency, which silently turned `doctor`'s EAS checks into false negatives and broke the template's eas scripts for anyone without a global eas-cli.
-- Surface App Store Connect's real 403 cause (a missing or expired agreement) instead of always reporting "key role insufficient". A valid Admin or App Manager key hitting a pending-agreement 403 was mislabeled as a permissions problem.
-- Add a `credentials/` staging dir (gitignored except its `README.md`) as the one home for one-time Apple `.p8` downloads. `vexpo apple asc-key`, `jwt`, and `eas-rotation-secrets` auto-detect and default to it. The real home stays EAS, uploaded and KMS-encrypted.
-- Land `ascAppId` in `eas.json` from a headless `asc:connect` (resolved from the ASC API), so CI and non-interactive `vexpo full` runs aren't blocked on the interactive EAS↔ASC wizard.
-- Add `vexpo submit`: non-interactive TestFlight or App Store submit that sets `EXPO_ASC_*` from the cached ASC key and writes `ascAppId` into `eas.json`, then runs `eas submit --latest`. No EAS credential store needed.
-- Route the versioned `BETTER_AUTH_SECRETS` through `env push` so rotating the auth secret doesn't sign every active session out.
-- Add a gitleaks pre-commit config and a CI secret-scan job. Narrow the CI workflows to least-privilege `permissions` and pin third-party actions to commit SHAs.
-- Bump the SDK 56 dep matrix (`expo` 56.0.12, `@expo/ui` 56.0.18, `expo-router` 56.2.11, and more) via `expo install --fix`. Fresh scaffolds pass `npx expo-doctor` 21/21.
-- Fix stale Resend webhook comments: the management API reads the signing secret back now, so recreate-on-move is a deliberate choice for one known value, not a workaround.
-- 524 tests (377 vexpo unit + 113 template + 14 cli e2e + 20 scaffold e2e), plus opt-in live suites (Convex Platform API, Maestro).
+- Fail an EAS build that is missing `EXPO_PUBLIC_CONVEX_URL` or `EXPO_PUBLIC_CONVEX_SITE_URL`. A binary without them crashes at launch, which got the app rejected at App Review once.
+- Invoke eas-cli as `npx eas-cli` everywhere. Bare `npx eas` can't resolve the binary without a local eas-cli, which turned doctor's EAS checks into false negatives.
+- Report App Store Connect's real 403 cause, a missing or expired agreement, instead of always saying "key role insufficient".
+- Add a gitignored `credentials/` staging dir for one-time Apple `.p8` downloads. `vexpo apple asc-key`, `jwt` and `eas-rotation-secrets` default to it.
+- Write `ascAppId` into `eas.json` from a headless `asc:connect`, so CI runs aren't blocked on the interactive wizard.
+- Add `vexpo submit`, a non-interactive TestFlight or App Store submit that uses the cached ASC key and runs `eas submit --latest`.
+- Route the versioned `BETTER_AUTH_SECRETS` through `env push`, so rotating the auth secret doesn't sign every session out.
+- Add a gitleaks pre-commit config and a CI secret-scan job, give each CI job the smallest `permissions` it needs, and pin third-party actions to commit SHAs.
+- Bump the SDK 56 dep matrix (`expo` 56.0.12, `@expo/ui` 56.0.18, `expo-router` 56.2.11 and more). Fresh scaffolds pass `expo-doctor` 21/21.
+- Fix stale Resend webhook comments. The management API reads the signing secret back now.
+- Bring the suite to 524 tests, 377 vexpo unit, 113 template, 14 cli e2e and 20 scaffold e2e, plus the opt-in live suites.
 
 ## [0.1.6] - 2026-06-24
 
-- Drop unused deps from the `vexpo` CLI (`execa`, `kleur`, `ora`, `prompts`, `@types/prompts`). The CLI hand-rolls its ANSI output and subprocess spawning in `output.ts` and `proc.ts`, so these rode along since 0.1.0 without ever being imported. `create-vexpo` keeps the ones it uses.
-- Wire the `eas-cli` helpers (`easSpawn`, `easText`) and the runtime helpers (`currentRuntime`, `currentRuntimeVersion`) into their call sites, making `eas-cli.ts` the single source for every `eas` invocation. Five interactive spawns and seven text-parsing calls dropped their inline `[dlx(), "eas", ...]` duplication.
-- Drop dead weight across the CLI and template: the unused `src/index.ts` constants module and its package export, a stale `runResendRepoint` export, the template's `@vitest/ui` devDep, a `tsconfig` exclude pointing at a file that never existed, and the dead `test:all` and `test:template` npm scripts.
-- Drop the vestigial `EXPO_PUBLIC_HEAD_ORIGIN` read from `app.config.ts`: the inert remnant of an unstarted Apple Handoff feature, read but never provisioned, so always undefined.
-- Document `convex/auth.ts` `rotateKeys` as a manual ops tool, not a cron. It deletes the whole JWKS with no grace period, so a scheduled run would invalidate every active session.
-- Move `SECURITY.md` to the repo root and demo media to `.github/assets/`, and relink every reference.
-- Cut fluff from the public docs and split the deep reference (`ARCHITECTURE`, `OPERATIONS`, `UPSTREAM`, `SETUP`, `DESIGN`) into a gitignored `.dev/`, kept internal and out of scaffolded projects. Rewrite the READMEs in plain voice and run a GitHub-Flavored-Markdown formatting pass.
+- Drop `execa`, `kleur`, `ora`, `prompts` and `@types/prompts` from the `vexpo` CLI. Nothing imported them since 0.1.0.
+- Route every `eas` invocation through the `eas-cli.ts` helpers. Five interactive spawns and seven text-parsing calls dropped their inline duplication.
+- Drop dead weight. The unused `src/index.ts` constants module, a stale `runResendRepoint` export, the template's `@vitest/ui` devDep, a bad `tsconfig` exclude, and the dead `test:all` and `test:template` scripts.
+- Drop the unused `EXPO_PUBLIC_HEAD_ORIGIN` read from `app.config.ts`.
+- Document `rotateKeys` in `convex/auth.ts` as a manual ops tool, not a cron. It deletes the whole JWKS with no grace period.
+- Move `SECURITY.md` to the repo root and demo media to `.github/assets/`.
+- Split the deep reference docs into a gitignored `.dev/`, and rewrite the READMEs in plain voice.
 - Bump the template's `@ramonclaudio/vexpo` floor to track the release.
-- 513 tests (366 vexpo unit + 113 template + 14 cli e2e + 20 scaffold e2e), plus opt-in live suites (Convex Platform API, Maestro).
+- Bring the suite to 513 tests, 366 vexpo unit, 113 template, 14 cli e2e and 20 scaffold e2e, plus the opt-in live suites.
 
 ## [0.1.5] - 2026-06-12
 
-- Stop `doctor` reporting false warnings when `FORCE_COLOR` is set in the parent shell (CI, screen recordings). eas-cli wrapped its output in ANSI dim codes and every regex parser silently missed, so a healthy project showed phantom `project-info failed` and `missing` env warns. `run()` now forces color off for any subprocess it parses.
-- Write `ascAppId` into `eas.json` on the already-connected `asc:connect` path too. The connected branch returned early without the write while `doctor`'s `asc-submit-id` warn told you to run `asc:connect`, an unbreakable loop.
-- Add `doctor --redact` to mask identifying values (deployment slugs, project ids, bundle ids, key and team ids, emails, owner handles) with `<placeholder>` labels for screenshots and pasted issue reports. Statuses and check names stay readable.
-- Point the doctor `asc-submit-id` hint at `vexpo asc:connect` (the command that writes the id), not the nonexistent `vexpo asc`.
-- Mint a random e2e password per run in the template's `e2e-tests.yml` instead of a hardcoded one.
-- Add demo media to the READMEs: an app tour GIF, a `vexpo doctor` GIF, and a light/dark screenshot strip, embedded with the GitHub-and-npm-safe centered-image pattern.
-- 513 tests (366 vexpo unit + 113 template + 14 cli e2e + 20 scaffold e2e), plus opt-in live suites (Convex Platform API, Maestro).
+- Stop `doctor` reporting false warnings when `FORCE_COLOR` is set. eas-cli wrapped its output in ANSI codes and every parser missed, so `run()` forces color off for any subprocess it parses.
+- Write `ascAppId` into `eas.json` on the already-connected `asc:connect` path too. The early return left doctor telling you to run a command that changed nothing.
+- Add `doctor --redact` to mask identifying values with `<placeholder>` labels for screenshots and issue reports.
+- Point the doctor `asc-submit-id` hint at `vexpo asc:connect`, not the nonexistent `vexpo asc`.
+- Generate a random e2e password per run in the template's `e2e-tests.yml`.
+- Add demo media to the READMEs, an app tour GIF, a `vexpo doctor` GIF and a light and dark screenshot strip.
+- Bring the suite to 513 tests, 366 vexpo unit, 113 template, 14 cli e2e and 20 scaffold e2e, plus the opt-in live suites.
 
 ## [0.1.4] - 2026-06-12
 
-- Run `vexpo rebrand` non-interactively with the identity flags plus `--yes`: the TTY guard fired before the flags were considered, contradicting its own non-TTY error message.
-- Sync a rebrand's bundle id into `.env.local` and Convex env. The new id only landed as the `app.config.ts` fallback, so a value written by a prior `lite` shadowed it forever and the convex step re-pushed the stale id.
-- Defer `asc:connect` with guidance when no ASC app record exists for the bundle id yet (it appears after the first `eas submit`), instead of dying on eas-cli's raw "Found 0 app(s)".
-- Stop `vexpo env push` stamping the accounts setup cache: a later `vexpo full` within 24 hours skipped the account walkthrough believing it had run.
-- Route `REQUIRE_EMAIL_VERIFICATION` through `env push` so the flag the resend phase sets survives a restore on a new machine.
-- Default the rotate-JWT prompt to No when Apple Sign In is already healthy, and report a lite-tier `.env.local` as `partial (lite)` in the setup probe instead of a red `missing`.
-- Point `.env.example` at the real `npx vexpo` commands: every `npm run setup*` script it referenced no longer exists, so a new user's first documented command failed.
-- Point the doctor `asc-submit-id` hint at `vexpo asc:connect`: the command it named does not exist.
-- Wire the welcome screen's first-launch gate: the onboarding flow existed, was deep-linkable, and nothing ever navigated to it.
-- Fix the dev menu's "Clear Secure Storage": it deleted keys Better Auth never writes, so the action logged success while the session survived.
-- Persist the privacy screen's Share Analytics toggle, and announce lite-mode redirects on the email auth screens instead of bouncing silently.
-- Match the sign-up subtitle to lite mode: it promised a verification code that never sends when sign-up auto-verifies.
-- Name the real reason the sessions screen needs a fresh sign-in. Better Auth freshness-gates `listSessions` (`freshAge` is ten minutes), and the old copy blamed the connection with a retry that could never succeed.
-- Wrap the restore-account action in a transition so `restorePending` updates and the Restore button disables during the network call.
-- Surface create-vexpo install failures (stderr tail plus the manual install hint) and skip the initial commit when install failed or git has no identity, instead of committing a half-built project or hard-failing.
-- Add a 20-case scaffold e2e for create-vexpo driving the built binary against temp dirs: name rewrite, dotfile restore, git init, flag variants, scoped-name rejection, payload shape. The scaffolder had no automated coverage at all.
-- Add three Maestro flows that run against the live dev deployment: the full auth journey (sign up on the auto-verify lite path, welcome gate, sign out, sign back in), the signed-in app tour (search with a result assert, appearance and haptics, the persisted analytics toggle, a profile save round-tripped to Convex, sessions), and account delete-restore through the Face ID gate and the 30-day grace screen. `e2e-tests.yml` mints a unique test email per run.
-- Fix the Maestro local-run docs: `appId` reads `MAESTRO_APP_ID`, which only EAS injects, so the documented bare `maestro test` command could not work.
-- Drop dead code across the CLI and template: unused ASC API sub-clients, `verifyOrInvalidate`, unreachable command options, dead e2e fixtures, uncalled convex endpoints (`listUsers`, `pushTokens.list`), unused rate buckets, `ConvexErrorView`, and the stale `Material` constant.
-- Reposition the READMEs around the built-on-EAS story (the template comes with Convex and Better Auth wired, the CLI creates or links your Convex deployment and handles the Apple P8 dance) and fix every doc claim the full-repo audit found drifted across `SETUP.md`, `DESIGN.md`, and `docs/`.
-- 506 tests (359 vexpo unit + 113 template + 14 cli e2e + 20 scaffold e2e), plus opt-in live suites (Convex Platform API, Maestro).
+- Run `vexpo rebrand` non-interactively with the identity flags plus `--yes`. The TTY guard fired before the flags were read.
+- Sync a rebrand's bundle id into `.env.local` and Convex env. A value written by a prior `lite` shadowed the new one forever.
+- Defer `asc:connect` with guidance when no ASC app record exists yet, instead of dying on "Found 0 app(s)".
+- Stop `vexpo env push` stamping the accounts setup cache, which made a later `vexpo full` skip the account walkthrough.
+- Route `REQUIRE_EMAIL_VERIFICATION` through `env push` so it survives a restore on a new machine.
+- Default the rotate-JWT prompt to No when Apple Sign In is healthy, and report a lite-tier `.env.local` as `partial (lite)` instead of `missing`.
+- Point `.env.example` at the real `npx vexpo` commands. Every `npm run setup*` script it referenced no longer exists.
+- Point the doctor `asc-submit-id` hint at `vexpo asc:connect`.
+- Wire the welcome screen's first-launch gate. The onboarding flow existed and nothing navigated to it.
+- Fix the dev menu's "Clear Secure Storage". It deleted keys Better Auth never writes, so the session survived.
+- Persist the privacy screen's Share Analytics toggle, and announce lite-mode redirects on the email auth screens.
+- Match the sign-up subtitle to lite mode. It promised a verification code that never sends.
+- Say why the sessions screen needs a fresh sign-in. Better Auth only lists sessions if you signed in within the last ten minutes, and the old copy blamed the connection.
+- Wrap the restore-account action in a transition so the Restore button disables during the call.
+- Print the stderr tail and the manual install hint when a create-vexpo install fails, and skip the initial commit when install failed or git has no identity.
+- Add a 20-case scaffold e2e for create-vexpo. It checks name rewrite, dotfile restore, git init, flag variants, scoped-name rejection and payload shape.
+- Add three Maestro flows against the live dev deployment. They run the full auth journey, the signed-in app tour, and account delete and restore through the Face ID gate. `e2e-tests.yml` makes up a unique test email per run.
+- Fix the Maestro local-run docs. `appId` reads `MAESTRO_APP_ID`, which only EAS injects.
+- Drop dead code across the CLI and template. That is unused ASC API sub-clients, `verifyOrInvalidate`, unreachable options, dead e2e fixtures, uncalled convex endpoints, unused rate buckets, `ConvexErrorView` and the stale `Material` constant.
+- Rewrite the READMEs around the built-on-EAS story, and fix every doc claim the full-repo audit found drifted.
+- Bring the suite to 506 tests, 359 vexpo unit, 113 template, 14 cli e2e and 20 scaffold e2e, plus the opt-in live suites.
 
 ## [0.1.3] - 2026-06-11
 
-- Make the Apple Team id optional in `lite`: pressing Enter at the prompt now skips it instead of killing the run, matching lite's own no-Apple-account contract. A fresh user without a Developer account couldn't finish `lite` before. Empty-vs-invalid input split into `resolveTeamIdInput` with tests. `vexpo full` still asks when Apple provisioning actually needs it.
-- Bump the template to the current SDK 56 patch matrix via `expo install --fix` (`expo` 56.0.11, `@expo/ui` 56.0.17, `expo-router` 56.2.10, and 14 more): fresh scaffolds pass `npx expo-doctor` 21/21 again instead of flagging 17 one-patch-behind packages.
-- Reject scoped names in `create-vexpo`: `@scope/pkg` used to pass validation (only the basename was checked) and scaffolded into a nested `@scope/` directory nobody asked for.
-- Fix the docs to match the CLI 1:1: the README referenced a `vexpo setup` command that doesn't exist (it's `lite`/`full`), the package README claimed `asc:connect` wasn't a standalone command while `cli.ts` registers it, and `adopt`, `convex:migrate`, `env convex-key`, and `asc:connect` were missing from the command reference.
-- 480 tests (353 vexpo unit + 113 template + 14 e2e).
+- Make the Apple Team id optional in `lite`. Enter at the prompt skips it, and `vexpo full` still asks when Apple provisioning needs it. `resolveTeamIdInput` has tests.
+- Bump the template to the SDK 56 patch matrix (`expo` 56.0.11, `@expo/ui` 56.0.17, `expo-router` 56.2.10 and 14 more). Fresh scaffolds pass `expo-doctor` 21/21.
+- Reject scoped names in `create-vexpo`. `@scope/pkg` scaffolded into a nested `@scope/` directory.
+- Fix the docs to match the CLI. The README named a `vexpo setup` command that doesn't exist, and `adopt`, `convex:migrate`, `env convex-key` and `asc:connect` were missing from the reference.
+- Bring the suite to 480 tests, 353 vexpo unit, 113 template and 14 e2e.
 
 ## [0.1.2] - 2026-06-10
 
-- Pin the template's `convex` to `~1.40.0`: scaffolds resolve deps fresh now, and `^1.40.0` floated to 1.41.0, whose new `transactionLimits` param on `runMutation` breaks the `convex/http.ts` typecheck against `@convex-dev/resend@0.2.4`. The monorepo dodged it through its lockfile, but fresh scaffolds didn't. Caught by scaffolding from the published 0.1.1 packages. Widen back to `^1.40.0` once resend's ctx types accept 1.41.
+- Pin the template's `convex` to `~1.40.0`. `^1.40.0` floated to 1.41.0, whose new `transactionLimits` param breaks the `convex/http.ts` typecheck against `@convex-dev/resend@0.2.4`. Widen it back once resend accepts 1.41.
 
 ## [0.1.1] - 2026-06-10
 
 Scope narrowed to 0 to 1. Every command must help an empty directory reach a first shipped iOS app. Post-launch ops are out.
 
-- Scale template typography with native iOS Dynamic Type (`textStyle` on the `font` modifier, upstream `expo/expo#46007`): text follows the user's Larger Text setting, rescaled by SwiftUI with no JS re-render.
-- Bound Dynamic Type where layouts can't reflow (`dynamicTypeSize`, upstream `expo/expo#46540`, shipped in `@expo/ui` 56.0.16): ceilings on the seven fixed-geometry controls that clip rather than wrap at the largest accessibility sizes, three OTP fields, the segmented auth toggle, the two preference pickers, and the "This device" session badge. SF Symbols sized in JS via `useSymbolSize` get the icon analogue, a 1.6x cap, until `expo/expo#46714` lands the native path.
-- Hide 30 decorative SF Symbols and skeleton placeholders from VoiceOver with `accessibilityHidden(true)` (upstream `expo/expo#46579`, shipped in `@expo/ui` 56.0.16), replacing the old `accessibilityLabel("")` workaround. Six icons VoiceOver used to announce are now silent, informative images keep their labels.
-- Grow buttons and the profile card with Dynamic Type instead of clipping: fixed control heights become `minHeight`, so oversized text wraps inside the capsule rather than getting cut off at the largest accessibility sizes.
-- Scale the Sign in with Apple button with Dynamic Type: Apple sizes its label to the frame height, so the button height now tracks the text setting (capped) instead of staying fixed. Extracted to a shared `AppleButton` so both auth screens get it.
-- Close the last system-font gaps so in-app labels render in Geist: the Preferences and not-found nav titles, the FAQ disclosure header, and the error-boundary button.
-- Pass a full Apple HIG accessibility audit: 44pt tap-target floors on secondary buttons, WCAG AA contrast for the success/destructive/muted tokens (and a new adaptive `warning` token), VoiceOver labels on progress indicators and decorative icons, native press/focus on the avatar controls, safe-area insets on the error screen, and a genuinely inert disabled state on the Apple button.
-- Tag the full testable surface with stable `testID`s for Maestro and XCUITest, which `@expo/ui` maps to the native iOS `accessibilityIdentifier` (upstream `expo/expo#46556`). Beyond every interactive control (fields, submits, toggles, pickers, Apple buttons, dialog and alert actions), this covers the assertable surface: error and status messages, dynamic values (name, email, app version, OTA channel, dates), screen titles, the empty/loading/offline/update-banner state containers, the debug info rows, and a `<screen>-screen` id on each screen root for scoping. Ten content and state wrappers (`ErrorText`, `SuccessText`, `ContentUnavailable`, `LoadingScreen`, `ConvexErrorView`, the offline and update banners, the skeletons, `InfoRow`, plus the four control wrappers) forward a `testID` prop so each instance is addressable. 189 unique ids plus 39 per-item dynamic ones, across every screen and layout. Pure layout, static labels, and silenced decorative icons stay untagged on purpose. expo-router's native nav-config components (the tab triggers, back buttons, and toolbar buttons) can't take an id, their prop types don't expose `testID`. No runtime change: `testID` already resolved to `accessibilityIdentifier`.
-- Drop the optional profile-photo upload from the sign-up form. Set a photo from the profile editor after signing in instead. Removes the avatar picker, its dialog, and the post-verification upload from the auth flow.
-- Add App Attest device attestation to the template via `@expo/app-integrity`, verified server-side in Convex.
+- Scale template typography with native iOS Dynamic Type through `textStyle` on the `font` modifier (upstream `expo/expo#46007`).
+- Cap Dynamic Type with `dynamicTypeSize` on the seven controls that clip instead of wrapping (upstream `expo/expo#46540`, shipped in `@expo/ui` 56.0.16). SF Symbols sized in JS get a 1.6x cap until `expo/expo#46714` lands.
+- Hide 30 decorative SF Symbols and skeleton placeholders from VoiceOver with `accessibilityHidden(true)` (upstream `expo/expo#46579`, shipped in `@expo/ui` 56.0.16).
+- Grow buttons and the profile card with Dynamic Type. Fixed heights become `minHeight`, so oversized text wraps instead of clipping.
+- Scale the Sign in with Apple button with Dynamic Type, extracted to a shared `AppleButton`.
+- Render the Preferences and not-found nav titles, the FAQ disclosure header and the error-boundary button in Geist.
+- Pass an Apple HIG accessibility audit, with 44pt tap targets, WCAG AA contrast for the status tokens plus a new `warning` token, VoiceOver labels on progress indicators, native press and focus on the avatar controls, and safe-area insets on the error screen.
+- Tag the testable surface with stable `testID`s for Maestro and XCUITest, which `@expo/ui` maps to `accessibilityIdentifier` (upstream `expo/expo#46556`). 189 unique ids plus 39 per-item dynamic ones. Ten content and state wrappers forward a `testID` prop. expo-router's native nav-config components can't take an id.
+- Drop the optional profile-photo upload from the sign-up form. Set a photo from the profile editor after signing in.
+- Add App Attest device attestation via `@expo/app-integrity`, verified server-side in Convex.
 - Add account soft-delete with a 30-day grace window, a restore-or-confirm screen on next sign-in, and Apple Sign In token revocation on delete.
 - Add the server-side push sender in Convex and push-token cleanup on sign-out and delete.
-- Code-sign OTA updates end-to-end (`expo-updates` code signing, cert via `npm run updates:gen-cert`), so only signed bundles install.
-- Add `adopt`: finish a project created by `eas integrations:convex:connect` by adopting the existing dev deployment (never a fresh one), backfilling site URLs and Better Auth, and printing the exact commands left.
-- Add `convex:migrate`: copy server-side Convex env (`BETTER_AUTH_SECRET`, `RESEND_*`, `APPLE_*`, ...) from another deployment onto the current one, the piece a deployment migration can't get off disk.
-- Add `env convex-key`: sync the Convex deploy key and deployment selector to EAS env, fixing a stale deploy key after a deployment migration.
-- Add `asc:privacy` and `asc:accessibility` show/lint: the privacy and accessibility nutrition labels Apple requires before review, validated locally against Apple's enums.
-- Add `asc:connect`: link the EAS project to its App Store Connect app with the cached ASC key, so `eas submit` resolves the app from the bundle id.
-- Drop `reviews`, `sandbox`, `asc:version`, and `asc:submissions`: post-launch ops that all need a live app with users (`sandbox` tests in-app purchases the template doesn't ship).
-- Drop `testflight remove` and the beta-group `--public-link` options: post-launch tester management, not first-ship machinery.
-- Drop the `doctor` reviews-answered check and ~60 lines of unused TestFlight lib.
-- Disable the template's auto PR builds: `pr-preview` and Maestro E2E now ship as manual `workflow_dispatch` to conserve EAS build credits. Restore their `pull_request` triggers to run on every PR. `deploy-production` is dispatch-only too, so a merge to `main` can't build, submit, and ship an OTA by surprise.
-- Fix the `doctor` resend webhook check to flag the wrong-account case instead of a missing webhook.
-- Drop dead `$schema` refs from the template's `privacy.config.json` and `accessibility.config.json`.
-- Drop the template's `package-lock.json` from the create-vexpo tarball: the committed lock froze `@ramonclaudio/vexpo` at the previous release, so a fresh scaffold installed the old CLI. The first install now resolves the template's ranges fresh and the generated lock lands in the initial commit.
-- Ship the template's `.npmrc` (`legacy-peer-deps=true`) in the create-vexpo tarball: npm strips the literal dotfile from published tarballs, so it now travels as `_npmrc` and is restored at scaffold time like the other dotfiles.
-- Update the SDK 56 dependency set: `expo` 56.0.9 and the `expo-*` modules to the current SDK 56 matrix via `expo install --fix`, `@expo/ui` 56.0.16, `better-auth` and `@better-auth/expo` 1.6.16 (carries our `better-auth/better-auth#9072` operationId fix), `@convex-dev/better-auth` 0.12.3, and the dev toolchain (`vitest` 4.1.8, `oxlint` 1.68.0, `oxfmt` 0.54.0, `tsx` 4.22.4). `convex` holds at 1.40.0, because 1.41.0 adds a `transactionLimits` options param to `runMutation` that `@convex-dev/resend` 0.2.4's ctx types reject. The React Native packages (`react`, `react-native-reanimated`, `react-native-gesture-handler`, `react-native-worklets`, `react-native-safe-area-context`) stay pinned to the SDK 56 native matrix. The newer versions `npm outdated` lists for them are ahead of what SDK 56 bundles.
+- Code-sign OTA updates end to end, with the cert from `npm run updates:gen-cert`.
+- Add `adopt`, which finishes a project created by `eas integrations:convex:connect` on the existing dev deployment.
+- Add `convex:migrate`, which copies server-side Convex env from another deployment onto the current one.
+- Add `env convex-key`, which syncs the Convex deploy key and deployment selector to EAS env.
+- Add `asc:privacy` and `asc:accessibility` show and lint for the nutrition labels Apple requires before review.
+- Add `asc:connect`, which links the EAS project to its App Store Connect app so `eas submit` resolves the app from the bundle id.
+- Drop `reviews`, `sandbox`, `asc:version` and `asc:submissions`. All are post-launch ops.
+- Drop `testflight remove` and the beta-group `--public-link` options.
+- Drop the `doctor` reviews-answered check and about 60 lines of unused TestFlight lib.
+- Switch the template's `pr-preview`, Maestro E2E and `deploy-production` workflows to manual `workflow_dispatch`, so a merge to `main` can't build and ship by surprise.
+- Fix the `doctor` resend webhook check to flag the wrong-account case.
+- Drop dead `$schema` refs from `privacy.config.json` and `accessibility.config.json`.
+- Drop the template's `package-lock.json` from the create-vexpo tarball. The committed lock froze `@ramonclaudio/vexpo` at the previous release.
+- Ship the template's `.npmrc` as `_npmrc` and restore it at scaffold time, since npm strips dotfiles from tarballs.
+- Update the SDK 56 dependency set, with `expo` 56.0.9, `@expo/ui` 56.0.16, `better-auth` and `@better-auth/expo` 1.6.16, `@convex-dev/better-auth` 0.12.3, and the dev toolchain. `convex` holds at 1.40.0 because 1.41.0 breaks `@convex-dev/resend` 0.2.4's types. The React Native packages stay on the SDK 56 native matrix.
 - Bump the CLI's `commander` to 15 and the root dev tooling (`oxlint` 1.68.0, `oxfmt` 0.54.0).
-- Bump CI to `actions/checkout@v6`, `actions/setup-node@v6`, `softprops/action-gh-release@v3`, and the runner to Node 22.
-- 475 tests (348 vexpo unit + 113 template + 14 e2e).
+- Bump CI to `actions/checkout@v6`, `actions/setup-node@v6`, `softprops/action-gh-release@v3` and Node 22.
+- Bring the suite to 475 tests, 348 vexpo unit, 113 template and 14 e2e.
 
 ## [0.1.0] - 2026-05-11
 
 First public release.
 
-- `@ramonclaudio/create-vexpo@0.1.0`: npm scaffolder. `npm create @ramonclaudio/vexpo@latest my-app` copies the template, rewrites `package.json`, runs install, inits git.
-- `@ramonclaudio/vexpo@0.1.0`: operational CLI. Two-mode setup (`lite` for 60-second simulator, `full` for TestFlight-ready), cross-source drift detection (`doctor`), Apple Sign In work (`apple jwt`, `apple services-id`, `apple credentials`, `apple eas-rotation-secrets`), App Store Connect API endpoints `eas-cli` doesn't expose (`testflight`, `reviews`, `sandbox`, `asc:version`, `asc:submissions`), and multi-destination env sync (`env push`).
-- `templates/default/`: production-ready Expo SDK 56 + Convex + Better Auth + Resend iOS app. Native SwiftUI via `@expo/ui/swift-ui`, Apple Sign In, APNs push, Universal Links, profile + sessions, HMAC-verified webhook factory, 10 EAS Workflows covering dev builds, PR previews, deploy on main, TestFlight, rollback, rollout, ASC events, JWT rotation cron.
-- 277 tests (238 vexpo unit + 29 template + 10 e2e).
+- Ship `@ramonclaudio/create-vexpo@0.1.0`, the npm scaffolder. `npm create @ramonclaudio/vexpo@latest my-app` copies the template, rewrites `package.json`, runs install and inits git.
+- Ship `@ramonclaudio/vexpo@0.1.0`, the operational CLI. `lite` and `full` setup, `doctor` for drift detection, the `apple` commands for Sign In with Apple, the App Store Connect endpoints `eas-cli` doesn't expose, and `env push` for multi-destination env sync.
+- Ship `templates/default/`, a production-ready Expo SDK 56, Convex, Better Auth and Resend iOS app. Native SwiftUI via `@expo/ui/swift-ui`, Apple Sign In, APNs push, Universal Links, profile and sessions, an HMAC-verified webhook factory, and 10 EAS Workflows.
+- Start at 277 tests, 238 vexpo unit, 29 template and 10 e2e.
 
 See [`README.md`](./README.md) for the feature list and [`SECURITY.md`](./SECURITY.md) for the threat model.
 
-[Unreleased]: https://github.com/ramonclaudio/vexpo/compare/v0.3.3...HEAD
+[Unreleased]: https://github.com/ramonclaudio/vexpo/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/ramonclaudio/vexpo/releases/tag/v0.4.0
 [0.3.3]: https://github.com/ramonclaudio/vexpo/releases/tag/v0.3.3
 [0.3.2]: https://github.com/ramonclaudio/vexpo/releases/tag/v0.3.2
 [0.3.1]: https://github.com/ramonclaudio/vexpo/releases/tag/v0.3.1

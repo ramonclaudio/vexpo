@@ -25,11 +25,11 @@ import { runSubmit } from "../../src/commands/submit.ts";
 import { easSpawn } from "../../src/lib/eas-cli.ts";
 import { readAll, requireBundleId } from "../../src/lib/env-local.ts";
 
-const ascKeyEnvSpy = ascKeyEnv as unknown as ReturnType<typeof vi.fn>;
-const ensureAscAppIdSpy = ensureAscAppId as unknown as ReturnType<typeof vi.fn>;
-const easSpawnSpy = easSpawn as unknown as ReturnType<typeof vi.fn>;
-const readAllSpy = readAll as unknown as ReturnType<typeof vi.fn>;
-const requireBundleIdSpy = requireBundleId as unknown as ReturnType<typeof vi.fn>;
+const ascKeyEnvSpy = vi.mocked(ascKeyEnv);
+const ensureAscAppIdSpy = vi.mocked(ensureAscAppId);
+const easSpawnSpy = vi.mocked(easSpawn);
+const readAllSpy = vi.mocked(readAll);
+const requireBundleIdSpy = vi.mocked(requireBundleId);
 
 beforeEach(() => {
   ascKeyEnvSpy.mockReset();
@@ -81,11 +81,9 @@ describe("runSubmit", () => {
 
   it("lands the ASC key in eas.json submit profiles before spawning eas submit", async () => {
     const order: string[] = [];
-    (ensureAscApiKeyInEasJson as unknown as ReturnType<typeof vi.fn>).mockImplementation(
-      async () => {
-        order.push("key-fields");
-      },
-    );
+    vi.mocked(ensureAscApiKeyInEasJson).mockImplementation(async () => {
+      order.push("key-fields");
+    });
     easSpawnSpy.mockImplementation(async () => {
       order.push("spawn");
       return 0;

@@ -1,8 +1,8 @@
-import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
-import { tmpdir } from "node:os";
-import path from "node:path";
+import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+import { useTmpCwd } from "../helpers/tmp-cwd.ts";
 
 vi.mock("../../src/lib/pkg-manager.ts", () => ({ dlx: () => "bunx" }));
 vi.mock("../../src/lib/proc.ts", () => ({
@@ -18,7 +18,7 @@ import { readAll } from "../../src/lib/env-local.ts";
 import { ask } from "../../src/lib/output.ts";
 import { run } from "../../src/lib/proc.ts";
 
-const runSpy = run as unknown as ReturnType<typeof vi.fn>;
+const runSpy = vi.mocked(run);
 
 const fromFileWrites: string[] = [];
 
@@ -84,9 +84,6 @@ const FLAGS = {
   reviewEmail: "ada@example.com",
 };
 
-let originalCwd: string;
-let workdir: string;
-
 async function seed(): Promise<void> {
   await writeFile("app.config.ts", APP_CONFIG);
   await writeFile("app.json", JSON.stringify({ expo: { extra: { eas: { projectId: "p" } } } }));
@@ -98,10 +95,9 @@ async function seed(): Promise<void> {
   await writeFile("README.md", README);
 }
 
+useTmpCwd("rebrand-test-");
+
 beforeEach(async () => {
-  originalCwd = process.cwd();
-  workdir = await mkdtemp(path.join(tmpdir(), "rebrand-test-"));
-  process.chdir(workdir);
   fromFileWrites.length = 0;
   runSpy.mockReset();
   runSpy.mockImplementation(async (argv: string[]) => {
@@ -117,9 +113,7 @@ beforeEach(async () => {
   await seed();
 });
 
-afterEach(async () => {
-  process.chdir(originalCwd);
-  await rm(workdir, { recursive: true, force: true });
+afterEach(() => {
   vi.clearAllMocks();
 });
 
@@ -246,6 +240,18 @@ describe("runRebrand rewrite correctness", () => {
       await runRebrand({ ...FLAGS, appName: "Third App", scheme: "third", force: true, yes: true }),
     ).toBe(0);
     expect(await readFile("app.config.ts", "utf8")).toContain(`const APP_NAME = "Third App";`);
+  });
+
+  it("refuses and leaves app.config.ts alone when a marker it rewrites is gone", async () => {
+    Object.defineProperty(process.stdin, "isTTY", { value: false, configurable: true });
+    const cfg = await readFile("app.config.ts", "utf8");
+    await writeFile(
+      "app.config.ts",
+      cfg.replace('const SCHEME = "vexpo";', "const SCHEME = mystery;"),
+    );
+
+    expect(await runRebrand({ ...FLAGS, appName: "No Scheme", yes: true })).not.toBe(0);
+    expect(await readFile("app.config.ts", "utf8")).toContain("const SCHEME = mystery;");
   });
 
   it("inserts values containing $& verbatim instead of expanding replacement patterns", async () => {

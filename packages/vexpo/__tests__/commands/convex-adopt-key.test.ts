@@ -11,9 +11,7 @@ vi.mock("../../src/lib/env-local.ts", () => ({
     for (const k of keys) store.delete(k);
   }),
 }));
-vi.mock("../../src/lib/proc.ts", () => ({
-  spawn: vi.fn(() => ({ exited: Promise.resolve(0) })),
-}));
+vi.mock("../../src/lib/proc.ts", async () => (await import("../helpers/proc-stub.ts")).procStub());
 vi.mock("../../src/lib/convex-management.ts", () => ({
   checkToken: vi.fn().mockResolvedValue("valid"),
 }));
@@ -33,8 +31,8 @@ import { runConvex } from "../../src/commands/convex.ts";
 import { ensureLine } from "../../src/lib/env-local.ts";
 import { spawn } from "../../src/lib/proc.ts";
 
-const spawnSpy = spawn as unknown as ReturnType<typeof vi.fn>;
-const ensureLineSpy = ensureLine as unknown as ReturnType<typeof vi.fn>;
+const spawnSpy = vi.mocked(spawn);
+const ensureLineSpy = vi.mocked(ensureLine);
 
 beforeEach(() => {
   vi.clearAllMocks();

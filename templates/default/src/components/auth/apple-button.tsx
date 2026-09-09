@@ -35,6 +35,8 @@ export function AppleButton({
           }
           cornerRadius={height / 2}
           style={{ width: "100%", height: "100%", opacity: disabled ? 0.5 : 1 }}
+          // Apple's button has no disabled prop, so VoiceOver needs it set here.
+          accessibilityState={{ disabled: disabled ?? false }}
           onPress={disabled ? () => {} : onPress}
         />
       </RNHostView>

@@ -1,14 +1,4 @@
 /// <reference types="vite/client" />
-/**
- * `apple.revokeRefreshToken` is Apple's account-deletion requirement: "If
- * people used Sign in with Apple to create an account within your app, you
- * revoke the associated tokens when they delete their account."
- * `users.hardDeleteExpired` schedules it per Apple account it finds.
- *
- * Every path here is best-effort on purpose. The user has already confirmed
- * deletion and the local rows are about to go, so a dead Apple endpoint must
- * log and return rather than throw and strand the purge mid-way.
- */
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
 import { internal } from "@/convex/_generated/api";
@@ -57,8 +47,7 @@ describe("apple.revokeRefreshToken", () => {
     expect(sent.get("client_id")).toBe("com.example.vexpo.signin");
     expect(sent.get("client_secret")).toBe("signed-es256-jwt");
     expect(sent.get("token")).toBe("rt-123");
-    // Without the hint Apple treats it as an access token and the revoke is
-    // a silent no-op.
+    // Without the hint Apple treats it as an access token and the revoke silently no-ops.
     expect(sent.get("token_type_hint")).toBe("refresh_token");
   });
 

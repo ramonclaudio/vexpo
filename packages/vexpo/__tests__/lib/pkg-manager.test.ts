@@ -1,8 +1,8 @@
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
-import { tmpdir } from "node:os";
-import path from "node:path";
+import { writeFile } from "node:fs/promises";
 
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
+
+import { useTmpCwd } from "../helpers/tmp-cwd.ts";
 
 import {
   currentRuntime,
@@ -12,19 +12,7 @@ import {
   installCmdFor,
 } from "../../src/lib/pkg-manager";
 
-let workdir: string;
-let originalCwd: string;
-
-beforeEach(async () => {
-  originalCwd = process.cwd();
-  workdir = await mkdtemp(path.join(tmpdir(), "pkg-manager-test-"));
-  process.chdir(workdir);
-});
-
-afterEach(async () => {
-  process.chdir(originalCwd);
-  await rm(workdir, { recursive: true, force: true });
-});
+useTmpCwd("pkg-manager-test-");
 
 describe("detectPackageManager", () => {
   it("detects bun via bun.lock", async () => {

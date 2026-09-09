@@ -8,14 +8,17 @@ export const sessionId = Constants.sessionId;
 
 export const expoRuntimeVersion = Constants.expoRuntimeVersion;
 
+// Order matters, an iOS user agent carries Darwin and Mac too.
+const DEVICES: [RegExp, string][] = [
+  [/CFNetwork|Darwin|iPhone/i, "iPhone"],
+  [/iPad/i, "iPad"],
+  [/Mac/i, "Mac"],
+  [/Android/i, "Android"],
+  [/Windows/i, "Windows"],
+  [/Linux/i, "Linux"],
+];
+
 export function deviceLabel(userAgent?: string | null): string {
   if (!userAgent) return "Unknown device";
-  if (/CFNetwork|Darwin/i.test(userAgent)) return "iPhone";
-  if (/iPhone/i.test(userAgent)) return "iPhone";
-  if (/iPad/i.test(userAgent)) return "iPad";
-  if (/Mac/i.test(userAgent)) return "Mac";
-  if (/Android/i.test(userAgent)) return "Android";
-  if (/Windows/i.test(userAgent)) return "Windows";
-  if (/Linux/i.test(userAgent)) return "Linux";
-  return userAgent.slice(0, 40);
+  return DEVICES.find(([re]) => re.test(userAgent))?.[1] ?? userAgent.slice(0, 40);
 }

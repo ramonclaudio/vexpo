@@ -24,6 +24,8 @@ jobs:
     permissions:
       contents: write
       id-token: write
+    env:
+      PACKAGES: packages/vexpo packages/create-vexpo
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
@@ -44,7 +46,7 @@ jobs:
         run: |
           VERSION="${TAG#v}"
           echo "Tag: $TAG / Version: $VERSION"
-          for pkg in packages/vexpo packages/create-vexpo; do
+          for pkg in $PACKAGES; do
             pkg_version=$(node -p "require('./$pkg/package.json').version")
             if [ "$pkg_version" != "$VERSION" ]; then
               echo "::error::Version mismatch in $pkg: package.json says $pkg_version, tag is $VERSION"
@@ -61,34 +63,24 @@ jobs:
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
-          node .github/scripts/pack-guard.mjs packages/vexpo
-          node .github/scripts/pack-guard.mjs packages/create-vexpo
-          npm publish --dry-run -w @ramonclaudio/vexpo
-          npm publish --dry-run -w @ramonclaudio/create-vexpo
+          for pkg in $PACKAGES; do
+            node .github/scripts/pack-guard.mjs "$pkg"
+            npm publish --dry-run -w "$(node -p "require('./$pkg/package.json').name")"
+          done
 
-      - name: Publish vexpo
-        working-directory: packages/vexpo
+      - name: Publish to npm
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
-          VERSION=$(node -p "require('./package.json').version")
-          if npm view "@ramonclaudio/vexpo@$VERSION" version >/dev/null 2>&1; then
-            echo "@ramonclaudio/vexpo@$VERSION already published, skipping."
-          else
-            npm publish
-          fi
-
-      - name: Publish create-vexpo
-        working-directory: packages/create-vexpo
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-        run: |
-          VERSION=$(node -p "require('./package.json').version")
-          if npm view "@ramonclaudio/create-vexpo@$VERSION" version >/dev/null 2>&1; then
-            echo "@ramonclaudio/create-vexpo@$VERSION already published, skipping."
-          else
-            npm publish
-          fi
+          for pkg in $PACKAGES; do
+            NAME=$(node -p "require('./$pkg/package.json').name")
+            VERSION=$(node -p "require('./$pkg/package.json').version")
+            if npm view "$NAME@$VERSION" version >/dev/null 2>&1; then
+              echo "$NAME@$VERSION already published, skipping."
+            else
+              npm publish -w "$NAME"
+            fi
+          done
 
       - name: Extract changelog entry
         id: changelog

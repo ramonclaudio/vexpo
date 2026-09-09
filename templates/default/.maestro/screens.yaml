@@ -8,19 +8,7 @@ appId: ${MAESTRO_APP_ID}
     timeout: 30000
 - assertNotVisible:
     id: "sign-in-screen"
-- repeat:
-    times: 5
-    while:
-      notVisible:
-        id: "settings-screen"
-    commands:
-      - tapOn: "Settings"
-      - waitForAnimationToEnd:
-          timeout: 5000
-- extendedWaitUntil:
-    visible:
-      id: "settings-screen"
-    timeout: 20000
+- runFlow: _to-settings.yaml
 
 - tapOn: "Help & Feedback"
 - extendedWaitUntil:
@@ -42,39 +30,67 @@ appId: ${MAESTRO_APP_ID}
 - assertVisible:
     id: "expanded"
 - takeScreenshot: .maestro/screenshots/help
-- repeat:
-    times: 5
-    while:
-      notVisible:
-        id: "settings-screen"
-    commands:
-      - tapOn: "Settings"
-      - waitForAnimationToEnd:
-          timeout: 5000
-- extendedWaitUntil:
-    visible:
-      id: "settings-screen"
-    timeout: 20000
+- runFlow: _to-settings.yaml
 
-- tapOn: "Debug"
+# The Debug row follows the debug preference, which starts at __DEV__, so on a
+# release build it is off and the row is not drawn at all. Scroll down to the
+# version row it sits under, and turn the preference on when it is not there.
+- scrollUntilVisible:
+    element:
+      id: "settings-copy-version"
+    direction: DOWN
+- runFlow:
+    when:
+      notVisible:
+        id: "settings-debug"
+    commands:
+      - tapOn: "Preferences"
+      - extendedWaitUntil:
+          visible:
+            id: "preferences-screen"
+          timeout: 15000
+      - scrollUntilVisible:
+          element:
+            id: "preferences-debug"
+          direction: DOWN
+      - tapOn:
+          id: "preferences-debug"
+      - waitForAnimationToEnd:
+          timeout: 3000
+      - runFlow: _to-settings.yaml
+      - scrollUntilVisible:
+          element:
+            id: "settings-debug"
+          direction: DOWN
+- tapOn:
+    id: "settings-debug"
 - extendedWaitUntil:
     visible:
       id: "debug-screen"
     timeout: 15000
 - takeScreenshot: .maestro/screenshots/debug
-- repeat:
-    times: 5
-    while:
-      notVisible:
-        id: "settings-screen"
+- runFlow: _to-settings.yaml
+
+# The linked screen only ever arrives from a deep link, and it is behind the
+# signed-in guard, so it belongs here rather than in links.yaml.
+- openLink: vexpo:///linked?provider=apple&status=ok
+- waitForAnimationToEnd:
+    timeout: 5000
+- runFlow:
+    when:
+      visible: "Open"
     commands:
-      - tapOn: "Settings"
-      - waitForAnimationToEnd:
-          timeout: 5000
+      - tapOn: "Open"
 - extendedWaitUntil:
     visible:
-      id: "settings-screen"
+      id: "linked-screen"
     timeout: 20000
+- assertVisible:
+    id: "linked-param-provider"
+- assertVisible:
+    id: "linked-param-status"
+- takeScreenshot: .maestro/screenshots/linked
+- runFlow: _to-settings.yaml
 
 - tapOn:
     id: "settings-profile"
@@ -103,30 +119,4 @@ appId: ${MAESTRO_APP_ID}
     id: "change-password-cancel"
 - waitForAnimationToEnd:
     timeout: 5000
-- repeat:
-    times: 5
-    while:
-      notVisible:
-        id: "settings-screen"
-    commands:
-      - tapOn: "Settings"
-      - waitForAnimationToEnd:
-          timeout: 5000
-- extendedWaitUntil:
-    visible:
-      id: "settings-screen"
-    timeout: 20000
-
-- repeat:
-    times: 5
-    while:
-      notVisible:
-        id: "settings-screen"
-    commands:
-      - tapOn: "Settings"
-      - waitForAnimationToEnd:
-          timeout: 5000
-- extendedWaitUntil:
-    visible:
-      id: "settings-screen"
-    timeout: 20000
+- runFlow: _to-settings.yaml

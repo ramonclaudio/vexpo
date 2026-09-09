@@ -33,10 +33,10 @@ import { loadAscCreds } from "../../src/lib/asc-state.ts";
 import { easSpawn } from "../../src/lib/eas-cli.ts";
 import { readAll, requireBundleId } from "../../src/lib/env-local.ts";
 
-const loadAscCredsSpy = loadAscCreds as unknown as ReturnType<typeof vi.fn>;
-const easSpawnSpy = easSpawn as unknown as ReturnType<typeof vi.fn>;
-const readAllSpy = readAll as unknown as ReturnType<typeof vi.fn>;
-const requireBundleIdSpy = requireBundleId as unknown as ReturnType<typeof vi.fn>;
+const loadAscCredsSpy = vi.mocked(loadAscCreds);
+const easSpawnSpy = vi.mocked(easSpawn);
+const readAllSpy = vi.mocked(readAll);
+const requireBundleIdSpy = vi.mocked(requireBundleId);
 
 beforeEach(() => {
   loadAscCredsSpy.mockReset();

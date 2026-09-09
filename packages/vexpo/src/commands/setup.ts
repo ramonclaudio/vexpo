@@ -7,6 +7,7 @@ import {
   version as convexCliVersion,
 } from "../lib/convex-env.ts";
 import {
+  EAS_ROTATION_SECRETS,
   envList as easEnvList,
   resolveProjectId,
   version as easCliVersion,
@@ -186,24 +187,26 @@ async function shouldRun(
   return { step, label: step, status: live ? "live" : "missing" };
 }
 
-async function liveCheckBetterAuth(env?: Map<string, string>): Promise<boolean> {
-  const e = env ?? (await convexEnvMap()) ?? new Map<string, string>();
-  return ["SITE_URL", "BETTER_AUTH_SECRET", "APP_NAME"].every((k) => e.has(k));
-}
+const liveCheckKeys =
+  (keys: string[]) =>
+  async (env?: Map<string, string>): Promise<boolean> => {
+    const e = env ?? (await convexEnvMap()) ?? new Map<string, string>();
+    return keys.every((k) => e.has(k));
+  };
 
-async function liveCheckResend(env?: Map<string, string>): Promise<boolean> {
-  const e = env ?? (await convexEnvMap()) ?? new Map<string, string>();
-  return ["RESEND_API_KEY", "EMAIL_FROM", "RESEND_WEBHOOK_SECRET", "RESEND_TEST_MODE"].every((k) =>
-    e.has(k),
-  );
-}
-
-async function liveCheckApple(env?: Map<string, string>): Promise<boolean> {
-  const e = env ?? (await convexEnvMap()) ?? new Map<string, string>();
-  return ["APPLE_CLIENT_ID", "APPLE_CLIENT_SECRET", "APPLE_TEAM_ID", "APPLE_KEY_ID"].every((k) =>
-    e.has(k),
-  );
-}
+const liveCheckBetterAuth = liveCheckKeys(["SITE_URL", "BETTER_AUTH_SECRET", "APP_NAME"]);
+const liveCheckResend = liveCheckKeys([
+  "RESEND_API_KEY",
+  "EMAIL_FROM",
+  "RESEND_WEBHOOK_SECRET",
+  "RESEND_TEST_MODE",
+]);
+const liveCheckApple = liveCheckKeys([
+  "APPLE_CLIENT_ID",
+  "APPLE_CLIENT_SECRET",
+  "APPLE_TEAM_ID",
+  "APPLE_KEY_ID",
+]);
 
 async function liveCheckEas(): Promise<boolean> {
   const projectId = await resolveProjectId();
@@ -228,13 +231,7 @@ async function liveCheckRotationSecrets(): Promise<boolean> {
   const projectId = await resolveProjectId();
   if (!projectId) return false;
   const eas = (await easEnvList("production")) ?? new Map<string, string>();
-  return [
-    "APPLE_P8_PRIVATE_KEY",
-    "APPLE_TEAM_ID",
-    "APPLE_KEY_ID",
-    "APPLE_SERVICES_ID",
-    "CONVEX_DEPLOY_KEY",
-  ].every((k) => eas.has(k));
+  return EAS_ROTATION_SECRETS.every((k) => eas.has(k));
 }
 
 const LOCAL_ENV_LITE_CORE = [
@@ -702,7 +699,6 @@ function reportNothingToDo(): void {
   note("standalone subcommands (e.g. `vexpo resend`) re-run a single step");
 }
 
-/** Returns an exit code when the run is a preview or already complete, else null. */
 async function exitBeforeRunning(probe: Probe, options: SetupOptions): Promise<number | null> {
   if (options.plan) {
     printJourneyPlan(options.lite === true);

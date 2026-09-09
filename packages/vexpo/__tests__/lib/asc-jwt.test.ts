@@ -1,47 +1,20 @@
-import { generateKeyPairSync, createVerify } from "node:crypto";
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
-import { tmpdir } from "node:os";
+import { createVerify } from "node:crypto";
 import path from "node:path";
 
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
+
+import { decodeJwt, useEcKey } from "../helpers/ec-key.ts";
 
 import { signAscToken } from "../../src/lib/asc-jwt";
 
-let workdir: string;
-let pemPath: string;
-let pemContents: string;
-let publicPem: string;
-
-beforeAll(async () => {
-  const { privateKey, publicKey } = generateKeyPairSync("ec", { namedCurve: "prime256v1" });
-  pemContents = privateKey.export({ format: "pem", type: "pkcs8" }).toString();
-  publicPem = publicKey.export({ format: "pem", type: "spki" }).toString();
-  workdir = await mkdtemp(path.join(tmpdir(), "asc-jwt-test-"));
-  pemPath = path.join(workdir, "AuthKey.p8");
-  await writeFile(pemPath, pemContents);
-});
-
-afterAll(async () => {
-  await rm(workdir, { recursive: true, force: true });
-});
-
-function decodeJwt(token: string): {
-  header: Record<string, unknown>;
-  payload: Record<string, unknown>;
-} {
-  const [h, p] = token.split(".");
-  return {
-    header: JSON.parse(Buffer.from(h, "base64url").toString()),
-    payload: JSON.parse(Buffer.from(p, "base64url").toString()),
-  };
-}
+const key = useEcKey("asc-jwt-test-");
 
 describe("signAscToken", () => {
   it("produces a JWT with the expected header and payload", async () => {
     const { token, expiresAt } = await signAscToken({
       issuerId: "00000000-0000-0000-0000-000000000000",
       keyId: "ABCDE12345",
-      privateKey: { contents: pemContents },
+      privateKey: { contents: key.pem },
       ttlSeconds: 600,
     });
     const { header, payload } = decodeJwt(token);
@@ -58,7 +31,7 @@ describe("signAscToken", () => {
     const { token, expiresAt } = await signAscToken({
       issuerId: "x",
       keyId: "y",
-      privateKey: { contents: pemContents },
+      privateKey: { contents: key.pem },
       ttlSeconds: 60 * 60,
     });
     const { payload } = decodeJwt(token);
@@ -71,7 +44,7 @@ describe("signAscToken", () => {
     const { token } = await signAscToken({
       issuerId: "x",
       keyId: "y",
-      privateKey: { path: pemPath },
+      privateKey: { path: key.pemPath },
     });
     const { header } = decodeJwt(token);
     expect(header.alg).toBe("ES256");
@@ -82,7 +55,7 @@ describe("signAscToken", () => {
       signAscToken({
         issuerId: "x",
         keyId: "y",
-        privateKey: { path: path.join(workdir, "missing.p8") },
+        privateKey: { path: path.join(key.dir, "missing.p8") },
       }),
     ).rejects.toThrow(/p8 file not found/);
   });
@@ -91,14 +64,14 @@ describe("signAscToken", () => {
     const { token } = await signAscToken({
       issuerId: "x",
       keyId: "y",
-      privateKey: { contents: pemContents },
+      privateKey: { contents: key.pem },
     });
     const [h, p, sig] = token.split(".");
     const verifier = createVerify("SHA256");
     verifier.update(`${h}.${p}`);
     verifier.end();
     const ok = verifier.verify(
-      { key: publicPem, dsaEncoding: "ieee-p1363" },
+      { key: key.publicPem, dsaEncoding: "ieee-p1363" },
       Buffer.from(sig, "base64url"),
     );
     expect(ok).toBe(true);

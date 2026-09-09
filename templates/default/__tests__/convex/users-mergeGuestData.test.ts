@@ -1,20 +1,4 @@
 /// <reference types="vite/client" />
-/**
- * `users.mergeGuestData` is what makes "continue as guest" safe to accept: it
- * runs from the anonymous plugin's `onLinkAccount`, in the same request as the
- * sign-in, after the real account exists and before Better Auth deletes the
- * guest user. The delete fires the `user.onDelete` trigger, which drops the
- * guest `users` row and frees whatever `_storage` blob it points at, so
- * anything the merge leaves behind is gone for good.
- *
- * What has to hold:
- *   - bio and avatar move onto an account that doesn't have them
- *   - neither one overwrites an account that does
- *   - a moved avatar is un-pointed on the guest row so onDelete can't free it
- *   - push tokens repoint, and a token the account already has is dropped
- *     rather than duplicated (same device, so this is the common case)
- *   - a missing target row throws instead of losing the guest's data quietly
- */
 import { describe, expect, test } from "vitest";
 
 import { internal } from "@/convex/_generated/api";
@@ -22,7 +6,6 @@ import type { Id } from "@/convex/_generated/dataModel";
 
 import { initConvexTest, seedAuthedUser, seedToken } from "./_harness";
 
-/** A fake storage id. The merge only moves the reference, it never reads it. */
 async function seedBlob(t: ReturnType<typeof initConvexTest>, body: string) {
   return t.run(async (ctx) => ctx.storage.store(new Blob([body])));
 }
@@ -48,8 +31,6 @@ describe("users.mergeGuestData", () => {
     expect(target?.bio).toBe("wrote this as a guest");
     expect(target?.avatar).toBe(blob);
 
-    // Un-pointed on the guest row, so the onDelete trigger that runs next
-    // frees nothing. Without this the account's avatar 404s minutes later.
     const guestRow = await t.run(async (ctx) => ctx.db.get(guest.appUserId));
     expect(guestRow?.avatar).toBeUndefined();
 
@@ -78,7 +59,6 @@ describe("users.mergeGuestData", () => {
     expect(target?.bio).toBe("account bio");
     expect(target?.avatar).toBe(accountBlob);
 
-    // The guest's blob stays on the guest row, so onDelete frees it.
     const guestRow = await t.run(async (ctx) => ctx.db.get(guest.appUserId));
     expect(guestRow?.avatar).toBe(guestBlob);
   });
@@ -88,8 +68,6 @@ describe("users.mergeGuestData", () => {
     const guest = await seedAuthedUser(t, { isAnonymous: true });
     const account = await seedAuthedUser(t);
 
-    // Same device: the account signed in here before, so it already owns the
-    // token the guest session re-registered.
     const guestTokenId = await seedToken(t, guest.appUserId, "ExponentPushToken[same]");
     const accountTokenId = await seedToken(t, account.appUserId, "ExponentPushToken[same]");
 

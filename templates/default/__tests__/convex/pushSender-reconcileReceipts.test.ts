@@ -1,20 +1,4 @@
 /// <reference types="vite/client" />
-/**
- * convexTest coverage for `internal.pushSender.reconcileReceipts`.
- *
- * Expo accepts a push at send time (an "ok" ticket) but only reports a dead
- * device later, in the RECEIPT. `sendToUser` parks each ok ticket id in
- * `pushReceipts` keyed to its token; this action polls Expo's getReceipts and:
- *   - a permanent-error receipt (e.g. DeviceNotRegistered) tombstones the token,
- *   - an ok or transient-error receipt leaves the token alone,
- *   - every returned receipt's row is cleaned up,
- *   - a row with no receipt yet is kept, but one aged past RECEIPT_MAX_AGE_MS is
- *     pruned instead of polled forever,
- *   - a full page reschedules the action to drain the backlog.
- *
- * We stub `global.fetch` so no network is touched and assert the real DB
- * effects. The send/ticket path is covered in `pushSender-sendToUser`.
- */
 import { afterEach, describe, expect, test, vi } from "vitest";
 
 import { internal } from "@/convex/_generated/api";
@@ -34,7 +18,6 @@ async function seedReceipt(
   return t.run((ctx) => ctx.db.insert("pushReceipts", { ticketId, tokenId, createdAt }));
 }
 
-/** Stub getReceipts to return `data` keyed by ticket id, like the Expo API. */
 function stubReceipts(data: Record<string, unknown>) {
   vi.stubGlobal(
     "fetch",
@@ -63,7 +46,6 @@ describe("pushSender.reconcileReceipts", () => {
     const token = await t.run((ctx) => ctx.db.get(tokenId));
     expect(token?.revoked).toBe(true);
     expect(token?.lastErrorCode).toBe("DeviceNotRegistered");
-    // Row reconciled away.
     expect(await t.run((ctx) => ctx.db.query("pushReceipts").collect())).toHaveLength(0);
   });
 
@@ -77,7 +59,6 @@ describe("pushSender.reconcileReceipts", () => {
 
     stubReceipts({
       "ticket-ok": { status: "ok" },
-      // Transient: not in PERMANENT_ERROR_CODES, so the token survives.
       "ticket-busy": {
         status: "error",
         message: "rate limited",
@@ -99,14 +80,12 @@ describe("pushSender.reconcileReceipts", () => {
     const tokenId = await seedToken(t, userId, "ExponentPushToken[pending]");
     await seedReceipt(t, tokenId, "ticket-pending");
 
-    // Expo hasn't produced the receipt yet: ticket id absent from the response.
     stubReceipts({});
 
     const res = await t.action(internal.pushSender.reconcileReceipts, {});
     expect(res).toEqual({ checked: 1, revoked: 0, pruned: 0 });
 
     expect((await t.run((ctx) => ctx.db.get(tokenId)))?.revoked).toBe(false);
-    // Row survives for the next poll.
     expect(await t.run((ctx) => ctx.db.query("pushReceipts").collect())).toHaveLength(1);
   });
 
@@ -114,16 +93,13 @@ describe("pushSender.reconcileReceipts", () => {
     const t = initConvexTest();
     const userId = await seedUser(t);
     const tokenId = await seedToken(t, userId, "ExponentPushToken[stale]");
-    // A month old: well past the ~1-day receipt retention, so it's a lost cause.
     await seedReceipt(t, tokenId, "ticket-stale", Date.now() - 30 * 24 * 60 * 60 * 1000);
 
-    // Expo still has no receipt for it (aged out on their side too).
     stubReceipts({});
 
     const res = await t.action(internal.pushSender.reconcileReceipts, {});
     expect(res).toEqual({ checked: 1, revoked: 0, pruned: 1 });
 
-    // Token untouched, but the dead row is gone.
     expect((await t.run((ctx) => ctx.db.get(tokenId)))?.revoked).toBe(false);
     expect(await t.run((ctx) => ctx.db.query("pushReceipts").collect())).toHaveLength(0);
   });
@@ -159,7 +135,6 @@ describe("pushSender.reconcileReceipts", () => {
     const res = await t.action(internal.pushSender.reconcileReceipts, {});
     expect(res).toEqual({ checked: RECEIPT_PAGE, revoked: 0, pruned: RECEIPT_PAGE });
 
-    // A full page means more may be queued, so the action reschedules a drain.
     const scheduled = await t.run((ctx) => ctx.db.system.query("_scheduled_functions").collect());
     expect(scheduled.some((s) => s.name.includes("reconcileReceipts"))).toBe(true);
   });

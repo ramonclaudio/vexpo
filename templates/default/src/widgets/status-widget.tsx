@@ -11,8 +11,17 @@ const StatusWidget = (props: StatusWidgetProps) => {
   "widget";
   return (
     <VStack spacing={4}>
-      <Text modifiers={[font({ weight: "bold", size: 17 })]}>{props.headline}</Text>
-      <Text modifiers={[font({ size: 13 }), foregroundStyle("#8E8E93")]}>{props.detail}</Text>
+      {/* Don't use a point size here, it opts the widget out of Larger Text. */}
+      <Text modifiers={[font({ textStyle: "body", weight: "bold" })]}>{props.headline}</Text>
+      {/* A hex here would sit outside the palette and its contrast test. */}
+      <Text
+        modifiers={[
+          font({ textStyle: "footnote" }),
+          foregroundStyle({ type: "hierarchical", style: "secondary" }),
+        ]}
+      >
+        {props.detail}
+      </Text>
     </VStack>
   );
 };

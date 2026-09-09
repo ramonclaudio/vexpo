@@ -1,0 +1,20 @@
+# Subflow, not a flow. Reached with `runFlow: _to-settings.yaml`.
+#
+# Back to the Settings tab from wherever the run left off. The repeat is there
+# because the first tap sometimes lands on a pushed screen instead of the tab
+# bar, so it taps until the tab is actually up.
+appId: ${MAESTRO_APP_ID}
+---
+- repeat:
+    times: 5
+    while:
+      notVisible:
+        id: "settings-screen"
+    commands:
+      - tapOn: "Settings"
+      - waitForAnimationToEnd:
+          timeout: 5000
+- extendedWaitUntil:
+    visible:
+      id: "settings-screen"
+    timeout: 20000

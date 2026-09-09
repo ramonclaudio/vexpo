@@ -25,6 +25,7 @@ export default function PrivacyScreen() {
             <CapsuleRowButton
               testID="privacy-camera-photos"
               label="Camera & Photos"
+              hint="Opens this app's page in the Settings app"
               inputLabels={["camera and photos", "camera"]}
               systemImage="camera.fill"
               onPress={handleOpenSettings}
@@ -32,12 +33,14 @@ export default function PrivacyScreen() {
             <CapsuleRowButton
               testID="privacy-notifications"
               label="Notifications"
+              hint="Opens this app's page in the Settings app"
               systemImage="bell.fill"
               onPress={handleOpenSettings}
             />
             <CapsuleRowButton
               testID="privacy-system-settings"
               label="System Settings"
+              hint="Opens this app's page in the Settings app"
               systemImage="gear"
               onPress={handleOpenSettings}
             />

@@ -1,24 +1,9 @@
 /// <reference types="vite/client" />
-/**
- * `auth.hasPassword` drives whether the profile screen offers "Change
- * password". It has to be false for an account created through Sign in with
- * Apple (no credential row at all), and the client skips the query entirely
- * for a guest, who has no `account` row of any kind.
- *
- * `auth.rotateKeys` is here too: a manual ops tool with no cron and no caller,
- * so nothing else would catch it breaking.
- */
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
 import { api, internal } from "@/convex/_generated/api";
 
-import { identityFor, initConvexTest, seedAuthedUser } from "./_harness";
-
-const ENV: Record<string, string> = {
-  CONVEX_SITE_URL: "https://test.convex.site",
-  SITE_URL: "vexpo://",
-  BETTER_AUTH_SECRET: "test-secret-at-least-32-characters-long",
-};
+import { AUTH_ENV, identityFor, initConvexTest, seedAuthedUser, stubAuthEnv } from "./_harness";
 
 const ACCOUNT = {
   name: "Ada Lovelace",
@@ -28,7 +13,7 @@ const ACCOUNT = {
 
 describe("auth.hasPassword", () => {
   beforeEach(() => {
-    for (const [key, value] of Object.entries(ENV)) vi.stubEnv(key, value);
+    stubAuthEnv();
   });
   afterEach(() => vi.unstubAllEnvs());
 
@@ -41,7 +26,7 @@ describe("auth.hasPassword", () => {
     const t = initConvexTest();
     const response = await t.fetch("/api/auth/sign-up/email", {
       method: "POST",
-      headers: { "Content-Type": "application/json", origin: ENV.SITE_URL },
+      headers: { "Content-Type": "application/json", origin: AUTH_ENV.SITE_URL },
       body: JSON.stringify(ACCOUNT),
     });
     expect(response.status).toBe(200);
@@ -59,8 +44,6 @@ describe("auth.hasPassword", () => {
   });
 
   test("false for a session whose user has no credential account", async () => {
-    // A hand-seeded user has a Better Auth user and session but no `account`
-    // row: the same shape Sign in with Apple and the anonymous plugin leave.
     const t = initConvexTest();
     const user = await seedAuthedUser(t);
     const asUser = t.withIdentity(identityFor(user.authUserId, user.sessionId));
@@ -77,14 +60,13 @@ describe("auth.hasPassword", () => {
 
 describe("auth.rotateKeys", () => {
   beforeEach(() => {
-    for (const [key, value] of Object.entries(ENV)) vi.stubEnv(key, value);
+    stubAuthEnv();
   });
   afterEach(() => vi.unstubAllEnvs());
 
   test("replaces the JWKS, which is why it is deliberately not on a cron", async () => {
     const t = initConvexTest();
 
-    // Mint a key by asking for the JWKS, so there is something to rotate.
     const before = await t.fetch("/api/auth/convex/jwks", { method: "GET" });
     expect(before.status).toBe(200);
     const beforeKeys = (await before.json()) as { keys: Array<{ kid: string }> };
@@ -95,8 +77,6 @@ describe("auth.rotateKeys", () => {
     const after = await t.fetch("/api/auth/convex/jwks", { method: "GET" });
     const afterKeys = (await after.json()) as { keys: Array<{ kid: string }> };
     expect(afterKeys.keys.length).toBeGreaterThan(0);
-    // No grace period: every old key is gone, which is the whole reason a
-    // scheduled run would sign every active session out.
     const beforeKids = new Set(beforeKeys.keys.map((k) => k.kid));
     expect(afterKeys.keys.every((k) => !beforeKids.has(k.kid))).toBe(true);
   });

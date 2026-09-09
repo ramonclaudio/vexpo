@@ -1,5 +1,5 @@
 import { isRecord } from "./json.ts";
-import type { LintIssue } from "./lint.ts";
+import { entriesOf, error, firstSeen, oneOf, warn, type LintIssue } from "./lint.ts";
 
 export type { LintIssue };
 
@@ -19,7 +19,6 @@ const PRIVACY_DATA_TYPES = [
   "DIAGNOSTICS",
   "OTHER_DATA",
 ] as const;
-type PrivacyDataType = (typeof PRIVACY_DATA_TYPES)[number];
 
 const PRIVACY_PURPOSES = [
   "THIRD_PARTY_ADVERTISING",
@@ -29,82 +28,49 @@ const PRIVACY_PURPOSES = [
   "APP_FUNCTIONALITY",
   "OTHER",
 ] as const;
-type PrivacyPurpose = (typeof PRIVACY_PURPOSES)[number];
 
 export function lintPrivacyConfig(config: unknown): LintIssue[] {
   const issues: LintIssue[] = [];
-  if (!isRecord(config)) {
-    issues.push({ severity: "error", message: "config must be a JSON object" });
-    return issues;
+  if (isRecord(config) && typeof config.collectsData !== "boolean") {
+    issues.push(error("`collectsData` must be a boolean"));
   }
-  if (typeof config.collectsData !== "boolean") {
-    issues.push({ severity: "error", message: "`collectsData` must be a boolean" });
+  const entries = entriesOf(config, issues);
+  if (!entries) return issues;
+  const collectsData = isRecord(config) ? config.collectsData : undefined;
+
+  if (collectsData === false && entries.length > 0) {
+    issues.push(
+      warn("`collectsData` is false but `entries` is non-empty; entries will be ignored."),
+    );
   }
-  if (!Array.isArray(config.entries)) {
-    issues.push({ severity: "error", message: "`entries` must be an array" });
-    return issues;
+  if (collectsData === true && entries.length === 0) {
+    issues.push(
+      error("`collectsData` is true but `entries` is empty; declare at least one data type."),
+    );
   }
 
-  if (config.collectsData === false && config.entries.length > 0) {
-    issues.push({
-      severity: "warning",
-      message: "`collectsData` is false but `entries` is non-empty; entries will be ignored.",
-    });
-  }
-  if (config.collectsData === true && config.entries.length === 0) {
-    issues.push({
-      severity: "error",
-      message: "`collectsData` is true but `entries` is empty; declare at least one data type.",
-    });
-  }
-
-  const seenCategories = new Set<string>();
-  config.entries.forEach((raw, index) => {
+  const seen = new Set<string>();
+  entries.forEach((raw, index) => {
+    const at = `entry[${index}]`;
     if (!isRecord(raw)) {
-      issues.push({ severity: "error", message: `entry[${index}] must be an object` });
+      issues.push(error(`${at} must be an object`));
       return;
     }
-    const category = raw.category;
-    if (typeof category !== "string" || !PRIVACY_DATA_TYPES.includes(category as PrivacyDataType)) {
-      issues.push({
-        severity: "error",
-        message: `entry[${index}].category '${String(category)}' is not a valid PrivacyDataType. Allowed: ${PRIVACY_DATA_TYPES.join(", ")}`,
-      });
-    } else if (seenCategories.has(category)) {
-      issues.push({
-        severity: "warning",
-        message: `entry[${index}].category '${category}' is duplicated; only the last entry counts.`,
-      });
-    } else {
-      seenCategories.add(category);
+    if (oneOf(issues, `${at}.category`, raw.category, PRIVACY_DATA_TYPES, "PrivacyDataType")) {
+      firstSeen(seen, issues, `${at}.category`, raw.category as string);
     }
-    if (typeof raw.collected !== "boolean") {
-      issues.push({ severity: "error", message: `entry[${index}].collected must be a boolean` });
-    }
-    if (typeof raw.usedForTracking !== "boolean") {
-      issues.push({
-        severity: "error",
-        message: `entry[${index}].usedForTracking must be a boolean`,
-      });
-    }
-    if (typeof raw.linkedToUser !== "boolean") {
-      issues.push({
-        severity: "error",
-        message: `entry[${index}].linkedToUser must be a boolean`,
-      });
+    for (const field of ["collected", "usedForTracking", "linkedToUser"] as const) {
+      if (typeof raw[field] !== "boolean") {
+        issues.push(error(`${at}.${field} must be a boolean`));
+      }
     }
     if (!Array.isArray(raw.purposes)) {
-      issues.push({ severity: "error", message: `entry[${index}].purposes must be an array` });
-    } else {
-      raw.purposes.forEach((purpose, j) => {
-        if (typeof purpose !== "string" || !PRIVACY_PURPOSES.includes(purpose as PrivacyPurpose)) {
-          issues.push({
-            severity: "error",
-            message: `entry[${index}].purposes[${j}] '${String(purpose)}' is not a valid PrivacyPurpose. Allowed: ${PRIVACY_PURPOSES.join(", ")}`,
-          });
-        }
-      });
+      issues.push(error(`${at}.purposes must be an array`));
+      return;
     }
+    raw.purposes.forEach((purpose, j) => {
+      oneOf(issues, `${at}.purposes[${j}]`, purpose, PRIVACY_PURPOSES, "PrivacyPurpose");
+    });
   });
 
   return issues;

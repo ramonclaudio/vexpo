@@ -52,15 +52,21 @@ async function trySignal(pids, signal) {
   }).exited;
 }
 
+const LOCKFILES = {
+  bun: "bun.lock",
+  pnpm: "pnpm-lock.yaml",
+  yarn: "yarn.lock",
+  npm: "package-lock.json",
+};
+
 async function detectPackageManager() {
   const execpath = (process.env.npm_execpath ?? "").toLowerCase();
-  if (execpath.includes("bun")) return "bun";
-  if (execpath.includes("pnpm")) return "pnpm";
-  if (execpath.includes("yarn")) return "yarn";
-  if (execpath.includes("npm")) return "npm";
-  if (await pathExists("bun.lock")) return "bun";
-  if (await pathExists("pnpm-lock.yaml")) return "pnpm";
-  if (await pathExists("yarn.lock")) return "yarn";
+  for (const pm of Object.keys(LOCKFILES)) {
+    if (execpath.includes(pm)) return pm;
+  }
+  for (const [pm, lock] of Object.entries(LOCKFILES)) {
+    if (await pathExists(lock)) return pm;
+  }
   return "npm";
 }
 
@@ -73,13 +79,17 @@ function installCmdFor(pm, frozen) {
 const REPO = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 process.chdir(REPO);
 
-const RESET = "\x1b[0m";
-const BOLD = "\x1b[1m";
-const DIM = "\x1b[2m";
+const colorEnabled =
+  process.stderr.isTTY === true && !process.env.NO_COLOR && process.env.TERM !== "dumb";
+const code = (seq) => (colorEnabled ? seq : "");
+
+const RESET = code("\x1b[0m");
+const BOLD = code("\x1b[1m");
+const DIM = code("\x1b[2m");
 function ansiHex(hex) {
   const m = /^#?([\da-f]{2})([\da-f]{2})([\da-f]{2})$/i.exec(hex);
   if (!m) return "";
-  return `\x1b[38;2;${parseInt(m[1], 16)};${parseInt(m[2], 16)};${parseInt(m[3], 16)}m`;
+  return code(`\x1b[38;2;${parseInt(m[1], 16)};${parseInt(m[2], 16)};${parseInt(m[3], 16)}m`);
 }
 const GREEN = ansiHex("#22c55e");
 const YELLOW = ansiHex("#f59e0b");
@@ -97,6 +107,10 @@ function stringWidth(s) {
 }
 
 function section(title) {
+  if (!colorEnabled) {
+    line(`\n${title}`);
+    return;
+  }
   const w = process.stderr.columns ?? process.stdout.columns ?? 80;
   const fill = "─".repeat(Math.max(0, w - stringWidth(title) - 3));
   line(`\n${BOLD}${VIOLET}${title}${RESET} ${DIM}${fill}${RESET}`);
@@ -159,6 +173,23 @@ if (args.help) {
   process.exit(0);
 }
 
+const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
+
+async function stepPath(title, path, { missing, done }) {
+  section(title);
+  if (!(await pathExists(path))) return nop(missing);
+  await removePaths([path]);
+  ok(done);
+}
+
+async function stepMatches(title, gather, { empty, one, many }) {
+  section(title);
+  const matches = await gather();
+  if (matches.length === 0) return nop(empty);
+  await removePaths(matches);
+  ok(`removed ${plural(matches.length, one, many)}`);
+}
+
 async function pathExists(p) {
   try {
     await stat(p);
@@ -181,6 +212,12 @@ async function expandGlob(dir, pattern) {
   );
   const entries = await readdir(dir);
   return entries.filter((e) => re.test(e)).map((e) => `${dir}/${e}`);
+}
+
+async function globAll(dir, patterns) {
+  const matches = [];
+  for (const pattern of patterns) matches.push(...(await expandGlob(dir, pattern)));
+  return matches;
 }
 
 const TMPDIR = process.env.TMPDIR?.replace(/\/$/, "") ?? "/tmp";
@@ -263,19 +300,12 @@ async function stepStopBundlers() {
   }
 }
 
-async function stepMetroCachesOnly() {
-  section("Metro caches");
-  const matches = [];
-  for (const pattern of ["metro-*", "haste-map-*", "node-compile-cache"]) {
-    matches.push(...(await expandGlob(TMPDIR, pattern)));
-  }
-  if (matches.length === 0) {
-    nop("nothing to wipe under $TMPDIR");
-    return;
-  }
-  await removePaths(matches);
-  ok(`removed ${matches.length} cache director${matches.length === 1 ? "y" : "ies"}`);
-}
+const stepMetroCachesOnly = () =>
+  stepMatches(
+    "Metro caches",
+    () => globAll(TMPDIR, ["metro-*", "haste-map-*", "node-compile-cache"]),
+    { empty: "nothing to wipe under $TMPDIR", one: "cache directory", many: "cache directories" },
+  );
 
 async function stepProjectArtifacts(all) {
   section("Project artifacts");
@@ -299,118 +329,79 @@ async function stepProjectArtifacts(all) {
 async function stepEasState() {
   section(".eas state");
   const easDir = `${REPO}/.eas`;
-  if (!(await pathExists(easDir))) {
-    nop(".eas/ not present");
-    return;
-  }
+  if (!(await pathExists(easDir))) return nop(".eas/ not present");
   const entries = await readdir(easDir);
   const targets = entries.filter((name) => name !== "workflows").map((name) => `${easDir}/${name}`);
-  if (targets.length === 0) {
-    nop("only .eas/workflows/ present (kept)");
-    return;
-  }
+  if (targets.length === 0) return nop("only .eas/workflows/ present (kept)");
   await removePaths(targets);
-  ok(
-    `removed ${targets.length} .eas/ ${targets.length === 1 ? "entry" : "entries"} (kept workflows/)`,
+  ok(`removed ${plural(targets.length, ".eas/ entry", ".eas/ entries")} (kept workflows/)`);
+}
+
+const stepDsStores = () =>
+  stepMatches(
+    "macOS .DS_Store",
+    async () => {
+      const stdout = await spawn(
+        ["find", REPO, "-name", ".DS_Store", "-not", "-path", "*/node_modules/*"],
+        { stdin: "ignore", stdout: "pipe", stderr: "ignore" },
+      ).stdout;
+      return stdout.split("\n").filter(Boolean);
+    },
+    { empty: "none found", one: ".DS_Store file", many: ".DS_Store files" },
   );
-}
 
-async function stepDsStores() {
-  section("macOS .DS_Store");
-  const stdout = await spawn(
-    ["find", REPO, "-name", ".DS_Store", "-not", "-path", "*/node_modules/*"],
-    { stdin: "ignore", stdout: "pipe", stderr: "ignore" },
-  ).stdout;
-  const matches = stdout.split("\n").filter(Boolean);
-  if (matches.length === 0) {
-    nop("none found");
-    return;
-  }
-  await removePaths(matches);
-  ok(`removed ${matches.length} .DS_Store ${matches.length === 1 ? "file" : "files"}`);
-}
+const stepTmpdirCaches = () =>
+  stepMatches("$TMPDIR caches", () => globAll(TMPDIR, TMP_GLOBS), {
+    empty: "nothing to wipe under $TMPDIR",
+    one: "cache entry under $TMPDIR",
+    many: "cache entries under $TMPDIR",
+  });
 
-async function stepTmpdirCaches() {
-  section("$TMPDIR caches");
-  const matches = [];
-  for (const pattern of TMP_GLOBS) {
-    matches.push(...(await expandGlob(TMPDIR, pattern)));
-  }
-  if (matches.length === 0) {
-    nop("nothing to wipe under $TMPDIR");
-    return;
-  }
-  await removePaths(matches);
-  ok(`removed ${matches.length} cache entr${matches.length === 1 ? "y" : "ies"} under $TMPDIR`);
-}
+const stepCocoaPodsCache = () =>
+  stepPath("CocoaPods cache", `${HOME}/Library/Caches/CocoaPods`, {
+    missing: "not present",
+    done: "removed ~/Library/Caches/CocoaPods",
+  });
 
-async function stepCocoaPodsCache() {
-  section("CocoaPods cache");
-  const path = `${HOME}/Library/Caches/CocoaPods`;
-  if (!(await pathExists(path))) {
-    nop("not present");
-    return;
-  }
-  await removePaths([path]);
-  ok("removed ~/Library/Caches/CocoaPods");
-}
-
-async function stepXcodeDerivedData(pkgName) {
-  section("Xcode DerivedData");
+const stepXcodeDerivedData = (pkgName) => {
   const root = `${HOME}/Library/Developer/Xcode/DerivedData`;
-  if (!(await pathExists(root))) {
-    nop("DerivedData not present");
-    return;
-  }
-  const prefix = pkgName.toLowerCase();
-  const matches = (await readdir(root))
-    .filter((e) => e.toLowerCase().startsWith(prefix))
-    .map((e) => `${root}/${e}`);
-  if (matches.length === 0) {
-    nop("no matching DerivedData entries");
-    return;
-  }
-  await removePaths(matches);
-  ok(`removed ${matches.length} DerivedData ${matches.length === 1 ? "entry" : "entries"}`);
-}
+  return stepMatches(
+    "Xcode DerivedData",
+    async () => {
+      if (!(await pathExists(root))) return [];
+      const prefix = pkgName.toLowerCase();
+      return (await readdir(root))
+        .filter((e) => e.toLowerCase().startsWith(prefix))
+        .map((e) => `${root}/${e}`);
+    },
+    {
+      empty: "no matching DerivedData entries",
+      one: "DerivedData entry",
+      many: "DerivedData entries",
+    },
+  );
+};
 
-async function stepExpoCache() {
-  section("Expo CLI cache");
-  const path = `${HOME}/.expo`;
-  if (!(await pathExists(path))) {
-    nop("~/.expo not present");
-    return;
-  }
-  await removePaths([path]);
-  ok("removed ~/.expo");
-}
+const stepExpoCache = () =>
+  stepPath("Expo CLI cache", `${HOME}/.expo`, {
+    missing: "~/.expo not present",
+    done: "removed ~/.expo",
+  });
 
-async function stepSetupState() {
-  section("Setup state");
-  const path = `${REPO}/.setup-state.json`;
-  if (!(await pathExists(path))) {
-    nop(".setup-state.json not present");
-    return;
-  }
-  await removePaths([path]);
-  ok("removed .setup-state.json (next `npx vexpo full` re-probes every phase)");
-}
+const stepSetupState = () =>
+  stepPath("Setup state", `${REPO}/.setup-state.json`, {
+    missing: ".setup-state.json not present",
+    done: "removed .setup-state.json (next `npx vexpo full` re-probes every phase)",
+  });
 
 async function stepInstall(pm) {
   section("Reinstall");
-  const frozen = await pathExists(`${REPO}/${lockfileFor(pm)}`);
+  const frozen = await pathExists(`${REPO}/${LOCKFILES[pm]}`);
   const cmd = installCmdFor(pm, frozen).split(" ");
   const proc = spawn(cmd, { stdio: ["inherit", "inherit", "inherit"] });
   const code = await proc.exited;
   if (code !== 0) throw new Error(`${cmd.join(" ")} exited with code ${code}`);
   ok(cmd.join(" "));
-}
-
-function lockfileFor(pm) {
-  if (pm === "bun") return "bun.lock";
-  if (pm === "pnpm") return "pnpm-lock.yaml";
-  if (pm === "yarn") return "yarn.lock";
-  return "package-lock.json";
 }
 
 async function stepConvexCodegen() {

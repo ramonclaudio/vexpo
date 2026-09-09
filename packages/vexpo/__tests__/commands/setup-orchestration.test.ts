@@ -43,17 +43,7 @@ vi.mock("../../src/commands/apple/jwt.ts", () => ({ runAppleJwt: h.runAppleJwt }
 vi.mock("../../src/commands/apple/services-id.ts", () => ({ runServicesId: h.runServicesId }));
 vi.mock("../../src/commands/asc.ts", () => ({ runAscConnect: h.runAscConnect }));
 
-vi.mock("../../src/lib/proc.ts", () => ({
-  run: vi.fn(async () => ({ code: 1, stdout: "", stderr: "" })),
-  spawn: vi.fn(() => ({
-    exited: Promise.resolve(1),
-    stdout: null,
-    stderr: null,
-    stdin: null,
-    pid: 1,
-    kill: () => {},
-  })),
-}));
+vi.mock("../../src/lib/proc.ts", async () => (await import("../helpers/proc-stub.ts")).procStub(1));
 vi.mock("../../src/lib/convex-env.ts", () => ({
   envMap: vi.fn(async () => new Map()),
   isLoggedIn: vi.fn(async () => false),

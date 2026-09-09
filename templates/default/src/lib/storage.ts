@@ -1,5 +1,7 @@
 import "expo-sqlite/localStorage/install";
 
+import { useSyncExternalStore } from "react";
+
 type Listener = () => void;
 
 const listeners = new Map<string, Set<Listener>>();
@@ -56,4 +58,8 @@ export function createStorage<T>(
       };
     },
   };
+}
+
+export function useStore<T>(store: Storage<T>): T {
+  return useSyncExternalStore(store.subscribe, store.get, store.get);
 }

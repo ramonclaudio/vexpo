@@ -1,16 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("../../src/lib/proc.ts", () => ({
-  run: vi.fn().mockResolvedValue({ code: 0, stdout: "{}", stderr: "" }),
-  spawn: vi.fn(() => ({
-    exited: Promise.resolve(0),
-    stdout: null,
-    stderr: null,
-    stdin: null,
-    pid: 1,
-    kill: () => {},
-  })),
-}));
+vi.mock("../../src/lib/proc.ts", async () =>
+  (await import("../helpers/proc-stub.ts")).procStub(0, "{}"),
+);
 
 vi.mock("../../src/lib/pkg-manager.ts", () => ({
   dlx: () => "bunx",
@@ -19,7 +11,7 @@ vi.mock("../../src/lib/pkg-manager.ts", () => ({
 import { ascStatus, convexProjectLink, type AscStatus } from "../../src/lib/eas-integrations.ts";
 import { run } from "../../src/lib/proc.ts";
 
-const runSpy = run as unknown as ReturnType<typeof vi.fn>;
+const runSpy = vi.mocked(run);
 
 beforeEach(() => {
   runSpy.mockReset();

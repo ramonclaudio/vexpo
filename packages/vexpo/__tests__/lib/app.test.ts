@@ -1,24 +1,12 @@
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
-import { tmpdir } from "node:os";
-import path from "node:path";
+import { writeFile } from "node:fs/promises";
 
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
+
+import { useTmpCwd } from "../helpers/tmp-cwd.ts";
 
 import { appName, appleTeamIdFallback, bundleIdFallback, pkgName, scheme } from "../../src/lib/app";
 
-let workdir: string;
-let originalCwd: string;
-
-beforeEach(async () => {
-  originalCwd = process.cwd();
-  workdir = await mkdtemp(path.join(tmpdir(), "app-test-"));
-  process.chdir(workdir);
-});
-
-afterEach(async () => {
-  process.chdir(originalCwd);
-  await rm(workdir, { recursive: true, force: true });
-});
+useTmpCwd("app-test-");
 
 describe("pkgName", () => {
   it("returns the package name from package.json", async () => {

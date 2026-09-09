@@ -4,6 +4,21 @@ import { join } from "node:path";
 
 import { fileExists } from "./fs.ts";
 
+// `eq > 0`, not `>= 0`. A leading `=` has no key, and only the first `=` splits.
+export function parseKeyValueLines(
+  stdout: string,
+  transform: (value: string) => string = (v) => v,
+): Map<string, string> {
+  const out = new Map<string, string>();
+  for (const raw of stdout.split("\n")) {
+    const trimmed = raw.trim();
+    if (!trimmed) continue;
+    const eq = trimmed.indexOf("=");
+    if (eq > 0) out.set(trimmed.slice(0, eq), transform(trimmed.slice(eq + 1)));
+  }
+  return out;
+}
+
 export async function withTempEnvFile<T>(
   lines: string[],
   fn: (path: string) => Promise<T>,
@@ -29,74 +44,48 @@ export type Destination =
       environments: readonly ("development" | "preview" | "production")[];
     };
 
-type RoutingEntry = {
-  routes: (channel: Channel) => Destination[];
-};
+type RoutingEntry = { type: "eas" | "convex"; key?: string };
 
-const easEnvFor = (channel: Channel): readonly ("development" | "preview" | "production")[] =>
-  channel === "prod" ? ["production", "preview"] : ["development"];
+const EAS: RoutingEntry = { type: "eas" };
+const CONVEX: RoutingEntry = { type: "convex" };
 
 export const ROUTING: Record<string, RoutingEntry> = {
-  EXPO_PUBLIC_CONVEX_URL: {
-    routes: (c) => [{ type: "eas", key: "EXPO_PUBLIC_CONVEX_URL", environments: easEnvFor(c) }],
-  },
-  EXPO_PUBLIC_CONVEX_SITE_URL: {
-    routes: (c) => [
-      { type: "eas", key: "EXPO_PUBLIC_CONVEX_SITE_URL", environments: easEnvFor(c) },
-    ],
-  },
-  EXPO_PUBLIC_SITE_URL: {
-    routes: (c) => [{ type: "eas", key: "EXPO_PUBLIC_SITE_URL", environments: easEnvFor(c) }],
-  },
-  EXPO_PUBLIC_APP_BUNDLE_ID: {
-    routes: (c) => [{ type: "eas", key: "EXPO_PUBLIC_APP_BUNDLE_ID", environments: easEnvFor(c) }],
-  },
-  EXPO_PUBLIC_APPLE_TEAM_ID: {
-    routes: (c) => [{ type: "eas", key: "EXPO_PUBLIC_APPLE_TEAM_ID", environments: easEnvFor(c) }],
-  },
-  EXPO_PUBLIC_EXPO_OWNER: {
-    routes: (c) => [{ type: "eas", key: "EXPO_PUBLIC_EXPO_OWNER", environments: easEnvFor(c) }],
-  },
+  EXPO_PUBLIC_CONVEX_URL: EAS,
+  EXPO_PUBLIC_CONVEX_SITE_URL: EAS,
+  EXPO_PUBLIC_SITE_URL: EAS,
+  EXPO_PUBLIC_APP_BUNDLE_ID: EAS,
+  EXPO_PUBLIC_APPLE_TEAM_ID: EAS,
+  EXPO_PUBLIC_EXPO_OWNER: EAS,
 
-  SITE_URL: { routes: (c) => [{ type: "convex", key: "SITE_URL", channel: c }] },
-  BETTER_AUTH_SECRET: {
-    routes: (c) => [{ type: "convex", key: "BETTER_AUTH_SECRET", channel: c }],
-  },
-  BETTER_AUTH_SECRETS: {
-    routes: (c) => [{ type: "convex", key: "BETTER_AUTH_SECRETS", channel: c }],
-  },
-  APP_NAME: { routes: (c) => [{ type: "convex", key: "APP_NAME", channel: c }] },
-  RESEND_API_KEY: { routes: (c) => [{ type: "convex", key: "RESEND_API_KEY", channel: c }] },
-  EMAIL_FROM: { routes: (c) => [{ type: "convex", key: "EMAIL_FROM", channel: c }] },
-  RESEND_WEBHOOK_SECRET: {
-    routes: (c) => [{ type: "convex", key: "RESEND_WEBHOOK_SECRET", channel: c }],
-  },
-  RESEND_TEST_MODE: {
-    routes: (c) => [{ type: "convex", key: "RESEND_TEST_MODE", channel: c }],
-  },
-  REQUIRE_EMAIL_VERIFICATION: {
-    routes: (c) => [{ type: "convex", key: "REQUIRE_EMAIL_VERIFICATION", channel: c }],
-  },
-  GUEST_MODE: {
-    routes: (c) => [{ type: "convex", key: "GUEST_MODE", channel: c }],
-  },
-  APP_BUNDLE_ID: { routes: (c) => [{ type: "convex", key: "APP_BUNDLE_ID", channel: c }] },
-  APPLE_CLIENT_ID: { routes: (c) => [{ type: "convex", key: "APPLE_CLIENT_ID", channel: c }] },
-  APPLE_CLIENT_SECRET: {
-    routes: (c) => [{ type: "convex", key: "APPLE_CLIENT_SECRET", channel: c }],
-  },
+  SITE_URL: CONVEX,
+  BETTER_AUTH_SECRET: CONVEX,
+  BETTER_AUTH_SECRETS: CONVEX,
+  APP_NAME: CONVEX,
+  RESEND_API_KEY: CONVEX,
+  EMAIL_FROM: CONVEX,
+  RESEND_WEBHOOK_SECRET: CONVEX,
+  RESEND_TEST_MODE: CONVEX,
+  REQUIRE_EMAIL_VERIFICATION: CONVEX,
+  GUEST_MODE: CONVEX,
+  APP_BUNDLE_ID: CONVEX,
+  APPLE_CLIENT_ID: CONVEX,
+  APPLE_CLIENT_SECRET: CONVEX,
+  APPLE_TEAM_ID: CONVEX,
+  APPLE_KEY_ID: CONVEX,
 
-  APPLE_TEAM_ID: {
-    routes: (c) => [{ type: "convex", key: "APPLE_TEAM_ID", channel: c }],
-  },
-  APPLE_KEY_ID: {
-    routes: (c) => [{ type: "convex", key: "APPLE_KEY_ID", channel: c }],
-  },
-
-  APPLE_SERVICES_ID: {
-    routes: (c) => [{ type: "convex", key: "APPLE_CLIENT_ID", channel: c }],
-  },
+  APPLE_SERVICES_ID: { type: "convex", key: "APPLE_CLIENT_ID" },
 };
+
+function destinationFor(sourceKey: string, entry: RoutingEntry, channel: Channel): Destination {
+  const key = entry.key ?? sourceKey;
+  return entry.type === "eas"
+    ? {
+        type: "eas",
+        key,
+        environments: channel === "prod" ? ["production", "preview"] : ["development"],
+      }
+    : { type: "convex", key, channel };
+}
 
 const IGNORED_KEYS = new Set(["CONVEX_DEPLOYMENT"]);
 
@@ -213,14 +202,12 @@ export function buildPlan(sources: EnvSource[]): SyncEntry[] {
       if (IGNORED_KEYS.has(key)) continue;
       const route = ROUTING[key];
       if (!route) continue;
-      const destinations = route.routes(src.channel);
-      if (destinations.length === 0) continue;
       entries.push({
         sourceFile: src.path,
         sourceKey: key,
         channel: src.channel,
         value,
-        destinations,
+        destinations: [destinationFor(key, route, src.channel)],
       });
     }
   }

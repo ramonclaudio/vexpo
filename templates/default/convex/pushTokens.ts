@@ -22,19 +22,9 @@ export const upsert = authMutation({
       .unique();
 
     if (existing) {
-      if (existing.userId === ctx.user._id) {
-        await ctx.db.patch(existing._id, {
-          updatedAt: now,
-          lastSeenAt: now,
-          revoked: false,
-          revokedAt: undefined,
-          lastErrorCode: undefined,
-        });
-        return existing._id;
-      }
+      const reassign = existing.userId === ctx.user._id ? {} : { userId: ctx.user._id, deviceType };
       await ctx.db.patch(existing._id, {
-        userId: ctx.user._id,
-        deviceType,
+        ...reassign,
         updatedAt: now,
         lastSeenAt: now,
         revoked: false,

@@ -2,100 +2,57 @@ import { describe, expect, test } from "vitest";
 
 import { lintPrivacyConfig } from "../../src/lib/asc-privacy.ts";
 
+const entry = (overrides: Record<string, unknown> = {}) => ({
+  category: "IDENTIFIERS",
+  collected: true,
+  usedForTracking: false,
+  linkedToUser: true,
+  purposes: ["APP_FUNCTIONALITY"],
+  ...overrides,
+});
+
+const firstOfSeverity = (issues: { severity: string; message: string }[], severity: string) =>
+  issues.find((i) => i.severity === severity);
+
 describe("lintPrivacyConfig", () => {
   test("accepts a clean config", () => {
-    const issues = lintPrivacyConfig({
-      collectsData: true,
-      entries: [
-        {
-          category: "IDENTIFIERS",
-          collected: true,
-          usedForTracking: false,
-          linkedToUser: true,
-          purposes: ["APP_FUNCTIONALITY"],
-        },
-      ],
-    });
-    expect(issues).toEqual([]);
+    expect(lintPrivacyConfig({ collectsData: true, entries: [entry()] })).toEqual([]);
   });
 
   test("flags unknown category", () => {
     const issues = lintPrivacyConfig({
       collectsData: true,
-      entries: [
-        {
-          category: "NOT_A_REAL_CATEGORY",
-          collected: true,
-          usedForTracking: false,
-          linkedToUser: false,
-          purposes: ["APP_FUNCTIONALITY"],
-        },
-      ],
+      entries: [entry({ category: "NOT_A_REAL_CATEGORY", linkedToUser: false })],
     });
-    const firstError = issues.find((i) => i.severity === "error");
-    expect(firstError).toBeDefined();
-    expect(firstError!.message).toMatch(/not a valid PrivacyDataType/);
+    const error = firstOfSeverity(issues, "error");
+    expect(error).toBeDefined();
+    expect(error!.message).toMatch(/not a valid PrivacyDataType/);
   });
 
   test("flags unknown purpose", () => {
     const issues = lintPrivacyConfig({
       collectsData: true,
-      entries: [
-        {
-          category: "IDENTIFIERS",
-          collected: true,
-          usedForTracking: false,
-          linkedToUser: true,
-          purposes: ["NOT_A_PURPOSE"],
-        },
-      ],
+      entries: [entry({ purposes: ["NOT_A_PURPOSE"] })],
     });
-    const firstError = issues.find((i) => i.severity === "error");
-    expect(firstError!.message).toMatch(/not a valid PrivacyPurpose/);
+    expect(firstOfSeverity(issues, "error")!.message).toMatch(/not a valid PrivacyPurpose/);
   });
 
   test("warns on collectsData=false with entries", () => {
-    const issues = lintPrivacyConfig({
-      collectsData: false,
-      entries: [
-        {
-          category: "IDENTIFIERS",
-          collected: true,
-          usedForTracking: false,
-          linkedToUser: true,
-          purposes: ["APP_FUNCTIONALITY"],
-        },
-      ],
-    });
-    const firstWarning = issues.find((i) => i.severity === "warning");
-    expect(firstWarning!.message).toMatch(/collectsData.*false.*entries.*non-empty/);
+    const issues = lintPrivacyConfig({ collectsData: false, entries: [entry()] });
+    expect(firstOfSeverity(issues, "warning")!.message).toMatch(
+      /collectsData.*false.*entries.*non-empty/,
+    );
   });
 
   test("errors when collectsData=true but no entries", () => {
     const issues = lintPrivacyConfig({ collectsData: true, entries: [] });
-    const firstError = issues.find((i) => i.severity === "error");
-    expect(firstError!.message).toMatch(/declare at least one data type/);
+    expect(firstOfSeverity(issues, "error")!.message).toMatch(/declare at least one data type/);
   });
 
   test("warns on duplicate categories", () => {
     const issues = lintPrivacyConfig({
       collectsData: true,
-      entries: [
-        {
-          category: "IDENTIFIERS",
-          collected: true,
-          usedForTracking: false,
-          linkedToUser: true,
-          purposes: ["APP_FUNCTIONALITY"],
-        },
-        {
-          category: "IDENTIFIERS",
-          collected: true,
-          usedForTracking: false,
-          linkedToUser: true,
-          purposes: ["ANALYTICS"],
-        },
-      ],
+      entries: [entry(), entry({ purposes: ["ANALYTICS"] })],
     });
     const warnings = issues.filter((i) => i.severity === "warning");
     expect(warnings.some((w) => /duplicated/.test(w.message))).toBe(true);

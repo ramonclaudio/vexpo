@@ -18,6 +18,7 @@ import { CapsuleRowButton } from "@/components/ui/capsule-row-button";
 import { TouchTarget } from "@/constants/layout";
 
 import { ErrorText } from "@/components/ui/status-text";
+import { fail } from "@/lib/form-result";
 import { haptics } from "@/lib/haptics";
 import { useColors } from "@/hooks/use-theme";
 
@@ -50,6 +51,7 @@ export default function HelpScreen() {
   const [searchText, setSearchText] = useState("");
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [linkError, setLinkError] = useState<string | null>(null);
+  const raiseLinkError = (message: string) => setLinkError(fail(message).error);
   const toggleExpanded = (question: string, next: boolean) => {
     haptics.selection();
     setExpanded((m) => ({ ...m, [question]: next }));
@@ -72,8 +74,7 @@ export default function HelpScreen() {
     if (canOpen) {
       openURL(issuesUrl);
     } else {
-      haptics.error();
-      setLinkError("Couldn't open the issues page.");
+      raiseLinkError("Couldn't open the issues page.");
     }
   };
 
@@ -85,8 +86,7 @@ export default function HelpScreen() {
     if (canOpen) {
       openURL(url);
     } else {
-      haptics.error();
-      setLinkError(`No email app configured. Contact ${support.email} directly.`);
+      raiseLinkError(`No email app configured. Contact ${support.email} directly.`);
     }
   };
 
@@ -122,6 +122,7 @@ export default function HelpScreen() {
                   <CapsuleRowButton
                     testID="help-email-support"
                     label="Email Support"
+                    hint="Opens a new message in your email app"
                     systemImage="envelope.fill"
                     onPress={handleOpenEmail}
                   />
@@ -130,6 +131,7 @@ export default function HelpScreen() {
                   <CapsuleRowButton
                     testID="help-report-issue"
                     label="Report an Issue"
+                    hint="Opens the issue tracker in your browser"
                     systemImage="exclamationmark.bubble.fill"
                     onPress={handleOpenIssues}
                   />

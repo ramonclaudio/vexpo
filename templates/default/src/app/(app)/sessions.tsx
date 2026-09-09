@@ -28,12 +28,13 @@ import { DynamicType, Duration, toSeconds } from "@/constants/ui";
 import { ContentUnavailable } from "@/components/ui/content-unavailable";
 import { SkeletonSessions } from "@/components/ui/skeleton";
 import { ErrorText } from "@/components/ui/status-text";
+import { announce } from "@/lib/a11y";
 import { deviceLabel } from "@/lib/device";
 import { useDynamicFont } from "@/lib/dynamic-font";
 
 import { authClient } from "@/lib/auth-client";
 import { haptics } from "@/lib/haptics";
-import { announce } from "@/lib/a11y";
+import { fail, succeed } from "@/lib/form-result";
 import { useColors } from "@/hooks/use-theme";
 import { useScenePrivacy } from "@/hooks/use-scene-privacy";
 import { useReducedMotion } from "@/hooks/use-reduced-motion";
@@ -73,7 +74,7 @@ export default function SessionsScreen() {
   const [sessions, setSessions] = useState<SessionRow[] | null>(null);
   const [loadError, setLoadError] = useState<"network" | "stale" | null>(null);
   const [revoking, setRevoking] = useState<string | null>(null);
-  const [revokeError, setRevokeError] = useState(false);
+  const [revokeError, setRevokeError] = useState<string | null>(null);
   const [confirmToken, setConfirmToken] = useState<string | null>(null);
 
   const load = useCallback(async () => {
@@ -104,21 +105,19 @@ export default function SessionsScreen() {
 
   const revoke = async (token: string) => {
     haptics.medium();
+    announce("Revoking session");
     setRevoking(token);
-    setRevokeError(false);
+    setRevokeError(null);
     try {
       const res = await authClient.revokeSession({ token });
       if (res.error) {
-        haptics.error();
-        setRevokeError(true);
+        setRevokeError(fail("Couldn't revoke session").error);
         return;
       }
-      haptics.success();
-      announce("Session revoked");
+      succeed("Session revoked");
       await load();
     } catch {
-      haptics.error();
-      setRevokeError(true);
+      setRevokeError(fail("Couldn't revoke session").error);
     } finally {
       setRevoking(null);
     }
@@ -253,7 +252,11 @@ export default function SessionsScreen() {
                             frame({ minHeight: TouchTarget.min }),
                             contentShape(shapes.rectangle()),
                             accessibilityLabel(`Revoke ${deviceLabel(s.userAgent)}`),
-                            accessibilityInputLabels([`Revoke ${deviceLabel(s.userAgent)}`]),
+                            // Voice Control matches the visible word, so "Revoke" has to be here too.
+                            accessibilityInputLabels([
+                              "Revoke",
+                              `Revoke ${deviceLabel(s.userAgent)}`,
+                            ]),
                           ]}
                           onPress={() => {
                             haptics.warning();
@@ -311,7 +314,7 @@ export default function SessionsScreen() {
               </Text>
             ) : null}
             {revokeError ? (
-              <ErrorText testID="sessions-revoke-error">Couldn't revoke session</ErrorText>
+              <ErrorText testID="sessions-revoke-error">{revokeError}</ErrorText>
             ) : null}
           </VStack>
         </ScrollView>

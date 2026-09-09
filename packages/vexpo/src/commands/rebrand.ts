@@ -16,6 +16,7 @@ import {
   yep,
 } from "../lib/output.ts";
 import { envSet as convexEnvSet } from "../lib/convex-env.ts";
+import { fileExists } from "../lib/fs.ts";
 import { ensureLine, readAll, removeLines } from "../lib/env-local.ts";
 import { dlx } from "../lib/pkg-manager.ts";
 import { run } from "../lib/proc.ts";
@@ -200,11 +201,7 @@ async function backup(files: string[], stamp: string): Promise<void> {
   const dir = `.rebrand-backup/${stamp}`;
   await mkdir(dir, { recursive: true });
   for (const f of files) {
-    try {
-      await access(f);
-    } catch {
-      continue;
-    }
+    if (!(await fileExists(f))) continue;
     await writeFile(`${dir}/${f.replace(/\//g, "_")}`, await readFile(f, "utf8"));
   }
   ok(`backups → ${dir}`);
@@ -212,32 +209,48 @@ async function backup(files: string[], stamp: string): Promise<void> {
 
 const QUOTED = String.raw`(?:"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*')`;
 
+type AppConfigMarker = {
+  re: RegExp;
+  label: string;
+  replace: (inputs: RebrandInputs) => string;
+};
+
+const APP_CONFIG_MARKERS: AppConfigMarker[] = [
+  {
+    re: new RegExp(
+      String.raw`const BUNDLE_ID = process\.env\.EXPO_PUBLIC_APP_BUNDLE_ID \?\? (?:\x60[^\x60]*\x60|${QUOTED});`,
+    ),
+    label: "BUNDLE_ID assignment",
+    replace: (i) =>
+      `const BUNDLE_ID = process.env.EXPO_PUBLIC_APP_BUNDLE_ID ?? ${JSON.stringify(i.bundleId)};`,
+  },
+  {
+    re: new RegExp(String.raw`const APP_NAME = ${QUOTED};`),
+    label: "APP_NAME",
+    replace: (i) => `const APP_NAME = ${JSON.stringify(i.appName)};`,
+  },
+  {
+    re: new RegExp(String.raw`slug: ${QUOTED},`),
+    label: "slug",
+    replace: (i) => `slug: ${JSON.stringify(i.packageName)},`,
+  },
+  {
+    re: new RegExp(String.raw`const SCHEME = ${QUOTED};`),
+    label: "SCHEME",
+    replace: (i) => `const SCHEME = ${JSON.stringify(i.scheme)};`,
+  },
+];
+
 async function rewriteAppConfig(inputs: RebrandInputs): Promise<void> {
   const file = "app.config.ts";
   let text = await readFile(file, "utf8");
 
-  text = text.replace(
-    new RegExp(
-      String.raw`const BUNDLE_ID = process\.env\.EXPO_PUBLIC_APP_BUNDLE_ID \?\? (?:\x60[^\x60]*\x60|${QUOTED});`,
-    ),
-    () =>
-      `const BUNDLE_ID = process.env.EXPO_PUBLIC_APP_BUNDLE_ID ?? ${JSON.stringify(inputs.bundleId)};`,
-  );
-
-  text = text.replace(
-    new RegExp(String.raw`const APP_NAME = ${QUOTED};`),
-    () => `const APP_NAME = ${JSON.stringify(inputs.appName)};`,
-  );
-
-  text = text.replace(
-    new RegExp(String.raw`slug: ${QUOTED},`),
-    () => `slug: ${JSON.stringify(inputs.packageName)},`,
-  );
-
-  text = text.replace(
-    new RegExp(String.raw`const SCHEME = ${QUOTED};`),
-    () => `const SCHEME = ${JSON.stringify(inputs.scheme)};`,
-  );
+  for (const marker of APP_CONFIG_MARKERS) {
+    if (!marker.re.test(text)) {
+      throw new Error(`${file}: no ${marker.label} to rewrite; restore it from the vexpo template`);
+    }
+    text = text.replace(marker.re, () => marker.replace(inputs));
+  }
 
   await writeFile(file, text);
   ok(`updated ${file}`);
@@ -357,18 +370,7 @@ async function validateAppConfig(): Promise<void> {
   } catch {
     throw new Error("app.config.ts missing; restore it from the vexpo template first");
   }
-  const markers: Array<[RegExp, string]> = [
-    [
-      new RegExp(
-        String.raw`const BUNDLE_ID = process\.env\.EXPO_PUBLIC_APP_BUNDLE_ID \?\? (?:\x60[^\x60]*\x60|${QUOTED});`,
-      ),
-      "BUNDLE_ID assignment",
-    ],
-    [new RegExp(String.raw`const APP_NAME = ${QUOTED};`), "APP_NAME"],
-    [new RegExp(String.raw`slug: ${QUOTED},`), "slug"],
-    [new RegExp(String.raw`const SCHEME = ${QUOTED};`), "SCHEME"],
-  ];
-  for (const [re, label] of markers) {
+  for (const { re, label } of APP_CONFIG_MARKERS) {
     if (!re.test(cfg)) {
       throw new Error(
         `app.config.ts: missing expected ${label}; restore it from the vexpo template first`,
@@ -472,10 +474,7 @@ async function rewriteReadme(inputs: RebrandInputs): Promise<void> {
 async function formatTargets(files: string[]): Promise<void> {
   const present: string[] = [];
   for (const f of files) {
-    try {
-      await access(f);
-      present.push(f);
-    } catch {}
+    if (await fileExists(f)) present.push(f);
   }
   if (present.length === 0) return;
   const { code } = await run([dlx(), "oxfmt", ...present]);

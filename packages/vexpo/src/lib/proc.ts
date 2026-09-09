@@ -1,5 +1,6 @@
 import { spawn as nodeSpawn } from "node:child_process";
 import type { Readable, Writable } from "node:stream";
+import { text } from "node:stream/consumers";
 
 type StdioOption = "inherit" | "pipe" | "ignore";
 
@@ -46,14 +47,8 @@ export function spawn(argv: readonly string[], opts: ProcOpts = {}): SpawnedProc
   };
 }
 
-async function streamText(stream: Readable | null): Promise<string> {
-  if (!stream) return "";
-  const chunks: Buffer[] = [];
-  for await (const chunk of stream) {
-    chunks.push(typeof chunk === "string" ? Buffer.from(chunk) : chunk);
-  }
-  return Buffer.concat(chunks).toString("utf8");
-}
+const streamText = (stream: Readable | null): Promise<string> =>
+  stream ? (text(stream) as Promise<string>) : Promise.resolve("");
 
 export async function run(
   argv: readonly string[],

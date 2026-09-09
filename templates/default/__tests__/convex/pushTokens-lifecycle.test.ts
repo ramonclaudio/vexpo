@@ -1,15 +1,4 @@
 /// <reference types="vite/client" />
-/**
- * The rest of the push-token surface: the sign-out sweep, the daily cleanup,
- * the tombstoning a bad receipt triggers, and the query the sender reads.
- *
- * The cleanup is the one with a trap in it. `by_revoked_and_updatedAt` is a
- * two-field index and Convex orders `false < true`, so an unbounded ascending
- * scan returns every active row before any tombstone: at scale the revoked
- * rows would never be reached. The handler ranges each partition explicitly,
- * and the first test here seeds more active rows than the batch size so a
- * regression to one unbounded scan fails it.
- */
 import { ConvexError } from "convex/values";
 import { describe, expect, test, vi } from "vitest";
 
@@ -92,8 +81,7 @@ describe("pushTokens.cleanupStale", () => {
     const t = initConvexTest();
     const userId = await seedUser(t);
 
-    // Fresh active rows overfilling the batch. Under one unbounded ascending
-    // scan of [revoked, updatedAt] these sort ahead of every tombstone.
+    // Overfill the batch. Convex orders false < true, so active rows precede every tombstone.
     await t.run(async (ctx) => {
       const now = Date.now();
       for (let i = 0; i <= CLEANUP_BATCH; i++) {
@@ -124,7 +112,6 @@ describe("pushTokens.cleanupStale", () => {
 
     expect(await t.run(async (ctx) => ctx.db.get(oldTombstone))).toBeNull();
     expect(await t.run(async (ctx) => ctx.db.get(stale))).toBeNull();
-    // Inside the 30-day window: a client retry can still resurrect it.
     expect(await t.run(async (ctx) => ctx.db.get(recentTombstone))).not.toBeNull();
   });
 

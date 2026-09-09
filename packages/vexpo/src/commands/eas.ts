@@ -38,7 +38,7 @@ async function pushEasRoutedKeys(
   const entries = await readEnvFile(file);
   const easKeys: Array<[string, string]> = [];
   for (const [key, value] of entries) {
-    if (ROUTING[key]?.routes("dev").some((d) => d.type === "eas")) easKeys.push([key, value]);
+    if (ROUTING[key]?.type === "eas") easKeys.push([key, value]);
   }
   if (easKeys.length === 0) return [];
 

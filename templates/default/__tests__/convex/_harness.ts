@@ -1,21 +1,9 @@
 /// <reference types="vite/client" />
-/**
- * Shared convexTest harness for the authed Convex functions.
- *
- * Auth chain: authMutation -> requireAuthenticatedUser -> safeGetAuthUser, which
- * reads the @convex-dev/better-auth component (a `session` by _id whose
- * `expiresAt` is in the future, then a `user` by _id == identity.subject) and
- * the mirrored app `users` row (by `authId`). So an authenticated call needs a
- * component user + unexpired session (we capture their REAL ids), a `users` row
- * keyed by that authId, and an identity whose `subject`/`sessionId` match.
- *
- * convex-test exposes `runInComponent` (to seed component tables) at runtime but
- * not in its public types; `AuthedTest` narrows it back so callers stay typed.
- */
 import { register as registerBetterAuth } from "@convex-dev/better-auth/test";
 import { register as registerRateLimiter } from "@convex-dev/rate-limiter/test";
 import { register as registerResend } from "@convex-dev/resend/test";
 import { convexTest } from "convex-test";
+import { expect, vi } from "vitest";
 
 import type { Id } from "@/convex/_generated/dataModel";
 import schema from "@/convex/schema";
@@ -24,9 +12,6 @@ const rootModules = import.meta.glob("../../convex/**/*.ts");
 
 type SeedCtx = { db: { insert: (table: string, doc: Record<string, unknown>) => Promise<string> } };
 
-// Derive the schema-typed TestConvex from a real convexTest(schema) call, so
-// `t.run` ctx.db is typed to the app schema. `ReturnType<typeof convexTest>`
-// alone falls back to the empty default schema.
 function baseConvexTest() {
   return convexTest(schema, rootModules);
 }
@@ -35,7 +20,6 @@ export type AuthedTest = ReturnType<typeof baseConvexTest> & {
   runInComponent: <T>(component: string, fn: (ctx: SeedCtx) => Promise<T>) => Promise<T>;
 };
 
-/** convexTest with every component the app's functions cross. */
 export function initConvexTest(): AuthedTest {
   const t = baseConvexTest();
   registerBetterAuth(t);
@@ -55,13 +39,6 @@ export type SeededUser = {
   email: string;
 };
 
-/**
- * Seed a Better Auth user + unexpired session and the mirrored app `users` row.
- * Pass `deletedAt` to tombstone the app row, `expiresAt` (in the past) to test
- * an expired session, `name`/`email` to assert specific identity fields, or
- * `isAnonymous` for a guest (which also stamps `guestSince` on the app row the
- * way the `user.onCreate` trigger does).
- */
 export async function seedAuthedUser(
   t: AuthedTest,
   overrides: {
@@ -109,7 +86,6 @@ export async function seedAuthedUser(
   return { authUserId, sessionId, appUserId, name, email };
 }
 
-/** Minimal app `users` row for push tests, no auth chain. */
 export async function seedUser(t: AuthedTest) {
   const now = Date.now();
   return t.run((ctx) =>
@@ -121,10 +97,6 @@ export async function seedUser(t: AuthedTest) {
   );
 }
 
-/**
- * Push token owned by `userId`. `revoked` and `updatedAt` are the two fields
- * `cleanupStale` ranges on, so both are overridable.
- */
 export async function seedToken(
   t: AuthedTest,
   userId: Id<"users">,
@@ -146,7 +118,6 @@ export async function seedToken(
   );
 }
 
-/** Identity for `t.withIdentity(...)` matching a seeded user's component ids. */
 export function identityFor(authUserId: string, sessionId: string) {
   return {
     subject: authUserId,
@@ -156,7 +127,6 @@ export function identityFor(authUserId: string, sessionId: string) {
   };
 }
 
-/** Account-deletion audit rows for one app user, oldest first. */
 export async function auditRowsFor(t: AuthedTest, userId: Id<"users">) {
   return t.run(async (ctx) =>
     ctx.db
@@ -166,11 +136,6 @@ export async function auditRowsFor(t: AuthedTest, userId: Id<"users">) {
   );
 }
 
-/**
- * Better Auth component `session` rows for one auth user. `runInComponent`
- * exposes a real ctx but its public type only narrows `db.insert`, so cast to
- * read; filtering in JS avoids depending on the component's index names.
- */
 export async function componentSessionsFor(t: AuthedTest, authUserId: string) {
   return t.runInComponent("betterAuth", async (ctx) => {
     const db = ctx.db as unknown as {
@@ -179,4 +144,23 @@ export async function componentSessionsFor(t: AuthedTest, authUserId: string) {
     const all = await db.query("session").collect();
     return all.filter((s) => s.userId === authUserId);
   });
+}
+
+export const AUTH_ENV: Record<string, string> = {
+  CONVEX_SITE_URL: "https://test.convex.site",
+  SITE_URL: "vexpo://",
+  BETTER_AUTH_SECRET: "test-secret-at-least-32-characters-long",
+};
+
+export function stubAuthEnv(extra: Record<string, string> = {}): void {
+  for (const [key, value] of Object.entries({ ...AUTH_ENV, ...extra })) vi.stubEnv(key, value);
+}
+
+export function sessionCookie(response: Response): string {
+  const setCookie = response.headers.get("set-cookie");
+  expect(setCookie).toBeTruthy();
+  return setCookie!
+    .split(/,(?=[^;]+?=)/)
+    .map((c) => c.split(";")[0].trim())
+    .join("; ");
 }

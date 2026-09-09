@@ -6,44 +6,35 @@ const RENDER_ORDER: Category[] = ["files", "convex", "resend", "apple", "eas", "
 function glyph(severity: Severity): string {
   switch (severity) {
     case "ok":
-      return `${GREEN}✓${RESET}`;
+      return `${GREEN}ok${RESET}`;
     case "warn":
-      return `${YELLOW}⚠${RESET}`;
+      return `${YELLOW}!!${RESET}`;
     case "fail":
-      return `${RED}✗${RESET}`;
+      return `${RED}xx${RESET}`;
     case "skip":
-      return `${DIM}-${RESET}`;
+      return `${DIM}--${RESET}`;
   }
 }
 
 type RenderStyle = "section" | "compact";
 
-function groupByCategory(checks: Check[]): Map<Category, Check[]> {
-  const byCategory = new Map<Category, Check[]>();
-  for (const check of checks) {
-    const items = byCategory.get(check.category) ?? [];
-    byCategory.set(check.category, items);
-    items.push(check);
-  }
-  return byCategory;
-}
+const TAG_WIDTH = 3;
+const INDENT: Record<RenderStyle, number> = { section: 2, compact: 4 };
 
 function renderCheck(check: Check, style: RenderStyle, width: number): void {
+  const lead = " ".repeat(INDENT[style]);
   line(
     style === "section"
-      ? `  ${glyph(check.severity)} ${BOLD}${check.name.padEnd(width)}${RESET}  ${check.message}`
-      : `    ${glyph(check.severity)} ${check.name.padEnd(width)}  ${check.message}`,
+      ? `${lead}${glyph(check.severity)} ${BOLD}${check.name.padEnd(width)}${RESET}  ${check.message}`
+      : `${lead}${glyph(check.severity)} ${check.name.padEnd(width)}  ${check.message}`,
   );
   if (!check.details) return;
-  line(
-    style === "section"
-      ? `       ${DIM}${check.details}${RESET}`
-      : `        ${DIM}${check.details}${RESET}`,
-  );
+  const pad = " ".repeat(INDENT[style] + TAG_WIDTH + 2);
+  line(`${pad}${DIM}${check.details}${RESET}`);
 }
 
 export function renderVerifyResults(checks: Check[], style: RenderStyle): void {
-  const byCategory = groupByCategory(checks);
+  const byCategory = Map.groupBy(checks, (c) => c.category);
   const globalWidth = Math.max(...checks.map((c) => c.name.length));
   for (const category of RENDER_ORDER) {
     const items = byCategory.get(category);

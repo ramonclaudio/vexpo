@@ -12,17 +12,16 @@ import {
 } from "@expo/ui/swift-ui/modifiers";
 import { useMutation, useQuery } from "convex/react";
 
-import { ProminentButton } from "@/components/ui/prominent-button";
-import { SecondaryButton } from "@/components/ui/secondary-button";
+import { ProminentButton, SecondaryButton } from "@/components/ui/capsule-button";
 import { ErrorText } from "@/components/ui/status-text";
 import { api } from "@/convex/_generated/api";
 import { useColors, useThemedAsset } from "@/hooks/use-theme";
-import { announce } from "@/lib/a11y";
 import { assets } from "@/lib/assets";
 import { authClient } from "@/lib/auth-client";
 import { formatError } from "@/lib/convex-error";
 import { useDynamicFont } from "@/lib/dynamic-font";
 import { haptics } from "@/lib/haptics";
+import { fail, succeed } from "@/lib/form-result";
 
 const ACCOUNT_DELETION_GRACE_MS = 30 * 24 * 60 * 60 * 1000;
 
@@ -42,13 +41,11 @@ export default function RestoreAccountScreen() {
     haptics.medium();
     try {
       await restoreMutation();
-      haptics.success();
-      announce("Account restored");
+      succeed("Account restored");
       router.replace("/");
       return {};
     } catch (err) {
-      haptics.error();
-      return { error: formatError(err) };
+      return fail(formatError(err));
     }
   }, initialState);
 
@@ -92,19 +89,13 @@ export default function RestoreAccountScreen() {
 
   return (
     <Host testID="restore-account-screen" style={{ flex: 1, backgroundColor: colors.background }}>
-      {}
       <ScrollView modifiers={[defaultScrollAnchor("center")]}>
         <VStack
           spacing={24}
           alignment="center"
           modifiers={[frame({ maxWidth: Infinity }), padding({ horizontal: 24, vertical: 48 })]}
         >
-          <ExpoImage
-            source={brandIcon}
-            style={{ width: 72, height: 72 }}
-            contentFit="contain"
-            accessibilityLabel=""
-          />
+          <ExpoImage source={brandIcon} style={{ width: 72, height: 72 }} contentFit="contain" />
 
           <VStack spacing={12} alignment="center">
             <Text

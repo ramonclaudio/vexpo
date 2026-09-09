@@ -17,7 +17,7 @@ vi.mock("../../src/lib/pkg-manager.ts", () => ({
 
 import { run } from "../../src/lib/proc.ts";
 
-const runSpy = run as unknown as ReturnType<typeof vi.fn>;
+const runSpy = vi.mocked(run);
 
 beforeEach(() => {
   runSpy.mockReset();

@@ -98,45 +98,44 @@ async function readEnvCreds(): Promise<AscCredentials | null> {
   return creds;
 }
 
+const cacheAscKey = (creds: AscCredentials, extra: Record<string, unknown> = {}) =>
+  recordStep("asc-key", {
+    issuerId: creds.issuerId,
+    keyId: creds.keyId,
+    p8Path: p8PathOf(creds),
+    ...extra,
+  });
+
+async function tryCachedKey(revalidate: boolean): Promise<number | null> {
+  const cached = await loadAscCreds();
+  if (!cached) {
+    if (!revalidate) return null;
+    bad("no cached ASC key in state.json; run without --revalidate first");
+    return 1;
+  }
+  if (!revalidate) {
+    nop(`cached ASC key found (issuer=${cached.issuerId.slice(0, 8)}…, key=${cached.keyId})`);
+  }
+  const result = await validateAsc(cached);
+  if (result.ok) {
+    const still = revalidate ? "still " : "";
+    ok(`cached key ${still}valid (${result.appCount} app${plural(result.appCount)})`);
+    await cacheAscKey(cached);
+    return 0;
+  }
+  if (revalidate) {
+    bad(`cached key invalid: ${result.reason}`);
+    return 1;
+  }
+  yep(`cached key failed validation: ${result.reason}`);
+  return null;
+}
+
 export async function runAscKey(options: AscKeyOptions): Promise<number> {
   section("App Store Connect API key");
 
-  if (options.revalidate) {
-    const cached = await loadAscCreds();
-    if (!cached) {
-      bad("no cached ASC key in state.json; run without --revalidate first");
-      return 1;
-    }
-
-    const result = await validateAsc(cached);
-    if (!result.ok) {
-      bad(`cached key invalid: ${result.reason}`);
-      return 1;
-    }
-    ok(`cached key still valid (${result.appCount} app${plural(result.appCount)})`);
-    await recordStep("asc-key", {
-      issuerId: cached.issuerId,
-      keyId: cached.keyId,
-      p8Path: p8PathOf(cached),
-    });
-    return 0;
-  }
-
-  const cached = await loadAscCreds();
-  if (cached) {
-    nop(`cached ASC key found (issuer=${cached.issuerId.slice(0, 8)}…, key=${cached.keyId})`);
-    const result = await validateAsc(cached);
-    if (result.ok) {
-      ok(`cached key valid (${result.appCount} app${plural(result.appCount)})`);
-      await recordStep("asc-key", {
-        issuerId: cached.issuerId,
-        keyId: cached.keyId,
-        p8Path: p8PathOf(cached),
-      });
-      return 0;
-    }
-    yep(`cached key failed validation: ${result.reason}`);
-  }
+  const cachedExit = await tryCachedKey(options.revalidate ?? false);
+  if (cachedExit !== null) return cachedExit;
 
   let creds = await readEnvCreds();
   if (!creds) creds = await promptCredsInteractive();
@@ -153,12 +152,7 @@ export async function runAscKey(options: AscKeyOptions): Promise<number> {
   ok(`ASC API authenticated (${validation.appCount} app${plural(validation.appCount)} on team)`);
 
   const p8Path = p8PathOf(creds);
-  await recordStep("asc-key", {
-    issuerId: creds.issuerId,
-    keyId: creds.keyId,
-    p8Path,
-    validatedAt: new Date().toISOString(),
-  });
+  await cacheAscKey(creds, { validatedAt: new Date().toISOString() });
   ok("validated key cached in .setup-state.json");
 
   line();

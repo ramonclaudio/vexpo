@@ -1,8 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
 
-// The hook's import chain pulls in expo-apple-authentication and the auth
-// client, neither of which the node test env can parse. Stub them so the
-// module loads and we can exercise the pure error mapper.
 vi.mock("expo-apple-authentication", () => ({
   isAvailableAsync: vi.fn(),
   signInAsync: vi.fn(),
@@ -14,7 +11,6 @@ vi.mock("@/lib/a11y", () => ({ announce: vi.fn() }));
 
 const { appleErrorMessage } = await import("@/hooks/use-apple-auth");
 
-/** What expo-apple-authentication actually rejects with. */
 function appleError(code: string, reason: string) {
   const e = new Error(
     `${reason} (at ExpoAppleAuthentication/AppleAuthenticationExceptions.swift:61)`,
@@ -22,9 +18,6 @@ function appleError(code: string, reason: string) {
   return Object.assign(e, { code });
 }
 
-// Shipping the Swift `reason` plus its file and line as visible error text is
-// what a reviewer sees, so the mapper's real contract is that nothing internal
-// ever gets through, whatever the code.
 describe("appleErrorMessage", () => {
   it("gives every mapped code plain copy", () => {
     const codes = [

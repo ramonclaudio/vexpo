@@ -1,24 +1,10 @@
-import { mkdtemp, rm } from "node:fs/promises";
-import { tmpdir } from "node:os";
-import path from "node:path";
+import { describe, expect, it } from "vitest";
 
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { useTmpCwd } from "../helpers/tmp-cwd.ts";
 
 import { load, recordStep, touchVerifyAt } from "../../src/lib/state";
 
-let originalCwd: string;
-let workdir: string;
-
-beforeEach(async () => {
-  originalCwd = process.cwd();
-  workdir = await mkdtemp(path.join(tmpdir(), "state-refresh-test-"));
-  process.chdir(workdir);
-});
-
-afterEach(async () => {
-  process.chdir(originalCwd);
-  await rm(workdir, { recursive: true, force: true });
-});
+useTmpCwd("state-refresh-test-");
 
 describe("touchVerifyAt (live-check refresh)", () => {
   it("bumps verifyAt without wiping cached outputs", async () => {
