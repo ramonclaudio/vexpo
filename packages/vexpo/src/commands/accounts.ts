@@ -21,7 +21,7 @@ import {
 } from "../lib/output.ts";
 import { recordStep } from "../lib/state.ts";
 
-export type AccountsOptions = {
+type AccountsOptions = {
   check?: boolean;
   lite?: boolean;
 };
@@ -39,7 +39,7 @@ async function statusExpo(): Promise<AccountRow> {
   const who = await easWhoami();
   return {
     name: "Expo",
-    what: "logged-in EAS CLI",
+    what: "signed-in EAS CLI",
     status: who ? "ok" : "missing",
     detail: who ?? undefined,
   };
@@ -49,7 +49,7 @@ async function statusConvex(): Promise<AccountRow> {
   const yes = await convexLoggedIn();
   return {
     name: "Convex",
-    what: "logged-in Convex CLI",
+    what: "signed-in Convex CLI",
     status: yes ? "ok" : "missing",
   };
 }
@@ -59,18 +59,18 @@ async function statusResend(): Promise<AccountRow> {
   if (!k) {
     return {
       name: "Resend",
-      what: "full-access API key in RESEND_FULL_ACCESS_KEY env",
+      what: "full-access API key in RESEND_FULL_ACCESS_KEY",
       status: "missing",
-      detail: "no env var",
+      detail: "env var not set",
     };
   }
   const access = await probeAccess(k);
   if (access === "full") return { name: "Resend", what: "full-access API key", status: "ok" };
   return {
     name: "Resend",
-    what: "full-access API key in RESEND_FULL_ACCESS_KEY env",
+    what: "full-access API key in RESEND_FULL_ACCESS_KEY",
     status: "missing",
-    detail: access === "sending" ? "key has only sending access" : "key invalid",
+    detail: access === "sending" ? "key only has sending access" : "key rejected",
   };
 }
 
@@ -95,7 +95,7 @@ function printTable(rows: AccountRow[]): void {
         ? `${GREEN}ok${RESET}${r.detail ? ` ${DIM}(${r.detail})${RESET}` : ""}`
         : r.status === "missing"
           ? `${YELLOW}missing${RESET}${r.detail ? ` ${DIM}(${r.detail})${RESET}` : ""}`
-          : `${DIM}manual confirm${RESET}`;
+          : `${DIM}you confirm${RESET}`;
     line(`  ${BOLD}${r.name.padEnd(w)}${RESET}  ${r.what.padEnd(wWhat)}  ${status}`);
   }
 }
@@ -113,47 +113,30 @@ function whereBlock(opts: {
   }
 }
 
-async function walkApple(): Promise<{ enrolled: boolean }> {
+function walkApple(): void {
   whereBlock({
     title: "Apple Developer Program",
     lines: [
       `${BOLD}what:${RESET}   active membership`,
-      `${BOLD}cost:${RESET}   $99/yr, 24-48h to verify (Apple-side, can't be hurried)`,
-      `${BOLD}notes:${RESET}  org accounts also need a D-U-N-S number (free, ~1-2d)`,
-      "vexpo can't enroll you (Apple requires identity verification + agreements).",
+      `${BOLD}cost:${RESET}   $99 a year, and Apple takes a day or two to verify you`,
+      `${BOLD}notes:${RESET}  company accounts also need a D-U-N-S number (free, a day or two)`,
+      "vexpo can't enroll you. Apple checks your identity and has you sign agreements.",
     ],
     urls: [{ label: "enroll", url: "https://developer.apple.com/programs/enroll/" }],
   });
-  if (!process.stdin.isTTY) {
-    nop("non-TTY: assuming enrolled");
-    return { enrolled: true };
-  }
-  const enrolled = await askYesNo("Are you enrolled?", true);
-  if (enrolled) ok("enrollment confirmed");
-  else yep("enrollment incomplete; iOS distribution + Sign In with Apple will be blocked");
-  return { enrolled };
 }
 
-async function walkDomain(): Promise<{ ready: boolean }> {
+function walkDomain(): void {
   whereBlock({
     title: "Domain + DNS access",
     lines: [
       `${BOLD}what:${RESET}   a domain you control DNS for`,
-      `${BOLD}where:${RESET}  any registrar (Cloudflare, GoDaddy, Route 53, Namecheap, Vercel, …)`,
-      `${BOLD}notes:${RESET}  after \`npx vexpo resend\`, you'll add SPF/DKIM/DMARC records at your registrar`,
-      "        Resend's dashboard shows them and verifies. vexpo doesn't automate this.",
-      "vexpo doesn't register domains for you.",
+      `${BOLD}where:${RESET}  any registrar (Cloudflare, GoDaddy, Route 53, Namecheap, Vercel)`,
+      `${BOLD}notes:${RESET}  after \`npx vexpo resend\`, you add the SPF, DKIM and DMARC records at your registrar.`,
+      "        Resend's dashboard shows them and checks them. vexpo doesn't do this part.",
     ],
     urls: [],
   });
-  if (!process.stdin.isTTY) {
-    nop("non-TTY: assuming ready");
-    return { ready: true };
-  }
-  const ready = await askYesNo("Do you have a domain you can edit DNS for?", true);
-  if (ready) ok("domain access confirmed");
-  else yep("no domain; transactional email will be blocked until one is set up");
-  return { ready };
 }
 
 async function walkConvex(): Promise<AccountStatus> {
@@ -164,30 +147,28 @@ async function walkConvex(): Promise<AccountStatus> {
   whereBlock({
     title: "Convex",
     lines: [
-      `${BOLD}what:${RESET}   logged-in Convex CLI session`,
-      `${BOLD}where:${RESET}  free tier at dashboard.convex.dev (instant signup)`,
-      `${BOLD}how:${RESET}    \`npx convex login\` (browser-based OAuth)`,
+      `${BOLD}what:${RESET}   signed-in Convex CLI`,
+      `${BOLD}where:${RESET}  free tier at dashboard.convex.dev`,
+      `${BOLD}how:${RESET}    \`npx convex login\` opens the browser`,
     ],
     urls: [{ label: "dashboard", url: "https://dashboard.convex.dev" }],
   });
   if (!process.stdin.isTTY) {
-    bad("non-TTY: run `npx convex login` then re-run");
+    bad("no terminal to sign in from. run `npx convex login`, then try again");
     return "missing";
   }
   if (await askYesNo(`Run \`${dlx()} convex login\` now?`, false)) {
-    const proc = spawn([dlx(), "convex", "login"], {
-      stdio: ["inherit", "inherit", "inherit"],
-    });
+    const proc = spawn([dlx(), "convex", "login"]);
     if ((await proc.exited) !== 0) {
-      yep("convex login did not complete; run `npx convex login` later");
+      yep("convex login did not complete. Run `npx convex login` later");
       return "missing";
     }
     const after = (await statusConvex()).status;
-    if (after === "ok") ok("Convex authenticated");
-    else yep("still not signed in; run `npx convex login` later");
+    if (after === "ok") ok("signed in to Convex");
+    else yep("still not signed in. run `npx convex login` later");
     return after;
   }
-  nop("`npx convex login` will prompt automatically when `npx vexpo convex` runs");
+  nop("`npx vexpo convex` will ask you to sign in when it runs");
   return "missing";
 }
 
@@ -200,9 +181,9 @@ async function walkExpo(): Promise<AccountStatus> {
   whereBlock({
     title: "Expo",
     lines: [
-      `${BOLD}what:${RESET}   logged-in EAS CLI session`,
-      `${BOLD}where:${RESET}  free tier at expo.dev/signup (instant signup)`,
-      `${BOLD}how:${RESET}    \`npx eas-cli login\` (browser-based OAuth)`,
+      `${BOLD}what:${RESET}   signed-in EAS CLI`,
+      `${BOLD}where:${RESET}  free tier at expo.dev/signup`,
+      `${BOLD}how:${RESET}    \`npx eas-cli login\` opens the browser`,
     ],
     urls: [
       { label: "signup", url: "https://expo.dev/signup" },
@@ -210,20 +191,20 @@ async function walkExpo(): Promise<AccountStatus> {
     ],
   });
   if (!process.stdin.isTTY) {
-    bad("non-TTY: run `npx eas-cli login` then re-run");
+    bad("no terminal to sign in from. run `npx eas-cli login`, then try again");
     return "missing";
   }
   if (await askYesNo(`Run \`${dlx()} eas login\` now?`, false)) {
     if ((await easSpawn(["login"])) !== 0) {
-      yep("eas login did not complete; run `npx eas-cli login` later");
+      yep("eas login did not complete. Run `npx eas-cli login` later");
       return "missing";
     }
     const after = await statusExpo();
     if (after.status === "ok") ok(`signed in as ${after.detail}`);
-    else yep("still not signed in; run `npx eas-cli login` later");
+    else yep("still not signed in. run `npx eas-cli login` later");
     return after.status;
   }
-  nop("`npx eas-cli login` will prompt automatically when the EAS phase of `npx vexpo full` runs");
+  nop("the EAS step of `npx vexpo full` will ask you to sign in when it runs");
   return "missing";
 }
 
@@ -236,34 +217,31 @@ async function walkResend(): Promise<void> {
   whereBlock({
     title: "Resend",
     lines: [
-      `${BOLD}what:${RESET}   full-access API key in ${BOLD}RESEND_FULL_ACCESS_KEY${RESET} env`,
-      `${BOLD}where:${RESET}  free tier at resend.com (instant signup)`,
-      `${BOLD}how:${RESET}    Create API Key → Permission: ${BOLD}Full Access${RESET} → copy → export`,
-      `${BOLD}notes:${RESET}  used once to provision a scoped sending key, then discarded.`,
-      "        `npx vexpo resend` will prompt for it interactively if env isn't set.",
+      `${BOLD}what:${RESET}   a full-access API key in the ${BOLD}RESEND_FULL_ACCESS_KEY${RESET} env var`,
+      `${BOLD}where:${RESET}  free tier at resend.com`,
+      `${BOLD}how:${RESET}    Create API Key, permission ${BOLD}Full Access${RESET}, copy it, export it`,
+      `${BOLD}notes:${RESET}  used once to create the sending key, then thrown away.`,
+      "        `npx vexpo resend` asks for it if the env var isn't set.",
     ],
     urls: [
       { label: "signup", url: "https://resend.com/signup" },
       { label: "API keys", url: "https://resend.com/api-keys" },
     ],
   });
-  nop("`npx vexpo resend` handles the key prompt. Nothing to do here");
+  nop("`npx vexpo resend` asks for the key. nothing to do here");
 }
 
 export async function runAccounts(options: AccountsOptions): Promise<number> {
-  section(options.lite ? "Accounts (lite mode. Convex only)" : "Accounts");
+  section(options.lite ? "Accounts (lite, Convex only)" : "Accounts");
 
   if (options.lite) {
     const convex = await statusConvex();
     printTable([convex]);
     if (options.check) return convex.status === "ok" ? 0 : 1;
-    const convexFinal = await walkConvex();
-    await recordStep("accounts", {
-      lite: true,
-      convex: { signedIn: convexFinal === "ok" },
-    });
+    await walkConvex();
+    await recordStep("accounts");
     line();
-    ok("accounts step complete (lite)");
+    ok("accounts done (lite)");
     return 0;
   }
 
@@ -277,37 +255,31 @@ export async function runAccounts(options: AccountsOptions): Promise<number> {
     return allOk ? 0 : 1;
   }
 
-  const apple = await walkApple();
-  const domain = await walkDomain();
-  const convexFinal = await walkConvex();
-  const expoFinal = await walkExpo();
+  walkApple();
+  walkDomain();
+  await walkConvex();
+  await walkExpo();
   await walkResend();
 
-  section("What you'll be prompted for later");
+  section("What you'll be asked for later");
   note(
     `${BOLD}vexpo apple asc-key${RESET}        App Store Connect API key (issuer ID, key ID, .p8)`,
   );
   note(
     `                           where: ${DIM}https://appstoreconnect.apple.com/access/integrations/api${RESET}`,
   );
-  note(`${BOLD}vexpo apple jwt${RESET}            Sign In with Apple key (.p8 + key ID)`);
+  note(`${BOLD}vexpo apple jwt${RESET}            Sign in with Apple key (.p8 and key ID)`);
   note(
     `                           where: ${DIM}https://developer.apple.com/account/resources/authkeys/list${RESET}`,
   );
   note(
     `${BOLD}DNS records${RESET}                added at your registrar after \`npx vexpo resend\``,
   );
-  note(`                           Resend dashboard shows them + verifies them`);
+  note(`                           the Resend dashboard shows them and checks them`);
 
-  await recordStep("accounts", {
-    apple: { enrolled: apple.enrolled },
-    domain: { ready: domain.ready },
-    expo: { signedIn: expoFinal === "ok" },
-    convex: { signedIn: convexFinal === "ok" },
-    resend: { fullAccessKeyInEnv: resend.status === "ok" },
-  });
+  await recordStep("accounts");
 
   line();
-  ok("accounts step complete");
+  ok("accounts done");
   return 0;
 }

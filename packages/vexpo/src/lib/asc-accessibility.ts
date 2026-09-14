@@ -2,8 +2,6 @@ import type { AscClient } from "./asc-api.ts";
 import { isRecord } from "./json.ts";
 import { entriesOf, error, firstSeen, oneOf, warn, type LintIssue } from "./lint.ts";
 
-export type { LintIssue };
-
 const ACCESSIBILITY_FLAGS = [
   "supportsVoiceover",
   "supportsVoiceControl",
@@ -39,12 +37,17 @@ export type AccessibilityEntry = { deviceFamily: DeviceFamily } & Partial<
   Record<AccessibilityFlag, boolean>
 >;
 
+// `url` is the accessibility link on the product page. A string sets it, null clears it,
+// leaving it out leaves App Store Connect alone.
+export type AccessibilityConfig = { url?: string | null; entries: AccessibilityEntry[] };
+
 export function lintAccessibilityConfig(config: unknown): LintIssue[] {
   const issues: LintIssue[] = [];
   const entries = entriesOf(config, issues);
   if (!entries) return issues;
+  lintUrl(issues, (config as { url?: unknown }).url);
   if (entries.length === 0) {
-    issues.push(warn("`entries` is empty; declare at least one device family."));
+    issues.push(warn("`entries` is empty. Declare at least one device family."));
   }
 
   const seen = new Set<string>();
@@ -74,6 +77,17 @@ export function lintAccessibilityConfig(config: unknown): LintIssue[] {
   return issues;
 }
 
+function lintUrl(issues: LintIssue[], url: unknown): void {
+  if (url === undefined || url === null) return;
+  if (typeof url !== "string" || !url.startsWith("https://")) {
+    issues.push(
+      error(
+        `\`url\` must start with https://, got '${String(url)}'. It is a public link on your App Store page, so Apple rejects anything else.`,
+      ),
+    );
+  }
+}
+
 function lintFlag(
   issues: LintIssue[],
   at: string,
@@ -99,16 +113,19 @@ function lintFlag(
   }
 }
 
-export function fetchAccessibilityDeclarations(client: AscClient, appId: string): Promise<unknown> {
-  return client.request("GET", `/v1/apps/${appId}/accessibilityDeclarations`);
-}
-
-type RemoteDeclaration = {
+export type RemoteDeclaration = {
   id: string;
   attributes?: { deviceFamily?: string; state?: string } & Partial<
     Record<AccessibilityFlag, boolean>
   >;
 };
+
+export function fetchAccessibilityDeclarations(
+  client: AscClient,
+  appId: string,
+): Promise<{ data: RemoteDeclaration[] }> {
+  return client.request("GET", `/v1/apps/${appId}/accessibilityDeclarations`);
+}
 
 // Apple defaults every unlisted flag to false, so a partial PATCH silently drops claims.
 function attributesOf(entry: AccessibilityEntry): Record<string, boolean> {

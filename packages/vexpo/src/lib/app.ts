@@ -1,61 +1,43 @@
-import { access, readFile } from "node:fs/promises";
+import { readFile } from "node:fs/promises";
 
-async function readJsonOrNull<T>(path: string): Promise<T | null> {
+async function readProjectFile(path: string): Promise<string> {
   try {
-    return JSON.parse(await readFile(path, "utf8")) as T;
-  } catch {
-    return null;
-  }
-}
-
-async function readTextOrNull(path: string): Promise<string | null> {
-  try {
-    await access(path);
     return await readFile(path, "utf8");
   } catch {
-    return null;
+    throw new Error(`no ${path} here. Run vexpo inside the app`);
   }
 }
 
 export async function pkgName(): Promise<string> {
-  const pkg = await readJsonOrNull<{ name?: string }>("package.json");
-  return typeof pkg?.name === "string" && pkg.name ? pkg.name : "app";
+  const pkg = JSON.parse(await readProjectFile("package.json")) as { name?: unknown };
+  if (typeof pkg.name !== "string" || !pkg.name) {
+    throw new Error("package.json has no name. Give it one and run this again");
+  }
+  return pkg.name;
 }
 
-export async function declaredAppName(): Promise<string | undefined> {
-  const text = await readTextOrNull("app.config.ts");
-  if (!text) return undefined;
-  const ternary = /name:\s*IS_DEV\s*\?\s*"[^"]+"\s*:\s*"([^"]+)"/.exec(text)?.[1];
-  if (ternary) return ternary;
-  return /\bname:\s*["']([^"']+)["']/.exec(text)?.[1];
+export async function appConfigConst(name: string): Promise<string | undefined> {
+  const text = await readProjectFile("app.config.ts");
+  return new RegExp(`const ${name} = ["']([^"']+)["'];`).exec(text)?.[1];
 }
 
-export async function appName(): Promise<string> {
-  const declared = await declaredAppName();
-  if (declared) return declared;
-  const name = await pkgName();
-  const clean = name.replace(/^@[^/]+\//, "");
-  const parts = clean.split(/[-_]/).filter(Boolean);
-  if (parts.length === 0) return "App";
-  return parts.map((w) => (w[0] ?? "").toUpperCase() + w.slice(1)).join(" ");
+async function requireConst(name: string): Promise<string> {
+  const value = await appConfigConst(name);
+  if (!value)
+    throw new Error(`app.config.ts has no \`const ${name}\`. Restore it from the template`);
+  return value;
 }
 
-export async function scheme(): Promise<string> {
-  const text = await readTextOrNull("app.config.ts");
-  if (!text) return "app";
-  return /const SCHEME = ["']([^"']+)["'];/.exec(text)?.[1] ?? "app";
-}
+export const appName = (): Promise<string> => requireConst("APP_NAME");
+export const scheme = (): Promise<string> => requireConst("SCHEME");
 
 export async function bundleIdFallback(): Promise<string | null> {
-  const text = await readTextOrNull("app.config.ts");
-  if (!text) return null;
+  const text = await readProjectFile("app.config.ts");
   return /EXPO_PUBLIC_APP_BUNDLE_ID\s*\?\?\s*["`]([^"`]+)["`]/.exec(text)?.[1] ?? null;
 }
 
 export async function appleTeamIdFallback(): Promise<string | null> {
-  const text = await readTextOrNull("app.config.ts");
-  if (!text) return null;
+  const text = await readProjectFile("app.config.ts");
   const value = /EXPO_PUBLIC_APPLE_TEAM_ID\s*\?\?\s*["`]([^"`]+)["`]/.exec(text)?.[1] ?? null;
-  if (!value || value === "ABCDE12345") return null;
-  return value;
+  return value === "ABCDE12345" ? null : value;
 }

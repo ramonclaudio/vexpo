@@ -1,13 +1,11 @@
-import { access, readFile } from "node:fs/promises";
+import { readFile } from "node:fs/promises";
 
 import { easJson, easRun, easSpawn, easText } from "./eas-cli.ts";
 import { parseKeyValueLines } from "./env-files.ts";
-import { bad, note } from "./output.ts";
+import { readOne } from "./env-local.ts";
+import { fileExists } from "./fs.ts";
 
-export async function checkCli(): Promise<{ ok: true; version: string } | { ok: false }> {
-  const v = await version();
-  return v === null ? { ok: false } : { ok: true, version: v };
-}
+export type EasEnvironment = "production" | "development";
 
 export async function whoami(): Promise<string | null> {
   const { code, stdout } = await easText(["whoami"]);
@@ -21,26 +19,17 @@ function nonEmpty(value: string | undefined): string | null {
 }
 
 async function projectIdFromAppJson(): Promise<string | null> {
-  try {
-    await access("app.json");
-    const json = JSON.parse(await readFile("app.json", "utf8")) as {
-      expo?: { extra?: { eas?: { projectId?: string } } };
-    };
-    return nonEmpty(json.expo?.extra?.eas?.projectId);
-  } catch {
-    return null;
-  }
+  if (!(await fileExists("app.json"))) return null;
+  const json = JSON.parse(await readFile("app.json", "utf8")) as {
+    expo?: { extra?: { eas?: { projectId?: string } } };
+  };
+  return nonEmpty(json.expo?.extra?.eas?.projectId);
 }
 
 async function projectIdFromEnvFile(): Promise<string | null> {
-  try {
-    const { readOne } = await import("./env-local.ts");
-    const value = nonEmpty(await readOne("EAS_PROJECT_ID"));
-    if (value) process.env.EAS_PROJECT_ID = value;
-    return value;
-  } catch {
-    return null;
-  }
+  const value = nonEmpty(await readOne("EAS_PROJECT_ID"));
+  if (value) process.env.EAS_PROJECT_ID = value;
+  return value;
 }
 
 export async function resolveProjectId(): Promise<string | null> {
@@ -51,9 +40,7 @@ export async function resolveProjectId(): Promise<string | null> {
   );
 }
 
-export async function envList(
-  environment: "production" | "preview" | "development" = "production",
-): Promise<Map<string, string> | null> {
+export async function envList(environment: EasEnvironment): Promise<Map<string, string> | null> {
   const { code, stdout } = await easText([
     "env:list",
     "--environment",
@@ -65,67 +52,19 @@ export async function envList(
   return parseKeyValueLines(stdout);
 }
 
-export type EasEnvironment = "production" | "preview" | "development";
-
-export type EasEnvType = "string" | "file";
-
-export async function envCreate(
-  name: string,
-  value: string,
-  visibility: "plaintext" | "secret",
-  environments: readonly EasEnvironment[] = ["production", "preview", "development"],
-  opts?: { type?: EasEnvType },
-): Promise<void> {
-  await easRun([
-    "env:create",
-    "--name",
-    name,
-    "--value",
-    value,
-    "--visibility",
-    visibility,
-    ...(opts?.type ? ["--type", opts.type] : []),
-    ...environments.flatMap((env) => ["--environment", env]),
-    "--non-interactive",
-  ]);
-}
-
-export async function envUpdate(
-  name: string,
-  value: string,
-  visibility: "plaintext" | "secret",
-  environments: readonly EasEnvironment[] = ["production", "preview", "development"],
-  opts?: { type?: EasEnvType },
-): Promise<void> {
-  await easRun([
-    "env:update",
-    "--variable-name",
-    name,
-    "--value",
-    value,
-    "--visibility",
-    visibility,
-    ...(opts?.type ? ["--type", opts.type] : []),
-    ...environments.flatMap((env) => ["--variable-environment", env]),
-    "--non-interactive",
-  ]);
-}
-
 export async function envPush(opts: {
   path: string;
-  environments: readonly EasEnvironment[];
+  environment: EasEnvironment;
   force?: boolean;
 }): Promise<void> {
-  for (const env of opts.environments) {
-    await easRun([
-      "env:push",
-      "--environment",
-      env,
-      "--path",
-      opts.path,
-      ...(opts.force ? ["--force"] : []),
-    ]);
-  }
+  await easRun([
+    "env:push",
+    "--environment",
+    opts.environment,
+    "--path",
+    opts.path,
+    ...(opts.force ? ["--force"] : []),
+  ]);
 }
 
 export async function init(): Promise<{ ok: boolean; projectId?: string }> {
@@ -138,33 +77,26 @@ export async function init(): Promise<{ ok: boolean; projectId?: string }> {
   return { ok: !!id, projectId: id ?? undefined };
 }
 
-type NamedResource = "channel" | "branch";
-
-async function listNamed(kind: NamedResource): Promise<string[]> {
+async function listChannels(): Promise<string[]> {
   const parsed = await easJson<
     Array<{ name?: string }> | { currentPage?: Array<{ name?: string }> }
-  >([`${kind}:list`, "--limit", "25"]);
+  >(["channel:list", "--limit", "25"]);
   const rows = Array.isArray(parsed) ? parsed : (parsed.currentPage ?? []);
   return rows.map((r) => r.name ?? "").filter(Boolean);
 }
 
-async function ensureNamed(kind: NamedResource, names: readonly string[]): Promise<string[]> {
-  const existing = new Set(await listNamed(kind));
+// channel:create also creates the branch of the same name, so branches need no step.
+export async function ensureChannels(names: readonly string[]): Promise<string[]> {
+  const existing = new Set(await listChannels());
   const created: string[] = [];
   for (const name of names) {
     if (existing.has(name)) continue;
-    const { code } = await easText([`${kind}:create`, name, "--non-interactive", "--json"]);
-    if (code !== 0) throw new Error(`eas ${kind}:create ${name} failed`);
+    const { code } = await easText(["channel:create", name, "--non-interactive", "--json"]);
+    if (code !== 0) throw new Error(`eas channel:create ${name} failed`);
     created.push(name);
   }
   return created;
 }
-
-export const ensureChannels = (names: readonly string[]): Promise<string[]> =>
-  ensureNamed("channel", names);
-
-export const ensureBranches = (names: readonly string[]): Promise<string[]> =>
-  ensureNamed("branch", names);
 
 export async function projectInfo(): Promise<{ fullName: string; id: string } | null> {
   const { code, stdout } = await easText(["project:info"]);
@@ -189,16 +121,3 @@ export async function version(): Promise<string | null> {
   const m = /eas-cli\/([^\s]+)/.exec(text);
   return m?.[1] ?? text;
 }
-
-export function explainEnvListFailure(environment: string): void {
-  bad(`could not list EAS ${environment} env`);
-  note("run `npx eas-cli login` and `npx eas-cli init` first");
-}
-
-export const EAS_ROTATION_SECRETS = [
-  "APPLE_P8_PRIVATE_KEY",
-  "APPLE_TEAM_ID",
-  "APPLE_KEY_ID",
-  "APPLE_SERVICES_ID",
-  "CONVEX_DEPLOY_KEY",
-] as const;

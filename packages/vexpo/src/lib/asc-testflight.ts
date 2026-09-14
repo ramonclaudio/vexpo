@@ -7,31 +7,23 @@ export type BetaGroup = {
     name?: string;
     isInternalGroup?: boolean;
     publicLink?: string;
-    feedbackEnabled?: boolean;
-    createdDate?: string;
   };
-  relationships?: { app?: { data?: { id: string } } };
 };
 
-export type BetaTester = {
+type BetaTester = {
   type: "betaTesters";
   id: string;
   attributes: {
     firstName?: string;
     lastName?: string;
     email?: string;
-    inviteType?: "EMAIL" | "PUBLIC_LINK";
     state?: string;
   };
 };
 
-export type BetaTesterInvitation = {
-  type: "betaTesterInvitations";
-  id: string;
-  attributes: { state?: string };
-};
+type BetaTesterInvitation = { type: "betaTesterInvitations"; id: string };
 
-export type BetaBuildLocalization = {
+type BetaBuildLocalization = {
   type: "betaBuildLocalizations";
   id: string;
   attributes: { whatsNew?: string; locale?: string };
@@ -43,24 +35,23 @@ type BetaFeedbackAttributes = {
   email?: string;
   deviceModel?: string;
   osVersion?: string;
-  locale?: string;
-  appPlatform?: string;
-  buildBundleId?: string;
 };
 
-export type BetaFeedbackScreenshotSubmission = {
+type BetaFeedbackScreenshotSubmission = {
   type: "betaFeedbackScreenshotSubmissions";
   id: string;
   attributes: BetaFeedbackAttributes & {
-    screenshots?: Array<{ url?: string; expirationDate?: string; fileName?: string }>;
+    screenshots?: Array<{ url?: string }>;
   };
 };
 
-export type BetaFeedbackCrashSubmission = {
+type BetaFeedbackCrashSubmission = {
   type: "betaFeedbackCrashSubmissions";
   id: string;
   attributes: BetaFeedbackAttributes;
 };
+
+export type TestflightClient = ReturnType<typeof testflight>;
 
 export function testflight(client: AscClient) {
   const feedback =
@@ -79,11 +70,8 @@ export function testflight(client: AscClient) {
       crashes: feedback<BetaFeedbackCrashSubmission>("betaFeedbackCrashSubmissions"),
     },
     betaGroups: {
-      list(filter?: { appId?: string; name?: string }): Promise<BetaGroup[]> {
-        const query: Record<string, string> = {};
-        if (filter?.appId) query["filter[app]"] = filter.appId;
-        if (filter?.name) query["filter[name]"] = filter.name;
-        return client.paginatedList<BetaGroup>("/v1/betaGroups", query);
+      list(appId: string): Promise<BetaGroup[]> {
+        return client.paginatedList<BetaGroup>("/v1/betaGroups", { "filter[app]": appId });
       },
       async get(id: string): Promise<BetaGroup> {
         const res = await client.request<{ data: BetaGroup }>("GET", `/v1/betaGroups/${id}`);

@@ -1,14 +1,9 @@
 import { existsSync, readFileSync } from "node:fs";
 
-import {
-  appleTeamIdFallback,
-  bundleIdFallback,
-  declaredAppName,
-  scheme as appScheme,
-} from "./app.ts";
+import { appConfigConst, bundleIdFallback } from "./app.ts";
 import { validate as ascValidate, makeAscClient, type AscCredentials } from "./asc-api.ts";
 import { loadAscCreds } from "./asc-state.ts";
-import { deploymentSlug, envMap as convexEnvMap, type ConvexTarget } from "./convex-env.ts";
+import { deploymentSlug, envMap as convexEnvMap } from "./convex-env.ts";
 import {
   checkToken,
   deploymentsOfType,
@@ -19,14 +14,20 @@ import { ascStatus } from "./eas-integrations.ts";
 import { fetchWithTimeout } from "./http-retry.ts";
 import { submitProfilesMissingAscAppId } from "./eas-submit.ts";
 import {
-  EAS_ROTATION_SECRETS,
   envList as easEnvList,
   resolveProjectId,
   projectInfo as easProjectInfo,
   whoami as easWhoami,
+  type EasEnvironment,
 } from "./eas-project.ts";
 import { findProdEnvFile, readEnvFile, type Channel } from "./env-files.ts";
-import { listDomains, listWebhooks, probeAccess } from "./resend-api.ts";
+import {
+  listDomains,
+  listWebhooks,
+  probeAccess,
+  type ResendDomain,
+  type ResendWebhook,
+} from "./resend-api.ts";
 import { errText, plural } from "./output.ts";
 
 export type { Channel };
@@ -43,26 +44,19 @@ export type Check = {
   details?: string;
 };
 
-export type VerifyContext = {
+type VerifyContext = {
   channel: Channel;
   envLocal: Map<string, string>;
   envProd: Map<string, string>;
   convexEnv: Map<string, string> | null;
   convexProdEnv: Map<string, string> | null;
   appConfig: AppConfigFacts;
-  storeConfig?: StoreConfigFacts;
   ascCreds: AscCredentials | null;
 };
 
-export type AppConfigFacts = {
+type AppConfigFacts = {
   name?: string;
   bundleIdFallback?: string;
-  teamIdFallback?: string;
-  scheme?: string;
-};
-
-type StoreConfigFacts = {
-  reviewEmail?: string;
 };
 
 const check =
@@ -161,7 +155,7 @@ function betterAuthSecretChecks(env: Map<string, string> | null, channel: Channe
       warn(
         "convex",
         "env-read",
-        `Convex env unreadable on ${channel}; per-var checks skipped`,
+        `Convex env unreadable on ${channel}, per-var checks skipped`,
         channel === "prod"
           ? "check CONVEX_DEPLOY_KEY in .env.prod, or run `npx convex login`"
           : "run `npx convex login`",
@@ -172,12 +166,7 @@ function betterAuthSecretChecks(env: Map<string, string> | null, channel: Channe
   if (!secret) {
     return [fail("convex", "better-auth-secret", `not set on Convex (${channel})`)];
   }
-  let bytes: Buffer;
-  try {
-    bytes = Buffer.from(secret, "base64");
-  } catch {
-    return [fail("convex", "better-auth-secret", "BETTER_AUTH_SECRET not valid base64")];
-  }
+  const bytes = Buffer.from(secret, "base64");
   if (bytes.length >= 32) return [ok("convex", "better-auth-secret", `${bytes.length}b`)];
   return [
     warn(
@@ -202,7 +191,7 @@ async function convexDeploymentChecks(local: Map<string, string>): Promise<Check
       "convex",
       "deployments",
       `${devs.length} dev deployments in this project`,
-      `${devs.map(describeDeployment).join(", ")} — pick one canonical, delete the others`,
+      `${devs.map(describeDeployment).join(", ")}. Keep one, delete the others`,
     ),
   ];
 }
@@ -222,13 +211,10 @@ async function verifyConvex(ctx: VerifyContext): Promise<Check[]> {
   ];
 }
 
-type ResendDomain = { id: string; name: string; status: string };
-type ResendWebhook = { id: string; endpoint: string; status: string };
-
 function resendUnconfiguredChecks(env: Map<string, string>, channel: Channel): Check[] {
   const required = env.get("REQUIRE_EMAIL_VERIFICATION");
   if (!required || required === "false") {
-    return [skip("resend", "api-key-set", "lite mode (run `npx vexpo full` to provision)")];
+    return [skip("resend", "api-key-set", "lite mode (run `npx vexpo full` to set up Resend)")];
   }
   return [fail("resend", "api-key-set", `RESEND_API_KEY not set on Convex (${channel})`)];
 }
@@ -245,7 +231,7 @@ async function listResendResources(
         skip(
           "resend",
           "domain-coverage",
-          `key is sending-restricted; can't enumerate domains/webhooks`,
+          "key can only send, so domains and webhooks can't be listed",
         ),
       ],
     };
@@ -321,17 +307,17 @@ function missingWebhookCheck(
   return warn(
     "resend",
     "webhook-endpoint",
-    `no webhook for this deployment; ${stale.length} point at other convex.site deployments (stale after a deployment migration)`,
-    `run \`vexpo resend --repoint${channel === "prod" ? " --prod" : ""}\` to move it to ${expectedEndpoint} and realign RESEND_WEBHOOK_SECRET. stale: ${stale.join(", ")}`,
+    `no webhook for this deployment. ${stale.length} point at other convex.site deployments, stale after a deployment migration`,
+    `run \`vexpo resend --repoint${channel === "prod" ? " --prod" : ""}\` to move it to ${expectedEndpoint} and update RESEND_WEBHOOK_SECRET. stale: ${stale.join(", ")}`,
   );
 }
 
 function webhookEventChecks(webhook: ResendWebhook): Check[] {
   const required = ["email.bounced", "email.complained", "email.suppressed", "email.failed"];
-  const events = (webhook as { events?: string[] }).events ?? [];
+  const events = webhook.events ?? [];
   const missing = required.filter((e) => !events.includes(e));
   if (missing.length === 0) {
-    return [ok("resend", "webhook-events", `${required.length} actionable events covered`)];
+    return [ok("resend", "webhook-events", `subscribed to all ${required.length}`)];
   }
   return [
     warn(
@@ -366,7 +352,7 @@ async function verifyResend(ctx: VerifyContext): Promise<Check[]> {
   const env = convexEnvFor(ctx);
   if (env === null) {
     return [
-      skip("resend", "api-key-set", `Convex env unreadable on ${ctx.channel}; checks skipped`),
+      skip("resend", "api-key-set", `Convex env unreadable on ${ctx.channel}, checks skipped`),
     ];
   }
   const apiKey = env.get("RESEND_API_KEY");
@@ -399,7 +385,7 @@ function appleIdFormatChecks(
   const checks: Check[] = [];
   if (env === null) {
     checks.push(
-      skip("apple", "convex-env", `Convex env unreadable on ${channel}; env checks skipped`),
+      skip("apple", "convex-env", `Convex env unreadable on ${channel}, env checks skipped`),
     );
   } else if (!ids.teamId) {
     checks.push(warn("apple", "team-id-set", "APPLE_TEAM_ID not set"));
@@ -469,18 +455,18 @@ async function servicesIdChecks(creds: AscCredentials, servicesId: string): Prom
   try {
     const matches = await makeAscClient(creds).bundleIds.list({ identifier: servicesId });
     if (matches.length > 0) {
-      return [ok("apple", "services-id-exists", `${servicesId} found in ASC`)];
+      return [ok("apple", "services-id-exists", `${servicesId} found in App Store Connect`)];
     }
     return [
       fail(
         "apple",
         "services-id-exists",
         `${servicesId} not found in App Store Connect`,
-        "run `npx vexpo apple services-id` to provision it",
+        "run `npx vexpo apple services-id` to create it",
       ),
     ];
   } catch (e) {
-    return [warn("apple", "services-id-lookup", `ASC lookup failed: ${errText(e)}`)];
+    return [warn("apple", "services-id-lookup", `App Store Connect lookup failed: ${errText(e)}`)];
   }
 }
 
@@ -489,7 +475,13 @@ async function ascKeyChecks(
   servicesId: string | undefined,
 ): Promise<Check[]> {
   if (!creds) {
-    return [skip("apple", "asc-key-valid", "no cached ASC creds (run `npx vexpo apple asc-key`)")];
+    return [
+      skip(
+        "apple",
+        "asc-key-valid",
+        "no App Store Connect key cached (run `npx vexpo apple asc-key`)",
+      ),
+    ];
   }
   const v = await ascValidate(creds);
   if (!v.ok) return [fail("apple", "asc-key-valid", v.reason)];
@@ -523,31 +515,26 @@ async function verifyApple(ctx: VerifyContext): Promise<Check[]> {
   ];
 }
 
-type EasEnvName = "production" | "preview" | "development";
-const EAS_ENVS: readonly EasEnvName[] = ["production", "preview", "development"];
+const EAS_ENVS: readonly EasEnvironment[] = ["production", "development"];
 
 async function easSignInCheck(): Promise<{ signedIn: boolean; check: Check }> {
-  try {
-    const who = await easWhoami();
-    return {
-      signedIn: !!who,
-      check: who
-        ? ok("eas", "signed-in", who)
-        : warn("eas", "signed-in", "not signed in (run `npx eas-cli login`)"),
-    };
-  } catch {
-    return { signedIn: false, check: skip("eas", "signed-in", "eas CLI not available") };
-  }
+  const who = await easWhoami();
+  return {
+    signedIn: !!who,
+    check: who
+      ? ok("eas", "signed-in", who)
+      : warn("eas", "signed-in", "not signed in (run `npx eas-cli login`)"),
+  };
 }
 
-function easProjectIdCheck(projectId: string | null, provisioned: boolean): Check {
+function easProjectIdCheck(projectId: string | null, hasEasEnv: boolean): Check {
   if (projectId) return ok("eas", "project-id", projectId);
-  if (provisioned) {
+  if (hasEasEnv) {
     return warn(
       "eas",
       "project-id",
-      "EAS env is provisioned but projectId is unresolved",
-      "set EAS_PROJECT_ID in .env.local (app.json is intentionally stubbed)",
+      "EAS env has values but no project id was found",
+      "run `npx eas-cli init` to link the project, or set EAS_PROJECT_ID in .env.local",
     );
   }
   return fail("eas", "project-id", "no projectId in app.json, EAS_PROJECT_ID env, or .env.local");
@@ -555,29 +542,23 @@ function easProjectIdCheck(projectId: string | null, provisioned: boolean): Chec
 
 async function easProjectInfoChecks(projectId: string | null, signedIn: boolean): Promise<Check[]> {
   if (!projectId) return [];
-  try {
-    const info = await easProjectInfo();
-    if (info && info.id === projectId) return [ok("eas", "project-info", info.fullName)];
-    if (info) {
-      return [
-        fail(
-          "eas",
-          "project-info",
-          `local projectId (${projectId}) doesn't match resolved project (${info.id})`,
-          "run `eas init` to re-link (or `vexpo full`)",
-        ),
-      ];
-    }
-    if (!signedIn) return [skip("eas", "project-info", "not signed in")];
+  const info = await easProjectInfo();
+  if (info && info.id === projectId) return [ok("eas", "project-info", info.fullName)];
+  if (info) {
     return [
-      warn("eas", "project-info", "eas project:info failed (project deleted or transferred?)"),
+      fail(
+        "eas",
+        "project-info",
+        `local projectId (${projectId}) doesn't match resolved project (${info.id})`,
+        "run `eas init` to re-link (or `vexpo full`)",
+      ),
     ];
-  } catch {
-    return [skip("eas", "project-info", "eas-cli not available")];
   }
+  if (!signedIn) return [skip("eas", "project-info", "not signed in")];
+  return [warn("eas", "project-info", "eas project:info failed (project deleted or transferred?)")];
 }
 
-function convexUrlDriftChecks(env: EasEnvName, expected?: string, actual?: string): Check[] {
+function convexUrlDriftChecks(env: EasEnvironment, expected?: string, actual?: string): Check[] {
   if (!expected || !actual) return [];
   const expSlug = deploymentSlugFromHost(hostnameOf(expected) ?? "");
   const actSlug = deploymentSlugFromHost(hostnameOf(actual) ?? "");
@@ -588,30 +569,13 @@ function convexUrlDriftChecks(env: EasEnvName, expected?: string, actual?: strin
       "eas",
       `convex-url-${env}`,
       `EAS points at ${actSlug}, local at ${expSlug}`,
-      "run `vexpo env push` + `vexpo env convex-key` to repoint EAS at the active deployment",
-    ),
-  ];
-}
-
-function rotationSecretChecks(list: Map<string, string>): Check[] {
-  const missing = EAS_ROTATION_SECRETS.filter((k) => !list.has(k));
-  if (missing.length === 0) {
-    return [
-      ok("eas", "rotation-secrets", `all ${EAS_ROTATION_SECRETS.length} present (production)`),
-    ];
-  }
-  return [
-    warn(
-      "eas",
-      "rotation-secrets",
-      `missing ${missing.join(", ")}`,
-      "set with `eas env:create --visibility secret --environment production`",
+      "run `vexpo env push` to point EAS at the active deployment",
     ),
   ];
 }
 
 function easEnvChecks(
-  env: EasEnvName,
+  env: EasEnvironment,
   list: Map<string, string> | null,
   ctx: VerifyContext,
 ): Check[] {
@@ -627,7 +591,7 @@ function easEnvChecks(
           "eas",
           `env-${env}`,
           `missing ${missing.join(", ")}`,
-          "run `npx vexpo full` to init EAS + mirror env",
+          "run `npx vexpo full` to set up EAS and push the env",
         );
 
   const local = env === "development" ? ctx.envLocal : ctx.envProd;
@@ -638,7 +602,6 @@ function easEnvChecks(
       local.get("EXPO_PUBLIC_CONVEX_URL"),
       list.get("EXPO_PUBLIC_CONVEX_URL"),
     ),
-    ...(env === "production" ? rotationSecretChecks(list) : []),
   ];
 }
 
@@ -651,7 +614,7 @@ function ascSubmitIdChecks(): Check[] {
       "eas",
       "asc-submit-id",
       `submit profile${plural(missing.length)} ${missing.join(", ")} missing ascAppId`,
-      "run `vexpo asc connect` to write it; non-interactive `eas submit` (CI) fails without it",
+      "run `vexpo asc connect` to write it. `eas submit --non-interactive` fails without it",
     ),
   ];
 }
@@ -665,7 +628,7 @@ async function ascIntegrationChecks(): Promise<Check[]> {
           "eas",
           "asc-integration",
           `not connected (${status.status})`,
-          "run `vexpo asc connect` in a terminal; if the key picker shows only stale keys, its create-or-upload entry mints the EAS-managed key (a second key alongside eas.json's is by design)",
+          "run `vexpo asc connect` in a terminal. If the key picker only shows old keys, pick create or upload to make the EAS-managed key. That is a second key next to the one in eas.json, which is expected",
         ),
       ];
     }
@@ -679,26 +642,22 @@ async function ascIntegrationChecks(): Promise<Check[]> {
 }
 
 async function verifyEas(ctx: VerifyContext): Promise<Check[]> {
-  let projectId: string | null = null;
-  try {
-    projectId = await resolveProjectId();
-  } catch {}
-
+  const projectId = await resolveProjectId();
   if (!projectId) {
     const rev = convexEnvFor(ctx)?.get("REQUIRE_EMAIL_VERIFICATION");
     if (!rev || rev === "false") {
-      return [skip("eas", "project-id", "lite mode (run `npx vexpo full` to init EAS)")];
+      return [skip("eas", "project-id", "lite mode (run `npx vexpo full` to set up EAS)")];
     }
   }
 
   const signIn = await easSignInCheck();
   const checks: Check[] = [signIn.check];
 
-  const envMaps = new Map<EasEnvName, Map<string, string> | null>();
+  const envMaps = new Map<EasEnvironment, Map<string, string> | null>();
   for (const e of EAS_ENVS) envMaps.set(e, await easEnvList(e));
-  const provisioned = [...envMaps.values()].some((m) => m !== null && m.size > 0);
+  const hasEasEnv = [...envMaps.values()].some((m) => m !== null && m.size > 0);
 
-  const idCheck = easProjectIdCheck(projectId, provisioned);
+  const idCheck = easProjectIdCheck(projectId, hasEasEnv);
   checks.push(idCheck);
   if (idCheck.severity === "fail") return checks;
 
@@ -832,17 +791,13 @@ function verifyFiles(ctx: VerifyContext): Check[] {
 }
 
 export async function readContext(channel: Channel): Promise<VerifyContext> {
-  const prodEnvFile = (await findProdEnvFile()) ?? undefined;
+  const prodEnvFile = await findProdEnvFile();
   const [envLocal, envProd, convexEnv, convexProdEnv, appConfigFacts, ascCreds] = await Promise.all(
     [
       readEnvFile(".env.local"),
-      readEnvFile(".env.prod").then(async (m) => (m.size > 0 ? m : readEnvFile(".env.production"))),
+      prodEnvFile ? readEnvFile(prodEnvFile) : new Map<string, string>(),
       convexEnvMap().catch(() => null),
-      prodEnvFile
-        ? convexEnvMap({ prod: true, envFile: prodEnvFile } satisfies ConvexTarget).catch(
-            () => null,
-          )
-        : Promise.resolve(null),
+      prodEnvFile ? convexEnvMap({ prod: true, envFile: prodEnvFile }).catch(() => null) : null,
       readAppConfigFacts(),
       loadAscCreds(),
     ],
@@ -859,19 +814,9 @@ export async function readContext(channel: Channel): Promise<VerifyContext> {
   };
 }
 
-export async function readAppConfigFacts(): Promise<AppConfigFacts> {
-  const [name, scheme, bundleId, teamId] = await Promise.all([
-    declaredAppName(),
-    appScheme(),
-    bundleIdFallback(),
-    appleTeamIdFallback(),
-  ]);
-  return {
-    name,
-    bundleIdFallback: bundleId ?? undefined,
-    teamIdFallback: teamId ?? undefined,
-    scheme,
-  };
+async function readAppConfigFacts(): Promise<AppConfigFacts> {
+  const [name, bundleId] = await Promise.all([appConfigConst("APP_NAME"), bundleIdFallback()]);
+  return { name, bundleIdFallback: bundleId ?? undefined };
 }
 
 export async function verifyAll(ctx: VerifyContext): Promise<Check[]> {

@@ -1,27 +1,20 @@
 import { createSign } from "node:crypto";
-import { access, readFile } from "node:fs/promises";
+import { readFile } from "node:fs/promises";
 
 import { expandTilde } from "./path.ts";
 
-export type PrivateKeySource = { contents: string } | { path: string };
-
-async function readPrivateKey(source: PrivateKeySource): Promise<string> {
-  if ("contents" in source) return source.contents;
-  const path = expandTilde(source.path);
-  try {
-    await access(path);
-  } catch {
-    throw new Error(`p8 file not found at ${path}`);
-  }
-  return readFile(path, "utf8");
-}
-
 export async function signEs256(
-  key: PrivateKeySource,
+  p8Path: string,
   header: Record<string, string | number>,
   payload: Record<string, string | number>,
 ): Promise<string> {
-  const privateKey = await readPrivateKey(key);
+  const path = expandTilde(p8Path);
+  let privateKey: string;
+  try {
+    privateKey = await readFile(path, "utf8");
+  } catch {
+    throw new Error(`p8 file not found at ${path}`);
+  }
   const headerB64 = Buffer.from(JSON.stringify(header)).toString("base64url");
   const payloadB64 = Buffer.from(JSON.stringify(payload)).toString("base64url");
   const signingInput = `${headerB64}.${payloadB64}`;

@@ -27,7 +27,7 @@ type ResendDomainRecord = {
   priority?: number;
 };
 
-export type ResendDomainDetail = {
+type ResendDomainDetail = {
   id: string;
   name: string;
   status: string;
@@ -128,7 +128,7 @@ export async function listWebhooks(key: string): Promise<ResendWebhook[]> {
   return (await call<{ data: ResendWebhook[] }>("GET", "/webhooks", key)).data;
 }
 
-async function createWebhook(
+async function postWebhook(
   key: string,
   args: { endpoint: string; events: string[] },
 ): Promise<{ id: string; signing_secret: string }> {
@@ -151,7 +151,7 @@ const RESEND_TRANSACTIONAL_EVENTS = [
   "email.clicked",
 ] as const;
 
-export async function provisionSendingKey(
+export async function createSendingKey(
   fullKey: string,
   name: string,
   domainId: string,
@@ -167,14 +167,16 @@ export async function provisionSendingKey(
   return created.token;
 }
 
-export async function provisionWebhook(
+export async function createWebhook(
   fullKey: string,
   endpoint: string,
-  events: readonly string[] = RESEND_TRANSACTIONAL_EVENTS,
 ): Promise<{ id: string; secret: string }> {
   for (const stale of (await listWebhooks(fullKey)).filter((w) => w.endpoint === endpoint)) {
     await deleteWebhook(fullKey, stale.id);
   }
-  const created = await createWebhook(fullKey, { endpoint, events: [...events] });
+  const created = await postWebhook(fullKey, {
+    endpoint,
+    events: [...RESEND_TRANSACTIONAL_EVENTS],
+  });
   return { id: created.id, secret: created.signing_secret };
 }

@@ -1,5 +1,4 @@
-import { access } from "node:fs/promises";
-
+import { fileExists } from "../lib/fs.ts";
 import {
   DIM,
   GREEN,
@@ -14,21 +13,16 @@ import {
   section,
 } from "../lib/output.ts";
 import { renderVerifyResults } from "../lib/verify-render.ts";
-import { readContext, summarize, verifyAll, type Channel } from "../lib/verify.ts";
+import { readContext, summarize, verifyAll, type Channel, type Check } from "../lib/verify.ts";
 
 const PROJECT_SENTINELS = ["app.config.ts", "convex", "eas.json"];
 
 async function isInVexpoProject(): Promise<boolean> {
-  for (const sentinel of PROJECT_SENTINELS) {
-    try {
-      await access(sentinel);
-      return true;
-    } catch {}
-  }
+  for (const sentinel of PROJECT_SENTINELS) if (await fileExists(sentinel)) return true;
   return false;
 }
 
-export type DoctorOptions = {
+type DoctorOptions = {
   channel?: string;
   json?: boolean;
   strict?: boolean;
@@ -42,7 +36,7 @@ function resolveChannel(value: string | undefined): Channel | null {
 
 function renderDoctor(
   channel: Channel,
-  checks: Parameters<typeof renderVerifyResults>[0],
+  checks: Check[],
   summary: ReturnType<typeof summarize>,
 ): void {
   section(`Verify (${channel})`);
@@ -64,9 +58,11 @@ export async function runDoctor(options: DoctorOptions): Promise<number> {
         emitJson({ error: "not in a vexpo project", cwd: process.cwd() });
       } else {
         section("Verify");
-        bad("not in a vexpo project (no app.config.ts, convex/, or eas.json in current dir)");
+        bad("not in a vexpo project (no app.config.ts, convex/ or eas.json here)");
         note(`cwd: ${process.cwd()}`);
-        note("cd into your vexpo project, or run `npm create vexpo@latest my-app` to scaffold one");
+        note(
+          "cd into your project, or run `npm create @ramonclaudio/vexpo@latest my-app` to make one",
+        );
       }
       return 1;
     }

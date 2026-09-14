@@ -8,7 +8,7 @@ export function expandTilde(p: string): string {
   return p;
 }
 
-export const CREDENTIALS_DIR = "credentials";
+const CREDENTIALS_DIR = "credentials";
 
 export function stagedP8(): string | undefined {
   try {

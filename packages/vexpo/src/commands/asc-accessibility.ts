@@ -4,11 +4,12 @@ import {
   createAccessibilityDeclaration,
   fetchAccessibilityDeclarations,
   fetchAccessibilityUrl,
-  setAccessibilityUrl,
   lintAccessibilityConfig,
   planAccessibilityPush,
   publishAccessibilityDeclaration,
+  setAccessibilityUrl,
   updateAccessibilityDeclaration,
+  type AccessibilityConfig,
   type AccessibilityEntry,
   type PushPlan,
 } from "../lib/asc-accessibility.ts";
@@ -18,13 +19,19 @@ import { bad, emitJson, line, nop, note, ok, section, yep } from "../lib/output.
 export async function runAccessibilityShow(opts: { json?: boolean }): Promise<number> {
   const { client, ascAppId, bundleId } = await ascBootstrap();
   if (!ascAppId) {
-    bad(`no ASC app for bundle id ${bundleId ?? "(unset)"}`);
+    bad(`App Store Connect has no app for bundle id ${bundleId ?? "(unset)"}`);
     return 1;
   }
-  const decls = await fetchAccessibilityDeclarations(client, ascAppId);
-  if (opts.json) return emitJson(decls);
+  const [decls, url] = await Promise.all([
+    fetchAccessibilityDeclarations(client, ascAppId),
+    fetchAccessibilityUrl(client, ascAppId),
+  ]);
+  if (opts.json) return emitJson({ url, declarations: decls.data });
   section("Accessibility declarations");
-  line(JSON.stringify(decls, null, 2));
+  line(JSON.stringify(decls.data, null, 2));
+  section("Accessibility URL");
+  if (url) ok(url);
+  else nop("not set");
   return 0;
 }
 
@@ -36,30 +43,32 @@ export async function runAccessibilityPush(
   filePath: string,
   opts: { publish?: boolean; dryRun?: boolean },
 ): Promise<number> {
-  const entries = readEntries(filePath);
-  if (!entries) return 1;
+  const config = readConfig(filePath);
+  if (!config) return 1;
 
   const { client, ascAppId, bundleId } = await ascBootstrap();
   if (!ascAppId) {
-    bad(`no ASC app for bundle id ${bundleId ?? "(unset)"}`);
+    bad(`App Store Connect has no app for bundle id ${bundleId ?? "(unset)"}`);
     return 1;
   }
 
-  const plan = planAccessibilityPush(entries, await remoteDeclarations(client, ascAppId));
+  const remote = await fetchAccessibilityDeclarations(client, ascAppId);
+  const plan = planAccessibilityPush(config.entries, remote.data);
 
   section("Accessibility push");
   let failed = 0;
   for (const [index, step] of plan.entries()) {
-    const applied = await applyStep(client, ascAppId, step, entries[index]!, opts);
+    const applied = await applyStep(client, ascAppId, step, config.entries[index]!, opts);
     if (!applied) failed++;
   }
+  if ("url" in config) await applyUrl(client, ascAppId, config.url ?? null, opts.dryRun);
   if (!opts.publish && !opts.dryRun && failed === 0) {
     note("still a draft. re-run with --publish to show it on the App Store page.");
   }
   return failed > 0 ? 1 : 0;
 }
 
-function readEntries(filePath: string): AccessibilityEntry[] | null {
+function readConfig(filePath: string): AccessibilityConfig | null {
   const parsed = readJson(filePath);
   if (!parsed.ok) return null;
   const errors = lintAccessibilityConfig(parsed.value).filter((i) => i.severity === "error");
@@ -67,15 +76,22 @@ function readEntries(filePath: string): AccessibilityEntry[] | null {
     bad(`${filePath} has ${errors.length} error(s). Run \`vexpo asc accessibility lint\` first.`);
     return null;
   }
-  return (parsed.value as { entries: AccessibilityEntry[] }).entries;
+  return parsed.value as AccessibilityConfig;
 }
 
-async function remoteDeclarations(
+async function applyUrl(
   client: AscClient,
   appId: string,
-): Promise<{ id: string; attributes?: { deviceFamily?: string; state?: string } }[]> {
-  const res = (await fetchAccessibilityDeclarations(client, appId)) as { data?: unknown };
-  return Array.isArray(res.data) ? res.data : [];
+  url: string | null,
+  dryRun: boolean | undefined,
+): Promise<void> {
+  const label = url ? `url would be set to ${url}` : "url would be cleared";
+  if (dryRun) {
+    nop(label);
+    return;
+  }
+  await setAccessibilityUrl(client, appId, url);
+  ok(url ? `url set to ${url}` : "url cleared");
 }
 
 async function applyStep(
@@ -105,51 +121,4 @@ async function applyStep(
     ok(`${step.deviceFamily} published`);
   }
   return true;
-}
-
-function urlArgsRejected(value: string | undefined, clear: boolean | undefined): boolean {
-  if (value && clear) {
-    bad("pass a URL or --clear, not both.");
-    return true;
-  }
-  if (value && !value.startsWith("https://")) {
-    bad(`the accessibility URL must start with https://, got '${value}'`);
-    note("it is a public link on your App Store page, so Apple rejects anything else");
-    return true;
-  }
-  return false;
-}
-
-export async function runAccessibilityUrl(
-  value: string | undefined,
-  opts: { clear?: boolean; json?: boolean },
-): Promise<number> {
-  if (urlArgsRejected(value, opts.clear)) return 1;
-
-  const { client, ascAppId, bundleId } = await ascBootstrap();
-  if (!ascAppId) {
-    bad(`no ASC app for bundle id ${bundleId ?? "(unset)"}`);
-    return 1;
-  }
-
-  if (value || opts.clear) {
-    await setAccessibilityUrl(client, ascAppId, value ?? null);
-  }
-  const current = await fetchAccessibilityUrl(client, ascAppId);
-  if (opts.json) return emitJson({ accessibilityUrl: current });
-  reportUrl(current, opts.clear === true);
-  return 0;
-}
-
-function reportUrl(current: string | null, cleared: boolean): void {
-  section("Accessibility URL");
-  if (current) {
-    ok(current);
-    return;
-  }
-  nop("not set");
-  if (cleared) return;
-  note("Apple points here for what the nine labels cannot say: in-app");
-  note("accessibility settings, caption languages, and the parts of the app");
-  note("that do not support a feature.");
 }

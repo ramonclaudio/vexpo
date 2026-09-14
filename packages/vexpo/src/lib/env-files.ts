@@ -2,6 +2,7 @@ import { mkdtemp, readFile, rmdir, unlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
+import type { EasEnvironment } from "./eas-project.ts";
 import { fileExists } from "./fs.ts";
 
 // `eq > 0`, not `>= 0`. A leading `=` has no key, and only the first `=` splits.
@@ -38,11 +39,7 @@ export type Channel = "dev" | "prod";
 
 export type Destination =
   | { type: "convex"; key: string; channel: Channel }
-  | {
-      type: "eas";
-      key: string;
-      environments: readonly ("development" | "preview" | "production")[];
-    };
+  | { type: "eas"; key: string; environment: EasEnvironment };
 
 type RoutingEntry = { type: "eas" | "convex"; key?: string };
 
@@ -59,7 +56,6 @@ export const ROUTING: Record<string, RoutingEntry> = {
 
   SITE_URL: CONVEX,
   BETTER_AUTH_SECRET: CONVEX,
-  BETTER_AUTH_SECRETS: CONVEX,
   APP_NAME: CONVEX,
   RESEND_API_KEY: CONVEX,
   EMAIL_FROM: CONVEX,
@@ -79,22 +75,11 @@ export const ROUTING: Record<string, RoutingEntry> = {
 function destinationFor(sourceKey: string, entry: RoutingEntry, channel: Channel): Destination {
   const key = entry.key ?? sourceKey;
   return entry.type === "eas"
-    ? {
-        type: "eas",
-        key,
-        environments: channel === "prod" ? ["production", "preview"] : ["development"],
-      }
+    ? { type: "eas", key, environment: channel === "prod" ? "production" : "development" }
     : { type: "convex", key, channel };
 }
 
 const IGNORED_KEYS = new Set(["CONVEX_DEPLOYMENT"]);
-
-export const MANUAL_EAS_SECRETS: Record<string, string> = {
-  APPLE_P8_PRIVATE_KEY:
-    "eas env:create --name APPLE_P8_PRIVATE_KEY --value-file <path>.p8 --environment production --visibility secret",
-  CONVEX_DEPLOY_KEY:
-    "eas env:create --name CONVEX_DEPLOY_KEY --value <prod-deploy-key> --environment production --visibility secret",
-};
 
 type EnvLine =
   | { kind: "skip" }
@@ -223,14 +208,4 @@ export function unrecognizedKeys(sources: EnvSource[]): string[] {
     }
   }
   return [...out].toSorted();
-}
-
-export function missingKeys(sources: EnvSource[]): { dev: string[]; prod: string[] } {
-  const dev = new Set(Object.keys(ROUTING));
-  const prod = new Set(Object.keys(ROUTING));
-  for (const src of sources) {
-    const target = src.channel === "prod" ? prod : dev;
-    for (const k of src.entries.keys()) target.delete(k);
-  }
-  return { dev: [...dev].toSorted(), prod: [...prod].toSorted() };
 }

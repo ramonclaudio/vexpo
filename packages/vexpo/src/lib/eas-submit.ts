@@ -45,7 +45,7 @@ export function withAscAppId(easJson: string, ascAppId: string): string {
   return JSON.stringify(cfg, null, 2) + "\n";
 }
 
-export type AscApiKeyFields = { path: string; keyId: string; issuerId: string };
+type AscApiKeyFields = { path: string; keyId: string; issuerId: string };
 
 function needsAscApiKey(cfg: EasJson, key: AscApiKeyFields): boolean {
   return Object.values(cfg.submit ?? {}).some(

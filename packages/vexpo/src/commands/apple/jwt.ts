@@ -1,12 +1,12 @@
-import { signClientSecret } from "../../lib/apple-jwt.ts";
+import { CLIENT_SECRET_DAYS, signClientSecret } from "../../lib/apple-jwt.ts";
 import { deploymentSlug, envMap, envSet } from "../../lib/convex-env.ts";
 import { readOne } from "../../lib/env-local.ts";
+import { fileExists } from "../../lib/fs.ts";
 import {
   BOLD,
   DIM,
   RESET,
   ask,
-  askYesNo,
   bad,
   errText,
   helpAndWait,
@@ -18,14 +18,9 @@ import {
   yep,
 } from "../../lib/output.ts";
 import { expandTilde, stagedP8 } from "../../lib/path.ts";
-import {
-  load as loadState,
-  lookupCachedPath,
-  recordStep,
-  type SetupState,
-} from "../../lib/state.ts";
+import { load as loadState, recordStep, type SetupState } from "../../lib/state.ts";
 
-export type AppleJwtOptions = {
+type AppleJwtOptions = {
   rotate?: boolean;
   copyFrom?: string;
 };
@@ -53,8 +48,8 @@ async function copyAppleEnv(from: string): Promise<number> {
   const src = (await envMap({ deployment: slug })) ?? new Map<string, string>();
   const present = APPLE_ENV_KEYS.filter((k) => src.has(k) && src.get(k));
   if (present.length === 0) {
-    bad(`no APPLE_* vars on deployment ${slug} (unreachable or not provisioned)`);
-    note("pass a deployment slug your account can reach, e.g. `--copy-from old-deployment-123`");
+    bad(`no APPLE_* vars on deployment ${slug} (unreachable or never set up)`);
+    note("pass a deployment slug your account can reach, like `--copy-from old-deployment-123`");
     return 1;
   }
   const dst = (await envMap()) ?? new Map<string, string>();
@@ -68,24 +63,28 @@ async function copyAppleEnv(from: string): Promise<number> {
   line();
   ok(`Apple env copied from ${slug} (${copied} changed)`);
   if (!present.includes("APPLE_CLIENT_SECRET")) {
-    yep("source had no APPLE_CLIENT_SECRET; re-sign with `vexpo apple jwt`");
+    yep("the source had no APPLE_CLIENT_SECRET, sign one with `vexpo apple jwt`");
   } else {
-    note("the copied client_secret keeps the source's expiry; re-sign before it lapses");
+    note("the copied secret keeps the source's expiry date, sign a new one before then");
   }
   return 0;
 }
 
-export async function resolveSiwaP8Path(state: SetupState): Promise<string> {
-  const cachedP8 = (await lookupCachedPath(state, ["apple-sign-in"], "p8Path")) ?? stagedP8();
-  const rawP8 =
-    process.env.APPLE_P8_PATH ??
-    (process.stdin.isTTY
-      ? cachedP8
-        ? (await ask(`  Path to SIWA .p8 ${DIM}[cached: ${cachedP8}]${RESET} > `)).trim() ||
-          cachedP8
-        : (await ask(`  Path to SIWA .p8 ${DIM}(absolute or relative) >${RESET} `)).trim()
-      : (cachedP8 ?? ""));
-  return rawP8 ? expandTilde(rawP8) : "";
+async function cachedP8Path(state: SetupState): Promise<string | undefined> {
+  const raw = state.steps["apple-sign-in"]?.outputs?.p8Path;
+  if (typeof raw !== "string") return undefined;
+  const path = expandTilde(raw);
+  return (await fileExists(path)) ? path : undefined;
+}
+
+async function resolveP8Path(state: SetupState): Promise<string> {
+  if (process.env.APPLE_P8_PATH) return expandTilde(process.env.APPLE_P8_PATH);
+  const cachedP8 = (await cachedP8Path(state)) ?? stagedP8();
+  if (!process.stdin.isTTY) return cachedP8 ?? "";
+  const hint = cachedP8 ? `[${cachedP8}]` : "";
+  const typed = (await ask(`  Path to the Sign in with Apple .p8 ${DIM}${hint}${RESET} > `)).trim();
+  const raw = typed || cachedP8;
+  return raw ? expandTilde(raw) : "";
 }
 
 async function promptOrEnv(envName: string, prompt: string): Promise<string | undefined> {
@@ -118,20 +117,20 @@ async function resolveIdentity(
   }
 
   if (!servicesId || !teamId || !keyId) {
-    yep("missing one of APPLE_SERVICES_ID / APPLE_TEAM_ID / APPLE_KEY_ID; aborting");
-    note("re-run with values, or set them via APPLE_*_ID env vars");
+    yep("missing one of APPLE_SERVICES_ID, APPLE_TEAM_ID or APPLE_KEY_ID, stopping");
+    note("run this again with the values, or set them as env vars");
     return null;
   }
   return { servicesId, teamId, keyId };
 }
 
 async function walkThroughAppleConsole(): Promise<void> {
-  note("Apple Sign In needs four values. Create them in Apple Developer:");
+  note("Sign in with Apple needs four values. Create them in Apple Developer:");
   note(
-    "  1. Services ID with Sign In with Apple enabled (return URL = <convex-site>/api/auth/sign-in/apple/callback)",
+    "  1. a Services ID with Sign in with Apple on (return URL: <convex-site>/api/auth/sign-in/apple/callback)",
   );
-  note("  2. Sign In with Apple key (download the .p8 once)");
-  note("  3. Note the Team ID (10 chars) and Key ID (10 chars)");
+  note("  2. a Sign in with Apple key (download the .p8 once, Apple only shows it once)");
+  note("  3. the Team ID and Key ID, ten characters each");
   line();
   await helpAndWait({
     body: "Open the Apple Developer Console:",
@@ -146,17 +145,7 @@ async function walkThroughAppleConsole(): Promise<void> {
       },
     ],
     allowSkip: true,
-    skipLabel: "skip",
   });
-}
-
-async function offerRenewalReminder(rotateOnly: boolean): Promise<void> {
-  if (rotateOnly || !process.stdin.isTTY) return;
-  line();
-  if (!(await askYesNo("Show the renewal date and rotate command?", false))) return;
-  const when = new Date(Date.now() + 150 * 86400_000);
-  note(`renew on or before ${when.toDateString()} by running:`);
-  note(`  ${BOLD}vexpo apple jwt --rotate${RESET}`);
 }
 
 export async function runAppleJwt(options: AppleJwtOptions): Promise<number> {
@@ -170,7 +159,7 @@ export async function runAppleJwt(options: AppleJwtOptions): Promise<number> {
   if (rotateOnly) {
     const missing = ["APPLE_CLIENT_ID", "APPLE_TEAM_ID", "APPLE_KEY_ID"].filter((k) => !env.has(k));
     if (missing.length) {
-      bad(`--rotate needs existing ${missing.join(", ")}; run without it first`);
+      bad(`--rotate needs ${missing.join(", ")} on the deployment. run without --rotate first`);
       return 1;
     }
   } else {
@@ -190,38 +179,25 @@ export async function runAppleJwt(options: AppleJwtOptions): Promise<number> {
     else nop(`${key} already set`);
   }
 
-  const p8Path = await resolveSiwaP8Path(await loadState());
+  const p8Path = await resolveP8Path(await loadState());
   if (!p8Path) {
-    yep("no .p8 path provided; APPLE_CLIENT_SECRET unchanged");
-    note("re-run with APPLE_P8_PATH=/path/to/AuthKey.p8 or paste the path interactively");
+    yep("no .p8 path given, APPLE_CLIENT_SECRET unchanged");
+    note("run again with APPLE_P8_PATH=/path/to/AuthKey.p8, or paste the path when asked");
     return 1;
   }
 
   let jwt: string;
   try {
-    jwt = await signClientSecret({
-      privateKey: { path: p8Path },
-      teamId,
-      keyId,
-      servicesId,
-      expirationDays: 180,
-    });
+    jwt = await signClientSecret({ p8Path, teamId, keyId, servicesId });
   } catch (err) {
     bad(errText(err));
     return 1;
   }
   await envSet("APPLE_CLIENT_SECRET", jwt);
-  ok("signed and set APPLE_CLIENT_SECRET (180-day expiry)");
+  const expiresAt = new Date(Date.now() + CLIENT_SECRET_DAYS * 86_400_000);
+  ok(`signed and set APPLE_CLIENT_SECRET, good until ${expiresAt.toDateString()}`);
+  note(`before then, run ${BOLD}vexpo apple jwt --rotate${RESET} to sign a new one`);
 
-  await recordStep("apple-sign-in", {
-    servicesId,
-    teamId,
-    keyId,
-    p8Path,
-    signedAt: new Date().toISOString(),
-    expiresAt: new Date(Date.now() + 180 * 86_400_000).toISOString(),
-  });
-
-  await offerRenewalReminder(rotateOnly);
+  await recordStep("apple-sign-in", { p8Path });
   return 0;
 }

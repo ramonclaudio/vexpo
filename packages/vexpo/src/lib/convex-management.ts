@@ -8,7 +8,7 @@ const BASE = `${process.env.CONVEX_PROVISION_HOST || "https://api.convex.dev"}/v
 
 type DeploymentType = "dev" | "prod" | "preview" | "custom";
 
-export type PlatformDeployment = {
+type PlatformDeployment = {
   name: string;
   deploymentType: DeploymentType;
   projectId: number;
@@ -27,7 +27,7 @@ async function accessToken(): Promise<string | null> {
   }
 }
 
-export type TokenStatus = "valid" | "unauthorized" | "no-token";
+type TokenStatus = "valid" | "unauthorized" | "no-token";
 
 export async function checkToken(): Promise<TokenStatus> {
   const token = await accessToken();
@@ -56,70 +56,6 @@ async function get<T>(token: string, path: string): Promise<T | null> {
   } catch {
     return null;
   }
-}
-
-async function post<T>(token: string, path: string, body: unknown): Promise<T> {
-  const res = await fetchWithTimeout(
-    `${BASE}${path}`,
-    {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "Convex-Client": "vexpo-cli",
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(body),
-    },
-    15_000,
-  );
-  const text = await res.text();
-  if (!res.ok) {
-    throw new Error(`Convex Platform POST ${path} → ${res.status}: ${text.slice(0, 200)}`);
-  }
-  return (text ? JSON.parse(text) : undefined) as T;
-}
-
-async function requireToken(): Promise<string> {
-  const token = await accessToken();
-  if (!token) throw new Error("not logged in to Convex (no ~/.convex/config.json accessToken)");
-  return token;
-}
-
-export async function mintDeployKey(
-  deploymentName: string,
-  opts?: { name?: string; expiresAtMs?: number },
-): Promise<string> {
-  const token = await requireToken();
-  const body: { name: string; expiresAt?: number } = { name: opts?.name ?? "vexpo" };
-  if (opts?.expiresAtMs) {
-    if (opts.expiresAtMs < Date.now() + 30 * 60_000) {
-      throw new Error("deploy key expiresAtMs must be at least 30 minutes in the future");
-    }
-    body.expiresAt = opts.expiresAtMs;
-  }
-  const res = await post<{ deployKey?: string }>(
-    token,
-    `/deployments/${deploymentName}/create_deploy_key`,
-    body,
-  );
-  if (!res?.deployKey) throw new Error("create_deploy_key returned no deployKey");
-  return res.deployKey;
-}
-
-export async function resolveProdDeployment(anyDeploymentName: string): Promise<string | null> {
-  const deployments = await listProjectDeployments(anyDeploymentName);
-  if (!deployments) return null;
-  const prods = deploymentsOfType(deployments, "prod");
-  return (prods.find((d) => d.isDefault) ?? prods[0])?.name ?? null;
-}
-
-export async function mintProdDeployKey(
-  anyDeploymentName: string,
-  name = "vexpo",
-): Promise<{ key: string; deployment: string } | null> {
-  const deployment = await resolveProdDeployment(anyDeploymentName);
-  if (!deployment) return null;
-  return { key: await mintDeployKey(deployment, { name }), deployment };
 }
 
 export async function listProjectDeployments(

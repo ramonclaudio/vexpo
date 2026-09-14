@@ -2,13 +2,13 @@ import { deploymentSlug, envMap, envSet, type ConvexTarget } from "../lib/convex
 import { findProdEnvFile, readEnvFile } from "../lib/env-files.ts";
 import { BOLD, RESET, bad, errText, line, note, ok, plural, section } from "../lib/output.ts";
 
-export type ConvexMigrateOptions = {
-  from?: string;
+type ConvexMigrateOptions = {
+  from: string;
   prod?: boolean;
   dryRun?: boolean;
 };
 
-export function selectMigratableEnv(
+function selectMigratableEnv(
   src: Map<string, string>,
   dst: Map<string, string>,
 ): Array<[string, string]> {
@@ -27,8 +27,8 @@ async function prodTarget(): Promise<ConvexTarget | undefined> {
   const deployKey = prodEnv.get("CONVEX_DEPLOY_KEY") ?? "";
   const selector = prodEnv.get("CONVEX_DEPLOYMENT") ?? "";
   if (!deployKey.startsWith("prod:") && !selector.startsWith("prod:")) {
-    bad(`${prodFile} has no prod-scoped CONVEX_DEPLOY_KEY or CONVEX_DEPLOYMENT`);
-    note("the copy would land on the DEV deployment (the dev key shadows --prod)");
+    bad(`${prodFile} has no prod CONVEX_DEPLOY_KEY or CONVEX_DEPLOYMENT`);
+    note("without one the copy would land on the dev deployment");
     return undefined;
   }
   return { prod: true, envFile: prodFile };
@@ -40,14 +40,14 @@ async function planMigration(
 ): Promise<Array<[string, string]> | null> {
   const src = await envMap({ deployment: fromSlug });
   if (!src || src.size === 0) {
-    bad(`no env on source deployment ${fromSlug} (unreachable or empty)`);
-    note("pass a deployment slug your account can reach, e.g. `--from old-deployment-123`");
+    bad(`no env on the source deployment ${fromSlug} (unreachable or empty)`);
+    note("pass a deployment slug your account can reach, like `--from old-deployment-123`");
     return null;
   }
   const dst = await envMap(target);
   if (!dst) {
-    bad("couldn't read the target deployment's env (auth/CLI failure)");
-    note("run `npx convex login` (or check the prod deploy key) and re-run");
+    bad("couldn't read the target deployment's env");
+    note("run `npx convex login`, or check the prod deploy key, and try again");
     return null;
   }
   return selectMigratableEnv(src, dst);
@@ -74,10 +74,6 @@ export async function runConvexMigrate(options: ConvexMigrateOptions): Promise<n
   const channel = options.prod ? "prod" : "dev";
   section(`Convex migrate (${channel})`);
 
-  if (!options.from) {
-    bad("--from <deployment> is required (the source deployment slug)");
-    return 1;
-  }
   const fromSlug = deploymentSlug(options.from) ?? options.from;
 
   let target: ConvexTarget | undefined;
@@ -102,7 +98,7 @@ export async function runConvexMigrate(options: ConvexMigrateOptions): Promise<n
 
   if (options.dryRun) {
     line();
-    note("--dry-run; exiting without changes");
+    note("dry run, nothing copied");
     return 0;
   }
 
@@ -122,9 +118,8 @@ async function applyMigration(
     bad(`${failed} write${plural(failed)} failed`);
     return 1;
   }
-  ok(`migrated ${toMove.length} var${plural(toMove.length)} onto the ${channel} deployment`);
-  note(`next: ${BOLD}vexpo env convex-key${RESET} (EAS deploy key + selector)`);
-  note(`      ${BOLD}vexpo resend --repoint${options.prod ? " --prod" : ""}${RESET} (webhook)`);
+  ok(`copied ${toMove.length} var${plural(toMove.length)} onto the ${channel} deployment`);
+  note(`next: ${BOLD}vexpo resend --repoint${options.prod ? " --prod" : ""}${RESET} (webhook)`);
   note(`then: ${BOLD}vexpo doctor --channel ${channel}${RESET}`);
   return 0;
 }

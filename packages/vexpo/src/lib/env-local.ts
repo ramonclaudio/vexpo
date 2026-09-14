@@ -4,7 +4,7 @@ import { readEnvFile } from "./env-files.ts";
 import { fileExists } from "./fs.ts";
 import { bad } from "./output.ts";
 
-export const ENV_FILE = ".env.local";
+const ENV_FILE = ".env.local";
 
 export function readAll(): Promise<Map<string, string>> {
   return readEnvFile(ENV_FILE);

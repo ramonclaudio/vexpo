@@ -1,8 +1,6 @@
 import { fileExists } from "./fs.ts";
 
-export type PackageManager = "bun" | "pnpm" | "yarn" | "npm";
-
-export async function detectPackageManager(): Promise<PackageManager> {
+export async function detectPackageManager(): Promise<"bun" | "pnpm" | "yarn" | "npm"> {
   if (await fileExists("bun.lock")) return "bun";
   if (await fileExists("bun.lockb")) return "bun";
   if (await fileExists("pnpm-lock.yaml")) return "pnpm";
@@ -12,16 +10,4 @@ export async function detectPackageManager(): Promise<PackageManager> {
 
 export function dlx(): string {
   return process.versions.bun ? "bunx" : "npx";
-}
-
-export function installCmdFor(pm: PackageManager): string {
-  return `${pm} install`;
-}
-
-export function currentRuntime(): "bun" | "node" {
-  return process.versions.bun ? "bun" : "node";
-}
-
-export function currentRuntimeVersion(): string {
-  return process.versions.bun ?? process.versions.node ?? "?";
 }

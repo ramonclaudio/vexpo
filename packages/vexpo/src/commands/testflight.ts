@@ -1,13 +1,13 @@
 import { AscApiError } from "../lib/asc-api.ts";
 import { ascBootstrap } from "../lib/asc-state.ts";
-import { testflight } from "../lib/asc-testflight.ts";
+import { testflight, type BetaGroup, type TestflightClient } from "../lib/asc-testflight.ts";
 import { BOLD, DIM, RESET, emitJson, line, nop, note, ok, section } from "../lib/output.ts";
 
 async function bootstrap() {
   const { client, ascAppId, bundleId } = await ascBootstrap();
   if (!ascAppId) {
     throw new Error(
-      `no ASC app found for bundle id ${bundleId ?? "(unset)"}; run \`vexpo apple credentials\` first`,
+      `App Store Connect has no app for bundle id ${bundleId ?? "(unset)"} yet. It appears after the first submit (\`npm run eas:tf\`)`,
     );
   }
   return { tf: testflight(client), ascAppId };
@@ -15,7 +15,7 @@ async function bootstrap() {
 
 export async function runTestflightGroupsList(opts: { json?: boolean } = {}): Promise<number> {
   const { tf, ascAppId } = await bootstrap();
-  const groups = await tf.betaGroups.list({ appId: ascAppId });
+  const groups = await tf.betaGroups.list(ascAppId);
   if (opts.json) return emitJson(groups);
   section("Beta groups");
   if (groups.length === 0) {
@@ -40,8 +40,7 @@ export async function runTestflightGroupsCreate(opts: {
     appId: ascAppId,
     feedbackEnabled: opts.feedback,
   });
-  section(`Beta group ${created.attributes.name}`);
-  ok(`id ${created.id}`);
+  ok(`created group ${created.attributes.name} (${created.id})`);
   return 0;
 }
 
@@ -71,8 +70,7 @@ export async function runTestflightGroupsView(
 export async function runTestflightGroupsDelete(groupId: string): Promise<number> {
   const { tf } = await bootstrap();
   await tf.betaGroups.delete(groupId);
-  section(`Group ${groupId} deleted`);
-  ok("done");
+  ok(`deleted group ${groupId}`);
   return 0;
 }
 
@@ -97,25 +95,22 @@ export async function runTestflightTestersList(opts: {
   return 0;
 }
 
-type TestflightClient = Awaited<ReturnType<typeof bootstrap>>["tf"];
-type BetaGroup = Awaited<ReturnType<TestflightClient["betaGroups"]["list"]>>[number];
-
 async function resolveBetaGroup(
   tf: TestflightClient,
   ascAppId: string,
   requested: string | undefined,
 ): Promise<{ groupId: string; groups: BetaGroup[]; internal?: BetaGroup; autoResolved: boolean }> {
-  const groups = await tf.betaGroups.list({ appId: ascAppId });
+  const groups = await tf.betaGroups.list(ascAppId);
   const internal = groups.find((g) => g.attributes.isInternalGroup);
   const groupId = requested ?? (internal ?? groups[0])?.id;
   if (!groupId) {
     throw new Error(
-      'no beta group to invite into; create one first: `vexpo testflight groups create "Internal"`',
+      'no beta group to invite into. Create one first with `vexpo testflight groups create "Internal"`',
     );
   }
   const autoResolved = !requested;
   if (autoResolved) {
-    nop(`no --group given; using ${internal ? "internal group" : "group"} ${groupId}`);
+    nop(`no --group given, using ${internal ? "the internal group" : "group"} ${groupId}`);
   }
   return { groupId, groups, internal, autoResolved };
 }
@@ -130,7 +125,7 @@ async function sendInvitation(
     ok(`invitation ${inv.id}`);
   } catch (err) {
     if (!(err instanceof AscApiError) || !err.code?.includes("NO_INSTALLABLE_BUILDS")) throw err;
-    ok("tester is in the group; the invite email sends once a build is installable");
+    ok("tester is in the group. The invite email goes out once a build is installable");
     note("external groups wait on Beta App Review for their first build");
   }
 }
@@ -180,12 +175,12 @@ export async function runTestflightInvite(opts: {
     const blockedByInternal = stateError && groupId === internal?.id;
     if (!blockedByInternal || !autoResolved || !external) {
       if (blockedByInternal) {
-        note("internal groups only accept App Store Connect team members;");
-        note("invite outside emails into an external group (`--group <id>`)");
+        note("internal groups only take App Store Connect team members.");
+        note("invite outside emails into an external group with `--group <id>`");
       }
       throw err;
     }
-    nop(`${opts.email} isn't a team member; using external group ${external.id}`);
+    nop(`${opts.email} isn't a team member, using external group ${external.id}`);
     groupId = external.id;
     testerId = await assign(groupId);
   }
@@ -206,8 +201,7 @@ export async function runTestflightWhatsNew(opts: {
     locale: opts.locale,
     whatsNew: opts.text,
   });
-  section(`What's new for build ${opts.buildId}`);
-  ok(`upserted (${loc.attributes.locale})`);
+  ok(`set the what's new text for build ${opts.buildId} (${loc.attributes.locale})`);
   return 0;
 }
 
