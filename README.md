@@ -28,7 +28,7 @@ npx vexpo doctor        # checks every credential against the live service
 
 `full` writes the env, sets the Convex vars, signs the Sign in with Apple secret, runs `eas init` and `eas env:push`, and creates the App Review account. Add `--new` if you still need to sign up somewhere.
 
-A few steps are still yours. You log in to EAS, download the App Store Connect `.p8` once, paste a Resend key, and answer the credentials wizard on the first build. Everything else runs on its own, including every build and submit after that one.
+A few steps are still yours. You log in to EAS, download the App Store Connect `.p8` once, paste a Resend key, and answer the credentials wizard on the first build. If you keep the widget, you also make the App Group at [Identifiers](https://developer.apple.com/account/resources/identifiers/list/applicationGroup) and tick it on both identifiers, because Apple's API can't. Everything else runs on its own, including every build and submit after that one.
 
 ## License
 

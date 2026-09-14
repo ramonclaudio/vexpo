@@ -100,9 +100,7 @@ export async function runReviewAccount(options: ReviewAccountOptions): Promise<n
   const config = await readStoreConfig();
   if (!config) {
     bad("no readable store.config.json here. Run from your project root.");
-    note(
-      "the template ships one, and `npx eas-cli metadata:pull` writes one from App Store Connect",
-    );
+    note("the template ships one, and `npm run metadata:pull` writes one from App Store Connect");
     return 1;
   }
   const creds = resolveCreds(options, config);

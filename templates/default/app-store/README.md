@@ -46,4 +46,4 @@ One-time settings you make in App Store Connect. `[metadata:push]` items also li
 - Digital Services Act trader status. Non-trader fits a free app.
 - Vietnam game license, medical device declaration, subscription server notifications. Skip unless they apply.
 
-Keep `store.config.json` as the source of truth. Copy any `[metadata:push]` field you set by hand back into it, and keep `npx eas-cli metadata:lint` green. The working file is gitignored because it holds the demo password, so put anything you want versioned into `store.config.example.json`.
+Keep `store.config.json` as the source of truth. `npm run metadata:pull` writes it from the live listing, which is easier than copying a `[metadata:push]` field you set by hand back into it. `npm run metadata:push` lints before it pushes. The working file is gitignored because it holds the demo password, so put anything you want versioned into `store.config.example.json`.
