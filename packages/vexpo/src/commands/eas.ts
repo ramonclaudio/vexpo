@@ -30,7 +30,7 @@ async function pushEasRoutedKeys(file: string, environment: EasEnvironment): Pro
   const entries = await readEnvFile(file);
   const easKeys: Array<[string, string]> = [];
   for (const [key, value] of entries) {
-    if (ROUTING[key]?.type === "eas") easKeys.push([key, value]);
+    if (ROUTING[key] === "eas") easKeys.push([key, value]);
   }
   if (easKeys.length === 0) return [];
 
@@ -107,8 +107,10 @@ function printNextCommands(): void {
   note(`  ${BOLD}vexpo apple credentials${RESET}    signing certificate and provisioning profile`);
   note(`  ${BOLD}vexpo apple services-id${RESET}    Sign in with Apple Services ID`);
   note(`  ${BOLD}vexpo apple jwt${RESET}            sign the Sign in with Apple JWT`);
+  note(`  ${BOLD}vexpo asc connect${RESET}          link the App Store Connect app`);
   note(`  ${BOLD}CONVEX_DEPLOY_KEY= npx convex deploy${RESET}   push the backend to prod`);
   note(`  ${BOLD}npm run eas:tf${RESET}             build and submit to TestFlight`);
+  note(`  ${BOLD}npm run metadata:pull${RESET}      write store.config.json from the live listing`);
   note(`  ${BOLD}npm run metadata:push${RESET}      push store.config.json`);
 }
 

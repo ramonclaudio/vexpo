@@ -41,15 +41,15 @@ export type Destination =
   | { type: "convex"; key: string; channel: Channel }
   | { type: "eas"; key: string; environment: EasEnvironment };
 
-type RoutingEntry = { type: "eas" | "convex"; key?: string };
+type RoutingEntry = "eas" | "convex";
 
-const EAS: RoutingEntry = { type: "eas" };
-const CONVEX: RoutingEntry = { type: "convex" };
+const EAS: RoutingEntry = "eas";
+const CONVEX: RoutingEntry = "convex";
 
+// Every key keeps its own name on the other side, so this is a destination, not a mapping.
 export const ROUTING: Record<string, RoutingEntry> = {
   EXPO_PUBLIC_CONVEX_URL: EAS,
   EXPO_PUBLIC_CONVEX_SITE_URL: EAS,
-  EXPO_PUBLIC_SITE_URL: EAS,
   EXPO_PUBLIC_APP_BUNDLE_ID: EAS,
   EXPO_PUBLIC_APPLE_TEAM_ID: EAS,
   EXPO_PUBLIC_EXPO_OWNER: EAS,
@@ -67,14 +67,10 @@ export const ROUTING: Record<string, RoutingEntry> = {
   APPLE_CLIENT_ID: CONVEX,
   APPLE_CLIENT_SECRET: CONVEX,
   APPLE_TEAM_ID: CONVEX,
-  APPLE_KEY_ID: CONVEX,
-
-  APPLE_SERVICES_ID: { type: "convex", key: "APPLE_CLIENT_ID" },
 };
 
-function destinationFor(sourceKey: string, entry: RoutingEntry, channel: Channel): Destination {
-  const key = entry.key ?? sourceKey;
-  return entry.type === "eas"
+function destinationFor(key: string, entry: RoutingEntry, channel: Channel): Destination {
+  return entry === "eas"
     ? { type: "eas", key, environment: channel === "prod" ? "production" : "development" }
     : { type: "convex", key, channel };
 }

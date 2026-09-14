@@ -106,18 +106,18 @@ async function resolveIdentity(
   let keyId = env.get("APPLE_KEY_ID");
 
   if (!rotateOnly) {
-    const fromLocal = await readOne("APPLE_SERVICES_ID");
-    if (fromLocal) ok(`reading APPLE_SERVICES_ID from .env.local: ${fromLocal}`);
+    const fromLocal = await readOne("APPLE_CLIENT_ID");
+    if (fromLocal) ok(`reading APPLE_CLIENT_ID from .env.local: ${fromLocal}`);
     servicesId =
       fromLocal ??
-      (await promptOrEnv("APPLE_SERVICES_ID", "Services ID, e.g. com.you.app.signin")) ??
+      (await promptOrEnv("APPLE_CLIENT_ID", "Services ID, e.g. com.you.app.signin")) ??
       servicesId;
     teamId = (await promptOrEnv("APPLE_TEAM_ID", "10-char team ID")) ?? teamId;
     keyId = (await promptOrEnv("APPLE_KEY_ID", "10-char key ID")) ?? keyId;
   }
 
   if (!servicesId || !teamId || !keyId) {
-    yep("missing one of APPLE_SERVICES_ID, APPLE_TEAM_ID or APPLE_KEY_ID, stopping");
+    yep("missing one of APPLE_CLIENT_ID, APPLE_TEAM_ID or APPLE_KEY_ID, stopping");
     note("run this again with the values, or set them as env vars");
     return null;
   }
