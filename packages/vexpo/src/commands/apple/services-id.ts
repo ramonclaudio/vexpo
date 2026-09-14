@@ -110,7 +110,7 @@ export async function runServicesId(options: ServicesIdOptions): Promise<number>
 
   const client = makeAscClient(creds);
 
-  const servicesId = options.servicesId ?? process.env.APPLE_SERVICES_ID ?? `${bundleId}.signin`;
+  const servicesId = options.servicesId ?? process.env.APPLE_CLIENT_ID ?? `${bundleId}.signin`;
   const name = await appName();
 
   const appBundle = await findOrCreateAppBundleId(client, bundleId, name);
@@ -134,8 +134,8 @@ export async function runServicesId(options: ServicesIdOptions): Promise<number>
     ok("turned Sign in with Apple on for the app bundle id");
   }
 
-  await ensureLine("APPLE_SERVICES_ID", servicesId);
-  ok(`wrote APPLE_SERVICES_ID=${servicesId} to .env.local`);
+  await ensureLine("APPLE_CLIENT_ID", servicesId);
+  ok(`wrote APPLE_CLIENT_ID=${servicesId} to .env.local`);
 
   await recordStep("apple-services-id");
 

@@ -1,6 +1,6 @@
 {
   "name": "vexpo",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "private": true,
   "main": "expo-router/entry",
   "scripts": {
@@ -8,7 +8,8 @@
     "ios": "APP_VARIANT=development expo run:ios",
     "prebuild": "APP_VARIANT=development expo prebuild --clean",
     "eas:tf": "npx eas-cli build -p ios --profile production --auto-submit-with-profile testflight",
-    "metadata:push": "npx eas-cli metadata:lint && npx eas-cli metadata:push"
+    "metadata:pull": "npx eas-cli metadata:pull -e testflight",
+    "metadata:push": "npx eas-cli metadata:lint && npx eas-cli metadata:push -e testflight"
   },
   "dependencies": {
     "@better-auth/expo": "1.6.23",

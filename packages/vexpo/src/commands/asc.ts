@@ -108,8 +108,7 @@ async function connectWithoutTerminal(ascAppId: string | undefined): Promise<num
   await syncAscAppIdToEasJson(ascAppId);
   await ensureAscApiKeyInEasJson();
   await recordStep("apple-asc-link");
-  note("that's enough for `vexpo submit`. Cloud auto-submits also need the EAS project");
-  note("linked, so run `vexpo asc connect` in a terminal for that.");
+  note("that's what `vexpo submit` and the auto-submit half of `npm run eas:tf` read.");
   return 0;
 }
 

@@ -1,9 +1,5 @@
-import { readFile } from "node:fs/promises";
-
-import { easJson, easRun, easSpawn, easText } from "./eas-cli.ts";
+import { easJson, easRun, easSpawn, easText, resolveProjectId } from "./eas-cli.ts";
 import { parseKeyValueLines } from "./env-files.ts";
-import { readOne } from "./env-local.ts";
-import { fileExists } from "./fs.ts";
 
 export type EasEnvironment = "production" | "development";
 
@@ -14,31 +10,7 @@ export async function whoami(): Promise<string | null> {
   return text ? text.split("\n")[0].trim() : null;
 }
 
-function nonEmpty(value: string | undefined): string | null {
-  return value && value.length > 0 ? value : null;
-}
-
-async function projectIdFromAppJson(): Promise<string | null> {
-  if (!(await fileExists("app.json"))) return null;
-  const json = JSON.parse(await readFile("app.json", "utf8")) as {
-    expo?: { extra?: { eas?: { projectId?: string } } };
-  };
-  return nonEmpty(json.expo?.extra?.eas?.projectId);
-}
-
-async function projectIdFromEnvFile(): Promise<string | null> {
-  const value = nonEmpty(await readOne("EAS_PROJECT_ID"));
-  if (value) process.env.EAS_PROJECT_ID = value;
-  return value;
-}
-
-export async function resolveProjectId(): Promise<string | null> {
-  return (
-    (await projectIdFromAppJson()) ??
-    nonEmpty(process.env.EAS_PROJECT_ID) ??
-    (await projectIdFromEnvFile())
-  );
-}
+export { resolveProjectId };
 
 export async function envList(environment: EasEnvironment): Promise<Map<string, string> | null> {
   const { code, stdout } = await easText([

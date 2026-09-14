@@ -13,6 +13,13 @@ function targetArgs(target?: ConvexTarget): string[] {
   return target?.deployment ? ["--deployment", target.deployment] : [];
 }
 
+// The convex CLI reads CONVEX_DEPLOY_KEY out of .env.local and then ignores --prod, so a prod
+// command with a dev key in the file quietly runs against dev. Blanking it in the child's env
+// is enough for the CLI to fall back to --prod and the logged-in session.
+function targetEnv(target?: ConvexTarget): Record<string, string> | undefined {
+  return target?.prod && !target.envFile ? { CONVEX_DEPLOY_KEY: "" } : undefined;
+}
+
 function unquoteEnvValue(value: string): string {
   const q = value[0];
   if ((q === '"' || q === "'") && value.length >= 2 && value[value.length - 1] === q) {
@@ -36,7 +43,7 @@ function quoteEnvValue(value: string): string {
 
 export async function envMap(target?: ConvexTarget): Promise<Map<string, string> | null> {
   const argv = [dlx(), "convex", "env", "list", ...targetArgs(target)];
-  const { code, stdout } = await run(argv);
+  const { code, stdout } = await run(argv, { env: targetEnv(target) });
   if (code !== 0) return null;
   return parseKeyValueLines(stdout, unquoteEnvValue);
 }
@@ -62,7 +69,7 @@ export async function envSetFromFile(
     ...targetArgs(target),
     ...(opts?.force ? ["--force"] : []),
   ];
-  const { code, stderr } = await run(argv);
+  const { code, stderr } = await run(argv, { env: targetEnv(target) });
   if (code !== 0) {
     const tail = stderr.trim().split("\n").pop()?.trim() ?? `exit ${code}`;
     throw new Error(`convex env set --from-file failed: ${tail}`);

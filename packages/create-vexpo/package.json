@@ -1,7 +1,28 @@
 {
   "name": "@ramonclaudio/create-vexpo",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "description": "Scaffold a vexpo app. Expo SDK 57 on iOS with SwiftUI screens through @expo/ui, plus Convex, Better Auth and Resend.",
+  "keywords": [
+    "apple-sign-in",
+    "better-auth",
+    "boilerplate",
+    "convex",
+    "create",
+    "expo",
+    "expo-sdk-57",
+    "ios",
+    "react-native",
+    "resend",
+    "scaffold",
+    "starter",
+    "swiftui",
+    "template",
+    "vexpo"
+  ],
+  "homepage": "https://github.com/ramonclaudio/vexpo/tree/main/packages/create-vexpo#readme",
+  "bugs": {
+    "url": "https://github.com/ramonclaudio/vexpo/issues"
+  },
   "license": "MIT",
   "author": "Ramon Claudio <hello@ramonclaudio.com> (https://github.com/ramonclaudio)",
   "repository": {
@@ -16,6 +37,10 @@
     "dist"
   ],
   "type": "module",
+  "exports": {
+    ".": "./dist/index.js",
+    "./package.json": "./package.json"
+  },
   "publishConfig": {
     "access": "public",
     "registry": "https://registry.npmjs.org/"
@@ -32,5 +57,8 @@
     "@types/node": "^24",
     "tsup": "^8.5.1",
     "typescript": "^7.0.2"
+  },
+  "engines": {
+    "node": ">=22.12"
   }
 }

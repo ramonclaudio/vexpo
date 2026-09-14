@@ -56,6 +56,7 @@ type VerifyContext = {
 
 type AppConfigFacts = {
   name?: string;
+  scheme?: string;
   bundleIdFallback?: string;
 };
 
@@ -313,7 +314,7 @@ function missingWebhookCheck(
 }
 
 function webhookEventChecks(webhook: ResendWebhook): Check[] {
-  const required = ["email.bounced", "email.complained", "email.suppressed", "email.failed"];
+  const required = ["email.bounced", "email.complained", "email.failed"];
   const events = webhook.events ?? [];
   const missing = required.filter((e) => !events.includes(e));
   if (missing.length === 0) {
@@ -399,7 +400,7 @@ function appleIdFormatChecks(
     checks.push(warn("apple", "key-id-format", `APPLE_KEY_ID='${ids.keyId}' not 10 alphanumeric`));
   }
   if (ids.servicesId && !/^[a-z0-9.-]+$/i.test(ids.servicesId)) {
-    checks.push(warn("apple", "services-id-format", `APPLE_SERVICES_ID looks malformed`));
+    checks.push(warn("apple", "services-id-format", `APPLE_CLIENT_ID looks malformed`));
   }
   return checks;
 }
@@ -446,7 +447,7 @@ function appleJwtChecks(jwt: string, ids: AppleIds): Check[] {
     jwtExpiryCheck(payload),
     ...claimCheck("jwt-kid-matches", header.kid, ids.keyId, "JWT.header.kid", "APPLE_KEY_ID"),
     ...claimCheck("jwt-iss-matches", payload.iss, ids.teamId, "JWT.iss", "APPLE_TEAM_ID"),
-    ...claimCheck("jwt-sub-matches", payload.sub, ids.servicesId, "JWT.sub", "APPLE_SERVICES_ID"),
+    ...claimCheck("jwt-sub-matches", payload.sub, ids.servicesId, "JWT.sub", "APPLE_CLIENT_ID"),
   );
   return checks;
 }
@@ -495,7 +496,7 @@ async function verifyApple(ctx: VerifyContext): Promise<Check[]> {
   const env = convexEnvFor(ctx);
   const local = ctx.channel === "prod" ? ctx.envProd : ctx.envLocal;
   const ids: AppleIds = {
-    servicesId: env?.get("APPLE_CLIENT_ID") ?? local.get("APPLE_SERVICES_ID"),
+    servicesId: env?.get("APPLE_CLIENT_ID") ?? local.get("APPLE_CLIENT_ID"),
     teamId: env?.get("APPLE_TEAM_ID") ?? local.get("EXPO_PUBLIC_APPLE_TEAM_ID"),
     keyId: env?.get("APPLE_KEY_ID"),
   };
@@ -634,7 +635,6 @@ async function ascIntegrationChecks(): Promise<Check[]> {
     }
     return [
       ok("eas", "asc-integration", status.appStoreConnectApp?.bundleIdentifier ?? "connected"),
-      ...ascSubmitIdChecks(),
     ];
   } catch {
     return [skip("eas", "asc-integration", "eas integrations:asc:status unavailable")];
@@ -664,6 +664,9 @@ async function verifyEas(ctx: VerifyContext): Promise<Check[]> {
   checks.push(...(await easProjectInfoChecks(projectId, signIn.signedIn)));
   for (const env of EAS_ENVS) checks.push(...easEnvChecks(env, envMaps.get(env) ?? null, ctx));
   checks.push(...(await ascIntegrationChecks()));
+  // A missing ascAppId breaks `eas submit --non-interactive` whether or not the EAS to App
+  // Store Connect integration is connected, so this check does not hang off that one.
+  checks.push(...ascSubmitIdChecks());
   return checks;
 }
 
@@ -704,17 +707,16 @@ function bundleIdChecks(
   ];
 }
 
-function siteUrlChecks(local: Map<string, string>, env: Map<string, string>): Check[] {
-  const expoSite = local.get("EXPO_PUBLIC_CONVEX_SITE_URL");
+function siteUrlChecks(ctx: VerifyContext, env: Map<string, string>): Check[] {
   const convexSite = env.get("SITE_URL");
-  const localSite = local.get("EXPO_PUBLIC_SITE_URL");
-  if (!expoSite || !convexSite || !localSite) return [];
-  if (convexSite === localSite || convexSite.startsWith(localSite)) return [];
+  if (!convexSite || !ctx.appConfig.scheme) return [];
+  const appSite = `${ctx.appConfig.scheme}://`;
+  if (convexSite === appSite || convexSite.startsWith(appSite)) return [];
   return [
     warn(
       "coherence",
       "site-url-match",
-      `Convex SITE_URL='${convexSite}' ≠ EXPO_PUBLIC_SITE_URL='${localSite}'`,
+      `Convex SITE_URL='${convexSite}' ≠ the app's scheme '${appSite}'`,
     ),
   ];
 }
@@ -742,7 +744,7 @@ function verifyCoherence(ctx: VerifyContext): Check[] {
   const local = ctx.channel === "prod" ? ctx.envProd : ctx.envLocal;
   const expoTeam = local.get("EXPO_PUBLIC_APPLE_TEAM_ID");
   const convexTeam = env.get("APPLE_TEAM_ID");
-  const localServices = local.get("APPLE_SERVICES_ID");
+  const localServices = local.get("APPLE_CLIENT_ID");
   const convexServices = env.get("APPLE_CLIENT_ID");
 
   return [
@@ -755,11 +757,11 @@ function verifyCoherence(ctx: VerifyContext): Check[] {
     ),
     ...matchCheck(
       "services-id-match",
-      `APPLE_SERVICES_ID='${localServices}' ≠ Convex APPLE_CLIENT_ID='${convexServices}'`,
+      `local APPLE_CLIENT_ID='${localServices}' ≠ Convex APPLE_CLIENT_ID='${convexServices}'`,
       localServices,
       convexServices,
     ),
-    ...siteUrlChecks(local, env),
+    ...siteUrlChecks(ctx, env),
     ...appNameChecks(ctx, env),
   ];
 }
@@ -769,7 +771,6 @@ function verifyFiles(ctx: VerifyContext): Check[] {
     "CONVEX_DEPLOYMENT",
     "EXPO_PUBLIC_CONVEX_URL",
     "EXPO_PUBLIC_CONVEX_SITE_URL",
-    "EXPO_PUBLIC_SITE_URL",
     "EXPO_PUBLIC_APP_BUNDLE_ID",
     "EXPO_PUBLIC_APPLE_TEAM_ID",
   ];
@@ -797,7 +798,10 @@ export async function readContext(channel: Channel): Promise<VerifyContext> {
       readEnvFile(".env.local"),
       prodEnvFile ? readEnvFile(prodEnvFile) : new Map<string, string>(),
       convexEnvMap().catch(() => null),
-      prodEnvFile ? convexEnvMap({ prod: true, envFile: prodEnvFile }).catch(() => null) : null,
+      // No .env.prod is not the same as no prod. The logged-in session reads it too.
+      convexEnvMap(prodEnvFile ? { prod: true, envFile: prodEnvFile } : { prod: true }).catch(
+        () => null,
+      ),
       readAppConfigFacts(),
       loadAscCreds(),
     ],
@@ -815,8 +819,12 @@ export async function readContext(channel: Channel): Promise<VerifyContext> {
 }
 
 async function readAppConfigFacts(): Promise<AppConfigFacts> {
-  const [name, bundleId] = await Promise.all([appConfigConst("APP_NAME"), bundleIdFallback()]);
-  return { name, bundleIdFallback: bundleId ?? undefined };
+  const [name, appScheme, bundleId] = await Promise.all([
+    appConfigConst("APP_NAME"),
+    appConfigConst("SCHEME"),
+    bundleIdFallback(),
+  ]);
+  return { name, scheme: appScheme, bundleIdFallback: bundleId ?? undefined };
 }
 
 export async function verifyAll(ctx: VerifyContext): Promise<Check[]> {

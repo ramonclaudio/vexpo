@@ -97,7 +97,8 @@ export default ({ config }: ConfigContext): ExpoConfig => {
         NSPrivacyAccessedAPITypes: [
           {
             NSPrivacyAccessedAPIType: "NSPrivacyAccessedAPICategoryUserDefaults",
-            NSPrivacyAccessedAPITypeReasons: ["CA92.1"],
+            // CA92.1 is the app's own defaults, 1C8F.1 the App Group suite the widget reads.
+            NSPrivacyAccessedAPITypeReasons: ["CA92.1", "1C8F.1"],
           },
           {
             NSPrivacyAccessedAPIType: "NSPrivacyAccessedAPICategoryFileTimestamp",
@@ -140,6 +141,8 @@ export default ({ config }: ConfigContext): ExpoConfig => {
         {
           photosPermission: "Allow $(PRODUCT_NAME) to access your photos for profile pictures.",
           cameraPermission: "Allow $(PRODUCT_NAME) to take photos for profile pictures.",
+          // The picker is images only, so drop the microphone string the plugin adds by default.
+          microphonePermission: false,
         },
       ],
       [

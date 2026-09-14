@@ -106,11 +106,7 @@ async function liveCheckEas(): Promise<boolean> {
   const projectId = await resolveProjectId();
   if (!projectId) return false;
   const eas = (await easEnvList("production")) ?? new Map<string, string>();
-  return hasKeys(eas, [
-    "EXPO_PUBLIC_CONVEX_URL",
-    "EXPO_PUBLIC_CONVEX_SITE_URL",
-    "EXPO_PUBLIC_SITE_URL",
-  ]);
+  return hasKeys(eas, ["EXPO_PUBLIC_CONVEX_URL", "EXPO_PUBLIC_CONVEX_SITE_URL"]);
 }
 
 async function liveCheckAscLink(): Promise<boolean> {
@@ -125,7 +121,6 @@ const LOCAL_ENV_CORE = [
   "CONVEX_DEPLOYMENT",
   "EXPO_PUBLIC_CONVEX_URL",
   "EXPO_PUBLIC_CONVEX_SITE_URL",
-  "EXPO_PUBLIC_SITE_URL",
   "EXPO_PUBLIC_APP_BUNDLE_ID",
 ];
 
@@ -208,7 +203,7 @@ async function stepProbe(options: SetupOptions): Promise<Probe> {
     ["asc-key", await probe("asc-key", async () => false)],
     [
       "apple-services-id",
-      await probe("apple-services-id", async () => local.has("APPLE_SERVICES_ID")),
+      await probe("apple-services-id", async () => local.has("APPLE_CLIENT_ID")),
     ],
     [
       "apple-sign-in",
@@ -275,7 +270,8 @@ function stepRunners(o: SetupOptions) {
     "vexpo apple services-id": () => runServicesId({}),
     "vexpo apple jwt": () => runAppleJwt({}),
     "vexpo asc connect": () => runAscConnect({}),
-    "vexpo eas": () => runEas(),
+    // Not a command. `vexpo eas` is gone, so this one names the section runEas prints.
+    EAS: () => runEas(),
     "vexpo review-account": () => runReviewAccount({}),
   };
 }
@@ -357,7 +353,7 @@ const PHASES: Phase[] = [
   },
   {
     step: "eas",
-    command: "vexpo eas",
+    command: "EAS",
     inScope: (s) => s.eas,
     skipNote: "EAS skipped in lite mode. `vexpo full` sets it up.",
     needed: missing("eas"),

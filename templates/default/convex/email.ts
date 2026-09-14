@@ -23,12 +23,7 @@ export const resend: Resend = new Resend(components.resend, {
   onEmailEvent: internal.email.handleEmailEvent,
 });
 
-const ACTIONABLE_FAILURE_EVENTS = new Set([
-  "email.bounced",
-  "email.complained",
-  "email.suppressed",
-  "email.failed",
-]);
+const ACTIONABLE_FAILURE_EVENTS = new Set(["email.bounced", "email.complained", "email.failed"]);
 
 export const handleEmailEvent = internalMutation({
   args: vOnEmailEventArgs,

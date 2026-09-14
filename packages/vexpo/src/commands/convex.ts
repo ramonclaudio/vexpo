@@ -1,4 +1,4 @@
-import { appleTeamIdFallback, bundleIdFallback, pkgName, scheme } from "../lib/app.ts";
+import { appleTeamIdFallback, bundleIdFallback, pkgName } from "../lib/app.ts";
 import { envSet as convexEnvSet, recordedOrDerivedDeployment } from "../lib/convex-env.ts";
 import { checkToken } from "../lib/convex-management.ts";
 import { easSpawn } from "../lib/eas-cli.ts";
@@ -252,13 +252,6 @@ async function recordDeployment(options: ConvexOptions): Promise<number> {
   const urls = convexUrls(slug, options.local === true);
   await writeUnlessSet(refreshed, "EXPO_PUBLIC_CONVEX_URL", () => urls.url);
   await writeUnlessSet(refreshed, "EXPO_PUBLIC_CONVEX_SITE_URL", () => urls.siteUrl);
-  await writeUnlessSet(
-    refreshed,
-    "EXPO_PUBLIC_SITE_URL",
-    async () => `${await scheme()}://`,
-    (v) => `wrote EXPO_PUBLIC_SITE_URL=${v}`,
-  );
-
   await ensureIdentity(refreshed);
 
   await recordStep("convex", {
