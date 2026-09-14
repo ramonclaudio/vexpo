@@ -1,45 +1,11 @@
 {
   "name": "vexpo",
   "private": true,
-  "description": "A template for iOS apps built on Expo SDK 57 with Convex, Better Auth, and Resend wired in. The `vexpo` CLI does the setup.",
-  "homepage": "https://github.com/ramonclaudio/vexpo",
-  "bugs": {
-    "url": "https://github.com/ramonclaudio/vexpo/issues"
-  },
-  "license": "MIT",
-  "author": "Ramon Claudio <hello@ramonclaudio.com> (https://github.com/ramonclaudio)",
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/ramonclaudio/vexpo.git"
-  },
   "workspaces": [
     "packages/*"
   ],
   "type": "module",
   "scripts": {
-    "build": "npm run build --workspaces --if-present",
-    "prepare": "git config core.hooksPath .githooks || true",
-    "validate": "npm run format:check && npm run lint && npm run typecheck && npm run knip && npm run test:packages",
-    "typecheck": "npm run typecheck --workspaces --if-present",
-    "lint": "oxlint packages .github/scripts",
-    "format:check": "oxfmt --check packages .github/scripts",
-    "format": "oxfmt packages .github/scripts",
-    "knip": "knip",
-    "test": "npm run test --workspaces --if-present && npm run template:test",
-    "test:packages": "npm run test --workspaces --if-present",
-    "coverage": "npm run coverage -w @ramonclaudio/vexpo",
-    "test:packages:e2e": "npm run test:e2e -w @ramonclaudio/vexpo && npm run test:create:e2e",
-    "test:create:e2e": "npm run test:e2e -w @ramonclaudio/create-vexpo",
-    "test:all": "npm run test && npm run test:packages:e2e",
-    "link:dev": "npm run build -w @ramonclaudio/vexpo && cd packages/vexpo && npm link && cd ../../templates/default && npm link @ramonclaudio/vexpo && echo '\\nlinked. now `npx vexpo lite` from templates/default routes to the local vexpo build.\\nrun `npm run build -w @ramonclaudio/vexpo` whenever you change cli source.\\n'",
-    "template:install": "cd templates/default && npm install",
-    "template:dev": "cd templates/default && npm run dev",
-    "template:test": "cd templates/default && npm run test"
-  },
-  "devDependencies": {
-    "knip": "^6.32.2",
-    "oxfmt": "^0.67.0",
-    "oxlint": "^1.80.0",
-    "typescript": "^7.0.2"
+    "build": "npm run build --workspaces --if-present"
   }
 }

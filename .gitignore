@@ -5,17 +5,13 @@ packages/*/node_modules
 
 templates/default/node_modules
 templates/default/.expo
-templates/default/.tanstack
 templates/default/ios
 templates/default/android
-templates/default/.output
 templates/default/dist
-templates/default/coverage
 
 **/.env.local
 **/.env.prod
 **/.env.production
-**/.env.convex.local
 **/.setup-state.json
 **/.setup-state.json.*.tmp
 
@@ -55,8 +51,6 @@ plans/
 .handoff
 *.handoff
 
-coverage/
-.vitest-cache/
 tsconfig.tsbuildinfo
 
 bun-error.*
