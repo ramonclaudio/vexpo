@@ -9,8 +9,7 @@ const ASC_PRIVACY_URL = "https://appstoreconnect.apple.com";
 export async function runPrivacyShow(file: string, opts: { json?: boolean } = {}): Promise<number> {
   if (!existsSync(file)) {
     section("Privacy details");
-    note(`no local ${file}. Apple's API can't read the live label; set it in App Store Connect:`);
-    note(`  ${ASC_PRIVACY_URL} -> your app -> App Privacy`);
+    note(`no ${file}. Set the labels under App Privacy at ${ASC_PRIVACY_URL}`);
     return 0;
   }
   const parsed = readJson(file);
@@ -31,7 +30,7 @@ function entryFlags(entry: PrivacyEntry): string {
     Array.isArray(entry.purposes) ? entry.purposes.join(",") : "",
   ]
     .filter(Boolean)
-    .join(" · ");
+    .join(", ");
 }
 
 function printPrivacyEntries(config: PrivacyConfig): void {

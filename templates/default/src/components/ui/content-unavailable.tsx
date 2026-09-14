@@ -12,40 +12,30 @@ import {
 import type { SFSymbol } from "sf-symbols-typescript";
 
 import { DynamicType } from "@/constants/ui";
-import { useColors } from "@/hooks/use-theme";
+import { Colors } from "@/constants/theme";
 import { useDynamicFont } from "@/lib/dynamic-font";
 
-const NATIVE = Platform.OS === "ios" && Number.parseInt(String(Platform.Version), 10) >= 17;
+const NATIVE = Number.parseInt(String(Platform.Version), 10) >= 17;
 
 type Props = {
   title: string;
   systemImage: SFSymbol;
   description?: string;
-  testID?: string;
 };
 
-export function ContentUnavailable({ title, systemImage, description, testID }: Props) {
+export function ContentUnavailable({ title, systemImage, description }: Props) {
   if (NATIVE) {
     return (
-      <ContentUnavailableView
-        testID={testID}
-        title={title}
-        systemImage={systemImage}
-        description={description}
-      />
+      <ContentUnavailableView title={title} systemImage={systemImage} description={description} />
     );
   }
-  return (
-    <Fallback title={title} systemImage={systemImage} description={description} testID={testID} />
-  );
+  return <Fallback title={title} systemImage={systemImage} description={description} />;
 }
 
-function Fallback({ title, systemImage, description, testID }: Props) {
+function Fallback({ title, systemImage, description }: Props) {
   const dfont = useDynamicFont();
-  const colors = useColors();
   return (
     <VStack
-      testID={testID}
       spacing={8}
       alignment="center"
       modifiers={[
@@ -56,7 +46,7 @@ function Fallback({ title, systemImage, description, testID }: Props) {
     >
       <Image
         systemName={systemImage}
-        color={colors.mutedForeground}
+        color={Colors.mutedForeground}
         modifiers={[
           dfont({ size: 40 }),
           dynamicTypeSize({ max: DynamicType.control }),
@@ -70,7 +60,7 @@ function Fallback({ title, systemImage, description, testID }: Props) {
         <Text
           modifiers={[
             dfont({ size: 14 }),
-            foregroundStyle(colors.mutedForeground),
+            foregroundStyle(Colors.mutedForeground),
             multilineTextAlignment("center"),
           ]}
         >

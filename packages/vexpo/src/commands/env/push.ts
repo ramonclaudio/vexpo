@@ -11,8 +11,6 @@ import {
 } from "../../lib/eas-project.ts";
 import {
   buildPlan,
-  MANUAL_EAS_SECRETS,
-  missingKeys,
   readSources,
   unrecognizedKeys,
   type EnvSource,
@@ -43,7 +41,7 @@ import {
 import { renderVerifyResults } from "../../lib/verify-render.ts";
 import { readContext, summarize, verifyAll } from "../../lib/verify.ts";
 
-export type EnvPushOptions = {
+type EnvPushOptions = {
   force?: boolean;
   dryRun?: boolean;
   noVerify?: boolean;
@@ -57,7 +55,7 @@ function shortValue(v: string): string {
   return `${v.slice(0, 30)}…${v.slice(-12)} ${DIM}(${v.length}b)${RESET}`;
 }
 
-export function planRowValue(entry: SyncEntry): string {
+function planRowValue(entry: SyncEntry): string {
   if (entry.destinations.some((d) => d.type === "convex")) {
     return `fp: ${fingerprint(entry.value)} ${DIM}(${entry.value.length}b)${RESET}`;
   }
@@ -66,7 +64,7 @@ export function planRowValue(entry: SyncEntry): string {
 
 function describeDest(d: Destination): string {
   if (d.type === "convex") return `convex env (${d.channel}) → ${d.key}`;
-  return `eas env (${d.environments.join(",")}) → ${d.key}`;
+  return `eas env (${d.environment}) → ${d.key}`;
 }
 
 type RemoteState = {
@@ -80,14 +78,11 @@ async function readRemoteState(prodEnvFile?: string): Promise<RemoteState> {
   const projectId = await resolveProjectId();
   const hasEasProject = !!projectId;
 
-  const [convexDev, convexProd, easDev, easPreview, easProd] = await Promise.all([
+  const [convexDev, convexProd, easDev, easProd] = await Promise.all([
     convexEnvMap().catch(() => null),
     convexEnvMap({ prod: true, envFile: prodEnvFile }).catch(() => null),
     hasEasProject
       ? easEnvList("development").then((m) => m ?? new Map<string, string>())
-      : Promise.resolve(new Map<string, string>()),
-    hasEasProject
-      ? easEnvList("preview").then((m) => m ?? new Map<string, string>())
       : Promise.resolve(new Map<string, string>()),
     hasEasProject
       ? easEnvList("production").then((m) => m ?? new Map<string, string>())
@@ -97,7 +92,7 @@ async function readRemoteState(prodEnvFile?: string): Promise<RemoteState> {
   return {
     convexDev,
     convexProd,
-    easByEnv: { development: easDev, preview: easPreview, production: easProd },
+    easByEnv: { development: easDev, production: easProd },
     hasEasProject,
   };
 }
@@ -122,7 +117,7 @@ function resolveConvexDestination(
       destination: dest,
       current: undefined,
       status: "blocked",
-      reason: "couldn't read convex env (auth/CLI failure). run `npx convex login` and re-run",
+      reason: "couldn't read the Convex env. run `npx convex login` and try again",
     };
   }
   const current = map.get(dest.key);
@@ -140,18 +135,15 @@ function resolveEasDestination(
       destination: dest,
       current: undefined,
       status: "blocked",
-      reason: "no eas projectId. run setup:eas first",
+      reason: "no EAS project id yet. run `vexpo full` first",
     };
   }
-  const currents = dest.environments.map((env) => remote.easByEnv[env].get(dest.key));
-  if (currents.every((current) => current === newValue)) {
-    return { destination: dest, current: newValue, status: "noop" };
-  }
-  const create = currents.some((current) => current === undefined);
-  return { destination: dest, current: undefined, status: create ? "create" : "update" };
+  const current = remote.easByEnv[dest.environment].get(dest.key);
+  if (current === newValue) return { destination: dest, current, status: "noop" };
+  return { destination: dest, current, status: current === undefined ? "create" : "update" };
 }
 
-export function resolveDestination(
+function resolveDestination(
   dest: Destination,
   newValue: string,
   remote: RemoteState,
@@ -161,7 +153,7 @@ export function resolveDestination(
     : resolveEasDestination(dest, newValue, remote);
 }
 
-export type FilePlan = {
+type FilePlan = {
   sourceFile: string;
   channel: Channel;
   rows: Array<{ entry: SyncEntry; resolved: ResolvedDestination[] }>;
@@ -220,28 +212,22 @@ function printFilePlan(plan: FilePlan): PlanCounts {
 
 type Batch = {
   label: string;
-  past: string;
-  present: string;
   entries: Array<[string, string]>;
   push: (tmp: string) => Promise<unknown>;
 };
 
 function planBatches(plan: FilePlan): Batch[] {
   const convex = new Map<"dev" | "prod", Array<[string, string]>>();
-  const eas = new Map<string, { envs: EasEnvironment[]; entries: Array<[string, string]> }>();
+  const eas = new Map<EasEnvironment, Array<[string, string]>>();
 
   for (const row of plan.rows) {
     for (const r of row.resolved) {
       if (r.status === "noop" || r.status === "blocked") continue;
+      const pair: [string, string] = [r.destination.key, row.entry.value];
       if (r.destination.type === "convex") {
-        const list = convex.get(r.destination.channel) ?? [];
-        list.push([r.destination.key, row.entry.value]);
-        convex.set(r.destination.channel, list);
+        convex.set(r.destination.channel, [...(convex.get(r.destination.channel) ?? []), pair]);
       } else {
-        const key = [...r.destination.environments].toSorted().join(",");
-        const cur = eas.get(key) ?? { envs: [...r.destination.environments], entries: [] };
-        cur.entries.push([r.destination.key, row.entry.value]);
-        eas.set(key, cur);
+        eas.set(r.destination.environment, [...(eas.get(r.destination.environment) ?? []), pair]);
       }
     }
   }
@@ -249,8 +235,6 @@ function planBatches(plan: FilePlan): Batch[] {
   return [
     ...[...convex].map(([channel, entries]) => ({
       label: `convex(${channel})`,
-      past: "bulk-set",
-      present: "bulk-set",
       entries,
       push: (tmp: string) =>
         convexEnvSetFromFile(
@@ -259,30 +243,28 @@ function planBatches(plan: FilePlan): Batch[] {
           { force: true },
         ),
     })),
-    ...[...eas.values()].map(({ envs, entries }) => ({
-      label: `eas(${envs.join(",")})`,
-      past: "pushed",
-      present: "push",
+    ...[...eas].map(([environment, entries]) => ({
+      label: `eas(${environment})`,
       entries,
-      push: (tmp: string) => easEnvPush({ path: tmp, environments: envs, force: true }),
+      push: (tmp: string) => easEnvPush({ path: tmp, environment, force: true }),
     })),
-  ].filter((b) => b.entries.length > 0);
+  ];
 }
 
-export async function applyPlan(plan: FilePlan): Promise<{ applied: number; failed: number }> {
+async function applyPlan(plan: FilePlan): Promise<{ applied: number; failed: number }> {
   let applied = 0;
   let failed = 0;
-  for (const { label, past, present, entries, push } of planBatches(plan)) {
+  for (const { label, entries, push } of planBatches(plan)) {
     try {
       await withTempEnvFile(
         entries.map(([k, v]) => `${k}=${v}`),
         push,
       );
-      ok(`${label} ${past} ${entries.length} var${plural(entries.length)}`);
+      ok(`${label} set ${entries.length} var${plural(entries.length)}`);
       for (const [k] of entries) note(`  ${k}`);
       applied += entries.length;
     } catch (err) {
-      bad(`${label} ${present} failed: ${errText(err)}`);
+      bad(`${label} push failed: ${errText(err)}`);
       failed += entries.length;
     }
   }
@@ -294,38 +276,6 @@ function reportUnrecognized(sources: EnvSource[]): void {
   if (unknown.length === 0) return;
   yep(`${unknown.length} unrecognized key${plural(unknown.length)} ignored:`);
   for (const k of unknown) note(`  ${k}`);
-}
-
-function reportMissing(sources: EnvSource[]): void {
-  const missing = missingKeys(sources);
-  const total = missing.dev.length + missing.prod.length;
-  if (total === 0) return;
-  line();
-  note(`${BOLD}Missing from source files (${total} keys total)${RESET}`);
-  for (const [channel, keys] of [
-    ["dev", missing.dev],
-    ["prod", missing.prod],
-  ] as const) {
-    if (keys.length === 0) continue;
-    const more = keys.length > 8 ? "…" : "";
-    note(`  ${channel} (${keys.length}): ${keys.slice(0, 8).join(", ")}${more}`);
-  }
-}
-
-function reportManualSecrets(sources: EnvSource[]): void {
-  const hits = sources.flatMap((s) =>
-    Object.keys(MANUAL_EAS_SECRETS)
-      .filter((k) => s.entries.has(k))
-      .map((key) => ({ key, file: s.path })),
-  );
-  if (hits.length === 0) return;
-  line();
-  yep(`${hits.length} secret-visibility key${plural(hits.length)} detected. set manually:`);
-  for (const { key, file } of hits) {
-    note(`  ${BOLD}${key}${RESET} ${DIM}(${file})${RESET}`);
-    note(`    ${DIM}${MANUAL_EAS_SECRETS[key]}${RESET}`);
-  }
-  note(`${DIM}lite skips these to avoid pushing secrets at default visibility${RESET}`);
 }
 
 function printPlans(plans: FilePlan[]): PlanCounts {
@@ -344,17 +294,15 @@ function reportDryRun(totals: PlanCounts): void {
   if (totals.actionable > 0) {
     const blocked = totals.blocked > 0 ? `, ${totals.blocked} blocked` : "";
     note(
-      `${totals.actionable} action${plural(totals.actionable)} would be applied${blocked}; --dry-run, exiting`,
+      `${totals.actionable} change${plural(totals.actionable)} would be applied${blocked}. dry run, nothing pushed`,
     );
     return;
   }
   if (totals.blocked > 0) {
-    note(
-      `0 actionable, ${totals.blocked} blocked; --dry-run, exiting (resolve blockers and re-run)`,
-    );
+    note(`no changes possible, ${totals.blocked} blocked. dry run, nothing pushed`);
     return;
   }
-  ok("nothing to do. all source values match destinations (--dry-run)");
+  ok("nothing to do, every value already matches (dry run)");
 }
 
 function prodConvexWritesAreSafe(entries: SyncEntry[], sources: EnvSource[]): boolean {
@@ -369,9 +317,9 @@ function prodConvexWritesAreSafe(entries: SyncEntry[], sources: EnvSource[]): bo
   if (deployKey.startsWith("prod:") || selector.startsWith("prod:")) return true;
 
   line();
-  bad(`${prod?.path ?? "prod source"} has no prod-scoped CONVEX_DEPLOY_KEY or CONVEX_DEPLOYMENT`);
-  note("prod env would silently write to the DEV deployment (the dev key shadows --prod)");
-  note("add a `prod:` CONVEX_DEPLOY_KEY (or CONVEX_DEPLOYMENT) to the prod file and re-run");
+  bad(`${prod?.path ?? "the prod file"} has no prod CONVEX_DEPLOY_KEY or CONVEX_DEPLOYMENT`);
+  note("without one the prod values would land on the dev deployment");
+  note("add a `prod:` CONVEX_DEPLOY_KEY or CONVEX_DEPLOYMENT to that file and try again");
   return false;
 }
 
@@ -413,8 +361,8 @@ async function verifyAfterPush(channels: Array<"dev" | "prod">, strict: boolean)
   }
   if (totalFail > 0) {
     line();
-    bad(`${totalFail} verification failure${plural(totalFail)}`);
-    note("re-run `vexpo doctor` for full output, or fix the env values and re-run");
+    bad(`${totalFail} check${plural(totalFail)} failed`);
+    note("run `vexpo doctor` for the full output, or fix the values and push again");
     return 1;
   }
   if (strict && totalWarn > 0) {
@@ -428,12 +376,10 @@ async function verifyAfterPush(channels: Array<"dev" | "prod">, strict: boolean)
 function nothingToDo(totals: { blocked: number }): number {
   line();
   if (totals.blocked > 0) {
-    yep(
-      `${totals.blocked} blocked, 0 actionable. resolve blockers (run \`vexpo full\` first) and re-run`,
-    );
+    yep(`${totals.blocked} blocked, nothing else to do. run \`vexpo full\` first, then push again`);
     return 2;
   }
-  ok("nothing to do. all source values match destinations");
+  ok("nothing to do, every value already matches");
   return 0;
 }
 
@@ -447,15 +393,15 @@ function verifyPushed(sources: EnvSource[], strict: boolean): Promise<number> {
 async function readSourcesOrExplain(options: EnvPushOptions): Promise<EnvSource[] | null> {
   if ((await checkToken()) === "unauthorized") {
     bad("Convex login expired or revoked");
-    note("run `npx convex login` to refresh, then re-run");
+    note("run `npx convex login`, then push again");
     return null;
   }
 
   const sources = await readSources({ local: options.localFile, prod: options.prodFile });
   if (sources.length === 0) {
-    yep("no source files found");
-    note("checked: .env.local, .env.prod, .env.production");
-    note("create one with the values you want synced and re-run");
+    yep("no env files found");
+    note("checked .env.local, .env.prod and .env.production");
+    note("create one with the values you want pushed and try again");
     return null;
   }
   for (const source of sources) {
@@ -492,7 +438,7 @@ async function applyAndReport(
   }
 
   line();
-  note("for full provisioning (Resend key, Apple JWT, signups), run `vexpo full`");
+  note("for the rest (Resend, Sign in with Apple, signups), run `vexpo full`");
   return 0;
 }
 
@@ -503,12 +449,9 @@ export async function runEnvPush(options: EnvPushOptions): Promise<number> {
   if (!sources) return 1;
 
   reportUnrecognized(sources);
-  reportMissing(sources);
 
   const remote = await readRemoteState(sources.find((s) => s.channel === "prod")?.path);
-  if (!remote.hasEasProject) yep("no EAS projectId in app.json. EAS env routes will be blocked");
-
-  reportManualSecrets(sources);
+  if (!remote.hasEasProject) yep("no EAS project id in app.json, so nothing can go to EAS yet");
 
   const entries = buildPlan(sources);
   const filePlans = groupByFile(entries, remote);

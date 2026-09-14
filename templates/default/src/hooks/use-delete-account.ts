@@ -11,10 +11,6 @@ const AUTH_UNAVAILABLE_ERRORS = new Set<LocalAuthenticationError>([
   "passcode_not_set",
 ]);
 
-export function isAuthUnavailable(error: LocalAuthenticationError): boolean {
-  return AUTH_UNAVAILABLE_ERRORS.has(error);
-}
-
 export function useDeleteAccount() {
   const faceId = useCallback(async () => {
     const result = await LocalAuthentication.authenticateAsync({
@@ -23,7 +19,9 @@ export function useDeleteAccount() {
     if (result.success) return { ok: true } as const;
     return {
       ok: false,
-      error: isAuthUnavailable(result.error) ? "Device authentication unavailable" : undefined,
+      error: AUTH_UNAVAILABLE_ERRORS.has(result.error)
+        ? "Device authentication unavailable"
+        : undefined,
     } as const;
   }, []);
 

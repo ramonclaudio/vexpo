@@ -3,8 +3,6 @@ import { join } from "node:path";
 
 import { defineConfig } from "tsup";
 
-import { STRIPPED_DOTFILES, strippedToUnderscore } from "./src/dotfiles.ts";
-
 export default defineConfig({
   entry: ["src/index.ts"],
   format: "esm",
@@ -20,28 +18,8 @@ export default defineConfig({
     const src = join(process.cwd(), "..", "..", "templates", "default");
     const dest = join(process.cwd(), "dist", "templates", "default");
     await rm(dest, { recursive: true, force: true });
-    const ROOT_ONLY_DIRS = [
-      "ios",
-      "android",
-      ".expo",
-      ".tanstack",
-      ".output",
-      ".maestro/debug",
-      ".smoke-build",
-    ];
-    const SKIP_DIRS = [
-      "node_modules",
-      ".claude",
-      ".agents",
-      ".cursor",
-      ".dev",
-      "plans",
-      "docs",
-      ".vexpo-manual-setup",
-      ".rebrand-backup",
-      "coverage",
-      ".vitest-cache",
-    ];
+    const ROOT_ONLY_DIRS = ["ios", "android", ".expo"];
+    const SKIP_DIRS = ["node_modules", ".claude"];
     const SKIP_BASENAME_PATTERNS = [
       /\.p8$/,
       /\.p12$/,
@@ -52,17 +30,12 @@ export default defineConfig({
       /^\.env\.local$/,
       /^\.env\.prod$/,
       /^\.env\.production$/,
-      /^\.env\.convex\.local$/,
       /^store\.config\.json$/,
       /^\.setup-state\.json$/,
       /^\.setup-state\.json\..*\.tmp$/,
       /^\.DS_Store$/,
-      /^skills-lock\.json$/,
-      /^LICENSE$/i,
       /^expo-env\.d\.ts$/,
-      /^CODEOWNERS$/,
       /^tsconfig\.tsbuildinfo$/,
-      /^bun-error\./,
       /\.tgz$/,
       /\.log$/,
       /^package-lock\.json$/,
@@ -70,7 +43,6 @@ export default defineConfig({
       /^bun\.lockb$/,
       /^pnpm-lock\.yaml$/,
       /^yarn\.lock$/,
-      /\.bak$/,
     ];
     await cp(src, dest, {
       recursive: true,
@@ -88,11 +60,7 @@ export default defineConfig({
       },
     });
     await cp(join(dest, "store.config.example.json"), join(dest, "store.config.json"));
-    for (const name of STRIPPED_DOTFILES) {
-      try {
-        await rename(join(dest, name), join(dest, strippedToUnderscore(name)));
-      } catch {}
-    }
+    await rename(join(dest, ".gitignore"), join(dest, "_gitignore"));
     const files = await readdir(dest);
     console.log(`[tsup] copied ${files.length} top-level entries from templates/default`);
   },

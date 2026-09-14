@@ -53,7 +53,7 @@ export function firstSeen(
     seen.add(value);
     return true;
   }
-  issues.push(warn(`${where} '${value}' is duplicated; only the last entry counts.`));
+  issues.push(warn(`${where} '${value}' is duplicated. Only the last entry counts.`));
   return false;
 }
 

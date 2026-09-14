@@ -1,6 +1,6 @@
 import { authClient } from "@/lib/auth-client";
 
-export type AuthStatus = {
+type AuthStatus = {
   isPending: boolean;
   isAuthenticated: boolean;
   isGuest: boolean;

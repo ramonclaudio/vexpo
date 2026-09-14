@@ -16,13 +16,12 @@ import {
 } from "@expo/ui/swift-ui/modifiers";
 
 import { useDynamicFont } from "@/lib/dynamic-font";
-import { Button as ButtonTokens } from "@/constants/layout";
-import { useColors } from "@/hooks/use-theme";
+import { ButtonTokens } from "@/constants/layout";
+import { Colors } from "@/constants/theme";
 
 type SFSymbol = NonNullable<ComponentProps<typeof Image>["systemName"]>;
 
 export function CapsuleRowButton({
-  testID,
   label,
   systemImage,
   onPress,
@@ -30,7 +29,6 @@ export function CapsuleRowButton({
   inputLabels,
   role,
 }: {
-  testID: string;
   label: string;
   systemImage: SFSymbol;
   onPress: () => void;
@@ -39,16 +37,14 @@ export function CapsuleRowButton({
   role?: "destructive";
 }) {
   const dfont = useDynamicFont();
-  const colors = useColors();
-  const labelColor = role === "destructive" ? colors.destructive : colors.foreground;
+  const labelColor = role === "destructive" ? Colors.destructive : Colors.foreground;
   const showChevron = role !== "destructive";
   return (
     <Button
-      testID={testID}
       modifiers={[
         buttonStyle("plain"),
         frame({ maxWidth: Infinity }),
-        background(colors.muted),
+        background(Colors.muted),
         clipShape("capsule"),
         ...(hint ? [accessibilityHint(hint)] : []),
         ...(inputLabels ? [accessibilityInputLabels(inputLabels)] : []),
@@ -77,7 +73,7 @@ export function CapsuleRowButton({
         {showChevron ? (
           <Image
             systemName="chevron.right"
-            color={colors.mutedForeground}
+            color={Colors.mutedForeground}
             modifiers={[dfont({ size: 16 }), imageScale("small"), accessibilityHidden(true)]}
           />
         ) : null}

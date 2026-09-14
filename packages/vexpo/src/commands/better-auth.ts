@@ -5,7 +5,7 @@ import { envMap, envSet } from "../lib/convex-env.ts";
 import { nop, ok, section } from "../lib/output.ts";
 import { recordStep } from "../lib/state.ts";
 
-export type BetterAuthOptions = {
+type BetterAuthOptions = {
   rotateSecret?: boolean;
   siteUrl?: string;
   appName?: string;
@@ -40,7 +40,7 @@ export async function runBetterAuth(options: BetterAuthOptions): Promise<number>
     await envSet("BETTER_AUTH_SECRET", base64Secret());
     ok(
       options.rotateSecret === true
-        ? "rotated BETTER_AUTH_SECRET (sessions invalidated)"
+        ? "new BETTER_AUTH_SECRET, every session is signed out"
         : "generated BETTER_AUTH_SECRET",
     );
   }

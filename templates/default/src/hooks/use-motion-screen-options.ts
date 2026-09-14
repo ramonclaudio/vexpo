@@ -1,13 +1,10 @@
 import { useReducedMotion } from "@/hooks/use-reduced-motion";
 
-export function useMotionScreenOptions<A extends string>(
-  animation: A,
-  animationDuration?: number,
-): {
-  animation: A | "fade";
-  animationDuration: number | undefined;
+export function useMotionScreenOptions(): {
+  animation: "default" | "fade";
+  animationDuration?: number;
 } {
   const reduceMotion = useReducedMotion();
   if (reduceMotion) return { animation: "fade", animationDuration: 150 };
-  return { animation, animationDuration };
+  return { animation: "default" };
 }

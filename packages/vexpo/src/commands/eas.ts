@@ -1,11 +1,10 @@
 import { easSpawn } from "../lib/eas-cli.ts";
 import {
-  checkCli,
-  ensureBranches,
   ensureChannels,
   envPush,
   init,
   resolveProjectId,
+  version as easVersion,
   whoami,
   type EasEnvironment,
 } from "../lib/eas-project.ts";
@@ -27,14 +26,7 @@ import {
 } from "../lib/output.ts";
 import { recordStep } from "../lib/state.ts";
 
-export type EasOptions = {
-  withProd?: boolean;
-};
-
-async function pushEasRoutedKeys(
-  file: string,
-  environments: readonly EasEnvironment[],
-): Promise<string[]> {
+async function pushEasRoutedKeys(file: string, environment: EasEnvironment): Promise<string[]> {
   const entries = await readEnvFile(file);
   const easKeys: Array<[string, string]> = [];
   for (const [key, value] of entries) {
@@ -45,7 +37,7 @@ async function pushEasRoutedKeys(
   return withTempEnvFile(
     easKeys.map(([k, v]) => `${k}=${v}`),
     async (tmp) => {
-      await envPush({ path: tmp, environments, force: true });
+      await envPush({ path: tmp, environment, force: true });
       return easKeys.map(([k]) => k);
     },
   );
@@ -58,7 +50,7 @@ async function ensureSignedIn(): Promise<{ ok: boolean; who: string | null }> {
     return { ok: true, who };
   }
   if (!process.stdin.isTTY) {
-    bad("non-TTY: run `npx eas-cli login` then re-run");
+    bad("no terminal to sign in from. run `npx eas-cli login`, then try again");
     return { ok: false, who: null };
   }
   yep("not signed in to Expo");
@@ -89,27 +81,17 @@ async function ensureProject(): Promise<{ ok: boolean; projectId: string | null 
   return { ok: true, projectId };
 }
 
-async function ensureAll(
-  label: string,
-  names: string[],
-  ensure: (names: string[]) => Promise<string[]>,
-): Promise<void> {
-  const created = await ensure(names);
-  if (created.length > 0) ok(`${label} created: ${created.join(", ")}`);
-  else nop(`${label} already exist (${names.join(", ")})`);
-}
-
 async function pushEnvFile(
   file: string,
-  environments: readonly EasEnvironment[],
+  environment: EasEnvironment,
   emptyNote: string,
 ): Promise<boolean> {
   try {
-    const pushed = await pushEasRoutedKeys(file, environments);
+    const pushed = await pushEasRoutedKeys(file, environment);
     if (pushed.length === 0) nop(emptyNote);
     else
       ok(
-        `pushed ${pushed.length} EXPO_PUBLIC_* var${plural(pushed.length)} → EAS env (${environments.join(", ")})`,
+        `pushed ${pushed.length} EXPO_PUBLIC_* var${plural(pushed.length)} to the EAS ${environment} env`,
       );
     return true;
   } catch (err) {
@@ -120,34 +102,25 @@ async function pushEnvFile(
 
 function printNextCommands(): void {
   line();
-  note(`${BOLD}Next, eas-cli (we don't replace these)${RESET}`);
-  note(
-    `  ${BOLD}npx eas-cli credentials -p ios${RESET}     dist cert + profile + push key + ASC API key`,
-  );
-  note(`  ${BOLD}npx eas-cli build -p ios --profile production${RESET}`);
-  note(
-    `  ${BOLD}npx eas-cli submit -p ios --profile production${RESET}  (auto-creates App Store record)`,
-  );
-  note(`  ${BOLD}npx eas-cli metadata:push${RESET}          push store.config.json`);
-  note(
-    `  ${BOLD}npx eas-cli workflow:run .eas/workflows/<file>${RESET}  trigger a workflow locally`,
-  );
-  line();
-  note(`${BOLD}Stack-specific (ours, not eas-cli's)${RESET}`);
-  note(`  ${BOLD}vexpo apple asc-key${RESET}        validate ASC API key against /v1/apps`);
-  note(`  ${BOLD}vexpo apple services-id${RESET}    create SIWA Services ID via ASC API`);
-  note(`  ${BOLD}vexpo apple jwt${RESET}            sign the SIWA client_secret JWT`);
+  note(`${BOLD}Next${RESET}`);
+  note(`  ${BOLD}vexpo apple asc-key${RESET}        validate the App Store Connect API key`);
+  note(`  ${BOLD}vexpo apple credentials${RESET}    signing certificate and provisioning profile`);
+  note(`  ${BOLD}vexpo apple services-id${RESET}    Sign in with Apple Services ID`);
+  note(`  ${BOLD}vexpo apple jwt${RESET}            sign the Sign in with Apple JWT`);
+  note(`  ${BOLD}CONVEX_DEPLOY_KEY= npx convex deploy${RESET}   push the backend to prod`);
+  note(`  ${BOLD}npm run eas:tf${RESET}             build and submit to TestFlight`);
+  note(`  ${BOLD}npm run metadata:push${RESET}      push store.config.json`);
 }
 
-export async function runEas(options: EasOptions): Promise<number> {
+export async function runEas(): Promise<number> {
   section("EAS");
 
-  const cli = await checkCli();
-  if (!cli.ok) {
-    bad("eas CLI not available. install with `npm install -g eas-cli`");
+  const cliVersion = await easVersion();
+  if (!cliVersion) {
+    bad("eas-cli not found. install it with `npm install -g eas-cli`");
     return 1;
   }
-  ok(`eas-cli ${cli.version}`);
+  ok(`eas-cli ${cliVersion}`);
 
   const signedIn = await ensureSignedIn();
   if (!signedIn.ok) return 1;
@@ -155,43 +128,34 @@ export async function runEas(options: EasOptions): Promise<number> {
   const project = await ensureProject();
   if (!project.ok) return 1;
 
-  const stages = ["development", "preview", "production"];
-  await ensureAll("channels", stages, ensureChannels);
-  await ensureAll("branches", stages, ensureBranches);
+  const channels = ["development", "production"];
+  const created = await ensureChannels(channels);
+  if (created.length > 0) ok(`channels created: ${created.join(", ")}`);
+  else nop(`channels already exist (${channels.join(", ")})`);
 
   let pushFailed = false;
 
   if (await fileExists(".env.local")) {
     pushFailed = !(await pushEnvFile(
       ".env.local",
-      ["development"],
-      ".env.local has no EAS-routed keys yet (run `vexpo convex` first)",
+      "development",
+      ".env.local has no EAS keys yet (run `vexpo convex` first)",
     ));
   } else {
-    nop(".env.local missing. skipping development env push (run `vexpo convex` first)");
+    nop("no .env.local, skipping the development env push (run `vexpo convex` first)");
   }
 
-  if (options.withProd) {
-    const prodFile = await findProdEnvFile();
-    if (!prodFile) nop("--with-prod set but no .env.prod or .env.production found");
-    else if (
-      !(await pushEnvFile(
-        prodFile,
-        ["production", "preview"],
-        `${prodFile} has no EAS-routed keys`,
-      ))
-    )
-      pushFailed = true;
-  }
-  note(
-    `server-side secrets route to Convex, not EAS. run ${BOLD}vexpo env push${RESET} to sync those`,
-  );
+  const prodFile = await findProdEnvFile();
+  if (!prodFile) nop("no .env.prod yet, so nothing went to the production env");
+  else if (!(await pushEnvFile(prodFile, "production", `${prodFile} has no EAS keys`)))
+    pushFailed = true;
+  note(`server-side secrets go to Convex, not EAS. ${BOLD}vexpo env push${RESET} pushes those`);
 
   if (project.projectId) {
     await recordStep("eas", {
       projectId: project.projectId,
       signedInAs: signedIn.who,
-      mirroredAt: new Date().toISOString(),
+      pushedAt: new Date().toISOString(),
     });
   }
 

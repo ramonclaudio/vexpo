@@ -2,7 +2,7 @@ import { spawn } from "node:child_process";
 
 type Stdio = "inherit" | "pipe" | "ignore";
 
-export type RunResult = { code: number; stdout: string; stderr: string };
+type RunResult = { code: number; stdout: string; stderr: string };
 
 export function run(
   argv: readonly string[],

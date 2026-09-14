@@ -1,32 +1,28 @@
 import { bundleIdFallback } from "../../lib/app.ts";
 import { easSpawn } from "../../lib/eas-cli.ts";
-import { envList as easEnvList } from "../../lib/eas-project.ts";
-import { BOLD, RESET, askYesNo, bad, line, nop, note, ok, section, yep } from "../../lib/output.ts";
+import { envList as easEnvList, type EasEnvironment } from "../../lib/eas-project.ts";
+import { BOLD, RESET, askYesNo, bad, line, nop, note, ok, section } from "../../lib/output.ts";
 import { recordStep } from "../../lib/state.ts";
 import { ascKeyEnvFrom, reportCachedAscKey } from "../asc.ts";
 
-async function resolveBundleId(profile: string): Promise<{
-  source: "app.config.ts" | "EAS env" | null;
-  value: string | null;
-  templatePlaceholder: boolean;
-}> {
+// Every profile but production builds the dev app, so its env is development.
+const environmentFor = (profile: string): EasEnvironment =>
+  profile === "production" ? "production" : "development";
+
+async function resolveBundleId(
+  profile: string,
+): Promise<{ value: string; source: "app.config.ts" | "EAS env" } | null> {
   const fromConfig = await bundleIdFallback();
   if (fromConfig && !fromConfig.startsWith("com.example.")) {
-    return { source: "app.config.ts", value: fromConfig, templatePlaceholder: false };
+    return { value: fromConfig, source: "app.config.ts" };
   }
-  const env = await easEnvList(profile as "production" | "preview" | "development");
+  const env = await easEnvList(environmentFor(profile));
   const fromEnv = env?.get("EXPO_PUBLIC_APP_BUNDLE_ID");
-  if (fromEnv && !fromEnv.startsWith("com.example.")) {
-    return { source: "EAS env", value: fromEnv, templatePlaceholder: false };
-  }
-  return {
-    source: fromConfig ? "app.config.ts" : null,
-    value: fromConfig,
-    templatePlaceholder: true,
-  };
+  if (fromEnv && !fromEnv.startsWith("com.example.")) return { value: fromEnv, source: "EAS env" };
+  return null;
 }
 
-export type CredentialsOptions = {
+type CredentialsOptions = {
   profile?: string;
 };
 
@@ -38,43 +34,30 @@ export async function runAppleCredentials(options: CredentialsOptions): Promise<
   if (!asc) return 1;
 
   const bundle = await resolveBundleId(profile);
-  if (bundle.templatePlaceholder) {
+  if (!bundle) {
     line();
-    bad("template bundle id detected, refusing to register placeholder credentials");
+    bad("the bundle id is still the template placeholder, so no credentials were made");
+    note("app.config.ts still has the com.example default and the EAS env has no bundle id");
     note(
-      bundle.value
-        ? `  app.config.ts still defaults to ${BOLD}${bundle.value}${RESET}`
-        : `  could not resolve a bundle id from app.config.ts`,
+      `run ${BOLD}npx vexpo rebrand${RESET} to set yours, or ${BOLD}npx vexpo env push${RESET} first`,
     );
-    note(`  EAS env (${profile}) does not set EXPO_PUBLIC_APP_BUNDLE_ID either`);
-    line();
-    note("fix by running the rebrand wizard, which bakes your bundle id into app.config.ts:");
-    note(`  ${BOLD}npx vexpo rebrand${RESET}`);
-    note("alternatively, push your local env to EAS before running this step:");
-    note(`  ${BOLD}npx eas-cli env:push --environment ${profile}${RESET}`);
     return 1;
   }
   ok(`bundle id: ${BOLD}${bundle.value}${RESET} (from ${bundle.source})`);
 
   line();
-  note("eas-cli's credentials wizard is interactive (no non-interactive path).");
-  note("It walks through:");
-  note(`  1. ${BOLD}App Store Connect: Manage your API Key${RESET}, Set up a new key`);
-  note("     paste the 3 values above when prompted");
-  note(`  2. ${BOLD}Build Credentials${RESET}, generate dist cert + provisioning profile`);
-  note(`  3. ${BOLD}Push Notifications${RESET}, generate APNs key`);
-  note("");
-  note("After this, every `eas build` + `eas submit` works without Apple Developer");
-  note("login prompts. Existing creds are detected and reused.");
+  note("the wizard asks for the App Store Connect key (paste the three values above), then");
+  note("makes the signing certificate and provisioning profile. After that, eas build and");
+  note("eas submit never ask for your Apple login again");
 
   line();
   if (process.stdin.isTTY) {
     if (!(await askYesNo(`Run \`eas credentials -p ios -e ${profile}\` now?`, true))) {
-      nop("skipped (run `npx eas-cli credentials -p ios` later)");
+      nop("skipped (run `npx vexpo apple credentials` later)");
       return 0;
     }
   } else {
-    nop("non-TTY: skipping interactive wizard");
+    nop("no terminal, skipping the wizard");
     return 0;
   }
 
@@ -87,15 +70,12 @@ export async function runAppleCredentials(options: CredentialsOptions): Promise<
     return code;
   }
 
-  await recordStep("apple-credentials", {
-    profile,
-    configuredAt: new Date().toISOString(),
-    ascIssuerId: asc.issuerId,
-    ascKeyId: asc.keyId,
-  });
+  await recordStep("apple-credentials");
 
   line();
-  ok("EAS credentials configured");
-  yep(`next: ${BOLD}npm run eas:dev:device${RESET} to build the dev client on a registered device`);
+  ok("EAS credentials set up");
+  note(
+    `next: ${BOLD}npx eas-cli build -p ios --profile development:device${RESET} builds the dev client for a registered device`,
+  );
   return 0;
 }

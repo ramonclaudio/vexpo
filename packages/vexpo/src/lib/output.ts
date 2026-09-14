@@ -1,5 +1,7 @@
 import { createInterface } from "node:readline/promises";
 
+import { spawn } from "./proc.ts";
+
 const colorEnabled =
   process.stderr.isTTY === true && !process.env.NO_COLOR && process.env.TERM !== "dumb";
 
@@ -23,9 +25,6 @@ export const RED = ansiHex("#ef4444");
 export const YELLOW = ansiHex("#f59e0b");
 const VIOLET = ansiHex("#a78bfa");
 
-const write = (s: string): void => {
-  process.stderr.write(s);
-};
 export const line = (s = ""): void => {
   process.stderr.write(s + "\n");
 };
@@ -44,22 +43,18 @@ export function emitJson(value: unknown): number {
 export const errText = (err: unknown): string => (err instanceof Error ? err.message : String(err));
 export const plural = (n: number): string => (n === 1 ? "" : "s");
 
-function stringWidth(s: string): number {
-  return [...s].length;
-}
-
 export function section(title: string): void {
   if (!colorEnabled) {
     line(`\n${title}`);
     return;
   }
   const w = process.stderr.columns ?? process.stdout.columns ?? 80;
-  const fill = "─".repeat(Math.max(0, w - stringWidth(title) - 3));
+  const fill = "─".repeat(Math.max(0, w - [...title].length - 3));
   line(`\n${BOLD}${VIOLET}${title}${RESET} ${DIM}${fill}${RESET}`);
 }
 
 export async function ask(question: string): Promise<string> {
-  write(question);
+  process.stderr.write(question);
   const rl = createInterface({ input: process.stdin, output: process.stderr, terminal: false });
   try {
     const answer = await new Promise<string>((resolve) => {
@@ -79,58 +74,35 @@ export async function askYesNo(question: string, defaultYes: boolean): Promise<b
   return raw === "y" || raw === "yes";
 }
 
-async function openUrlExternal(url: string): Promise<void> {
-  const { spawn } = await import("./proc.ts");
-  const cmd =
-    process.platform === "darwin"
-      ? ["open", url]
-      : process.platform === "win32"
-        ? ["cmd", "/c", "start", "", url]
-        : ["xdg-open", url];
-  spawn(cmd, { stdin: "ignore", stdout: "ignore", stderr: "ignore" });
-}
-
-async function tryOpen(input: string, urls: { url: string }[]): Promise<boolean> {
-  if (urls.length === 0) return false;
-  if (input === "open") {
-    await openUrlExternal(urls[0].url);
-    return true;
-  }
-  if (!input.startsWith("open ")) return false;
-  const target = urls[parseInt(input.slice(5), 10) - 1];
-  if (!target) return false;
-  await openUrlExternal(target.url);
-  return true;
-}
-
 type HelpPrompt = {
   body?: string;
   urls: { label: string; url: string }[];
   allowSkip?: boolean;
-  skipLabel?: string;
 };
 
-export async function helpAndWait(opts: HelpPrompt): Promise<"ready" | "skip"> {
+export async function helpAndWait(opts: HelpPrompt): Promise<void> {
   if (opts.body) note(opts.body);
   for (const { label, url } of opts.urls) {
     note(`  ${label}: ${BOLD}${url}${RESET}`);
   }
-  if (!process.stdin.isTTY) {
-    return opts.allowSkip ? "skip" : "ready";
-  }
-  return waitForReady(opts);
-}
-
-async function waitForReady(opts: HelpPrompt): Promise<"ready" | "skip"> {
-  const skipHint = opts.allowSkip ? `, '${opts.skipLabel ?? "skip"}' to skip` : "";
-  const openHint = opts.urls.length > 0 ? ", 'open' to launch in browser" : "";
+  if (!process.stdin.isTTY) return;
+  const skipHint = opts.allowSkip ? ", 'skip' to skip" : "";
+  const openHint = opts.urls.length > 0 ? ", 'open' to open it in the browser" : "";
   for (;;) {
     const input = (await ask(`  ${DIM}Enter when ready${skipHint}${openHint} >${RESET} `))
       .trim()
       .toLowerCase();
-    if (!input) return "ready";
-    if (input === (opts.skipLabel ?? "skip") && opts.allowSkip) return "skip";
-    if (await tryOpen(input, opts.urls)) continue;
-    yep("press Enter, type 'open' to launch the URL, or 'skip' to bypass");
+    if (!input || (input === "skip" && opts.allowSkip)) return;
+    const target =
+      input === "open"
+        ? opts.urls[0]
+        : /^open \d+$/.test(input)
+          ? opts.urls[Number(input.slice(5)) - 1]
+          : undefined;
+    if (target) {
+      spawn(["open", target.url], { stdin: "ignore", stdout: "ignore", stderr: "ignore" });
+      continue;
+    }
+    yep("press Enter, type 'open' to open the URL, or 'skip'");
   }
 }

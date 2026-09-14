@@ -1,4 +1,4 @@
-import { access, mkdir, readFile, writeFile } from "node:fs/promises";
+import { access, readFile, writeFile } from "node:fs/promises";
 
 import {
   BOLD,
@@ -13,16 +13,12 @@ import {
   note,
   ok,
   section,
-  yep,
 } from "../lib/output.ts";
 import { envSet as convexEnvSet } from "../lib/convex-env.ts";
-import { fileExists } from "../lib/fs.ts";
 import { ensureLine, readAll, removeLines } from "../lib/env-local.ts";
-import { dlx } from "../lib/pkg-manager.ts";
-import { run } from "../lib/proc.ts";
 import { load, recordStep } from "../lib/state.ts";
 
-export type RebrandOptions = {
+type RebrandOptions = {
   force?: boolean;
   yes?: boolean;
   appName?: string;
@@ -171,9 +167,7 @@ async function promptInputs(overrides: Partial<RebrandInputs>): Promise<RebrandI
   const interactive = process.stdin.isTTY === true;
   if (interactive) {
     line();
-    note(
-      `${DIM}4 prompts. Everything else is derived. Override any with flags or edit later.${RESET}`,
-    );
+    note(`${DIM}Four questions. Everything else follows from them, or pass flags.${RESET}`);
     line();
   }
   return deriveInputs(await askForBasics(overrides, interactive), overrides);
@@ -191,20 +185,10 @@ async function syncBundleId(bundleId: string): Promise<void> {
   if (env.has("CONVEX_DEPLOYMENT")) {
     const devBundleId = `${bundleId}.dev`;
     await convexEnvSet("APP_BUNDLE_ID", devBundleId);
-    ok(`Convex env: APP_BUNDLE_ID=${devBundleId} (dev deployment serves the dev variant)`);
+    ok(`Convex env: APP_BUNDLE_ID=${devBundleId} (the dev deployment serves the dev build)`);
   } else {
-    note("no Convex deployment yet; the next `vexpo convex` run carries APP_BUNDLE_ID");
+    note("no Convex deployment yet. the next `vexpo convex` run sets APP_BUNDLE_ID");
   }
-}
-
-async function backup(files: string[], stamp: string): Promise<void> {
-  const dir = `.rebrand-backup/${stamp}`;
-  await mkdir(dir, { recursive: true });
-  for (const f of files) {
-    if (!(await fileExists(f))) continue;
-    await writeFile(`${dir}/${f.replace(/\//g, "_")}`, await readFile(f, "utf8"));
-  }
-  ok(`backups → ${dir}`);
 }
 
 const QUOTED = String.raw`(?:"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*')`;
@@ -247,7 +231,9 @@ async function rewriteAppConfig(inputs: RebrandInputs): Promise<void> {
 
   for (const marker of APP_CONFIG_MARKERS) {
     if (!marker.re.test(text)) {
-      throw new Error(`${file}: no ${marker.label} to rewrite; restore it from the vexpo template`);
+      throw new Error(
+        `${file} has no ${marker.label} to rewrite. Restore it from the vexpo template`,
+      );
     }
     text = text.replace(marker.re, () => marker.replace(inputs));
   }
@@ -263,7 +249,7 @@ async function rewriteAppJson(): Promise<void> {
   };
   if (json.expo?.extra?.eas) delete json.expo.extra.eas.projectId;
   await writeFile(file, JSON.stringify(json, null, 2) + "\n");
-  ok(`reset ${file} (eas init will regenerate projectId)`);
+  ok(`reset ${file} (eas init writes a new projectId)`);
 }
 
 const REBRAND_VERSION = "0.1.0";
@@ -287,7 +273,7 @@ async function syncPackageLock(inputs: RebrandInputs): Promise<void> {
   try {
     json = JSON.parse(await readFile(file, "utf8")) as typeof json;
   } catch {
-    nop(`${file} not found; skipped`);
+    nop(`${file} not found, skipped`);
     return;
   }
   json.name = inputs.packageName;
@@ -298,7 +284,7 @@ async function syncPackageLock(inputs: RebrandInputs): Promise<void> {
     root.version = REBRAND_VERSION;
   }
   await writeFile(file, JSON.stringify(json, null, 2) + "\n");
-  ok(`updated ${file} (synced name + version)`);
+  ok(`updated ${file} (name and version)`);
 }
 
 async function rewriteStoreConfig(inputs: RebrandInputs): Promise<void> {
@@ -317,7 +303,9 @@ async function rewriteStoreConfigFile(
     json = JSON.parse(await readFile(file, "utf8")) as StoreConfig;
   } catch {
     if (!required) return;
-    throw new Error(`${file} missing or unparseable; restore it from the vexpo template first`);
+    throw new Error(
+      `${file} is missing or not valid JSON. Restore it from the vexpo template first`,
+    );
   }
   const en = json.apple.info["en-US"];
   en.title = inputs.appName;
@@ -354,12 +342,12 @@ async function readJsonTarget(file: string): Promise<unknown> {
   try {
     text = await readFile(file, "utf8");
   } catch {
-    throw new Error(`${file} missing; restore it from the vexpo template first`);
+    throw new Error(`${file} is missing. Restore it from the vexpo template first`);
   }
   try {
     return JSON.parse(text) as unknown;
   } catch {
-    throw new Error(`${file} is not valid JSON; restore it from the vexpo template first`);
+    throw new Error(`${file} is not valid JSON. Restore it from the vexpo template first`);
   }
 }
 
@@ -368,13 +356,11 @@ async function validateAppConfig(): Promise<void> {
   try {
     cfg = await readFile("app.config.ts", "utf8");
   } catch {
-    throw new Error("app.config.ts missing; restore it from the vexpo template first");
+    throw new Error("app.config.ts is missing. Restore it from the vexpo template first");
   }
   for (const { re, label } of APP_CONFIG_MARKERS) {
     if (!re.test(cfg)) {
-      throw new Error(
-        `app.config.ts: missing expected ${label}; restore it from the vexpo template first`,
-      );
+      throw new Error(`app.config.ts has no ${label}. Restore it from the vexpo template first`);
     }
   }
 }
@@ -401,9 +387,7 @@ async function validateTargets(): Promise<void> {
   await readJsonTarget("app.json");
   const pkg = await readJsonTarget("package.json");
   if (typeof pkg !== "object" || pkg === null) {
-    throw new Error(
-      "package.json: expected a JSON object; restore it from the vexpo template first",
-    );
+    throw new Error("package.json is not a JSON object. Restore it from the vexpo template first");
   }
   await validateStoreConfig();
 }
@@ -412,7 +396,7 @@ async function readOrSkip(file: string): Promise<string | null> {
   try {
     return await readFile(file, "utf8");
   } catch {
-    nop(`${file} not found; skipped`);
+    nop(`${file} not found, skipped`);
     return null;
   }
 }
@@ -425,7 +409,7 @@ async function rewriteConvexEnv(inputs: RebrandInputs): Promise<void> {
   const siteRe = new RegExp(String.raw`optional\("SITE_URL", ${QUOTED}\)`);
   const nameRe = new RegExp(String.raw`optional\("APP_NAME", ${QUOTED}\)`);
   if (!siteRe.test(text) && !nameRe.test(text)) {
-    nop(`${file} has no SITE_URL/APP_NAME fallbacks; skipped`);
+    nop(`${file} has no SITE_URL or APP_NAME fallbacks, skipped`);
     return;
   }
 
@@ -436,50 +420,17 @@ async function rewriteConvexEnv(inputs: RebrandInputs): Promise<void> {
   ok(`updated ${file}`);
 }
 
-async function rewriteEnvExample(inputs: RebrandInputs): Promise<void> {
-  const file = ".env.example";
-  const text = await readOrSkip(file);
-  if (text === null) return;
-
-  const updated = text.replace(
-    /# Reverse-DNS bundle id, e\.g\. \S+\./,
-    () => `# Reverse-DNS bundle id, e.g. ${inputs.bundleId}.`,
-  );
-  if (updated === text) {
-    nop(`${file} already customized; skipped`);
-    return;
-  }
-  await writeFile(file, updated);
-  ok(`updated ${file}`);
-}
-
 async function rewriteReadme(inputs: RebrandInputs): Promise<void> {
   const file = "README.md";
   const text = await readOrSkip(file);
   if (text === null) return;
 
   if (!text.startsWith("# vexpo\n")) {
-    nop(`${file} already customized; skipped`);
+    nop(`${file} already customized, skipped`);
     return;
   }
-  const updated = text
-    .replace("# vexpo", `# ${inputs.appName}`)
-    .replace(/<p align="center">[\s\S]*?<\/p>\n*/g, (block) =>
-      block.includes("ramonclaudio/vexpo") ? "" : block,
-    );
-  await writeFile(file, updated);
+  await writeFile(file, text.replace("# vexpo", `# ${inputs.appName}`));
   ok(`updated ${file}`);
-}
-
-async function formatTargets(files: string[]): Promise<void> {
-  const present: string[] = [];
-  for (const f of files) {
-    if (await fileExists(f)) present.push(f);
-  }
-  if (present.length === 0) return;
-  const { code } = await run([dlx(), "oxfmt", ...present]);
-  if (code === 0) ok(`formatted ${present.join(", ")}`);
-  else note("oxfmt unavailable; run your formatter over the rewritten files");
 }
 
 async function alreadyRebranded(): Promise<boolean> {
@@ -521,7 +472,7 @@ async function resolveInputs(
     !overrides.appName || !overrides.bundleId || !overrides.ownerName || !overrides.reviewEmail;
   if (!process.stdin.isTTY && missing) {
     throw new Error(
-      "non-TTY rebrand needs --app-name, --bundle-id, --owner-name, --review-email at minimum",
+      "no terminal to ask in. pass at least --app-name, --bundle-id, --owner-name and --review-email",
     );
   }
   const inputs = await promptInputs(overrides);
@@ -533,16 +484,6 @@ async function resolveInputs(
   return inputs;
 }
 
-const REWRITE_TARGETS = [
-  "app.config.ts",
-  "app.json",
-  "package.json",
-  "store.config.json",
-  "store.config.example.json",
-  "convex/env.ts",
-  "README.md",
-];
-
 async function applyRewrites(inputs: RebrandInputs): Promise<void> {
   await rewriteAppConfig(inputs);
   await rewriteAppJson();
@@ -550,9 +491,7 @@ async function applyRewrites(inputs: RebrandInputs): Promise<void> {
   await syncPackageLock(inputs);
   await rewriteStoreConfig(inputs);
   await rewriteConvexEnv(inputs);
-  await rewriteEnvExample(inputs);
   await rewriteReadme(inputs);
-  await formatTargets(REWRITE_TARGETS);
   await syncBundleId(inputs.bundleId);
   if (inputs.expoOwner) {
     await ensureLine("EXPO_PUBLIC_EXPO_OWNER", inputs.expoOwner);
@@ -580,14 +519,14 @@ export async function runRebrand(options: RebrandOptions): Promise<number> {
     section("Rebrand");
 
     if (!options.force && (await alreadyRebranded())) {
-      nop("rebrand already complete (state.json); pass --force to re-run");
+      nop("rebrand already done (see .setup-state.json). pass --force to run it again");
       return 0;
     }
 
     const detect = await detectTemplateDefaults();
     if (!detect.stillTemplate && !options.force) {
-      ok("project already differs from vexpo template defaults; nothing to rebrand");
-      note("--force to re-run anyway");
+      ok("no template defaults left, nothing to rebrand");
+      note("pass --force to run it anyway");
       return 0;
     }
 
@@ -602,8 +541,6 @@ export async function runRebrand(options: RebrandOptions): Promise<number> {
     const inputs = await resolveInputs(options, overrides);
     if (!inputs) return 0;
 
-    const stamp = new Date().toISOString().replace(/[:.]/g, "-");
-    await backup([...REWRITE_TARGETS, ".env.example"], stamp);
     await applyRewrites(inputs);
 
     await recordStep("rebrand", {
@@ -611,13 +548,11 @@ export async function runRebrand(options: RebrandOptions): Promise<number> {
       packageName: inputs.packageName,
       bundleId: inputs.bundleId,
       scheme: inputs.scheme,
-      rebrandedAt: new Date().toISOString(),
-      backupDir: `.rebrand-backup/${stamp}`,
     });
 
     line();
-    ok("rebrand complete");
-    yep("re-run `vexpo full` to regenerate EAS projectId + reprovision Convex env");
+    ok("rebrand done");
+    note("run `vexpo full` again to get a new EAS project id and update the Convex env");
     return 0;
   } catch (err) {
     bad(errText(err));

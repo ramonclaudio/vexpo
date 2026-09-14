@@ -1,7 +1,6 @@
 import { Appearance, useColorScheme as useRNColorScheme } from "react-native";
 
 import { createStorage, isOneOf, useStore } from "@/lib/storage";
-import { Colors, type ColorPalette } from "@/constants/theme";
 
 type ThemeMode = "light" | "dark" | "system";
 
@@ -17,7 +16,7 @@ function applyToWindow(mode: ThemeMode) {
 
 applyToWindow(store.get());
 
-export function setTheme(mode: ThemeMode) {
+function setTheme(mode: ThemeMode) {
   store.set(mode);
   applyToWindow(mode);
 }
@@ -35,13 +34,4 @@ export function useThemeMode(): {
 } {
   const mode = useStore(store);
   return { mode, setMode: setTheme };
-}
-
-export function useColors(): ColorPalette {
-  return Colors;
-}
-
-export function useThemedAsset<L, D>(light: L, dark: D): L | D {
-  const scheme = useColorScheme();
-  return scheme === "dark" ? dark : light;
 }

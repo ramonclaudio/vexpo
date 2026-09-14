@@ -1,28 +1,21 @@
-import { signEs256, type PrivateKeySource } from "./jwt.ts";
+import { signEs256 } from "./jwt.ts";
 
-export type AscJwtArgs = {
+export type AscCredentials = {
   issuerId: string;
   keyId: string;
-  privateKey: PrivateKeySource;
-  ttlSeconds?: number;
+  p8Path: string;
 };
 
-const DEFAULT_TTL = 18 * 60;
-const MAX_TTL = 20 * 60;
+// Apple caps App Store Connect tokens at 20 minutes.
+const TTL_SECONDS = 18 * 60;
 
 export async function signAscToken(
-  opts: AscJwtArgs,
+  creds: AscCredentials,
 ): Promise<{ token: string; expiresAt: number }> {
-  const ttl = Math.min(opts.ttlSeconds ?? DEFAULT_TTL, MAX_TTL);
   const now = Math.floor(Date.now() / 1000);
-  const exp = now + ttl;
-  const header = { alg: "ES256", kid: opts.keyId, typ: "JWT" };
-  const payload = {
-    iss: opts.issuerId,
-    iat: now,
-    exp,
-    aud: "appstoreconnect-v1",
-  };
-  const token = await signEs256(opts.privateKey, header, payload);
+  const exp = now + TTL_SECONDS;
+  const header = { alg: "ES256", kid: creds.keyId, typ: "JWT" };
+  const payload = { iss: creds.issuerId, iat: now, exp, aud: "appstoreconnect-v1" };
+  const token = await signEs256(creds.p8Path, header, payload);
   return { token, expiresAt: exp };
 }

@@ -1,21 +1,14 @@
 import type { FunctionArgs } from "convex/server";
-import { v } from "convex/values";
+import { ConvexError, v } from "convex/values";
 
 import { components, internal } from "./_generated/api";
 import type { Doc, Id } from "./_generated/dataModel";
 import type { MutationCtx } from "./_generated/server";
 import { internalMutation } from "./_generated/server";
-import {
-  SESSION_MAX_AGE_MS,
-  authComponent,
-  authUserValidator,
-  getUserByAuthId,
-  purgeAppUser,
-} from "./auth";
-import { validationError } from "./errors";
+import { SESSION_MAX_AGE_MS, authUserValidator, getUserByAuthId, purgeAppUser } from "./auth";
+import { ACCOUNT_DELETION_GRACE_MS, BIO_MAX_LENGTH } from "./constants";
 import { authMutation, optionalAuthQuery } from "./functions";
 import { rateLimitWithThrow } from "./rateLimit";
-import { publicUserProfileValidator, userProfileUpdateFields, validateBio } from "./validators";
 
 export const getMe = optionalAuthQuery({
   args: {},
@@ -25,46 +18,14 @@ export const getMe = optionalAuthQuery({
   },
 });
 
-export const getUser = optionalAuthQuery({
-  args: { userId: v.string() },
-  returns: v.union(publicUserProfileValidator, v.null()),
-  handler: async (ctx, args) => {
-    const id = ctx.db.normalizeId("users", args.userId);
-    if (!id) return null;
-
-    const user = await ctx.db.get(id);
-    if (!user) return null;
-
-    const authUser = await authComponent.getAnyUserById(ctx, user.authId);
-    if (!authUser) return null;
-
-    const avatarUrl = user.avatar
-      ? await ctx.storage.getUrl(user.avatar)
-      : (authUser.image ?? null);
-
-    return {
-      _id: user._id,
-      _creationTime: user._creationTime,
-      name: authUser.name,
-      username:
-        (authUser as { displayUsername?: string | null }).displayUsername ??
-        (authUser as { username?: string | null }).username ??
-        null,
-      avatarUrl,
-      bio: user.bio,
-    };
-  },
-});
-
 export const updateProfile = authMutation({
-  args: userProfileUpdateFields,
+  args: { bio: v.optional(v.string()) },
   returns: v.id("users"),
   handler: async (ctx, args): Promise<Id<"users">> => {
     await rateLimitWithThrow(ctx, "userAction", ctx.user._id.toString());
 
-    if (args.bio !== undefined) {
-      const result = validateBio(args.bio);
-      if (!result.valid) throw validationError(result.error!, "bio");
+    if (args.bio !== undefined && args.bio.length > BIO_MAX_LENGTH) {
+      throw new ConvexError(`Bio must be ${BIO_MAX_LENGTH} characters or less`);
     }
 
     await ctx.db.patch(ctx.user._id, {
@@ -133,7 +94,6 @@ export const mergeGuestData = internalMutation({
 
     const now = Date.now();
     await ctx.db.patch(target._id, await mergeProfile(ctx, guest, target, now));
-    await movePushTokens(ctx, guest._id, target._id, now);
     return null;
   },
 });
@@ -156,35 +116,13 @@ async function mergeProfile(
   return patch;
 }
 
-// A second row for the same token breaks the .unique() by_token lookups.
-async function movePushTokens(
-  ctx: MutationCtx,
-  guestId: Id<"users">,
-  targetId: Id<"users">,
-  now: number,
-): Promise<void> {
-  const guestTokens = await ctx.db
-    .query("pushTokens")
-    .withIndex("by_userId", (q) => q.eq("userId", guestId))
-    .collect();
-  for (const token of guestTokens) {
-    const sameToken = await ctx.db
-      .query("pushTokens")
-      .withIndex("by_token", (q) => q.eq("token", token.token))
-      .collect();
-    const duplicate = sameToken.some((r) => r._id !== token._id && r.userId === targetId);
-    if (duplicate) await ctx.db.delete(token._id);
-    else await ctx.db.patch(token._id, { userId: targetId, updatedAt: now });
-  }
-}
-
 export const discardGuest = authMutation({
   args: {},
   returns: v.object({ success: v.boolean() }),
   handler: async (ctx) => {
-    if (!ctx.user.isAnonymous) throw validationError("This is not a guest session");
+    if (!ctx.user.isAnonymous) throw new ConvexError("This is not a guest session");
     await rateLimitWithThrow(ctx, "criticalAction", ctx.user._id.toString());
-    await purgeUser(ctx, ctx.user.authUserId, ctx.user._id, { audit: false });
+    await purgeUser(ctx, ctx.user.authUserId);
     return { success: true };
   },
 });
@@ -203,7 +141,7 @@ export const purgeAbandonedGuests = internalMutation({
     let purged = 0;
     for (const guest of page.page) {
       if (await hasLiveSession(ctx, guest.authId, now)) continue;
-      await purgeUser(ctx, guest.authId, guest._id, { audit: false });
+      await purgeUser(ctx, guest.authId);
       purged++;
     }
 
@@ -226,41 +164,25 @@ async function hasLiveSession(ctx: MutationCtx, authUserId: string, now: number)
   return sessions.page.some((s) => s.expiresAt > now);
 }
 
-export const ACCOUNT_DELETION_GRACE_MS = 30 * 24 * 60 * 60 * 1000;
-export const HARD_DELETE_BATCH = 50;
+const HARD_DELETE_BATCH = 50;
 
 export const deleteAccount = authMutation({
   args: {},
   returns: v.object({ success: v.boolean(), deletedAt: v.number() }),
   handler: async (ctx) => {
     await rateLimitWithThrow(ctx, "criticalAction", ctx.user._id.toString());
-    const authUserId = ctx.user.authUserId;
-    const userId = ctx.user._id;
     const now = Date.now();
 
     if (ctx.user.deletedAt) {
       return { success: true, deletedAt: ctx.user.deletedAt };
     }
 
-    const pushTokens = await ctx.db
-      .query("pushTokens")
-      .withIndex("by_userId", (q) => q.eq("userId", userId))
-      .collect();
-    await Promise.all(pushTokens.map((t) => ctx.db.delete(t._id)));
-
     await deleteAllWhere(ctx, {
       model: "session",
-      where: [{ field: "userId", value: authUserId }],
+      where: [{ field: "userId", value: ctx.user.authUserId }],
     });
 
-    await ctx.db.patch(userId, { deletedAt: now, updatedAt: now });
-
-    await ctx.db.insert("accountDeletionAudit", {
-      userId,
-      authId: authUserId,
-      event: "requested",
-      at: now,
-    });
+    await ctx.db.patch(ctx.user._id, { deletedAt: now, updatedAt: now });
 
     return { success: true, deletedAt: now };
   },
@@ -271,18 +193,10 @@ export const restoreAccount = authMutation({
   returns: v.object({ success: v.boolean() }),
   handler: async (ctx) => {
     await rateLimitWithThrow(ctx, "criticalAction", ctx.user._id.toString());
-    const now = Date.now();
 
-    if (!ctx.user.deletedAt) return { success: true };
-
-    await ctx.db.patch(ctx.user._id, { deletedAt: undefined, updatedAt: now });
-
-    await ctx.db.insert("accountDeletionAudit", {
-      userId: ctx.user._id,
-      authId: ctx.user.authUserId,
-      event: "restored",
-      at: now,
-    });
+    if (ctx.user.deletedAt) {
+      await ctx.db.patch(ctx.user._id, { deletedAt: undefined, updatedAt: Date.now() });
+    }
 
     return { success: true };
   },
@@ -295,32 +209,20 @@ export const hardDeleteExpired = internalMutation({
     const cutoff = Date.now() - ACCOUNT_DELETION_GRACE_MS;
     const expired = await ctx.db
       .query("users")
-      .withIndex("by_deletedAt", (q) => q.gt("deletedAt", undefined))
-      .order("asc")
+      .withIndex("by_deletedAt", (q) => q.gt("deletedAt", undefined).lt("deletedAt", cutoff))
       .take(HARD_DELETE_BATCH);
 
-    const purgeable = expired.filter(
-      (u) => typeof u.deletedAt === "number" && u.deletedAt < cutoff,
-    );
+    for (const user of expired) await purgeUser(ctx, user.authId);
 
-    for (const user of purgeable) {
-      await purgeUser(ctx, user.authId, user._id);
-    }
-
-    if (expired.length === HARD_DELETE_BATCH && purgeable.length > 0) {
+    if (expired.length === HARD_DELETE_BATCH) {
       await ctx.scheduler.runAfter(0, internal.users.hardDeleteExpired, {});
     }
 
-    return purgeable.length;
+    return expired.length;
   },
 });
 
-async function purgeUser(
-  ctx: MutationCtx,
-  authUserId: string,
-  userId: Id<"users">,
-  { audit = true }: { audit?: boolean } = {},
-): Promise<void> {
+async function purgeUser(ctx: MutationCtx, authUserId: string): Promise<void> {
   const authUser = (await ctx.runQuery(components.betterAuth.adapter.findOne, {
     model: "user",
     where: [{ field: "_id", value: authUserId }],
@@ -343,7 +245,7 @@ async function purgeUser(
     }
   }
 
-  for (const model of USER_ID_MODELS) {
+  for (const model of ["session", "account"] as const) {
     await deleteAllWhere(ctx, { model, where: [{ field: "userId", value: authUserId }] });
   }
   if (authUser?.email) {
@@ -358,25 +260,7 @@ async function purgeUser(
   });
 
   await purgeAppUser(ctx, authUserId);
-
-  if (audit) {
-    await ctx.db.insert("accountDeletionAudit", {
-      userId,
-      authId: authUserId,
-      event: "permanent",
-      at: Date.now(),
-    });
-  }
 }
-
-const USER_ID_MODELS = [
-  "session",
-  "account",
-  "twoFactor",
-  "oauthAccessToken",
-  "oauthConsent",
-  "oauthApplication",
-] as const;
 
 type DeleteManyInput = FunctionArgs<typeof components.betterAuth.adapter.deleteMany>["input"];
 

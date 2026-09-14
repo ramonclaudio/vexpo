@@ -1,56 +1,30 @@
 import { openSettings } from "expo-linking";
 import { Host, ScrollView, VStack } from "@expo/ui/swift-ui";
-import { frame, padding, tint } from "@expo/ui/swift-ui/modifiers";
+import { padding, tint } from "@expo/ui/swift-ui/modifiers";
 
 import { CapsuleRowButton } from "@/components/ui/capsule-row-button";
 import { HelperText } from "@/components/ui/helper-text";
-import { useColors } from "@/hooks/use-theme";
+import { Colors } from "@/constants/theme";
 
 export default function PrivacyScreen() {
-  const colors = useColors();
-
-  const handleOpenSettings = () => {
-    openSettings();
-  };
-
   return (
-    <Host testID="privacy-screen" style={{ flex: 1, backgroundColor: colors.background }}>
-      <ScrollView modifiers={[tint(colors.primary)]}>
+    <Host style={{ flex: 1, backgroundColor: Colors.background }}>
+      <ScrollView modifiers={[tint(Colors.primary)]}>
         <VStack
           spacing={12}
           alignment="leading"
           modifiers={[padding({ horizontal: 24, top: 24, bottom: 40 })]}
         >
-          <VStack spacing={8} modifiers={[frame({ maxWidth: Infinity })]}>
-            <CapsuleRowButton
-              testID="privacy-camera-photos"
-              label="Camera & Photos"
-              hint="Opens this app's page in the Settings app"
-              inputLabels={["camera and photos", "camera"]}
-              systemImage="camera.fill"
-              onPress={handleOpenSettings}
-            />
-            <CapsuleRowButton
-              testID="privacy-notifications"
-              label="Notifications"
-              hint="Opens this app's page in the Settings app"
-              systemImage="bell.fill"
-              onPress={handleOpenSettings}
-            />
-            <CapsuleRowButton
-              testID="privacy-system-settings"
-              label="System Settings"
-              hint="Opens this app's page in the Settings app"
-              systemImage="gear"
-              onPress={handleOpenSettings}
-            />
-          </VStack>
+          <CapsuleRowButton
+            label="Camera & Photos"
+            hint="Opens this app's page in the Settings app"
+            inputLabels={["camera and photos", "camera"]}
+            systemImage="camera.fill"
+            onPress={openSettings}
+          />
 
-          <HelperText
-            testID="privacy-data-disclaimer"
-            modifiers={[padding({ horizontal: 8, top: 4 })]}
-          >
-            You can request a copy of your data or delete your account at any time from Settings.
+          <HelperText modifiers={[padding({ horizontal: 8, top: 4 })]}>
+            You can delete your account at any time from Settings.
           </HelperText>
         </VStack>
       </ScrollView>

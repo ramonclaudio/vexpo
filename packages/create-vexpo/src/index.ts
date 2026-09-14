@@ -5,7 +5,6 @@ import { fileURLToPath } from "node:url";
 
 import { Command } from "commander";
 
-import { STRIPPED_DOTFILES, strippedToUnderscore } from "./dotfiles.ts";
 import { run } from "./proc.ts";
 import { askText, bold, cyan, dim, gray, red, spinner, type Spinner } from "./tty.ts";
 
@@ -20,7 +19,6 @@ type Flags = {
   install: boolean;
   git: boolean;
   yes: boolean;
-  setup: boolean;
   brand: boolean;
 };
 
@@ -28,12 +26,11 @@ async function main() {
   const program = new Command()
     .name("create-vexpo")
     .description(
-      "Scaffold a new vexpo project. An Expo SDK 57 iOS app with Convex, Better Auth, and Resend wired in.",
+      "Scaffold a new vexpo app. Expo SDK 57 on iOS with Convex, Better Auth and Resend wired in.",
     )
     .argument("[directory]", "project directory name")
     .option("--no-install", "skip installing dependencies")
     .option("--no-git", "skip git init")
-    .option("--no-setup", "skip the printed next-steps block after install")
     .option("--no-brand", "skip the rebrand prompts after install")
     .option("-y, --yes", "accept defaults, skip prompts")
     .version(pkg.version, "-v, --version")
@@ -62,14 +59,14 @@ async function main() {
 
   if (flags.git) await initGit(target, pm, depsReady);
 
-  if (flags.setup) nextSteps(target, pm, depsReady);
+  nextSteps(target, pm, depsReady);
 }
 
 async function copyTemplate(target: string, name: string): Promise<void> {
   const spin = spinner(`Copying template to ${cyan(relative(process.cwd(), target) || ".")}`);
   try {
     await cp(TEMPLATE_DIR, target, { recursive: true });
-    await restoreStrippedDotfiles(target);
+    await restoreGitignore(target);
     await rewritePackage(target, name);
     await rewriteEasJson(target);
   } catch (err) {
@@ -180,11 +177,10 @@ async function resolveName(argDir: string | undefined, yes: boolean): Promise<st
   });
 }
 
-async function restoreStrippedDotfiles(target: string): Promise<void> {
-  for (const to of STRIPPED_DOTFILES) {
-    const src = join(target, strippedToUnderscore(to));
-    if (existsSync(src)) await rename(src, join(target, to));
-  }
+// npm drops .gitignore from a published package, so the template ships it as _gitignore.
+async function restoreGitignore(target: string): Promise<void> {
+  const src = join(target, "_gitignore");
+  if (existsSync(src)) await rename(src, join(target, ".gitignore"));
 }
 
 async function rewritePackage(target: string, requestedName: string): Promise<void> {
@@ -199,12 +195,6 @@ async function rewritePackage(target: string, requestedName: string): Promise<vo
   parsed.devDependencies = Object.fromEntries(
     Object.entries(devDeps).toSorted(([a], [b]) => (a < b ? -1 : 1)),
   );
-  delete parsed.author;
-  delete parsed.repository;
-  delete parsed.bugs;
-  delete parsed.homepage;
-  delete parsed.license;
-  delete parsed.publishConfig;
   await writeFile(pkgPath, `${JSON.stringify(parsed, null, 2)}\n`);
 }
 
@@ -254,27 +244,22 @@ function nextSteps(target: string, pm: PM, depsReady: boolean): void {
   console.log(bold("Next steps:"));
   console.log(gray("  cd ") + cyan(cdPath));
   if (!depsReady) console.log(gray(`  ${pm} install`));
-  console.log(gray(`  npx vexpo lite         ${dim("# provisions Convex and Better Auth")}`));
+  console.log(gray(`  npx vexpo lite         ${dim("# sets up Convex and Better Auth")}`));
   console.log(
     gray(
-      `  npx vexpo full         ${dim("# adds Resend, Apple Sign In, the ASC key, and eas init")}`,
+      `  npx vexpo full         ${dim("# adds Resend, Sign in with Apple, the App Store Connect key and EAS")}`,
     ),
   );
   console.log(
     gray(
-      `  npx vexpo full --new   ${dim("# same, plus walks Apple, Convex, Expo, and Resend signups")}`,
+      `  npx vexpo full --new   ${dim("# same, plus signups for Apple, Convex, Expo and Resend")}`,
     ),
   );
   console.log();
   console.log(bold("Then in two terminals:"));
-  console.log(gray(`  ${pm} run convex:dev   ${dim("# terminal 1")}`));
-  console.log(gray(`  ${pm} run ios          ${dim("# terminal 2")}`));
+  console.log(gray(`  npx convex dev   ${dim("# terminal 1")}`));
+  console.log(gray(`  ${pm} run ios       ${dim("# terminal 2")}`));
   console.log();
-  console.log(
-    gray("Using an AI agent? The setup playbook and the paste-in prompt are in ") +
-      cyan("README.md") +
-      gray("."),
-  );
   console.log(gray("Docs: ") + cyan("https://github.com/ramonclaudio/vexpo"));
   console.log();
 }

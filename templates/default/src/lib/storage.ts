@@ -31,7 +31,7 @@ function read<T>(key: string, defaultValue: T, isValid: (value: unknown) => valu
   }
 }
 
-export type Storage<T> = {
+type Storage<T> = {
   get: () => T;
   set: (value: T) => void;
   subscribe: (listener: Listener) => () => void;

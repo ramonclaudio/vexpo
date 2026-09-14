@@ -4,7 +4,6 @@ import { Stack } from "expo-router";
 import { openURL, canOpenURL } from "expo-linking";
 import { Host, ScrollView, VStack, Text, DisclosureGroup } from "@expo/ui/swift-ui";
 import {
-  accessibilityAddTraits,
   background,
   cornerRadius,
   foregroundStyle,
@@ -15,12 +14,13 @@ import {
 import { useDynamicFont } from "@/lib/dynamic-font";
 import { ContentUnavailable } from "@/components/ui/content-unavailable";
 import { CapsuleRowButton } from "@/components/ui/capsule-row-button";
+import { SectionLabel } from "@/components/ui/section-label";
 import { TouchTarget } from "@/constants/layout";
 
 import { ErrorText } from "@/components/ui/status-text";
 import { fail } from "@/lib/form-result";
 import { haptics } from "@/lib/haptics";
-import { useColors } from "@/hooks/use-theme";
+import { Colors } from "@/constants/theme";
 
 type SupportConfig = {
   githubUrl?: string;
@@ -32,22 +32,43 @@ const support = (Constants.expoConfig?.extra?.support ?? {}) as SupportConfig;
 
 const FAQ_ITEMS = [
   {
-    id: "delete-account",
-    question: "How do I delete my account?",
+    question: "Can I use the app without an account?",
     answer:
-      "Go to Settings, then Delete Account. You have 30 days to sign back in and restore it. After that it's permanent.",
+      "Yes. Tap Continue as guest on the sign-in screen. A guest session expires after 7 days away. Create an account any time and your bio and photo move with you.",
   },
   {
-    id: "notifications",
-    question: "Why aren't notifications working?",
+    question: "Do the links in emails open the app?",
     answer:
-      "Make sure notifications are enabled in Settings, then Notifications. You must use a physical device.",
+      "Yes. The sign-in, verification and password reset emails have an Open in app button. It lands on the right screen with the code filled in.",
+  },
+  {
+    question: "How do I change my email?",
+    answer:
+      "Open Profile, edit the email and save. A 6-digit code goes to the new address, and the change lands once you enter it.",
+  },
+  {
+    question: "How do I change my password?",
+    answer:
+      "Open Profile, then Change password. It asks for your current password. If you forgot it, sign out and use Forgot password on the sign-in screen.",
+  },
+  {
+    question: "Which devices are signed in?",
+    answer:
+      "Settings, then Sessions lists every device with an active session. Revoke any of them from there.",
+  },
+  {
+    question: "How do I turn off haptics or animations?",
+    answer: "Settings, then Preferences. Theme, reduced motion and haptics are all there.",
+  },
+  {
+    question: "How do I delete my account?",
+    answer:
+      "Settings, then Delete account. Face ID or your passcode confirms it. You have 30 days to sign back in and restore it. After that it's permanent.",
   },
 ];
 
 export default function HelpScreen() {
   const dfont = useDynamicFont();
-  const colors = useColors();
   const [searchText, setSearchText] = useState("");
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [linkError, setLinkError] = useState<string | null>(null);
@@ -102,25 +123,24 @@ export default function HelpScreen() {
           <Stack.Toolbar.Button
             icon="envelope.fill"
             onPress={handleOpenEmail}
-            tintColor={colors.primary}
+            tintColor={Colors.primary}
             accessibilityLabel="Email support"
           />
         </Stack.Toolbar>
       ) : null}
-      <Host testID="help-screen" style={{ flex: 1, backgroundColor: colors.background }}>
-        <ScrollView modifiers={[tint(colors.primary)]}>
+      <Host style={{ flex: 1, backgroundColor: Colors.background }}>
+        <ScrollView modifiers={[tint(Colors.primary)]}>
           <VStack
             spacing={12}
             alignment="leading"
             modifiers={[padding({ horizontal: 24, top: 24, bottom: 40 })]}
           >
-            {linkError ? <ErrorText testID="help-link-error">{linkError}</ErrorText> : null}
+            {linkError ? <ErrorText>{linkError}</ErrorText> : null}
 
             {(support.email || issuesUrl) && (
               <VStack spacing={8} modifiers={[frame({ maxWidth: Infinity })]}>
                 {support.email ? (
                   <CapsuleRowButton
-                    testID="help-email-support"
                     label="Email Support"
                     hint="Opens a new message in your email app"
                     systemImage="envelope.fill"
@@ -129,7 +149,6 @@ export default function HelpScreen() {
                 ) : null}
                 {issuesUrl ? (
                   <CapsuleRowButton
-                    testID="help-report-issue"
                     label="Report an Issue"
                     hint="Opens the issue tracker in your browser"
                     systemImage="exclamationmark.bubble.fill"
@@ -141,24 +160,13 @@ export default function HelpScreen() {
 
             {filteredFaq.length === 0 ? (
               <ContentUnavailable
-                testID="help-faq-empty"
                 title="No results"
                 systemImage="magnifyingglass"
                 description="Try a different search term"
               />
             ) : (
               <VStack spacing={8} modifiers={[frame({ maxWidth: Infinity })]}>
-                <Text
-                  testID="help-faq-heading"
-                  modifiers={[
-                    dfont({ size: 13, weight: "semibold" }),
-                    foregroundStyle(colors.mutedForeground),
-                    padding({ horizontal: 8, top: 4 }),
-                    accessibilityAddTraits(["isHeader"]),
-                  ]}
-                >
-                  FREQUENTLY ASKED
-                </Text>
+                <SectionLabel>FREQUENTLY ASKED</SectionLabel>
                 {filteredFaq.map((item) => (
                   <VStack
                     key={item.question}
@@ -166,12 +174,11 @@ export default function HelpScreen() {
                     modifiers={[
                       frame({ maxWidth: Infinity }),
                       padding({ horizontal: 20, vertical: 4 }),
-                      background(colors.muted),
+                      background(Colors.muted),
                       cornerRadius(20),
                     ]}
                   >
                     <DisclosureGroup
-                      testID={`help-faq-${item.id}`}
                       label={item.question}
                       isExpanded={!!expanded[item.question]}
                       onIsExpandedChange={(v) => toggleExpanded(item.question, v)}
@@ -183,7 +190,7 @@ export default function HelpScreen() {
                       <Text
                         modifiers={[
                           dfont({ size: 14 }),
-                          foregroundStyle(colors.mutedForeground),
+                          foregroundStyle(Colors.mutedForeground),
                           padding({ vertical: 8 }),
                         ]}
                       >

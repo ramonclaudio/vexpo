@@ -18,17 +18,15 @@ import {
 import { Material } from "@/components/ui/material";
 import { useAppUpdates } from "@/hooks/use-updates";
 import { useBannerMotion } from "@/hooks/use-banner-motion";
-import { Spacing, FontSize, TouchTarget } from "@/constants/layout";
-import { Radius } from "@/constants/theme";
+import { TouchTarget } from "@/constants/layout";
 import { ZIndex } from "@/constants/ui";
-import { useColors } from "@/hooks/use-theme";
+import { Colors } from "@/constants/theme";
 import { announce } from "@/lib/a11y";
 import { useDynamicFont } from "@/lib/dynamic-font";
 
-export function UpdateBanner({ testID }: { testID?: string } = {}) {
+export function UpdateBanner() {
   const updates = useAppUpdates();
   const insets = useSafeAreaInsets();
-  const colors = useColors();
   const dfont = useDynamicFont();
   const motion = useBannerMotion("bottom");
 
@@ -41,8 +39,8 @@ export function UpdateBanner({ testID }: { testID?: string } = {}) {
 
   if (!showProgress && !showError) return null;
 
-  const tint = showError ? colors.destructive : colors.primary;
-  const fg = showError ? colors.destructiveForeground : colors.primaryForeground;
+  const tint = showError ? Colors.destructive : Colors.primary;
+  const fg = showError ? Colors.destructiveForeground : Colors.primaryForeground;
   const pct =
     showProgress && updates.downloadProgress != null
       ? ` ${Math.round(updates.downloadProgress * 100)}%`
@@ -55,30 +53,28 @@ export function UpdateBanner({ testID }: { testID?: string } = {}) {
       exiting={motion.exiting}
       style={{
         position: "absolute",
-        bottom: insets.bottom + Spacing.xs,
-        left: Spacing.md,
-        right: Spacing.md,
+        bottom: insets.bottom + 4,
+        left: 12,
+        right: 12,
         zIndex: ZIndex.updateBanner,
       }}
     >
       <Material
         accessibilityLiveRegion="polite"
         accessibilityRole="alert"
-        variant="chrome"
         tintColor={tint}
         isInteractive={showError}
         style={{
-          borderRadius: Radius.full,
+          borderRadius: 9999,
           overflow: "hidden",
           alignItems: "center",
         }}
       >
         <Host matchContents>
           <Button
-            testID="update-banner-retry"
             modifiers={[
               buttonStyle("plain"),
-              padding({ vertical: Spacing.sm, horizontal: Spacing.lg }),
+              padding({ vertical: 8, horizontal: 16 }),
               frame({ minHeight: TouchTarget.min }),
               contentShape(shapes.rectangle()),
               disabledModifier(!showError),
@@ -88,10 +84,7 @@ export function UpdateBanner({ testID }: { testID?: string } = {}) {
             ]}
             onPress={showError ? () => updates.downloadAndApply() : () => {}}
           >
-            <Text
-              testID={testID}
-              modifiers={[dfont({ size: FontSize["3xl"], weight: "bold" }), foregroundStyle(fg)]}
-            >
+            <Text modifiers={[dfont({ size: 18, weight: "bold" }), foregroundStyle(fg)]}>
               {label}
             </Text>
           </Button>

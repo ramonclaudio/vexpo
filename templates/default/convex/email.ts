@@ -43,6 +43,24 @@ export const handleEmailEvent = internalMutation({
 
 type OTPType = "sign-in" | "email-verification" | "forget-password" | "change-email";
 
+// Public paths from src/lib/deep-link.ts. The associated domain is the Convex site, so these
+// open the app straight onto the screen that takes the code. Change email happens in the app.
+const OPEN_IN_APP: Record<OTPType, string | null> = {
+  "sign-in": "/sign-in",
+  "email-verification": "/sign-in?flow=verify-email",
+  "forget-password": "/reset-password",
+  "change-email": null,
+};
+
+function appLink(type: OTPType, email: string, otp: string): string | null {
+  const path = OPEN_IN_APP[type];
+  if (!path) return null;
+  const url = new URL(path, env.convexSiteUrl);
+  url.searchParams.set("email", email);
+  url.searchParams.set("otp", otp);
+  return url.href;
+}
+
 const OTP_COPY: Record<OTPType, { subject: string; heading: string; body: string }> = {
   "sign-in": {
     subject: "Your sign-in code",
@@ -70,21 +88,26 @@ export async function sendAuthOTP(
   ctx: GenericCtx<DataModel>,
   { email, otp, type }: { email: string; otp: string; type: OTPType },
 ) {
+  const link = appLink(type, email, otp);
   if (testMode) {
-    console.log(`[otp] ${type} for ${email}: ${otp}`);
+    console.log(`[otp] ${type} for ${email}: ${otp}${link ? ` ${link}` : ""}`);
     return;
   }
 
   const { subject, heading, body } = OTP_COPY[type];
+  const openInApp = link ? `\n\nOpen in ${env.appName}: ${link}` : "";
   await resend.sendEmail(requireRunMutationCtx(ctx), {
     from: `${env.appName} <${env.email.from}>`,
     to: email,
     subject: `${env.appName}: ${subject} (${otp})`,
-    html: renderHtml(heading, body, otp),
-    text: `${heading}\n\n${body}\n\nCode: ${otp}\n\nThis code expires in 5 minutes.`,
+    html: renderHtml(heading, body, otp, link),
+    text: `${heading}\n\n${body}\n\nCode: ${otp}${openInApp}\n\nThis code expires in 5 minutes.`,
   });
 }
 
-function renderHtml(heading: string, body: string, otp: string): string {
-  return `<!doctype html><html><body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;padding:32px;color:#111"><h1 style="font-size:20px;margin:0 0 16px">${heading}</h1><p style="margin:0 0 24px">${body}</p><div style="font-size:28px;letter-spacing:6px;font-weight:600;padding:16px;background:#f5f5f5;border-radius:8px;text-align:center">${otp}</div><p style="margin:24px 0 0;color:#666;font-size:13px">This code expires in 5 minutes.</p></body></html>`;
+function renderHtml(heading: string, body: string, otp: string, link: string | null): string {
+  const button = link
+    ? `<a href="${link}" style="display:block;margin:24px 0 0;padding:14px;background:#111;color:#fff;border-radius:8px;text-align:center;text-decoration:none;font-weight:600">Open in ${env.appName}</a>`
+    : "";
+  return `<!doctype html><html><body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;padding:32px;color:#111"><h1 style="font-size:20px;margin:0 0 16px">${heading}</h1><p style="margin:0 0 24px">${body}</p><div style="font-size:28px;letter-spacing:6px;font-weight:600;padding:16px;background:#f5f5f5;border-radius:8px;text-align:center">${otp}</div>${button}<p style="margin:24px 0 0;color:#666;font-size:13px">This code expires in 5 minutes.</p></body></html>`;
 }

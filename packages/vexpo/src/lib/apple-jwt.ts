@@ -1,23 +1,22 @@
-import { signEs256, type PrivateKeySource } from "./jwt.ts";
+import { signEs256 } from "./jwt.ts";
 
-export type AppleJwtArgs = {
-  privateKey: PrivateKeySource;
+// Apple's limit for a Sign in with Apple client secret.
+export const CLIENT_SECRET_DAYS = 180;
+
+export async function signClientSecret(opts: {
+  p8Path: string;
   teamId: string;
   keyId: string;
   servicesId: string;
-  expirationDays?: number;
-};
-
-export async function signClientSecret(opts: AppleJwtArgs): Promise<string> {
-  const days = opts.expirationDays ?? 180;
+}): Promise<string> {
   const now = Math.floor(Date.now() / 1000);
   const header = { alg: "ES256", kid: opts.keyId };
   const payload = {
     iss: opts.teamId,
     iat: now,
-    exp: now + days * 86400,
+    exp: now + CLIENT_SECRET_DAYS * 86400,
     aud: "https://appleid.apple.com",
     sub: opts.servicesId,
   };
-  return signEs256(opts.privateKey, header, payload);
+  return signEs256(opts.p8Path, header, payload);
 }

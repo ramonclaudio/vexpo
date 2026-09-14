@@ -33,37 +33,37 @@ export type ConvexOptions = {
 const BUNDLE_ID_RE = /^[A-Za-z0-9.-]+$/;
 const TEAM_ID_RE = /^[A-Z0-9]{10}$/;
 
-export type TeamIdInput = { kind: "skip" } | { kind: "invalid" | "ok"; value: string };
+type TeamIdInput = { kind: "skip" } | { kind: "invalid" | "ok"; value: string };
 
-export function resolveTeamIdInput(raw: string, fromConfig: string | null): TeamIdInput {
+function resolveTeamIdInput(raw: string, fromConfig: string | null): TeamIdInput {
   const value = raw.trim().toUpperCase() || (fromConfig ?? "");
   if (!value) return { kind: "skip" };
   if (!TEAM_ID_RE.test(value)) return { kind: "invalid", value };
   return { kind: "ok", value };
 }
 
-export function planConvexDev(
+function planConvexDev(
   options: { local?: boolean; eas?: boolean; region?: string },
-  needsProvisioning: boolean,
+  createNew: boolean,
   projectName: string,
   team?: string,
 ): { selectLocalFirst: boolean; connectArgs?: string[]; devArgs: string[] } {
   const devArgs = ["convex", "dev", "--once", "--tail-logs", "disable"];
-  if (needsProvisioning && options.eas) {
+  if (createNew && options.eas) {
     const connectArgs = ["integrations:convex:connect", "--project-name", projectName];
     if (team) connectArgs.push("--team-name", team);
     if (options.region) connectArgs.push("--region", options.region);
     return { selectLocalFirst: false, connectArgs, devArgs };
   }
-  if (needsProvisioning) {
+  if (createNew) {
     devArgs.push("--configure", "new", "--project", projectName);
     if (team) devArgs.push("--team", team);
     devArgs.push("--dev-deployment", options.local ? "local" : "cloud");
   }
-  return { selectLocalFirst: !!options.local && !options.eas && !needsProvisioning, devArgs };
+  return { selectLocalFirst: !!options.local && !options.eas && !createNew, devArgs };
 }
 
-export function convexUrls(slug: string, local: boolean): { url: string; siteUrl: string } {
+function convexUrls(slug: string, local: boolean): { url: string; siteUrl: string } {
   if (local) return { url: "http://127.0.0.1:3210", siteUrl: "http://127.0.0.1:3211" };
   return { url: `https://${slug}.convex.cloud`, siteUrl: `https://${slug}.convex.site` };
 }
@@ -86,12 +86,12 @@ async function existingDeployment(
   });
 }
 
-function explainDevFailure(needsProvisioning: boolean, team: string | undefined): void {
-  if (!needsProvisioning) return;
+function explainDevFailure(createNew: boolean, team: string | undefined): void {
+  if (!createNew) return;
   if (!team && !process.stdin.isTTY) {
-    note("provisioning a new Convex project picks a team interactively, which");
-    note("can't prompt here. Set CONVEX_TEAM=<slug> (Convex dashboard > team");
-    note("settings) or run `vexpo lite` in an interactive terminal.");
+    note("creating a Convex project asks which team to use, and there's no");
+    note("terminal to ask in. Set CONVEX_TEAM=<slug> (Convex dashboard > team");
+    note("settings) or run `vexpo lite` in a terminal.");
     return;
   }
   note('if the error above says the team "is managed by oauth:...", the');
@@ -103,12 +103,12 @@ async function noProjectLinkedYet(): Promise<boolean> {
   const linked = await convexProjectLink();
   if (!linked) return true;
   bad(`EAS already has a Convex project linked to this app: ${linked.name}`);
-  note("`eas integrations:convex:connect` provisions a second one, it has no way");
-  note("to reuse an existing Convex project. Put that project's deploy key in");
-  note("`.env.local` as CONVEX_DEPLOY_KEY and rerun without `--eas`.");
+  note("`eas integrations:convex:connect` would create a second one, it can't");
+  note("reuse an existing project. Put that project's deploy key in `.env.local`");
+  note("as CONVEX_DEPLOY_KEY and run this again without `--eas`.");
   if (linked.dashboard) note(`deploy keys: ${linked.dashboard}/settings`);
   note("to relink on purpose, run `npx eas-cli integrations:convex:project:delete`");
-  note("first. That drops the EAS link only, nothing on Convex is destroyed.");
+  note("first. That only drops the EAS link, nothing on Convex is deleted.");
   return false;
 }
 
@@ -118,8 +118,8 @@ async function connectThroughEas(
   projectName: string,
 ): Promise<boolean> {
   if (options.eas && options.local) {
-    bad("--eas and --local are mutually exclusive");
-    note("the EAS integration provisions a cloud deployment. Drop one of the two.");
+    bad("--eas and --local can't be used together");
+    note("the EAS integration creates a cloud deployment. Drop one of the two.");
     return false;
   }
   if (!connectArgs) return true;
@@ -135,12 +135,11 @@ async function connectThroughEas(
     note("it needs the app linked to EAS first. Run `npx eas-cli init`, then retry.");
     return false;
   }
-  note("EAS wrote CONVEX_DEPLOY_KEY to .env.local. That key wins over `--prod` and");
-  note("`--deployment-name` on every convex command, so `npm run convex:logs:prod`");
-  note("reads dev until you point the CLI at another env file. See .env.example.");
-  note("it also wrote this dev URL to EXPO_PUBLIC_CONVEX_URL on EAS for all three");
-  note("environments, production included. `vexpo env push` corrects production");
-  note("and preview once a prod deployment exists.");
+  note("EAS wrote CONVEX_DEPLOY_KEY to .env.local. That key wins over `--prod` on");
+  note("every convex command, so prod commands need `--env-file .env.prod`.");
+  note("it also wrote this dev URL to EXPO_PUBLIC_CONVEX_URL on EAS for every");
+  note("environment, production included. `vexpo env push` fixes production");
+  note("once a prod deployment exists.");
   return await recordKeyDeployment();
 }
 
@@ -183,7 +182,6 @@ async function ensureSignedIn(): Promise<void> {
       { label: "Convex dashboard", url: "https://dashboard.convex.dev" },
     ],
     allowSkip: true,
-    skipLabel: "skip",
   });
 }
 
@@ -221,22 +219,22 @@ export async function runConvex(options: ConvexOptions): Promise<number> {
 
   const localEnv = await readAll();
   const existing = await existingDeployment(options, localEnv);
-  const needsProvisioning = !existing;
+  const createNew = !existing;
   const projectName = options.name ?? (await pkgName());
   const team = (process.env.CONVEX_TEAM ?? localEnv.get("CONVEX_TEAM"))?.trim() || undefined;
 
-  const plan = planConvexDev(options, needsProvisioning, projectName, team);
+  const plan = planConvexDev(options, createNew, projectName, team);
   if (plan.selectLocalFirst && !(await selectLocalDeployment())) return 1;
 
   if (!(await connectThroughEas(options, plan.connectArgs, projectName))) return 1;
 
-  if (needsProvisioning) ok(`provisioning Convex project '${projectName}'`);
-  else ok(`connecting to existing deployment ${existing}`);
+  if (createNew) ok(`creating Convex project '${projectName}'`);
+  else ok(`connecting to the existing deployment ${existing}`);
 
   const proc = spawn([dlx(), ...plan.devArgs]);
   if ((await proc.exited) !== 0) {
-    bad("convex dev exited with a non-zero code");
-    explainDevFailure(needsProvisioning, team);
+    bad("convex dev failed");
+    explainDevFailure(createNew, team);
     return 1;
   }
 
@@ -279,11 +277,11 @@ async function recordDeployment(options: ConvexOptions): Promise<number> {
 async function resolveBundleId(localEnv: Map<string, string>): Promise<string | undefined> {
   if (localEnv.has("EXPO_PUBLIC_APP_BUNDLE_ID")) {
     const existing = localEnv.get("EXPO_PUBLIC_APP_BUNDLE_ID");
-    ok(`EXPO_PUBLIC_APP_BUNDLE_ID=${existing} (from .env.local); syncing to Convex`);
+    ok(`EXPO_PUBLIC_APP_BUNDLE_ID=${existing} from .env.local, syncing to Convex`);
     return existing;
   }
   if (!process.stdin.isTTY) {
-    yep("EXPO_PUBLIC_APP_BUNDLE_ID not set (non-TTY); skipping prompt");
+    yep("EXPO_PUBLIC_APP_BUNDLE_ID not set, and no terminal to ask in");
     yep("set it in .env.local before running `vexpo apple` or building");
     return undefined;
   }
@@ -312,7 +310,7 @@ async function resolveTeamId(localEnv: Map<string, string>): Promise<string | un
     return existing;
   }
   if (!process.stdin.isTTY) {
-    yep("EXPO_PUBLIC_APPLE_TEAM_ID not set (non-TTY); skipping prompt");
+    yep("EXPO_PUBLIC_APPLE_TEAM_ID not set, and no terminal to ask in");
     return undefined;
   }
   const fromConfig = await appleTeamIdFallback();
@@ -326,7 +324,7 @@ async function resolveTeamId(localEnv: Map<string, string>): Promise<string | un
     .toUpperCase();
   const resolved = resolveTeamIdInput(raw, fromConfig);
   if (resolved.kind === "skip") {
-    yep("EXPO_PUBLIC_APPLE_TEAM_ID not set (optional for lite; `vexpo full` asks again)");
+    yep("EXPO_PUBLIC_APPLE_TEAM_ID not set. Optional for lite, `vexpo full` asks again");
     return undefined;
   }
   if (resolved.kind === "invalid") {
@@ -339,14 +337,14 @@ async function resolveTeamId(localEnv: Map<string, string>): Promise<string | un
   return resolved.value;
 }
 
-export async function ensureIdentity(localEnv: Map<string, string>): Promise<void> {
+async function ensureIdentity(localEnv: Map<string, string>): Promise<void> {
   const bundleId = await resolveBundleId(localEnv);
   const teamId = await resolveTeamId(localEnv);
 
   if (bundleId) {
     const devBundleId = `${bundleId}.dev`;
     await convexEnvSet("APP_BUNDLE_ID", devBundleId);
-    ok(`Convex env: APP_BUNDLE_ID=${devBundleId} (dev deployment serves the dev variant)`);
+    ok(`Convex env: APP_BUNDLE_ID=${devBundleId} (the dev deployment serves the dev build)`);
   }
   if (teamId) {
     await convexEnvSet("APPLE_TEAM_ID", teamId);

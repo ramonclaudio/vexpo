@@ -11,17 +11,15 @@ import {
   unredacted,
 } from "@expo/ui/swift-ui/modifiers";
 
-import { Spacing } from "@/constants/layout";
-import { useColors } from "@/hooks/use-theme";
+import { Colors } from "@/constants/theme";
 import { useDynamicFont } from "@/lib/dynamic-font";
 
 function FieldBox() {
-  const colors = useColors();
   return (
     <VStack
       modifiers={[
         frame({ maxWidth: Infinity, height: 44 }),
-        background(colors.muted),
+        background(Colors.muted),
         cornerRadius(22),
         unredacted(),
       ]}
@@ -32,12 +30,11 @@ function FieldBox() {
 }
 
 function Circle({ size }: { size: number }) {
-  const colors = useColors();
   return (
     <VStack
       modifiers={[
         frame({ width: size, height: size }),
-        background(colors.muted),
+        background(Colors.muted),
         clipShape("circle"),
         unredacted(),
       ]}
@@ -50,20 +47,19 @@ function Circle({ size }: { size: number }) {
 function Field({ label }: { label: string }) {
   const dfont = useDynamicFont();
   return (
-    <VStack alignment="leading" spacing={Spacing.md}>
+    <VStack alignment="leading" spacing={12}>
       <Text modifiers={[dfont({ size: 14 })]}>{label}</Text>
       <FieldBox />
     </VStack>
   );
 }
 
-export function SkeletonProfile({ testID }: { testID?: string } = {}) {
+export function SkeletonProfile() {
   const dfont = useDynamicFont();
   return (
     <VStack
-      testID={testID}
       alignment="leading"
-      spacing={Spacing.xl}
+      spacing={20}
       modifiers={[
         padding({ all: 24 }),
         redacted("placeholder"),
@@ -71,9 +67,9 @@ export function SkeletonProfile({ testID }: { testID?: string } = {}) {
         accessibilityLabel("Loading profile"),
       ]}
     >
-      <HStack spacing={Spacing.lg}>
+      <HStack spacing={16}>
         <Circle size={72} />
-        <VStack alignment="leading" spacing={Spacing.sm}>
+        <VStack alignment="leading" spacing={8}>
           <Text modifiers={[dfont({ size: 17, weight: "semibold" })]}>Jane Appleseed</Text>
           <Text modifiers={[dfont({ size: 14 })]}>jane@example.com</Text>
         </VStack>
@@ -86,12 +82,11 @@ export function SkeletonProfile({ testID }: { testID?: string } = {}) {
   );
 }
 
-export function SkeletonSessions({ testID }: { testID?: string } = {}) {
+export function SkeletonSessions() {
   return (
     <VStack
-      testID={testID}
       alignment="leading"
-      spacing={Spacing.md}
+      spacing={12}
       modifiers={[
         padding({ all: 24 }),
         redacted("placeholder"),
@@ -108,14 +103,13 @@ export function SkeletonSessions({ testID }: { testID?: string } = {}) {
 
 function SkeletonSessionRow() {
   const dfont = useDynamicFont();
-  const colors = useColors();
   return (
     <VStack
       alignment="leading"
-      spacing={Spacing.md}
-      modifiers={[padding({ all: 16 }), background(colors.card), cornerRadius(12)]}
+      spacing={12}
+      modifiers={[padding({ all: 16 }), background(Colors.card), cornerRadius(12)]}
     >
-      <HStack spacing={Spacing.md}>
+      <HStack spacing={12}>
         <Text modifiers={[dfont({ size: 16, weight: "semibold" })]}>iPhone 15 Pro</Text>
         <Spacer />
         <Text modifiers={[dfont({ size: 14 })]}>Revoke</Text>

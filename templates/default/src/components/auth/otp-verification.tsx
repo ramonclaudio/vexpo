@@ -28,11 +28,11 @@ import {
 } from "@expo/ui/swift-ui/modifiers";
 import { OtpField } from "@/components/ui/otp-field";
 import { useDynamicFont } from "@/lib/dynamic-font";
-import { Button as ButtonTokens, TouchTarget } from "@/constants/layout";
+import { ButtonTokens, TouchTarget } from "@/constants/layout";
 import { DynamicType } from "@/constants/ui";
 
 import { authClient } from "@/lib/auth-client";
-import { useColors } from "@/hooks/use-theme";
+import { Colors } from "@/constants/theme";
 import { ProminentButton } from "@/components/ui/capsule-button";
 import { ErrorText } from "@/components/ui/status-text";
 import { fail, succeed } from "@/lib/form-result";
@@ -43,16 +43,21 @@ type OtpVerificationProps = {
   email: string;
   onBack: () => void;
   flow?: OtpFlow;
+  initialOtp?: string;
 };
 
 type OtpState = { error?: string; ok?: boolean };
 const initialState: OtpState = {};
 
-export function OtpVerification({ email, onBack, flow = "verify-email" }: OtpVerificationProps) {
+export function OtpVerification({
+  email,
+  onBack,
+  flow = "verify-email",
+  initialOtp = "",
+}: OtpVerificationProps) {
   const dfont = useDynamicFont();
-  const colors = useColors();
-  const otpState = useNativeState("");
-  const [otp, setOtp] = useState("");
+  const otpState = useNativeState(initialOtp);
+  const [otp, setOtp] = useState(initialOtp);
   const [lastAction, setLastAction] = useState<"verify" | "resend">("verify");
   const isSignIn = flow === "sign-in";
 
@@ -114,11 +119,11 @@ export function OtpVerification({ email, onBack, flow = "verify-email" }: OtpVer
   })();
 
   return (
-    <Host testID="otp-screen" style={{ flex: 1, backgroundColor: colors.background }}>
+    <Host style={{ flex: 1, backgroundColor: Colors.background }}>
       <ScrollView
         modifiers={[
           scrollDismissesKeyboard("interactively"),
-          tint(colors.primary),
+          tint(Colors.primary),
           defaultScrollAnchorForRole("center", "sizeChanges"),
         ]}
       >
@@ -129,7 +134,7 @@ export function OtpVerification({ email, onBack, flow = "verify-email" }: OtpVer
         >
           <Image
             systemName={isSignIn ? "lock.shield" : "envelope.badge"}
-            color={colors.primary}
+            color={Colors.primary}
             modifiers={[
               dfont({ size: 56 }),
               dynamicTypeSize({ max: DynamicType.control }),
@@ -138,7 +143,6 @@ export function OtpVerification({ email, onBack, flow = "verify-email" }: OtpVer
           />
 
           <Text
-            testID="otp-title"
             modifiers={[
               dfont({ size: 28, weight: "bold" }),
               multilineTextAlignment("center"),
@@ -148,16 +152,11 @@ export function OtpVerification({ email, onBack, flow = "verify-email" }: OtpVer
             {isSignIn ? "Sign in with code" : "Verify your email"}
           </Text>
 
-          <VStack
-            testID="otp-email-value"
-            spacing={4}
-            alignment="center"
-            modifiers={[accessibilityElement("combine")]}
-          >
+          <VStack spacing={4} alignment="center" modifiers={[accessibilityElement("combine")]}>
             <Text
               modifiers={[
                 dfont({ size: 15 }),
-                foregroundStyle(colors.mutedForeground),
+                foregroundStyle(Colors.mutedForeground),
                 multilineTextAlignment("center"),
               ]}
             >
@@ -166,11 +165,10 @@ export function OtpVerification({ email, onBack, flow = "verify-email" }: OtpVer
             <Text modifiers={[dfont({ size: 15, weight: "semibold" })]}>{email}</Text>
           </VStack>
 
-          {error && <ErrorText testID="otp-error">{error}</ErrorText>}
+          {error && <ErrorText>{error}</ErrorText>}
 
           <VStack spacing={12} modifiers={[frame({ maxWidth: Infinity })]}>
             <OtpField
-              testID="otp-field"
               text={otpState}
               hint="Enter the 6 digit code sent to your email"
               onChange={setOtp}
@@ -180,14 +178,12 @@ export function OtpVerification({ email, onBack, flow = "verify-email" }: OtpVer
             />
 
             <ProminentButton
-              testID="otp-verify"
               label={verifyLabel}
               onPress={runVerify}
               disabled={isVerifying || otp.length !== 6}
             />
 
             <Button
-              testID="otp-resend"
               modifiers={[
                 buttonStyle("plain"),
                 frame({ maxWidth: Infinity }),
@@ -201,7 +197,7 @@ export function OtpVerification({ email, onBack, flow = "verify-email" }: OtpVer
                   contentShape(shapes.rectangle()),
                   multilineTextAlignment("center"),
                   dfont({ size: ButtonTokens.fontSize, weight: ButtonTokens.secondaryFontWeight }),
-                  foregroundStyle(colors.primary),
+                  foregroundStyle(Colors.primary),
                 ]}
               >
                 {isResending ? "Sending..." : "Resend code"}
@@ -210,11 +206,10 @@ export function OtpVerification({ email, onBack, flow = "verify-email" }: OtpVer
           </VStack>
 
           <HStack modifiers={[padding({ top: 8 })]}>
-            <Text modifiers={[dfont({ size: 14 }), foregroundStyle(colors.mutedForeground)]}>
+            <Text modifiers={[dfont({ size: 14 }), foregroundStyle(Colors.mutedForeground)]}>
               Wrong email?
             </Text>
             <Button
-              testID="otp-back"
               label="Go back"
               modifiers={[
                 buttonStyle("plain"),

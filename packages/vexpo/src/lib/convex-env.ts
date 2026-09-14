@@ -30,7 +30,7 @@ function quoteEnvValue(value: string): string {
     return `"${value.replace(/\n/g, "\\n").replace(/\r/g, "\\r")}"`;
   }
   throw new Error(
-    "value mixes ', \", ` and backslash escapes in a way dotenv cannot represent; set it in the Convex dashboard instead",
+    "value has ', \", ` and backslash escapes together, which an env file can't hold. Set it in the Convex dashboard instead",
   );
 }
 
@@ -88,14 +88,13 @@ export async function isLoggedIn(): Promise<boolean> {
 
 export function deploymentSlug(value: string | undefined): string | undefined {
   if (!value) return undefined;
-  const m = /^(?:dev|prod|preview):(.+)$/.exec(value);
+  const m = /^(?:dev|prod):(.+)$/.exec(value);
   return m ? m[1] : value;
 }
 
-export function deploymentRefFromDeployKey(key: string | undefined): string | undefined {
+function devDeploymentFromDeployKey(key: string | undefined): string | undefined {
   if (!key) return undefined;
-  const m = /^((?:dev|prod|preview):[^|:\s]+)\|/.exec(key);
-  return m?.[1];
+  return /^(dev:[^|:\s]+)\|/.exec(key)?.[1];
 }
 
 export async function recordedOrDerivedDeployment(
@@ -104,8 +103,8 @@ export async function recordedOrDerivedDeployment(
 ): Promise<string | undefined> {
   const recorded = localEnv.get("CONVEX_DEPLOYMENT");
   if (recorded) return recorded;
-  const derived = deploymentRefFromDeployKey(localEnv.get("CONVEX_DEPLOY_KEY"));
-  if (!derived?.startsWith("dev:")) return undefined;
+  const derived = devDeploymentFromDeployKey(localEnv.get("CONVEX_DEPLOY_KEY"));
+  if (!derived) return undefined;
   await onDerived(derived);
   return derived;
 }

@@ -14,18 +14,17 @@ import {
 import { useDynamicFont } from "@/lib/dynamic-font";
 
 import { ContentUnavailable } from "@/components/ui/content-unavailable";
-import { useColors } from "@/hooks/use-theme";
+import { Colors } from "@/constants/theme";
 
 export default function LinkedScreen() {
   const dfont = useDynamicFont();
-  const colors = useColors();
   const params = useLocalSearchParams();
 
   const entries = Object.entries(params).filter(([, v]) => v != null);
 
   return (
-    <Host testID="linked-screen" style={{ flex: 1, backgroundColor: colors.background }}>
-      <ScrollView modifiers={[scrollDismissesKeyboard("interactively"), tint(colors.primary)]}>
+    <Host style={{ flex: 1, backgroundColor: Colors.background }}>
+      <ScrollView modifiers={[scrollDismissesKeyboard("interactively"), tint(Colors.primary)]}>
         <VStack
           spacing={20}
           alignment="leading"
@@ -33,7 +32,6 @@ export default function LinkedScreen() {
         >
           <VStack spacing={6} alignment="leading">
             <Text
-              testID="linked-title"
               modifiers={[
                 dfont({ size: 22, weight: "bold" }),
                 accessibilityAddTraits(["isHeader"]),
@@ -41,7 +39,7 @@ export default function LinkedScreen() {
             >
               You got here via a deep link
             </Text>
-            <Text modifiers={[dfont({ size: 14 }), foregroundStyle(colors.mutedForeground)]}>
+            <Text modifiers={[dfont({ size: 14 }), foregroundStyle(Colors.mutedForeground)]}>
               Parameters parsed from the URL are listed below.
             </Text>
           </VStack>
@@ -51,7 +49,7 @@ export default function LinkedScreen() {
               <Text
                 modifiers={[
                   dfont({ size: 13, weight: "semibold" }),
-                  foregroundStyle(colors.mutedForeground),
+                  foregroundStyle(Colors.mutedForeground),
                   padding({ horizontal: 8 }),
                   accessibilityAddTraits(["isHeader"]),
                 ]}
@@ -63,7 +61,7 @@ export default function LinkedScreen() {
                 alignment="leading"
                 modifiers={[
                   frame({ maxWidth: Infinity }),
-                  background(colors.muted),
+                  background(Colors.muted),
                   cornerRadius(20),
                 ]}
               >
@@ -72,7 +70,7 @@ export default function LinkedScreen() {
                     key={key}
                     label={
                       <Text
-                        modifiers={[dfont({ size: 15 }), foregroundStyle(colors.mutedForeground)]}
+                        modifiers={[dfont({ size: 15 }), foregroundStyle(Colors.mutedForeground)]}
                       >
                         {key}
                       </Text>
@@ -83,10 +81,9 @@ export default function LinkedScreen() {
                     ]}
                   >
                     <Text
-                      testID={`linked-param-${key}`}
                       modifiers={[
                         dfont({ size: 13, design: "monospaced" }),
-                        foregroundStyle(colors.foreground),
+                        foregroundStyle(Colors.foreground),
                         textSelection(true),
                       ]}
                     >
@@ -98,7 +95,6 @@ export default function LinkedScreen() {
             </VStack>
           ) : (
             <ContentUnavailable
-              testID="linked-empty"
               title="No params"
               systemImage="link.badge.plus"
               description="This deep link didn't include any parameters."

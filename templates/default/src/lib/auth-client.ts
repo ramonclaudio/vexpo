@@ -6,9 +6,11 @@ import Constants from "expo-constants";
 import * as SecureStore from "expo-secure-store";
 
 import { env } from "./env";
+import { haptics } from "./haptics";
 
 const rawScheme = Constants.expoConfig?.scheme;
 const scheme = Array.isArray(rawScheme) ? rawScheme[0] : rawScheme;
+export const storagePrefix = scheme ?? "better-auth";
 
 export const authClient = createAuthClient({
   baseURL: env.convexSiteUrl,
@@ -17,6 +19,11 @@ export const authClient = createAuthClient({
     anonymousClient(),
     usernameClient(),
     emailOTPClient(),
-    expoClient({ scheme, storagePrefix: scheme ?? "better-auth", storage: SecureStore }),
+    expoClient({ scheme, storagePrefix, storage: SecureStore }),
   ],
 });
+
+export async function signOut() {
+  haptics.medium();
+  await authClient.signOut();
+}

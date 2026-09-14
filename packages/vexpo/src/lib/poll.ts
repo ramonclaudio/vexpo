@@ -1,17 +1,15 @@
 import { sleep } from "./http-retry.ts";
 
-export type PollResult<T> =
+type PollResult<T> =
   | { done: true; value: T; attempts: number; elapsedMs: number }
   | { done: false; attempts: number; elapsedMs: number };
 
 export async function poll<T>(opts: {
   check: () => Promise<{ done: true; value: T } | { done: false; reason?: string }>;
-  intervalMs?: number;
-  timeoutMs?: number;
-  tick?: (state: { attempts: number; elapsedMs: number; reason?: string }) => void;
+  intervalMs: number;
+  timeoutMs: number;
+  tick: (state: { attempts: number; elapsedMs: number; reason?: string }) => void;
 }): Promise<PollResult<T>> {
-  const intervalMs = opts.intervalMs ?? 30_000;
-  const timeoutMs = opts.timeoutMs ?? 30 * 60 * 1000;
   const start = Date.now();
   let attempts = 0;
 
@@ -19,14 +17,10 @@ export async function poll<T>(opts: {
     attempts += 1;
     const res = await opts.check();
     const elapsedMs = Date.now() - start;
-    if (res.done) {
-      return { done: true, value: res.value, attempts, elapsedMs };
-    }
-    opts.tick?.({ attempts, elapsedMs, reason: res.reason });
-    if (elapsedMs + intervalMs > timeoutMs) {
-      return { done: false, attempts, elapsedMs };
-    }
-    await sleep(intervalMs);
+    if (res.done) return { done: true, value: res.value, attempts, elapsedMs };
+    opts.tick({ attempts, elapsedMs, reason: res.reason });
+    if (elapsedMs + opts.intervalMs > opts.timeoutMs) return { done: false, attempts, elapsedMs };
+    await sleep(opts.intervalMs);
   }
 }
 

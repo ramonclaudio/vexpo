@@ -1,6 +1,5 @@
 import { router } from "expo-router";
 import { startTransition, useActionState, useState } from "react";
-import { Image as ExpoImage } from "expo-image";
 import { Host, ScrollView, Spacer, Text, VStack } from "@expo/ui/swift-ui";
 import {
   accessibilityAddTraits,
@@ -12,26 +11,23 @@ import {
 } from "@expo/ui/swift-ui/modifiers";
 import { useMutation, useQuery } from "convex/react";
 
+import BrandIcon from "@/components/ui/brand-icon";
 import { ProminentButton, SecondaryButton } from "@/components/ui/capsule-button";
 import { ErrorText } from "@/components/ui/status-text";
 import { api } from "@/convex/_generated/api";
-import { useColors, useThemedAsset } from "@/hooks/use-theme";
-import { assets } from "@/lib/assets";
-import { authClient } from "@/lib/auth-client";
+import { ACCOUNT_DELETION_GRACE_MS } from "@/convex/constants";
+import { Colors } from "@/constants/theme";
+import { signOut } from "@/lib/auth-client";
 import { formatError } from "@/lib/convex-error";
 import { useDynamicFont } from "@/lib/dynamic-font";
 import { haptics } from "@/lib/haptics";
 import { fail, succeed } from "@/lib/form-result";
-
-const ACCOUNT_DELETION_GRACE_MS = 30 * 24 * 60 * 60 * 1000;
 
 type ActionState = { error?: string };
 const initialState: ActionState = {};
 
 export default function RestoreAccountScreen() {
   const dfont = useDynamicFont();
-  const colors = useColors();
-  const brandIcon = useThemedAsset(assets.brandIconLight, assets.brandIconDark);
   const me = useQuery(api.users.getMe);
   const restoreMutation = useMutation(api.users.restoreAccount);
 
@@ -50,30 +46,17 @@ export default function RestoreAccountScreen() {
   }, initialState);
 
   const handleSignOut = async () => {
-    if (signingOut || restorePending) return;
     setSigningOut(true);
-    haptics.medium();
     try {
-      await authClient.signOut();
+      await signOut();
     } finally {
       setSigningOut(false);
     }
   };
 
-  if (!me) {
+  if (!me?.deletedAt) {
     return (
-      <Host
-        testID="restore-account-loading"
-        style={{ flex: 1, backgroundColor: colors.background }}
-      >
-        <Spacer />
-      </Host>
-    );
-  }
-
-  if (!me.deletedAt) {
-    return (
-      <Host style={{ flex: 1, backgroundColor: colors.background }}>
+      <Host style={{ flex: 1, backgroundColor: Colors.background }}>
         <Spacer />
       </Host>
     );
@@ -88,32 +71,30 @@ export default function RestoreAccountScreen() {
   }).format(permanentDeleteAt);
 
   return (
-    <Host testID="restore-account-screen" style={{ flex: 1, backgroundColor: colors.background }}>
+    <Host style={{ flex: 1, backgroundColor: Colors.background }}>
       <ScrollView modifiers={[defaultScrollAnchor("center")]}>
         <VStack
           spacing={24}
           alignment="center"
           modifiers={[frame({ maxWidth: Infinity }), padding({ horizontal: 24, vertical: 48 })]}
         >
-          <ExpoImage source={brandIcon} style={{ width: 72, height: 72 }} contentFit="contain" />
+          <BrandIcon size={72} />
 
           <VStack spacing={12} alignment="center">
             <Text
-              testID="restore-account-title"
               modifiers={[
                 dfont({ size: 24, weight: "bold" }),
-                foregroundStyle(colors.foreground),
+                foregroundStyle(Colors.foreground),
                 multilineTextAlignment("center"),
                 accessibilityAddTraits(["isHeader"]),
               ]}
             >
-              Account Scheduled for Deletion
+              Account scheduled for deletion
             </Text>
             <Text
-              testID="restore-account-deletion-date"
               modifiers={[
                 dfont({ size: 15 }),
-                foregroundStyle(colors.mutedForeground),
+                foregroundStyle(Colors.mutedForeground),
                 multilineTextAlignment("center"),
               ]}
             >
@@ -123,23 +104,19 @@ export default function RestoreAccountScreen() {
 
           <VStack spacing={12} alignment="center" modifiers={[frame({ maxWidth: Infinity })]}>
             <ProminentButton
-              testID="restore-account-restore"
-              label={restorePending ? "Restoring…" : "Restore Account"}
+              label={restorePending ? "Restoring..." : "Restore account"}
               onPress={() => startTransition(() => restore())}
               disabled={restorePending || signingOut}
             />
             <SecondaryButton
-              testID="restore-account-sign-out"
-              label={signingOut ? "Signing Out…" : "Sign Out"}
+              label={signingOut ? "Signing out..." : "Sign out"}
               destructive
               disabled={restorePending || signingOut}
               onPress={handleSignOut}
             />
           </VStack>
 
-          {restoreState.error ? (
-            <ErrorText testID="restore-account-error">{restoreState.error}</ErrorText>
-          ) : null}
+          {restoreState.error ? <ErrorText>{restoreState.error}</ErrorText> : null}
         </VStack>
       </ScrollView>
     </Host>

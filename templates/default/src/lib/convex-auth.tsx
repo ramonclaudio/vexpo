@@ -3,6 +3,9 @@ import { useCallback, useMemo, useRef, type ReactNode } from "react";
 
 import { authClient } from "./auth-client";
 
+// Stands in for ConvexBetterAuthProvider from @convex-dev/better-auth/react. That one keys
+// its token fetcher on the session id, which rotates on every /convex/token call, so Convex
+// auth never settles on Expo. The retry covers the radio waking up after the phone unlocks.
 function useBetterAuthForConvex() {
   const { data: session, isPending } = authClient.useSession();
   const isAuthenticated = !!session?.session;

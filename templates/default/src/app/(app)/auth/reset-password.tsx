@@ -1,5 +1,4 @@
 import { startTransition, useActionState, useEffect, useState } from "react";
-import { useWindowDimensions } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
 import {
   Host,
@@ -17,56 +16,48 @@ import {
   defaultScrollAnchorForRole,
   disabled,
   dynamicTypeSize,
-  keyboardType,
   padding,
   frame,
   contentShape,
   shapes,
   scrollDismissesKeyboard,
   multilineTextAlignment,
-  monospacedDigit,
-  kerning,
-  submitLabel,
   textContentType,
   accessibilityAddTraits,
   accessibilityHidden,
   accessibilityLabel,
-  accessibilityHint,
   tint,
 } from "@expo/ui/swift-ui/modifiers";
 import { useDynamicFont } from "@/lib/dynamic-font";
 import { TouchTarget } from "@/constants/layout";
-import { DynamicType, otpKerning } from "@/constants/ui";
-
-import { scheduleOnRN } from "react-native-worklets";
+import { DynamicType } from "@/constants/ui";
 
 import { authClient } from "@/lib/auth-client";
-import { maskOtp } from "@/lib/masks";
 import { firstError, resetPasswordSchema } from "@/lib/schemas";
 import BrandIcon from "@/components/ui/brand-icon";
 import { PasswordField } from "@/components/auth/password-field";
 import { CapsuleTextField } from "@/components/ui/capsule-text-field";
+import { OtpField } from "@/components/ui/otp-field";
 import { DiscardChangesDialog } from "@/components/ui/discard-changes-dialog";
 import { HelperText } from "@/components/ui/helper-text";
-import { ProminentButton } from "@/components/ui/capsule-button";
+import { PlainButton, ProminentButton } from "@/components/ui/capsule-button";
 import { ErrorText } from "@/components/ui/status-text";
 import { LabeledField } from "@/components/ui/labeled-field";
 import { useUnsavedChanges } from "@/hooks/use-unsaved-changes";
 import { announce } from "@/lib/a11y";
+import { setNativeValue } from "@/lib/native-state";
 import { UNEXPECTED_ERROR, fail, succeed } from "@/lib/form-result";
-import { useColors } from "@/hooks/use-theme";
+import { Colors } from "@/constants/theme";
 import { useQuery } from "convex/react";
 
 import { api } from "@/convex/_generated/api";
 
-type ResetState = { error?: string; ok?: boolean; expired?: boolean };
+type ResetState = { error?: string; ok?: boolean; expired?: boolean; badCode?: boolean };
 const initialState: ResetState = {};
 
 export default function ResetPasswordScreen() {
   const dfont = useDynamicFont();
-  const { fontScale } = useWindowDimensions();
-  const colors = useColors();
-  const { email = "" } = useLocalSearchParams<{ email: string }>();
+  const { email = "", otp: linkOtp = "" } = useLocalSearchParams<{ email: string; otp?: string }>();
   const providers = useQuery(api.auth.getEnabledProviders);
   useEffect(() => {
     if (providers !== undefined && providers.emailFeatures === false) {
@@ -77,8 +68,13 @@ export default function ResetPasswordScreen() {
     }
   }, [providers]);
 
-  const otpState = useNativeState("");
-  const [otp, setOtp] = useState("");
+  const otpState = useNativeState(linkOtp);
+  const [otp, setOtp] = useState(linkOtp);
+  useEffect(() => {
+    if (!linkOtp) return;
+    setNativeValue(otpState, linkOtp);
+    setOtp(linkOtp);
+  }, [linkOtp]);
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const emailIdentityState = useNativeState(email);
@@ -104,7 +100,11 @@ export default function ResetPasswordScreen() {
         const message = response.error.message ?? "Failed to reset password";
         const lower = message.toLowerCase();
         if (lower.includes("expired") || lower.includes("invalid")) {
-          return { ...fail("This code has expired. Request a new one."), expired: true };
+          return {
+            ...fail("This code has expired. Request a new one."),
+            expired: true,
+            badCode: true,
+          };
         }
         return fail(message);
       }
@@ -115,28 +115,21 @@ export default function ResetPasswordScreen() {
     }
   }, initialState);
 
-  const hasInput = otp.length > 0 || password.length > 0 || confirmPassword.length > 0;
+  const hasInput = otp !== linkOtp || password.length > 0 || confirmPassword.length > 0;
   const { pendingNavAction, discard, dismiss } = useUnsavedChanges(hasInput && !state.ok);
-
-  const error = state.error;
-  const isExpiredError = state.expired === true;
 
   if (state.ok) {
     return (
-      <Host
-        testID="reset-password-success-screen"
-        style={{ flex: 1, backgroundColor: colors.background }}
-      >
+      <Host style={{ flex: 1, backgroundColor: Colors.background }}>
         <VStack
           spacing={16}
           alignment="center"
-          modifiers={[padding({ horizontal: 24 }), tint(colors.primary)]}
+          modifiers={[padding({ horizontal: 24 }), tint(Colors.primary)]}
         >
           <Spacer />
           <Image
-            testID="reset-password-success-icon"
             systemName="checkmark.circle.fill"
-            color={colors.success}
+            color={Colors.success}
             modifiers={[
               dfont({ size: 56 }),
               dynamicTypeSize({ max: DynamicType.control }),
@@ -144,7 +137,6 @@ export default function ResetPasswordScreen() {
             ]}
           />
           <Text
-            testID="reset-password-success-title"
             modifiers={[dfont({ size: 28, weight: "bold" }), accessibilityAddTraits(["isHeader"])]}
           >
             Password reset!
@@ -152,14 +144,13 @@ export default function ResetPasswordScreen() {
           <Text
             modifiers={[
               dfont({ size: 15 }),
-              foregroundStyle(colors.mutedForeground),
+              foregroundStyle(Colors.mutedForeground),
               multilineTextAlignment("center"),
             ]}
           >
             Your password has been reset. You can now sign in with your new password.
           </Text>
           <ProminentButton
-            testID="reset-password-success-sign-in"
             label="Sign in"
             onPress={() => {
               router.replace("/auth/sign-in");
@@ -172,11 +163,11 @@ export default function ResetPasswordScreen() {
   }
 
   return (
-    <Host testID="reset-password-screen" style={{ flex: 1, backgroundColor: colors.background }}>
+    <Host style={{ flex: 1, backgroundColor: Colors.background }}>
       <ScrollView
         modifiers={[
           scrollDismissesKeyboard("interactively"),
-          tint(colors.primary),
+          tint(Colors.primary),
           defaultScrollAnchorForRole("center", "sizeChanges"),
         ]}
       >
@@ -189,7 +180,6 @@ export default function ResetPasswordScreen() {
 
           <VStack spacing={6} alignment="leading">
             <Text
-              testID="reset-password-title"
               modifiers={[
                 dfont({ size: 28, weight: "bold" }),
                 accessibilityAddTraits(["isHeader"]),
@@ -197,17 +187,16 @@ export default function ResetPasswordScreen() {
             >
               Reset password
             </Text>
-            <Text modifiers={[dfont({ size: 16 }), foregroundStyle(colors.mutedForeground)]}>
+            <Text modifiers={[dfont({ size: 16 }), foregroundStyle(Colors.mutedForeground)]}>
               Enter the 6-digit code sent to {email} and choose a new password.
             </Text>
           </VStack>
 
           <LabeledField label="Account">
             <CapsuleTextField
-              testID="reset-password-account"
               text={emailIdentityState}
               modifiers={[
-                foregroundStyle(colors.mutedForeground),
+                foregroundStyle(Colors.mutedForeground),
                 textContentType("username"),
                 disabled(true),
                 accessibilityLabel("Account email"),
@@ -215,12 +204,11 @@ export default function ResetPasswordScreen() {
             />
           </LabeledField>
 
-          {error && (
+          {state.error && (
             <VStack spacing={8} alignment="leading">
-              <ErrorText testID="reset-password-error">{error}</ErrorText>
-              {isExpiredError && (
+              <ErrorText>{state.error}</ErrorText>
+              {state.expired && (
                 <Button
-                  testID="reset-password-request-code"
                   label="Request a new code"
                   modifiers={[
                     buttonStyle("plain"),
@@ -237,36 +225,18 @@ export default function ResetPasswordScreen() {
           )}
 
           <LabeledField label="Verification code">
-            <CapsuleTextField
-              testID="reset-password-code"
+            <OtpField
               text={otpState}
-              placeholder="000000"
-              onTextChange={(text) => {
-                "worklet";
-                const digits = maskOtp(text);
-                otpState.value = digits;
-                scheduleOnRN(setOtp, digits);
-              }}
-              autoFocus
-              modifiers={[
-                keyboardType("numeric"),
-                textContentType("oneTimeCode"),
-                dfont({ size: 24, design: "monospaced" }),
-                monospacedDigit(),
-                kerning(otpKerning(fontScale)),
-                multilineTextAlignment("center"),
-                dynamicTypeSize({ max: DynamicType.otp }),
-                submitLabel("next"),
-                disabled(isPending),
-                accessibilityLabel("Verification code"),
-                accessibilityHint("Enter the 6 digit code sent to your email"),
-              ]}
+              hint="Enter the 6 digit code sent to your email"
+              onChange={setOtp}
+              submit="next"
+              isVerifying={isPending}
+              invalidCode={state.badCode === true}
             />
           </LabeledField>
 
           <LabeledField label="New password">
             <PasswordField
-              testID="reset-password-new"
               onTextChange={setPassword}
               contentType="newPassword"
               disabled={isPending}
@@ -279,7 +249,6 @@ export default function ResetPasswordScreen() {
 
           <LabeledField label="Confirm password">
             <PasswordField
-              testID="reset-password-confirm"
               onTextChange={setConfirmPassword}
               onSubmit={() => startTransition(() => submit())}
               contentType="newPassword"
@@ -290,33 +259,18 @@ export default function ResetPasswordScreen() {
           </LabeledField>
 
           <ProminentButton
-            testID="reset-password-submit"
             label={isPending ? "Resetting..." : "Reset password"}
             onPress={() => startTransition(() => submit())}
             disabled={isPending}
           />
 
           <VStack alignment="center" modifiers={[frame({ maxWidth: Infinity })]}>
-            <Button
-              testID="reset-password-back-to-sign-in"
-              label="Back to sign in"
-              modifiers={[
-                buttonStyle("plain"),
-                foregroundStyle(colors.mutedForeground),
-                dfont({ size: 14, weight: "semibold" }),
-                frame({ minHeight: TouchTarget.min }),
-                contentShape(shapes.rectangle()),
-              ]}
-              onPress={() => {
-                router.push("/auth/sign-in");
-              }}
-            />
+            <PlainButton label="Back to sign in" onPress={() => router.push("/auth/sign-in")} />
           </VStack>
         </VStack>
       </ScrollView>
 
       <DiscardChangesDialog
-        testIDPrefix="reset-password"
         message="Your password entries will be lost."
         pendingNavAction={pendingNavAction}
         onDiscard={discard}

@@ -4,6 +4,47 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Pre
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-09-13
+
+- **Breaking:** remove `vexpo apple eas-rotation-secrets` and `vexpo env convex-key`. Both only fed the deleted EAS workflows.
+- **Breaking:** remove `--dry-run` from `vexpo lite` and `vexpo full`. `env push`, `convex migrate` and `asc accessibility push` keep theirs.
+- **Breaking:** remove `vexpo apple asc-key --revalidate`. `vexpo doctor` checks the cached key against App Store Connect.
+- **Breaking:** remove `vexpo asc accessibility url`. A top-level `url` in `accessibility.config.json` does it through `push`, and `show` prints it.
+- **Breaking:** remove `--no-setup` from `create-vexpo`.
+- Fix auth on the dev build. Every Better Auth call from `npm run ios` failed with "Invalid origin". The dev build's scheme is `vexpodev://`, and `trustedOrigins` only trusted it under `NODE_ENV === "development"`, which Convex sets on no deployment. It is `[SITE_URL, the dev scheme]` now, ungated.
+- Fix change email. The profile called the core `changeEmail` route, which is off unless `user.changeEmail.enabled` is set. It goes through the email OTP plugin now, one code to the new address.
+- Rate limit `/email-otp/request-email-change` and `/email-otp/change-email` at 3 a minute, like the other routes that mail or check a code.
+- Strip the repo to the two packages and the template. Gone with it, the test suites, maestro, knip, dependabot, gitleaks, pre-commit, the GitHub workflows and issue templates, the docs folder, the contributing, security and conduct files, the nine EAS workflows, the config plugins, the debug screen, push notifications and `.env.example`.
+- Two build modes, `development` and `production`. The `preview` profiles and channel are gone, and the CLI no longer pushes env to the EAS `preview` environment.
+- Five template scripts instead of thirty-seven. `start`, `ios` and `prebuild` set `APP_VARIANT=development`, the name from the Expo app variants guide, in place of `APP_MODE`. Unset means the store app. `npx convex dev`, `CONVEX_DEPLOY_KEY= npx convex deploy` and `npm run ios -- --device` replace the ones that were one-liners.
+- The auth emails carry an Open in app link. It opens the screen that takes the code with the email and code filled in.
+- `resolveDeepLink` reads a scheme link the way iOS hands it over, with the first segment as the hostname. The path list is the ten the emails and the associated domain use.
+- Sign out lives on the Profile screen and Delete account on Settings. Each was on both.
+- Seven FAQ items on the Help screen instead of one.
+- The Settings row asks a guest for what is actually missing. It said "Add a name and a photo" even after they had both.
+- Drop the Copy version row from Settings. The version footer stays.
+- The reset password screen uses `OtpField`, which takes an optional submit label and handler now.
+- One `AuthModeToggle` for the sign in / sign up switch, one `Avatar` that owns the placeholder, one `PlainButton` for the four plain text buttons, and `AccountActions` in place of `DangerZone`.
+- `Colors` is a plain import from `constants/theme`, and the button tokens are exported as `ButtonTokens`, the name every caller already aliased them to. `useColors()` returned a constant and touched no React state.
+- Ship five font files instead of twelve, about 900 KB. The regular mono stays, the code fields use it.
+- Remove all 245 `testID`s, the unused color tokens, the spacing and font-size tables, the haptic helpers, the `Constants` re-exports, the route-change logger and the update status text.
+- `Material` has one look and a required tint. The single-use hooks live in the one file that uses each.
+- The privacy screen has one row. The dev menu has three items, and Reset App Data clears SecureStore and localStorage together.
+- `app.config.ts` lists the seven plugins that change the native project and drops every key that was already the default.
+- Drop the `/eas-webhook` route and the logger behind it, `rotateKeys`, the `getAuthUser` export, `convex/validators.ts` and `convex/errors.ts`. Nothing read any of them.
+- Drop the `accountDeletionAudit` table from the schema. A deployment that has it keeps its rows, so clear it from the dashboard's Data page if you want it gone.
+- Account deletion clears the Better Auth `session`, `account` and `verification` rows and skips the tables the plugin list never fills.
+- Turn Convex AI files off in `convex.json` and drop `convex/_generated/ai/`.
+- Rewrite every help string, prompt and message in plain words, no semicolons. No more provisioning, orchestration, topology, SIWA or ASC.
+- `.setup-state.json` holds the steps and an `updatedAt`. `lite` and `full` record a step as done or not, and `--fresh` no longer deletes `node_modules`, the lockfile, `ios/` or `.env.local`.
+- `vexpo eas` creates channels only. `vexpo env push` drops the missing-keys list. `vexpo rebrand` drops the `.rebrand-backup/` copy and no longer runs oxfmt over what it writes.
+- `vexpo accounts` drops the two questions whose answers changed nothing.
+- Add `--what-to-test <text>` to `vexpo submit`. `testflight whats-new` stays for a build already up or a locale other than en-US.
+- The Apple steps record only the fields later commands read. `vexpo apple credentials -e development:device` reads the `development` EAS env.
+- Update the dependencies that can move. `@types/node` to 24, matching the Node the CLI runs on, and `zod` to 4.6.4. The rest are held on purpose. SDK 57 pins React, React Native and the native modules, `typescript` 7 fails `expo-doctor` against the expected `~6.0.3`, and `better-auth` 1.7 is blocked while `@convex-dev/better-auth` peers on `>=1.6.11 <1.7.0`.
+- Shorten the App Store Connect checklist, the credentials README and the `app-store` config comments.
+- `create-vexpo` renames `_gitignore` directly and no longer strips package.json fields the template does not have.
+
 ## [0.4.0] - 2026-09-08
 
 - Add `vite` to the template's devDependencies. vitest 5 moved it to a peer dependency and the template's `.npmrc` sets `legacy-peer-deps`, so a fresh scaffold installed without it. `npm test` failed at startup with `Cannot find package 'vite'`, and `tsc` failed on the `vite/client` reference in the Convex tests. Inside this repo both passed, because the root install had a copy to fall back on.
@@ -413,7 +454,8 @@ First public release.
 
 See [`README.md`](./README.md) for the feature list and [`SECURITY.md`](./SECURITY.md) for the threat model.
 
-[Unreleased]: https://github.com/ramonclaudio/vexpo/compare/v0.4.0...HEAD
+[Unreleased]: https://github.com/ramonclaudio/vexpo/compare/v0.5.0...HEAD
+[0.5.0]: https://github.com/ramonclaudio/vexpo/releases/tag/v0.5.0
 [0.4.0]: https://github.com/ramonclaudio/vexpo/releases/tag/v0.4.0
 [0.3.3]: https://github.com/ramonclaudio/vexpo/releases/tag/v0.3.3
 [0.3.2]: https://github.com/ramonclaudio/vexpo/releases/tag/v0.3.2

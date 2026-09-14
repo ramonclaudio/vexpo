@@ -10,11 +10,11 @@ import { envList, resolveProjectId } from "../lib/eas-project.ts";
 import { ensureLine, readAll } from "../lib/env-local.ts";
 import { BOLD, DIM, RESET, bad, line, nop, note, ok, section, yep } from "../lib/output.ts";
 
-export type AdoptOptions = {
+type AdoptOptions = {
   skipDevSteps?: boolean;
 };
 
-export type RunbookState = {
+type RunbookState = {
   devSlug: string;
   hasResend: boolean;
   hasApple: boolean;
@@ -22,40 +22,39 @@ export type RunbookState = {
   hasEasProdUrl: boolean;
 };
 
-export function buildFinishRunbook(s: RunbookState): Array<{ cmd: string; desc: string }> {
+function buildFinishRunbook(s: RunbookState): Array<{ cmd: string; desc: string }> {
   const steps: Array<{ cmd: string; desc: string }> = [];
   if (!s.hasResend) {
-    steps.push({ cmd: "vexpo resend", desc: "provision the dev sending key + webhook" });
+    steps.push({ cmd: "vexpo resend", desc: "create the dev sending key and webhook" });
   }
   if (!s.hasApple) {
-    steps.push({ cmd: "vexpo apple jwt", desc: "sign Apple Sign In (or --copy-from <old>)" });
+    steps.push({
+      cmd: "vexpo apple jwt",
+      desc: "sign the Sign in with Apple JWT (or --copy-from <old>)",
+    });
     steps.push({ cmd: "vexpo asc connect", desc: "link EAS to App Store Connect for submit" });
   }
   if (!s.hasProd) {
     steps.push({
       cmd: "CONVEX_DEPLOY_KEY= npx convex deploy",
-      desc: "provision + push to the prod deployment (cleared key: user auth targets prod)",
+      desc: "create the prod deployment (the empty key makes convex deploy target prod)",
     });
   }
   steps.push({
     cmd: `vexpo convex migrate --from ${s.devSlug} --prod`,
-    desc: "mirror server-side env onto prod",
+    desc: "copy the server-side env onto prod",
   });
-  steps.push({ cmd: "vexpo env convex-key", desc: "sync the deploy key + selector to EAS" });
   if (!s.hasEasProdUrl) {
-    steps.push({
-      cmd: "vexpo full",
-      desc: "push prod/preview EAS env",
-    });
+    steps.push({ cmd: "vexpo full", desc: "push the prod EAS env" });
   }
-  steps.push({ cmd: "vexpo doctor --channel prod", desc: "verify the whole chain" });
+  steps.push({ cmd: "vexpo doctor --channel prod", desc: "check the whole chain" });
   return steps;
 }
 
 async function reportDeployments(devSlug: string): Promise<string | undefined> {
   const deployments = await listProjectDeployments(devSlug);
   if (!deployments) {
-    nop("deployment enumeration unavailable (offline or not logged in); continuing");
+    nop("couldn't list the project's deployments (offline or not logged in)");
     return undefined;
   }
   line();
@@ -66,7 +65,7 @@ async function reportDeployments(devSlug: string): Promise<string | undefined> {
   }
   const devs = deploymentsOfType(deployments, "dev");
   if (devs.length > 1) {
-    yep(`${devs.length} dev deployments; pick one canonical and delete the rest in the dashboard`);
+    yep(`${devs.length} dev deployments. keep one and delete the rest in the Convex dashboard`);
   }
   return deploymentsOfType(deployments, "prod")[0]?.name;
 }
@@ -94,7 +93,7 @@ export async function runAdopt(options: AdoptOptions): Promise<number> {
   });
   if (!deploymentRef) {
     bad("no CONVEX_DEPLOYMENT in .env.local, and no dev deploy key to derive it from");
-    note("run `eas integrations:convex:connect` first, or `vexpo full` to provision from scratch");
+    note("run `eas integrations:convex:connect` first, or `vexpo full` to start from scratch");
     return 1;
   }
   const devSlug = deploymentSlug(deploymentRef);
@@ -125,10 +124,10 @@ export async function runAdopt(options: AdoptOptions): Promise<number> {
 
   line();
   section("Finish");
-  note("adopted the dev deployment. remaining, in order:");
+  note("dev deployment adopted. left to run, in order:");
   const width = Math.max(...steps.map((s) => s.cmd.length));
   for (const s of steps) note(`  ${BOLD}${s.cmd.padEnd(width)}${RESET}  ${DIM}${s.desc}${RESET}`);
   line();
-  nop("prod + Apple + Resend legs need credentials/prompts, so they're listed, not auto-run");
+  nop("these need credentials or prompts, so they're listed instead of run");
   return 0;
 }

@@ -9,7 +9,7 @@ import {
 } from "@expo/ui/swift-ui/modifiers";
 
 import { useDynamicFont } from "@/lib/dynamic-font";
-import { Button as ButtonTokens } from "@/constants/layout";
+import { ButtonTokens } from "@/constants/layout";
 import { DynamicType } from "@/constants/ui";
 import { haptics } from "@/lib/haptics";
 
@@ -23,7 +23,6 @@ type Props<T extends string> = {
   options: SegmentedOption<T>[];
   onChange: (value: T) => void;
   accessibilityLabel: string;
-  testID?: string;
 };
 
 export function SegmentedToggle<T extends string>({
@@ -31,12 +30,10 @@ export function SegmentedToggle<T extends string>({
   options,
   onChange,
   accessibilityLabel: a11yLabel,
-  testID,
 }: Props<T>) {
   const dfont = useDynamicFont();
   return (
     <Picker
-      testID={testID}
       modifiers={[
         pickerStyle("segmented"),
         controlSize("large"),
@@ -53,11 +50,7 @@ export function SegmentedToggle<T extends string>({
       }}
     >
       {options.map((opt) => (
-        <Text
-          key={opt.value}
-          testID={testID ? `${testID}-${opt.value}` : undefined}
-          modifiers={[tag(opt.value), dfont({ size: 14, weight: "medium" })]}
-        >
+        <Text key={opt.value} modifiers={[tag(opt.value), dfont({ size: 14, weight: "medium" })]}>
           {opt.label}
         </Text>
       ))}

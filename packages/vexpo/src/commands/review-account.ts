@@ -6,7 +6,7 @@ import { bad, line, nop, note, ok, section, yep } from "../lib/output.ts";
 import { dlx } from "../lib/pkg-manager.ts";
 import { run } from "../lib/proc.ts";
 
-export type ReviewAccountOptions = {
+type ReviewAccountOptions = {
   email?: string;
   password?: string;
   name?: string;
@@ -48,8 +48,7 @@ async function writeBack(config: StoreConfig, email: string, password: string): 
   review.demoUsername = email;
   review.demoPassword = password;
   await writeFile("store.config.json", JSON.stringify(config, null, 2) + "\n");
-  await run([dlx(), "oxfmt", "store.config.json"]);
-  ok("wrote the demo credentials into store.config.json (review section)");
+  ok("wrote the demo login into store.config.json (review section)");
 }
 
 async function prodEnvFile(): Promise<string | null> {
@@ -70,7 +69,7 @@ function resolveCreds(
   if (!email) return null;
   const configured = options.password ?? review?.demoPassword;
   if (configured && configured !== PLACEHOLDER) return { email, password: configured };
-  ok("generated a demo password (placeholder never gets seeded)");
+  ok("generated a demo password, the placeholder is never used");
   return { email, password: generatePassword() };
 }
 
@@ -78,12 +77,12 @@ async function seedBothChannels(payload: string): Promise<boolean> {
   if (!(await seed(payload))) return false;
   const prodFile = await prodEnvFile();
   if (!prodFile) {
-    nop("no prod-scoped .env.prod; prod seeding skipped (re-run once prod exists)");
-    yep("App Review signs into the PRODUCTION build, so seed prod before submitting");
+    nop("no .env.prod with a prod key, so prod was skipped (run this again once prod exists)");
+    yep("App Review signs in to the production build, so do that before you submit");
     return true;
   }
   if (!(await seed(payload, prodFile))) return false;
-  ok("seeded on the prod deployment too");
+  ok("created on the prod deployment too");
   return true;
 }
 
@@ -101,7 +100,9 @@ export async function runReviewAccount(options: ReviewAccountOptions): Promise<n
   const config = await readStoreConfig();
   if (!config) {
     bad("no readable store.config.json here. Run from your project root.");
-    note("the vexpo template ships one; `npx eas-cli metadata:pull` writes one from ASC");
+    note(
+      "the template ships one, and `npx eas-cli metadata:pull` writes one from App Store Connect",
+    );
     return 1;
   }
   const creds = resolveCreds(options, config);
@@ -126,9 +127,9 @@ export async function runReviewAccount(options: ReviewAccountOptions): Promise<n
   await writeBack(config, email, password);
 
   line();
-  ok("review account ready, Apple's reviewer can now sign in");
+  ok("review account ready, Apple's reviewer can sign in");
   note(`email:    ${email}`);
   note(`password: ${password}`);
-  note("paste these into ASC App Information → App Review → Sign-In Information");
+  note("paste these into App Store Connect under App Review > Sign-In Information");
   return 0;
 }

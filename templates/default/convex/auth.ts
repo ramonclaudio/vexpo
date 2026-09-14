@@ -6,11 +6,11 @@ import { requireRunMutationCtx } from "@convex-dev/better-auth/utils";
 import type { BetterAuthOptions } from "better-auth";
 import { betterAuth } from "better-auth/minimal";
 import { anonymous, emailOTP, username } from "better-auth/plugins";
-import { v } from "convex/values";
+import { ConvexError, v } from "convex/values";
 
 import { components, internal } from "./_generated/api";
 import type { DataModel, Doc } from "./_generated/dataModel";
-import { internalAction, query } from "./_generated/server";
+import { query } from "./_generated/server";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
 import authConfig from "./auth.config";
 import {
@@ -22,7 +22,6 @@ import {
 } from "./constants";
 import { sendAuthOTP } from "./email";
 import { env } from "./env";
-import { authenticationRequired } from "./errors";
 
 const ONE_MINUTE = 60;
 const ONE_HOUR = 60 * ONE_MINUTE;
@@ -48,11 +47,6 @@ export async function getUserByAuthId(
 export async function purgeAppUser(ctx: MutationCtx, authId: string): Promise<void> {
   const user = await getUserByAuthId(ctx, authId);
   if (!user) return;
-  const tokens = await ctx.db
-    .query("pushTokens")
-    .withIndex("by_userId", (q) => q.eq("userId", user._id))
-    .collect();
-  await Promise.all(tokens.map((t) => ctx.db.delete(t._id)));
   if (user.avatar) await ctx.storage.delete(user.avatar);
   await ctx.db.delete(user._id);
 }
@@ -93,17 +87,13 @@ export const authComponent = createClient<DataModel>(components.betterAuth, {
 
 export const { onCreate, onDelete } = authComponent.triggersApi();
 
-export const { getAuthUser } = authComponent.clientApi();
-
 export const createAuth = (ctx: GenericCtx<DataModel>) =>
   betterAuth({
     baseURL: env.convexSiteUrl,
-    trustedOrigins: [
-      env.siteUrl,
-      ...(process.env.NODE_ENV === "development"
-        ? ["exp://*", "exp://**", "http://localhost:8081"]
-        : []),
-    ],
+    // The prod build's origin is SITE_URL and the dev build's is that scheme plus "dev"
+    // (app.config.ts). Convex runs every deployment with NODE_ENV=production, so the dev
+    // origin can't be gated on the environment.
+    trustedOrigins: [env.siteUrl, env.siteUrl.replace("://", "dev://")],
     database: authComponent.adapter(ctx),
     emailAndPassword: {
       enabled: true,
@@ -141,6 +131,8 @@ export const createAuth = (ctx: GenericCtx<DataModel>) =>
         "/email-otp/request-password-reset": { window: ONE_HOUR, max: 3 },
         "/email-otp/reset-password": { window: ONE_MINUTE, max: 3 },
         "/email-otp/send-verification-otp": { window: ONE_MINUTE, max: 3 },
+        "/email-otp/request-email-change": { window: ONE_MINUTE, max: 3 },
+        "/email-otp/change-email": { window: ONE_MINUTE, max: 3 },
         "/list-sessions": { window: ONE_MINUTE, max: 30 },
         "/get-session": { window: ONE_MINUTE, max: 60 },
       },
@@ -157,10 +149,7 @@ export const createAuth = (ctx: GenericCtx<DataModel>) =>
         expiresIn: FIVE_MINUTES,
         overrideDefaultEmailVerification: true,
         sendVerificationOnSignUp: env.requireEmailVerification,
-        changeEmail: {
-          enabled: true,
-          verifyCurrentEmail: true,
-        },
+        changeEmail: { enabled: true },
         sendVerificationOTP: async ({ email, otp, type }) => {
           await sendAuthOTP(ctx, { email, otp, type });
         },
@@ -222,7 +211,7 @@ export async function safeGetAuthenticatedUser(
 
 export async function requireAuthenticatedUser(ctx: QueryCtx | MutationCtx): Promise<AuthUser> {
   const user = await safeGetAuthenticatedUser(ctx);
-  if (!user) throw authenticationRequired();
+  if (!user) throw new ConvexError("Authentication required");
   return user;
 }
 
@@ -267,14 +256,5 @@ export const getEnabledProviders = query({
     const apple = !!process.env.APPLE_CLIENT_ID && !!process.env.APPLE_CLIENT_SECRET;
     const emailFeatures = env.requireEmailVerification;
     return { apple, emailFeatures, guest: env.guestMode };
-  },
-});
-
-export const rotateKeys = internalAction({
-  args: {},
-  returns: v.any(),
-  handler: async (ctx) => {
-    const auth = createAuth(ctx);
-    return auth.api.rotateKeys();
   },
 });

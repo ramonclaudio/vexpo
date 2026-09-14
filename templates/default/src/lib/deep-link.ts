@@ -1,25 +1,22 @@
 import type { Href } from "expo-router";
 import { parse } from "expo-linking";
 
+// Public paths, as they appear in the auth emails and on the associated domain.
 const DeepLinkRoutes = {
   "/": "/",
   "/welcome": "/welcome",
   "/settings": "/(app)/(tabs)/settings",
-  "/about": "/help",
   "/help": "/help",
   "/privacy": "/privacy",
-  "/auth/sign-in": "/auth/sign-in",
-  "/auth/sign-up": "/auth/sign-up",
-  "/auth/forgot-password": "/auth/forgot-password",
-  "/auth/reset-password": "/auth/reset-password",
+  "/linked": "/linked",
   "/sign-in": "/auth/sign-in",
   "/sign-up": "/auth/sign-up",
   "/forgot-password": "/auth/forgot-password",
   "/reset-password": "/auth/reset-password",
-  "/linked": "/linked",
 } as const satisfies Record<string, Href>;
 
 type DeepLinkPath = keyof typeof DeepLinkRoutes;
+export type DeepLinkHref = (typeof DeepLinkRoutes)[DeepLinkPath];
 
 function normalizePath(raw: string | null | undefined): string {
   const trimmed = "/" + (raw ?? "").replace(/^\//, "").replace(/\/+$/, "");
@@ -31,14 +28,13 @@ function isDeepLinkPath(path: string): path is DeepLinkPath {
 }
 
 type ResolvedDeepLink = {
-  path: DeepLinkPath | null;
-  href: Href | null;
+  href: DeepLinkHref | null;
   params: Record<string, string>;
 };
 
 export function resolveDeepLink(url: string): ResolvedDeepLink {
-  const empty: ResolvedDeepLink = { path: null, href: null, params: {} };
-  if (!url || typeof url !== "string" || url.includes("..")) return empty;
+  const empty: ResolvedDeepLink = { href: null, params: {} };
+  if (!url || url.includes("..")) return empty;
 
   let parsed;
   try {
@@ -50,7 +46,10 @@ export function resolveDeepLink(url: string): ResolvedDeepLink {
   const isRelativePath = url.startsWith("/") && !url.startsWith("//");
   if (!isRelativePath && !parsed.scheme) return empty;
 
-  const path = normalizePath(parsed.path);
+  // `vexpo://linked` parses the first segment as the hostname, `https://x/linked` as the path.
+  const isWeb = parsed.scheme === "http" || parsed.scheme === "https";
+  const rawPath = isWeb ? parsed.path : [parsed.hostname, parsed.path].filter(Boolean).join("/");
+  const path = normalizePath(rawPath);
   if (!isDeepLinkPath(path)) return empty;
 
   const params: Record<string, string> = {};
@@ -61,5 +60,5 @@ export function resolveDeepLink(url: string): ResolvedDeepLink {
     }
   }
 
-  return { path, href: DeepLinkRoutes[path], params };
+  return { href: DeepLinkRoutes[path], params };
 }

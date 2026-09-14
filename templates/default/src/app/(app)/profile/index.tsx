@@ -1,6 +1,5 @@
 import { startTransition, useActionState, useEffect, useState } from "react";
 import * as ImagePicker from "expo-image-picker";
-import { useDeleteAccount } from "@/hooks/use-delete-account";
 import { Stack, router } from "expo-router";
 import { useMutation, useQuery } from "convex/react";
 import { ConvexError } from "convex/values";
@@ -13,7 +12,9 @@ import {
 } from "@expo/ui/swift-ui/modifiers";
 
 import { api } from "@/convex/_generated/api";
-import { authClient } from "@/lib/auth-client";
+import type { Id } from "@/convex/_generated/dataModel";
+import { BIO_MAX_LENGTH } from "@/convex/constants";
+import { authClient, signOut } from "@/lib/auth-client";
 import { haptics } from "@/lib/haptics";
 import { setNativeValue } from "@/lib/native-state";
 import {
@@ -22,16 +23,14 @@ import {
   profileUpdateOptionalUsernameSchema,
   profileUpdateSchema,
 } from "@/lib/schemas";
-import { validateBio } from "@/convex/validators";
 import { useAuthStatus } from "@/hooks/use-auth-status";
-import { useColors } from "@/hooks/use-theme";
+import { Colors } from "@/constants/theme";
 import { useScenePrivacy } from "@/hooks/use-scene-privacy";
-import { useSignOut } from "@/hooks/use-sign-out";
 import { ErrorText, SuccessText } from "@/components/ui/status-text";
 import { formatError } from "@/lib/convex-error";
 import { SkeletonProfile } from "@/components/ui/skeleton";
 import { AvatarPickerRow } from "@/components/profile/avatar-picker-row";
-import { DangerZone } from "@/components/profile/danger-zone";
+import { AccountActions } from "@/components/profile/account-actions";
 import { EmailOtpVerify } from "@/components/profile/email-otp-verify";
 import { ProfileFields } from "@/components/profile/profile-fields";
 import { SecondaryButton } from "@/components/ui/capsule-button";
@@ -90,7 +89,6 @@ function useProfileFields(
     if (!me) return;
     const next = fieldValues(me);
     for (const key of FIELD_KEYS) fields[key].set(next[key]);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentKey]);
 
   return fields;
@@ -98,8 +96,9 @@ function useProfileFields(
 
 function checkBio(bio: string): { bio: string } | { error: string } {
   const trimmed = bio.trim();
-  const check = validateBio(trimmed);
-  return check.valid ? { bio: trimmed } : fail(check.error!);
+  if (trimmed.length > BIO_MAX_LENGTH)
+    return fail(`Bio must be ${BIO_MAX_LENGTH} characters or less`);
+  return { bio: trimmed };
 }
 
 function hasProfileChanges(
@@ -118,7 +117,6 @@ function hasProfileChanges(
 }
 
 export default function ProfileScreen() {
-  const colors = useColors();
   const scenePrivacy = useScenePrivacy();
   const me = useQuery(api.users.getMe);
   const { isGuest } = useAuthStatus();
@@ -129,8 +127,6 @@ export default function ProfileScreen() {
   const generateAvatarUploadUrl = useMutation(api.users.generateAvatarUploadUrl);
   const updateAvatar = useMutation(api.users.updateAvatar);
   const deleteAvatar = useMutation(api.users.deleteAvatar);
-  const { deleteAccount, deleteError } = useDeleteAccount();
-  const handleSignOut = useSignOut();
 
   const fields = useProfileFields(me);
   const values: FieldValues = {
@@ -145,8 +141,6 @@ export default function ProfileScreen() {
   const otpCodeState = useNativeState("");
   const [otp, setOtp] = useState("");
   const [avatarPicker, setAvatarPicker] = useState(false);
-  const [signOutConfirm, setSignOutConfirm] = useState(false);
-  const [deleteAccountConfirm, setDeleteAccountConfirm] = useState(false);
   const hasChanges = hasProfileChanges(me, values, isGuest);
 
   const saveGuest = async (current: NonNullable<typeof me>): Promise<SaveState> => {
@@ -177,11 +171,6 @@ export default function ProfileScreen() {
     }
   };
 
-  const saveIdentity = async (updates: Record<string, string>): Promise<string | null> => {
-    const res = await authClient.updateUser(updates);
-    return res.error ? (res.error.message ?? "Failed to update profile") : null;
-  };
-
   const saveAccount = async (current: NonNullable<typeof me>): Promise<SaveState> => {
     const schema = current.username ? profileUpdateSchema : profileUpdateOptionalUsernameSchema;
     const parsed = schema.safeParse({ name, username, email });
@@ -200,9 +189,9 @@ export default function ProfileScreen() {
 
     try {
       if (Object.keys(identity).length > 0) {
-        const failed = await saveIdentity(identity);
-        if (failed) {
-          return fail(failed);
+        const res = await authClient.updateUser(identity);
+        if (res.error) {
+          return fail(res.error.message ?? "Failed to update profile");
         }
       }
 
@@ -211,7 +200,7 @@ export default function ProfileScreen() {
       }
 
       if (nextEmail !== current.email.toLowerCase()) {
-        const res = await authClient.changeEmail({ newEmail: nextEmail });
+        const res = await authClient.emailOtp.requestEmailChange({ newEmail: nextEmail });
         if (res.error) {
           return fail(res.error.message ?? "Failed to update email");
         }
@@ -239,7 +228,7 @@ export default function ProfileScreen() {
       return fail("Enter the 6-digit code");
     }
     try {
-      const res = await authClient.emailOtp.verifyEmail({ email: pendingEmail, otp: code });
+      const res = await authClient.emailOtp.changeEmail({ newEmail: pendingEmail, otp: code });
       if (res.error) {
         return fail("Invalid or expired code");
       }
@@ -309,8 +298,8 @@ export default function ProfileScreen() {
       if (!upload.ok) {
         throw new ConvexError({ message: "Couldn't upload that photo. Please try another one." });
       }
-      const { storageId } = (await upload.json()) as { storageId: string };
-      await updateAvatar({ storageId: storageId as never });
+      const { storageId } = (await upload.json()) as { storageId: Id<"_storage"> };
+      await updateAvatar({ storageId });
       succeed("Profile photo updated");
     });
   };
@@ -324,13 +313,13 @@ export default function ProfileScreen() {
     });
   };
 
-  const error = saveState.error ?? otpState.error ?? avatarError ?? deleteError;
+  const error = saveState.error ?? otpState.error ?? avatarError;
   const success = saveState.success ?? otpState.success;
 
   if (!me) {
     return (
-      <Host testID="profile-loading" style={{ flex: 1, backgroundColor: colors.background }}>
-        <SkeletonProfile testID="profile-skeleton" />
+      <Host style={{ flex: 1, backgroundColor: Colors.background }}>
+        <SkeletonProfile />
       </Host>
     );
   }
@@ -342,20 +331,16 @@ export default function ProfileScreen() {
           icon="checkmark.circle.fill"
           onPress={() => startTransition(() => save())}
           disabled={!hasChanges || isSaving}
-          tintColor={colors.primary}
+          tintColor={Colors.primary}
           accessibilityLabel="Save"
         />
       </Stack.Toolbar>
 
-      <Host
-        testID="profile-screen"
-        style={{ flex: 1, backgroundColor: colors.background }}
-        modifiers={scenePrivacy}
-      >
+      <Host style={{ flex: 1, backgroundColor: Colors.background }} modifiers={scenePrivacy}>
         <ScrollView
           modifiers={[
             scrollDismissesKeyboard("interactively"),
-            tint(colors.primary),
+            tint(Colors.primary),
             defaultScrollAnchorForRole("center", "sizeChanges"),
           ]}
         >
@@ -374,10 +359,8 @@ export default function ProfileScreen() {
               onRemove={removeAvatar}
             />
 
-            {error ? <ErrorText testID="profile-error">{error}</ErrorText> : null}
-            {success && !pendingEmail ? (
-              <SuccessText testID="profile-success">{success}</SuccessText>
-            ) : null}
+            {error ? <ErrorText>{error}</ErrorText> : null}
+            {success && !pendingEmail ? <SuccessText>{success}</SuccessText> : null}
 
             {pendingEmail ? (
               <EmailOtpVerify
@@ -414,21 +397,12 @@ export default function ProfileScreen() {
 
                 {isGuest ? (
                   <SecondaryButton
-                    testID="profile-create-account"
                     label="Create an account"
                     onPress={() => router.push("/auth/sign-up")}
                     inputLabels={["Create an account", "Sign up"]}
                   />
                 ) : (
-                  <DangerZone
-                    hasPassword={hasPasswordResult}
-                    signOutConfirm={signOutConfirm}
-                    setSignOutConfirm={setSignOutConfirm}
-                    deleteAccountConfirm={deleteAccountConfirm}
-                    setDeleteAccountConfirm={setDeleteAccountConfirm}
-                    onSignOut={handleSignOut}
-                    onDeleteAccount={deleteAccount}
-                  />
+                  <AccountActions hasPassword={hasPasswordResult} onSignOut={signOut} />
                 )}
               </>
             )}

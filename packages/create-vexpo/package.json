@@ -1,28 +1,7 @@
 {
   "name": "@ramonclaudio/create-vexpo",
-  "version": "0.4.0",
-  "description": "Scaffold a new vexpo project, an iOS app built on Expo SDK 57 and designed entirely with SwiftUI (@expo/ui), with Convex, Better Auth, and Resend wired in.",
-  "keywords": [
-    "apple-sign-in",
-    "better-auth",
-    "boilerplate",
-    "convex",
-    "create",
-    "expo",
-    "expo-sdk-57",
-    "ios",
-    "react-native",
-    "resend",
-    "scaffold",
-    "starter",
-    "swiftui",
-    "template",
-    "vexpo"
-  ],
-  "homepage": "https://github.com/ramonclaudio/vexpo/tree/main/packages/create-vexpo#readme",
-  "bugs": {
-    "url": "https://github.com/ramonclaudio/vexpo/issues"
-  },
+  "version": "0.5.0",
+  "description": "Scaffold a vexpo app. Expo SDK 57 on iOS with SwiftUI screens through @expo/ui, plus Convex, Better Auth and Resend.",
   "license": "MIT",
   "author": "Ramon Claudio <hello@ramonclaudio.com> (https://github.com/ramonclaudio)",
   "repository": {
@@ -31,40 +10,27 @@
     "directory": "packages/create-vexpo"
   },
   "bin": {
-    "create-vexpo": "./dist/index.js"
+    "create-vexpo": "dist/index.js"
   },
   "files": [
     "dist"
   ],
   "type": "module",
-  "exports": {
-    ".": "./dist/index.js",
-    "./package.json": "./package.json"
-  },
   "publishConfig": {
     "access": "public",
-    "provenance": true,
     "registry": "https://registry.npmjs.org/"
   },
   "scripts": {
     "build": "tsup",
     "dev": "tsup --watch",
-    "prepublishOnly": "npm run build",
-    "typecheck": "tsc --noEmit",
-    "test": "vitest run",
-    "test:e2e": "npm run build && __tests__/e2e/run.sh",
-    "test:watch": "vitest"
+    "prepublishOnly": "npm run build"
   },
   "dependencies": {
     "commander": "^15.0.0"
   },
   "devDependencies": {
-    "@types/node": "^22",
+    "@types/node": "^24",
     "tsup": "^8.5.1",
-    "typescript": "^7.0.2",
-    "vitest": "^5.0.0"
-  },
-  "engines": {
-    "node": ">=22.12"
+    "typescript": "^7.0.2"
   }
 }

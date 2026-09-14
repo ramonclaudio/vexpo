@@ -21,13 +21,13 @@ export async function fetchWithTimeout(
   }
 }
 
-export function backoffMs(res: Response, attempt: number): number {
+function backoffMs(res: Response, attempt: number): number {
   const ra = Number(res.headers.get("retry-after"));
   if (Number.isFinite(ra) && ra > 0) return ra * 1000;
   return 250 * 2 ** attempt + Math.random() * 250;
 }
 
-export const MAX_RETRY_AFTER_MS = 30_000;
+const MAX_RETRY_AFTER_MS = 30_000;
 
 export function retryDelay(res: Response, attempt: number): number | null {
   const delay = backoffMs(res, attempt);

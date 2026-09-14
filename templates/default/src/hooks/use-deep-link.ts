@@ -22,15 +22,9 @@ export function useDeepLinkHandler() {
     if (pendingUrl.current !== url) return;
     pendingUrl.current = null;
 
-    let resolved;
-    try {
-      resolved = resolveDeepLink(url);
-    } catch (err) {
-      if (__DEV__) console.warn("[DeepLink] parse failed:", err);
-      return;
-    }
-
-    if (!resolved.href) return;
+    // Auth links already opened their screen while signed out, and the auth stack is gone now.
+    const resolved = resolveDeepLink(url);
+    if (!resolved.href || resolved.href.startsWith("/auth/")) return;
     router.push({ pathname: resolved.href, params: resolved.params } as Href);
   }, [isAuthenticated, url]);
 }

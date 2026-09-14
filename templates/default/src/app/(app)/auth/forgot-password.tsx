@@ -3,12 +3,10 @@ import { useQuery } from "convex/react";
 import { router } from "expo-router";
 
 import { api } from "@/convex/_generated/api";
-import { Host, ScrollView, VStack, Button, Text } from "@expo/ui/swift-ui";
+import { Host, ScrollView, VStack, Text } from "@expo/ui/swift-ui";
 import {
   autocorrectionDisabled,
   foregroundStyle,
-  buttonStyle,
-  contentShape,
   disabled,
   keyboardType,
   onSubmit,
@@ -16,7 +14,6 @@ import {
   textContentType,
   textInputAutocapitalization,
   padding,
-  shapes,
   frame,
   scrollDismissesKeyboard,
   accessibilityAddTraits,
@@ -25,25 +22,23 @@ import {
   tint,
 } from "@expo/ui/swift-ui/modifiers";
 import { useDynamicFont } from "@/lib/dynamic-font";
-import { TouchTarget } from "@/constants/layout";
 
 import { authClient } from "@/lib/auth-client";
 import { firstError, forgotPasswordSchema } from "@/lib/schemas";
 import BrandIcon from "@/components/ui/brand-icon";
 import { CapsuleTextField } from "@/components/ui/capsule-text-field";
-import { ProminentButton } from "@/components/ui/capsule-button";
+import { PlainButton, ProminentButton } from "@/components/ui/capsule-button";
 import { LabeledField } from "@/components/ui/labeled-field";
 import { ErrorText } from "@/components/ui/status-text";
 import { announce } from "@/lib/a11y";
 import { UNEXPECTED_ERROR, fail, succeed } from "@/lib/form-result";
-import { useColors } from "@/hooks/use-theme";
+import { Colors } from "@/constants/theme";
 
 type ForgotState = { error?: string };
 const initialState: ForgotState = {};
 
 export default function ForgotPasswordScreen() {
   const dfont = useDynamicFont();
-  const colors = useColors();
   const [email, setEmail] = useState("");
   const providers = useQuery(api.auth.getEnabledProviders);
 
@@ -80,8 +75,8 @@ export default function ForgotPasswordScreen() {
   }, initialState);
 
   return (
-    <Host testID="forgot-password-screen" style={{ flex: 1, backgroundColor: colors.background }}>
-      <ScrollView modifiers={[scrollDismissesKeyboard("interactively"), tint(colors.primary)]}>
+    <Host style={{ flex: 1, backgroundColor: Colors.background }}>
+      <ScrollView modifiers={[scrollDismissesKeyboard("interactively"), tint(Colors.primary)]}>
         <VStack
           spacing={20}
           alignment="leading"
@@ -91,7 +86,6 @@ export default function ForgotPasswordScreen() {
 
           <VStack spacing={6} alignment="leading">
             <Text
-              testID="forgot-password-title"
               modifiers={[
                 dfont({ size: 28, weight: "bold" }),
                 accessibilityAddTraits(["isHeader"]),
@@ -99,16 +93,15 @@ export default function ForgotPasswordScreen() {
             >
               Reset your password
             </Text>
-            <Text modifiers={[dfont({ size: 16 }), foregroundStyle(colors.mutedForeground)]}>
+            <Text modifiers={[dfont({ size: 16 }), foregroundStyle(Colors.mutedForeground)]}>
               Enter your email and we&apos;ll send you a 6-digit code.
             </Text>
           </VStack>
 
-          {state.error && <ErrorText testID="forgot-password-error">{state.error}</ErrorText>}
+          {state.error && <ErrorText>{state.error}</ErrorText>}
 
           <LabeledField label="Email">
             <CapsuleTextField
-              testID="forgot-password-email"
               placeholder="you@example.com"
               onTextChange={setEmail}
               modifiers={[
@@ -126,27 +119,13 @@ export default function ForgotPasswordScreen() {
           </LabeledField>
 
           <ProminentButton
-            testID="forgot-password-submit"
             label={isPending ? "Sending..." : "Send reset code"}
             onPress={() => startTransition(() => submit())}
             disabled={isPending}
           />
 
           <VStack alignment="center" modifiers={[frame({ maxWidth: Infinity })]}>
-            <Button
-              testID="forgot-password-back"
-              label="Back to sign in"
-              modifiers={[
-                buttonStyle("plain"),
-                foregroundStyle(colors.mutedForeground),
-                dfont({ size: 14, weight: "semibold" }),
-                frame({ minHeight: TouchTarget.min }),
-                contentShape(shapes.rectangle()),
-              ]}
-              onPress={() => {
-                router.back();
-              }}
-            />
+            <PlainButton label="Back to sign in" onPress={() => router.back()} />
           </VStack>
         </VStack>
       </ScrollView>

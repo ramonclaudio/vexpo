@@ -31,40 +31,35 @@ import {
   textInputAutocapitalization,
 } from "@expo/ui/swift-ui/modifiers";
 
-import { Button as ButtonTokens } from "@/constants/layout";
+import { ButtonTokens } from "@/constants/layout";
 import { DynamicType } from "@/constants/ui";
-import { useColors } from "@/hooks/use-theme";
+import { Colors } from "@/constants/theme";
 import { useDynamicFont } from "@/lib/dynamic-font";
 import { haptics } from "@/lib/haptics";
 
-type SubmitLabel = "next" | "done" | "send" | "go" | "search" | "join" | "route" | "continue";
+type SubmitLabel = Parameters<typeof submitLabel>[0];
 type ContentType = "password" | "newPassword";
 
 type Props = {
-  placeholder?: string;
   onTextChange: (next: string) => void;
   onSubmit?: () => void;
   submitLabelType?: SubmitLabel;
   contentType?: ContentType;
   disabled?: boolean;
-  accessibilityLabel?: string;
+  accessibilityLabel: string;
   accessibilityHint?: string;
-  testID?: string;
 };
 
 export function PasswordField({
-  placeholder = "••••••••",
   onTextChange,
   onSubmit,
   submitLabelType = "done",
   contentType = "password",
   disabled = false,
-  accessibilityLabel: a11yLabel = "Password",
+  accessibilityLabel: a11yLabel,
   accessibilityHint: a11yHint = "Enter your password",
-  testID,
 }: Props) {
   const dfont = useDynamicFont();
-  const colors = useColors();
   const [visible, setVisible] = useState(false);
   const state = useNativeState("");
   const textRef = useRef<TextFieldRef>(null);
@@ -103,14 +98,13 @@ export function PasswordField({
       modifiers={[
         padding({ horizontal: 16 }),
         frame({ maxWidth: Infinity, minHeight: ButtonTokens.height }),
-        background(colors.muted),
+        background(Colors.muted),
         clipShape("capsule"),
       ]}
     >
       {visible ? (
         <TextField
           ref={textRef}
-          testID={testID}
           text={state}
           placeholder={a11yLabel}
           onTextChange={onTextChange}
@@ -122,9 +116,8 @@ export function PasswordField({
       ) : (
         <SecureField
           ref={secureRef}
-          testID={testID}
           text={state}
-          placeholder={placeholder}
+          placeholder="••••••••"
           onTextChange={onTextChange}
           onFocusChange={(f) => {
             focused.current = f;
@@ -133,7 +126,6 @@ export function PasswordField({
         />
       )}
       <Button
-        testID={testID ? `${testID}-visibility` : undefined}
         modifiers={[
           buttonStyle("plain"),
           frame({ width: 44, height: 44 }),
@@ -151,7 +143,7 @@ export function PasswordField({
       >
         <Image
           systemName={visible ? "eye.slash" : "eye"}
-          color={colors.mutedForeground}
+          color={Colors.mutedForeground}
           modifiers={[
             dfont({ size: 18 }),
             dynamicTypeSize({ max: DynamicType.control }),

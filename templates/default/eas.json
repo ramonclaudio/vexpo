@@ -14,10 +14,7 @@
       "autoIncrement": true,
       "cache": {
         "paths": ["node_modules", "ios/Pods"]
-      }
-    },
-    "development:simulator": {
-      "extends": "development",
+      },
       "ios": {
         "simulator": true
       }
@@ -26,16 +23,6 @@
       "extends": "development",
       "ios": {
         "simulator": false
-      }
-    },
-    "preview": {
-      "distribution": "internal",
-      "channel": "preview"
-    },
-    "preview:simulator": {
-      "extends": "preview",
-      "ios": {
-        "simulator": true
       }
     },
     "production": {
@@ -52,11 +39,6 @@
   },
   "submit": {
     "testflight": {
-      "ios": {
-        "metadataPath": "./store.config.json"
-      }
-    },
-    "production": {
       "ios": {
         "metadataPath": "./store.config.json"
       }

@@ -1,8 +1,7 @@
 import { Stack } from "expo-router";
 
-import { useColors } from "@/hooks/use-theme";
+import { Colors } from "@/constants/theme";
 import { useMotionScreenOptions } from "@/hooks/use-motion-screen-options";
-import { HeaderTint } from "@/constants/theme";
 import { FontFamily } from "@/constants/layout";
 
 export const unstable_settings = {
@@ -11,15 +10,14 @@ export const unstable_settings = {
 };
 
 export default function SharedLayout({ segment }: { segment: string }) {
-  const colors = useColors();
-  const motion = useMotionScreenOptions("default");
+  const motion = useMotionScreenOptions();
   const isSearch = segment === "(search)";
 
   return (
     <Stack
       screenOptions={{
         ...motion,
-        headerTintColor: HeaderTint,
+        headerTintColor: Colors.foreground,
         headerBlurEffect: "none",
         headerShadowVisible: false,
         headerLargeTitleShadowVisible: false,
@@ -34,7 +32,7 @@ export default function SharedLayout({ segment }: { segment: string }) {
           title: isSearch ? "Search" : "Home",
           headerShown: isSearch,
           headerLargeTitle: false,
-          contentStyle: { backgroundColor: colors.background },
+          contentStyle: { backgroundColor: Colors.background },
         }}
       />
     </Stack>

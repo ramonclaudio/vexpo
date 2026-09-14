@@ -1,18 +1,11 @@
 export const ZIndex = {
-  base: 0,
-  statusBar: 1,
-  dropdown: 10,
-  modal: 100,
-  toast: 500,
   updateBanner: 999,
   offlineBanner: 1000,
 } as const;
 
 export const Duration = {
-  instant: 0,
   fast: 150,
   normal: 200,
-  slow: 300,
   splash: 1000,
 } as const;
 
@@ -23,6 +16,6 @@ export const DynamicType = {
   otp: "accessibility3",
 } as const;
 
-export const OTP_KERNING = 8;
+const OTP_KERNING = 8;
 export const otpKerning = (fontScale: number): number =>
   Math.max(2, OTP_KERNING / Math.max(fontScale, 1));

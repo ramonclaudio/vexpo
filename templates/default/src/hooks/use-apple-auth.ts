@@ -15,7 +15,7 @@ const APPLE_ERRORS: Record<string, string> = {
   ERR_REQUEST_NOT_INTERACTIVE: "Apple couldn't show the sign-in sheet. Please try again.",
 };
 
-export function appleErrorMessage(e: unknown): string {
+function appleErrorMessage(e: unknown): string {
   const code = e instanceof Error && "code" in e ? String(e.code) : "";
   if (__DEV__) console.warn("[AppleAuth]", code, e instanceof Error ? e.message : e);
   return (

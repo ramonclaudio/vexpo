@@ -4,23 +4,17 @@ import { errText } from "./output.ts";
 
 const EAS_CLI = "eas-cli";
 
-export type EasArgs = readonly (string | number | boolean | undefined | null)[];
-
-function compact(argv: EasArgs): string[] {
-  return argv.filter((i) => i != null && typeof i !== "boolean").map(String);
-}
-
 const NOT_SIGNED_IN = /An Expo user account is required|not logged in|Log in to EAS/i;
 
 function errorTail(code: number, stdout: string, stderr: string): string {
   if (NOT_SIGNED_IN.test(`${stderr}\n${stdout}`)) {
-    return "not signed in to eas-cli. Run `npx eas-cli login`, or set EXPO_TOKEN to run headless";
+    return "not signed in to EAS. Run `npx eas-cli login`, or set EXPO_TOKEN in CI";
   }
   return (stderr || stdout).trim().split("\n").pop()?.trim() ?? `exit ${code}`;
 }
 
-export async function easJson<T = unknown>(argv: EasArgs): Promise<T> {
-  const flat = compact(argv);
+export async function easJson<T = unknown>(argv: readonly string[]): Promise<T> {
+  const flat = [...argv];
   if (!flat.includes("--json")) flat.push("--json");
   if (!flat.includes("--non-interactive")) flat.push("--non-interactive");
   const { code, stdout, stderr } = await run([dlx(), EAS_CLI, ...flat]);
@@ -32,30 +26,26 @@ export async function easJson<T = unknown>(argv: EasArgs): Promise<T> {
   }
 }
 
-export async function easRun(argv: EasArgs): Promise<void> {
-  const flat = compact(argv);
-  const { code, stdout, stderr } = await run([dlx(), EAS_CLI, ...flat]);
-  if (code !== 0) throw new Error(`eas ${flat[0]} failed: ${errorTail(code, stdout, stderr)}`);
+export async function easRun(argv: readonly string[]): Promise<void> {
+  const { code, stdout, stderr } = await run([dlx(), EAS_CLI, ...argv]);
+  if (code !== 0) throw new Error(`eas ${argv[0]} failed: ${errorTail(code, stdout, stderr)}`);
 }
 
 export async function easSpawn(
-  argv: EasArgs,
-  opts: { env?: Record<string, string | undefined>; cwd?: string } = {},
+  argv: readonly string[],
+  opts: { env?: Record<string, string | undefined> } = {},
 ): Promise<number> {
-  const flat = compact(argv);
-  const proc = spawn([dlx(), EAS_CLI, ...flat], {
+  const proc = spawn([dlx(), EAS_CLI, ...argv], {
     stdin: "inherit",
     stdout: "inherit",
     stderr: "inherit",
     env: opts.env,
-    cwd: opts.cwd,
   });
   return proc.exited;
 }
 
-export async function easText(
-  argv: EasArgs,
+export function easText(
+  argv: readonly string[],
 ): Promise<{ code: number; stdout: string; stderr: string }> {
-  const flat = compact(argv);
-  return run([dlx(), EAS_CLI, ...flat]);
+  return run([dlx(), EAS_CLI, ...argv]);
 }

@@ -1,8 +1,6 @@
 import { isRecord } from "./json.ts";
 import { entriesOf, error, firstSeen, oneOf, warn, type LintIssue } from "./lint.ts";
 
-export type { LintIssue };
-
 const PRIVACY_DATA_TYPES = [
   "CONTACT_INFO",
   "HEALTH_FITNESS",
@@ -39,13 +37,11 @@ export function lintPrivacyConfig(config: unknown): LintIssue[] {
   const collectsData = isRecord(config) ? config.collectsData : undefined;
 
   if (collectsData === false && entries.length > 0) {
-    issues.push(
-      warn("`collectsData` is false but `entries` is non-empty; entries will be ignored."),
-    );
+    issues.push(warn("`collectsData` is false but `entries` has items, so Apple ignores them."));
   }
   if (collectsData === true && entries.length === 0) {
     issues.push(
-      error("`collectsData` is true but `entries` is empty; declare at least one data type."),
+      error("`collectsData` is true but `entries` is empty. Declare at least one data type."),
     );
   }
 

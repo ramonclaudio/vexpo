@@ -2,61 +2,26 @@ node_modules/
 
 .env
 .env.*
-!.env.example
-.envrc
 
 .expo/
 dist/
 expo-env.d.ts
 
 /ios/
-/.smoke-build/
 *.p8
 *.p12
 *.mobileprovision
 *.cer
 
 AuthKey_*
-SubscriptionKey_*
 credentials/*
 !credentials/README.md
-
-keys/
-private-key.pem
-*.private-key.pem
-!certs/certificate.pem
-
-.eas/*
-!.eas/workflows/
-
-!.claude/
-.claude/*
-!.claude/settings.json
-.agents/
-.cursor/
-.aider*
-skills-lock.json
-
-plans/
-.dev/
 
 store.config.json
 
 .setup-state.json
 .setup-state.json.*.tmp
 
-.vexpo-manual-setup/
-.rebrand-backup/
-
 .DS_Store
 
-*.tgz
-!patches/*.tgz
-
-bun-error.*
-
-coverage/
-.vitest-cache/
-
 tsconfig.tsbuildinfo
-.maestro/debug/

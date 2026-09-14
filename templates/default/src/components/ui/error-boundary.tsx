@@ -19,23 +19,17 @@ import {
 import { announce } from "@/lib/a11y";
 import { useDynamicFont } from "@/lib/dynamic-font";
 import { ProminentButton } from "@/components/ui/capsule-button";
-import { useColors } from "@/hooks/use-theme";
+import { Colors } from "@/constants/theme";
 import { TouchTarget } from "@/constants/layout";
 import { DynamicType } from "@/constants/ui";
 
-export function AppErrorBoundary({
-  error,
-  retry,
-  testID,
-}: ErrorBoundaryProps & { testID?: string }) {
+export function AppErrorBoundary({ error, retry }: ErrorBoundaryProps) {
   const dfont = useDynamicFont();
-  const colors = useColors();
   const insets = useSafeAreaInsets();
 
   useEffect(() => {
     if (__DEV__) console.error("[ErrorBoundary]", error);
     announce("Error: something went wrong");
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return (
@@ -47,12 +41,12 @@ export function AppErrorBoundary({
           modifiers={[
             frame({ maxWidth: Infinity }),
             padding({ horizontal: 24, top: insets.top + 32, bottom: insets.bottom + 32 }),
-            tint(colors.primary),
+            tint(Colors.primary),
           ]}
         >
           <Image
             systemName="exclamationmark.triangle"
-            color={colors.destructive}
+            color={Colors.destructive}
             modifiers={[
               dfont({ size: 72 }),
               dynamicTypeSize({ max: DynamicType.control }),
@@ -69,24 +63,22 @@ export function AppErrorBoundary({
             Something went wrong
           </Text>
           <Text
-            testID={testID}
             modifiers={[
               dfont({ size: 16 }),
-              foregroundStyle(colors.mutedForeground),
+              foregroundStyle(Colors.mutedForeground),
               multilineTextAlignment("center"),
             ]}
           >
-            Don&apos;t worry. Let&apos;s get you back on track.
+            Try again, or go back home.
           </Text>
           <VStack spacing={12} modifiers={[frame({ maxWidth: Infinity })]}>
-            <ProminentButton testID="error-boundary-retry" label="Try Again" onPress={retry} />
+            <ProminentButton label="Try Again" onPress={retry} />
             <Button
-              testID="error-boundary-home"
               label="Go Home"
               modifiers={[
                 buttonStyle("plain"),
                 dfont({ size: 16, weight: "medium" }),
-                foregroundStyle(colors.mutedForeground),
+                foregroundStyle(Colors.mutedForeground),
                 frame({ minHeight: TouchTarget.min }),
                 contentShape(shapes.rectangle()),
               ]}

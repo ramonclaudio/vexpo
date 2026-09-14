@@ -19,42 +19,35 @@ import {
 } from "../../lib/output.ts";
 import { recordStep } from "../../lib/state.ts";
 
-export type AscKeyOptions = {
-  revalidate?: boolean;
-};
-
-const p8PathOf = (creds: AscCredentials): string | undefined =>
-  "path" in creds.privateKey ? creds.privateKey.path : undefined;
-
 async function promptCredsInteractive(): Promise<AscCredentials | null> {
   if (!process.stdin.isTTY) return null;
   line();
   note("Create an App Store Connect API key:");
   await helpAndWait({
-    body: "1. Open ASC → Users and Access → Integrations → App Store Connect API",
+    body: "1. open App Store Connect, Users and Access, Integrations, App Store Connect API",
     urls: [
       {
-        label: "ASC Integrations",
+        label: "App Store Connect API keys",
         url: "https://appstoreconnect.apple.com/access/integrations/api",
       },
     ],
     allowSkip: false,
   });
   line();
-  note("2. Click 'Generate API Key' (top-right). Name it (e.g. 'vexpo-asc').");
-  note("3. Set the role to 'Admin' or 'App Manager'.");
-  note("4. Click 'Generate'. The key cannot be retrieved later. save the .p8 now.");
-  note("5. From the table: copy the Issuer ID (above the table) and Key ID.");
+  note("2. click 'Generate API Key' and name it, like 'vexpo'");
+  note("3. set the role to 'Admin' or 'App Manager'");
+  note("4. click 'Generate' and save the .p8 now, Apple only offers it once");
+  note("5. copy the Issuer ID (above the table) and the Key ID");
   line();
 
-  const issuerId = (await ask(`  Issuer ID ${DIM}(UUID, e.g. 69a6d…) >${RESET} `)).trim();
+  const issuerId = (await ask(`  Issuer ID ${DIM}(UUID) >${RESET} `)).trim();
   if (!issuerId) {
-    yep("no issuer id provided; aborting");
+    yep("no issuer id given, stopping");
     return null;
   }
   const keyId = (await ask(`  Key ID ${DIM}(10 chars) >${RESET} `)).trim();
   if (!keyId) {
-    yep("no key id provided; aborting");
+    yep("no key id given, stopping");
     return null;
   }
   const staged = stagedP8();
@@ -62,13 +55,13 @@ async function promptCredsInteractive(): Promise<AscCredentials | null> {
     (
       await ask(
         staged
-          ? `  Path to .p8 ${DIM}[detected: ${staged}]${RESET} > `
-          : `  Path to .p8 ${DIM}(save it in ./credentials/, or absolute/relative path) >${RESET} `,
+          ? `  Path to the .p8 ${DIM}[${staged}]${RESET} > `
+          : `  Path to the .p8 ${DIM}(save it in ./credentials/) >${RESET} `,
       )
     ).trim() ||
     (staged ?? "");
   if (!rawP8) {
-    yep("no .p8 path provided; aborting");
+    yep("no .p8 path given, stopping");
     return null;
   }
   const p8Path = expandTilde(rawP8);
@@ -76,7 +69,7 @@ async function promptCredsInteractive(): Promise<AscCredentials | null> {
     bad(`.p8 not found at ${p8Path}`);
     return null;
   }
-  return { issuerId, keyId, privateKey: { path: p8Path } };
+  return { issuerId, keyId, p8Path };
 }
 
 export function ascCredsFromEnv(): AscCredentials | null {
@@ -84,63 +77,41 @@ export function ascCredsFromEnv(): AscCredentials | null {
   const keyId = process.env.APPLE_ASC_KEY_ID;
   const p8Path = process.env.APPLE_ASC_P8_PATH;
   if (!issuerId || !keyId || !p8Path) return null;
-  return { issuerId, keyId, privateKey: { path: p8Path } };
+  return { issuerId, keyId, p8Path };
 }
 
 async function readEnvCreds(): Promise<AscCredentials | null> {
   const creds = ascCredsFromEnv();
   if (!creds) return null;
-  const p8Path = process.env.APPLE_ASC_P8_PATH!;
-  if (!(await fileExists(expandTilde(p8Path)))) {
-    bad(`APPLE_ASC_P8_PATH=${p8Path} not found`);
+  if (!(await fileExists(expandTilde(creds.p8Path)))) {
+    bad(`APPLE_ASC_P8_PATH=${creds.p8Path} not found`);
     return null;
   }
   return creds;
 }
 
-const cacheAscKey = (creds: AscCredentials, extra: Record<string, unknown> = {}) =>
-  recordStep("asc-key", {
-    issuerId: creds.issuerId,
-    keyId: creds.keyId,
-    p8Path: p8PathOf(creds),
-    ...extra,
-  });
-
-async function tryCachedKey(revalidate: boolean): Promise<number | null> {
+async function cachedKeyWorks(): Promise<boolean> {
   const cached = await loadAscCreds();
-  if (!cached) {
-    if (!revalidate) return null;
-    bad("no cached ASC key in state.json; run without --revalidate first");
-    return 1;
-  }
-  if (!revalidate) {
-    nop(`cached ASC key found (issuer=${cached.issuerId.slice(0, 8)}…, key=${cached.keyId})`);
-  }
+  if (!cached) return false;
+  nop(`cached key found (issuer ${cached.issuerId.slice(0, 8)}…, key ${cached.keyId})`);
   const result = await validateAsc(cached);
   if (result.ok) {
-    const still = revalidate ? "still " : "";
-    ok(`cached key ${still}valid (${result.appCount} app${plural(result.appCount)})`);
-    await cacheAscKey(cached);
-    return 0;
-  }
-  if (revalidate) {
-    bad(`cached key invalid: ${result.reason}`);
-    return 1;
+    ok(`cached key valid (${result.appCount} app${plural(result.appCount)})`);
+    return true;
   }
   yep(`cached key failed validation: ${result.reason}`);
-  return null;
+  return false;
 }
 
-export async function runAscKey(options: AscKeyOptions): Promise<number> {
+export async function runAscKey(): Promise<number> {
   section("App Store Connect API key");
 
-  const cachedExit = await tryCachedKey(options.revalidate ?? false);
-  if (cachedExit !== null) return cachedExit;
+  if (await cachedKeyWorks()) return 0;
 
   let creds = await readEnvCreds();
   if (!creds) creds = await promptCredsInteractive();
   if (!creds) {
-    bad("no credentials provided");
+    bad("no key given");
     return 1;
   }
 
@@ -149,20 +120,15 @@ export async function runAscKey(options: AscKeyOptions): Promise<number> {
     bad(validation.reason);
     return 1;
   }
-  ok(`ASC API authenticated (${validation.appCount} app${plural(validation.appCount)} on team)`);
+  ok(`key works (${validation.appCount} app${plural(validation.appCount)} on the team)`);
 
-  const p8Path = p8PathOf(creds);
-  await cacheAscKey(creds, { validatedAt: new Date().toISOString() });
-  ok("validated key cached in .setup-state.json");
+  await recordStep("asc-key", creds);
+  ok("key cached in .setup-state.json");
 
   line();
+  note(`EAS still needs this key. ${BOLD}vexpo apple credentials${RESET} uploads it, or run`);
   note(
-    `${BOLD}This step is purely validation${RESET} ${DIM}- EAS still needs the same key uploaded:${RESET}`,
+    `  ${BOLD}npx eas-cli credentials -p ios${RESET} and pick 'Use existing App Store Connect API Key'`,
   );
-  note(`  ${BOLD}npx eas-cli credentials -p ios${RESET}`);
-  note(`  → Build Credentials → 'Use existing App Store Connect API Key'`);
-  note(`  → 'Set up a new key' if no existing match, paste:`);
-  note(`     issuer=${creds.issuerId}, keyId=${creds.keyId}`);
-  note(`     .p8=${p8Path ?? "<paste contents>"}`);
   return 0;
 }

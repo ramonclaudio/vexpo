@@ -1,35 +1,16 @@
 import { useEffect } from "react";
-
 import {
-  useUpdates,
+  fetchUpdateAsync,
   isEnabled,
-  checkForUpdate as checkForUpdateFn,
-  fetchUpdate,
-  reload,
-  buildReloadScreenConfig,
-} from "@/lib/updates";
+  reloadAsync,
+  useUpdates,
+  type ReloadScreenOptions,
+} from "expo-updates";
+
 import { useColorScheme } from "@/hooks/use-theme";
 import { useReducedMotion } from "@/hooks/use-reduced-motion";
 
 type UpdatesState = ReturnType<typeof useUpdates>;
-
-// First match wins, so the more specific states come first.
-const STATUSES: [(s: UpdatesState) => boolean, (s: UpdatesState) => string][] = [
-  [(s) => s.isRestarting || s.isUpdatePending, () => "Restarting..."],
-  [
-    (s) => s.isDownloading,
-    (s) =>
-      `Downloading...${s.downloadProgress == null ? "" : ` ${Math.round(s.downloadProgress * 100)}%`}`,
-  ],
-  [(s) => s.isChecking, () => "Checking..."],
-  [(s) => s.downloadError != null, (s) => s.downloadError!.message],
-  [(s) => s.checkError != null, (s) => s.checkError!.message],
-  [(s) => s.isUpdateAvailable, () => "Update available"],
-];
-
-function deriveStatusText(state: UpdatesState): string {
-  return STATUSES.find(([match]) => match(state))?.[1](state) ?? "Up to date";
-}
 
 const NOOP_STATE: UpdatesState = {
   currentlyRunning: {
@@ -46,41 +27,33 @@ const NOOP_STATE: UpdatesState = {
   restartCount: 0,
 };
 
-function useUpdatesImpl(): UpdatesState {
-  const enabled = isEnabled && !__DEV__;
-  const state = useUpdates();
-  const scheme = useColorScheme();
-  const reduceMotion = useReducedMotion();
-
-  useEffect(() => {
-    if (!enabled) return;
-    if (state.isUpdatePending) {
-      reload({ reloadScreenOptions: buildReloadScreenConfig(scheme, reduceMotion) });
-    }
-  }, [enabled, state.isUpdatePending, scheme, reduceMotion]);
-
-  return enabled ? state : NOOP_STATE;
+// The reload screen is drawn natively, so it takes plain hex, not the palette.
+function reloadScreenOptions(scheme: "light" | "dark", reduceMotion: boolean): ReloadScreenOptions {
+  const dark = scheme === "dark";
+  return {
+    backgroundColor: dark ? "#0A0A0A" : "#FFFFFF",
+    fade: !reduceMotion,
+    spinner: { color: dark ? "#FFFFFF" : "#0E0E0E", enabled: true, size: "medium" },
+  };
 }
 
 export function useAppUpdates() {
-  const state = useUpdatesImpl();
+  const enabled = isEnabled && !__DEV__;
+  const live = useUpdates();
+  const scheme = useColorScheme();
+  const reduceMotion = useReducedMotion();
+  const state = enabled ? live : NOOP_STATE;
 
-  const checkForUpdate = () => {
-    if (state.isChecking) return;
-    checkForUpdateFn();
-  };
+  useEffect(() => {
+    if (enabled && state.isUpdatePending) {
+      reloadAsync({ reloadScreenOptions: reloadScreenOptions(scheme, reduceMotion) });
+    }
+  }, [enabled, state.isUpdatePending, scheme, reduceMotion]);
 
   const downloadAndApply = () => {
-    if (state.isDownloading) return;
-    fetchUpdate();
+    if (!enabled || state.isDownloading) return;
+    fetchUpdateAsync();
   };
 
-  const statusText = deriveStatusText(state);
-
-  return {
-    ...state,
-    checkForUpdate,
-    downloadAndApply,
-    statusText,
-  };
+  return { ...state, downloadAndApply };
 }

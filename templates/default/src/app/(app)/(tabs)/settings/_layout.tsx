@@ -1,9 +1,8 @@
 import { Stack } from "expo-router";
 
-import { useColors } from "@/hooks/use-theme";
+import { Colors } from "@/constants/theme";
 import { useMotionScreenOptions } from "@/hooks/use-motion-screen-options";
 import { FontFamily } from "@/constants/layout";
-import { HeaderTint } from "@/constants/theme";
 import { LoadingScreen } from "@/components/ui/loading-screen";
 
 export const unstable_settings = {
@@ -11,25 +10,24 @@ export const unstable_settings = {
 };
 
 export function SuspenseFallback() {
-  return <LoadingScreen testID="settings-loading" />;
+  return <LoadingScreen />;
 }
 
 export default function SettingsLayout() {
-  const colors = useColors();
-  const motion = useMotionScreenOptions("default");
+  const motion = useMotionScreenOptions();
 
   return (
     <Stack
       screenOptions={{
         ...motion,
         headerShown: false,
-        contentStyle: { backgroundColor: colors.background },
+        contentStyle: { backgroundColor: Colors.background },
       }}
     >
       <Stack.Screen name="index" />
       <Stack.Screen name="preferences" options={{ headerShown: true }}>
         <Stack.Header transparent />
-        <Stack.Screen.Title style={{ color: HeaderTint, fontFamily: FontFamily.semiBold }}>
+        <Stack.Screen.Title style={{ color: Colors.foreground, fontFamily: FontFamily.semiBold }}>
           Preferences
         </Stack.Screen.Title>
         <Stack.Screen.BackButton>Settings</Stack.Screen.BackButton>

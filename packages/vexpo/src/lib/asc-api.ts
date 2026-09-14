@@ -1,4 +1,4 @@
-import { signAscToken, type AscJwtArgs } from "./asc-jwt.ts";
+import { signAscToken, type AscCredentials } from "./asc-jwt.ts";
 import {
   REQUEST_TIMEOUT_MS,
   TimeoutError,
@@ -10,9 +10,9 @@ import { errText } from "./output.ts";
 
 const ASC_BASE = "https://api.appstoreconnect.apple.com";
 
-export type AscCredentials = AscJwtArgs;
+export type { AscCredentials };
 
-export type BundleIdPlatform = "IOS" | "MAC_OS" | "UNIVERSAL" | "SERVICES";
+type BundleIdPlatform = "IOS" | "MAC_OS" | "UNIVERSAL" | "SERVICES";
 
 export type AscBundleId = {
   type: "bundleIds";
@@ -21,35 +21,18 @@ export type AscBundleId = {
     identifier: string;
     name: string;
     platform: BundleIdPlatform;
-    seedId?: string;
   };
 };
 
-export type AscBundleIdCapability = {
+type AscBundleIdCapability = {
   type: "bundleIdCapabilities";
   id: string;
   attributes: { capabilityType: string };
 };
 
-export type AscApp = {
-  type: "apps";
-  id: string;
-  attributes: {
-    bundleId: string;
-    name: string;
-    sku?: string;
-    primaryLocale?: string;
-  };
-};
+type AscApp = { type: "apps"; id: string };
 
-type AscErrorEntry = {
-  id?: string;
-  status?: string;
-  code?: string;
-  title?: string;
-  detail?: string;
-  source?: { pointer?: string; parameter?: string };
-};
+type AscErrorEntry = { code?: string; title?: string; detail?: string };
 
 type AscErrorBody = { errors: AscErrorEntry[] };
 
@@ -62,26 +45,21 @@ function parseAscErrorBody(body: string): AscErrorBody | null {
 }
 
 function ascErrorMessage(status: number, body: string, first?: AscErrorEntry): string {
-  if (!first) return `ASC ${status}: ${body}`;
-  return `ASC ${status} ${first.code ?? ""}: ${first.detail ?? first.title ?? body}`;
+  if (!first) return `App Store Connect ${status}: ${body}`;
+  return `App Store Connect ${status} ${first.code ?? ""}: ${first.detail ?? first.title ?? body}`;
 }
 
 export class AscApiError extends Error {
   readonly status: number;
   readonly code?: string;
   readonly detail?: string;
-  readonly errors: AscErrorEntry[];
-  readonly responseBody: string;
   constructor(status: number, body: string) {
-    const parsed = parseAscErrorBody(body);
-    const first = parsed?.errors?.[0];
+    const first = parseAscErrorBody(body)?.errors?.[0];
     super(ascErrorMessage(status, body, first));
     this.name = "AscApiError";
     this.status = status;
     this.code = first?.code;
     this.detail = first?.detail ?? first?.title;
-    this.errors = parsed?.errors ?? [];
-    this.responseBody = body;
   }
 }
 
@@ -173,11 +151,9 @@ export function makeAscClient(creds: AscCredentials) {
   async function paginatedList<T>(
     path: string,
     query?: Record<string, string | string[]>,
-    limit = 200,
   ): Promise<T[]> {
     const out: T[] = [];
-    let nextUrl: string | null =
-      `${ASC_BASE}${path}${encodeFilters({ ...query, limit: String(limit) })}`;
+    let nextUrl: string | null = `${ASC_BASE}${path}${encodeFilters({ ...query, limit: "200" })}`;
     let safetyMax = 50;
     while (nextUrl && safetyMax-- > 0) {
       const res = await fetchWithAuth("GET", nextUrl);
@@ -194,29 +170,13 @@ export function makeAscClient(creds: AscCredentials) {
     request,
     paginatedList,
     bundleIds: {
-      list(filter?: { identifier?: string; platform?: BundleIdPlatform }): Promise<AscBundleId[]> {
-        const query: Record<string, string> = {};
-        if (filter?.identifier) query["filter[identifier]"] = filter.identifier;
-        if (filter?.platform) query["filter[platform]"] = filter.platform;
-        return paginatedList<AscBundleId>("/v1/bundleIds", query);
+      list(filter: { identifier: string }): Promise<AscBundleId[]> {
+        return paginatedList<AscBundleId>("/v1/bundleIds", {
+          "filter[identifier]": filter.identifier,
+        });
       },
-      async create(args: {
-        identifier: string;
-        name: string;
-        platform: BundleIdPlatform;
-        seedId?: string;
-      }): Promise<AscBundleId> {
-        const body = {
-          data: {
-            type: "bundleIds",
-            attributes: {
-              identifier: args.identifier,
-              name: args.name,
-              platform: args.platform,
-              ...(args.seedId ? { seedId: args.seedId } : {}),
-            },
-          },
-        };
+      async create(args: { identifier: string; name: string }): Promise<AscBundleId> {
+        const body = { data: { type: "bundleIds", attributes: { ...args, platform: "IOS" } } };
         const res = await request<{ data: AscBundleId }>("POST", "/v1/bundleIds", body);
         return res.data;
       },
@@ -260,17 +220,11 @@ export function makeAscClient(creds: AscCredentials) {
         if (filter?.bundleId) query["filter[bundleId]"] = filter.bundleId;
         return paginatedList<AscApp>("/v1/apps", query);
       },
-      async get(id: string): Promise<AscApp> {
-        const res = await request<{ data: AscApp }>("GET", `/v1/apps/${id}`);
-        return res.data;
-      },
     },
   };
 }
 
-export type ValidateResult =
-  | { ok: true; appCount: number }
-  | { ok: false; status: number; code?: string; reason: string };
+type ValidateResult = { ok: true; appCount: number } | { ok: false; reason: string };
 
 export async function validate(creds: AscCredentials): Promise<ValidateResult> {
   try {
@@ -284,12 +238,12 @@ export async function validate(creds: AscCredentials): Promise<ValidateResult> {
           ? "invalid token (check keyId, issuerId, and .p8)"
           : err.status === 403
             ? err.code?.includes("REQUIRED_AGREEMENTS")
-              ? "App Store Connect agreement missing or expired; the Account Holder must accept it in App Store Connect > Business (Agreements, Tax, and Banking)"
-              : `forbidden${err.code ? ` (${err.code})` : ""}; if this is a permissions error the key needs App Manager role or higher`
-            : (err.detail ?? `ASC ${err.status}`);
-      return { ok: false, status: err.status, code: err.code, reason };
+              ? "App Store Connect agreement missing or expired. The Account Holder has to accept it in App Store Connect under Business, then Agreements, Tax, and Banking"
+              : `forbidden${err.code ? ` (${err.code})` : ""}. The key needs the App Manager role or higher`
+            : (err.detail ?? `App Store Connect ${err.status}`);
+      return { ok: false, reason };
     }
-    return { ok: false, status: 0, reason: errText(err) };
+    return { ok: false, reason: errText(err) };
   }
 }
 
