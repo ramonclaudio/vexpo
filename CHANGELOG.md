@@ -4,6 +4,32 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Pre
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-09-14
+
+- Fix `npm run eas:tf` and `npm run metadata:push` stopping with "EAS project not configured". The project id was only in `.env.local`, which `eas-cli` does not read, so it gave up before it got as far as loading that file, and `eas metadata` then worked on `com.example.vexpo`. `eas init` writes the id into `app.json` and the scripts are plain `npx eas-cli` calls again.
+- Fix `npm run metadata:push` using the wrong key. `eas metadata` defaults to a submit profile named `production` and the template's is `testflight`, so it fell back to whatever EAS has stored. Both metadata scripts name the profile now.
+- Add `npm run metadata:pull`, which writes `store.config.json` from the live listing. Editing a file the stores already agree with beats filling in placeholders.
+- Fix the same env gap inside the CLI. Only `doctor` resolved `EAS_PROJECT_ID`, so every other command that shelled out to `eas-cli` got "EAS project not configured" and swallowed it. All four entry points resolve it now.
+- Fix `vexpo apple credentials` registering `com.example.*` with Apple. It spawned `eas credentials` without the bundle id, and eas-cli re-read `app.config.ts` in a child process that never loads `.env.local`. The app's `EXPO_PUBLIC_*` env and the Apple team id go to the child now.
+- `vexpo apple credentials` turns App Groups, Sign In with Apple, Associated Domains and Push Notifications on through the App Store Connect API, skips eas-cli's own capability sync, and says the App Group itself has to be made by hand, as do the READMEs. `expo-widgets` puts `group.<bundle id>` in both targets' entitlements, that sync sends a request Apple rejects in either direction, and Apple's API has no App Groups resource at all. With the sync off nothing else reads the entitlements, so every capability they ask for goes on through the API or signing fails. Push is on the list because `expo-widgets` writes `aps-environment` into the app entitlements whether or not the app sends notifications. Sign In with Apple goes up with the `APPLE_ID_AUTH_APP_CONSENT` setting Apple stores for it, and a capability Apple refuses only warns and links the identifiers page, so one rejection does not stop the wizard. Without the group the build reaches EAS, compiles, and fails at signing.
+- `vexpo apple credentials -e development` and `-e development:device` work on the `.dev` identifiers. The development profiles in `eas.json` set `APP_VARIANT`, `app.config.ts` appends `.dev` to the bundle id when it is set, and eas-cli passes a profile's env in when it reads the config. So the command was putting the capabilities on the store identifier and then handing `eas credentials` a dev one with none of them. The App Group it names follows too.
+- Fix Convex commands aimed at prod. The CLI reads `CONVEX_DEPLOY_KEY` out of `.env.local` and then ignores `--prod`, so `env list` and `env set` ran against dev while reporting prod. Prod commands blank the key first.
+- `vexpo doctor --channel prod` reads the deployment through the logged-in session when there is no `.env.prod`. It used to skip the Convex, Resend and Apple env checks and say the env was unreadable.
+- `vexpo doctor` reports a submit profile with no `ascAppId` on its own. The check hung off the App Store Connect integration check and only ran when that one passed, so a project that has never linked was the one case it stayed quiet for. Without `ascAppId` the auto-submit half of `npm run eas:tf` fails after the build is already uploaded.
+- `vexpo full` calls the EAS step `EAS`. It called it `vexpo eas`, a command 0.3.0 removed.
+- The next steps `vexpo full` prints name `vexpo asc connect` and `npm run metadata:pull`. Neither was there, and skipping `asc connect` is what breaks the submit half of `npm run eas:tf`.
+- `vexpo asc connect` no longer says cloud auto-submits need the EAS to App Store Connect integration. They need the `ascAppId` the command just wrote.
+- **Breaking:** rename `APPLE_SERVICES_ID` to `APPLE_CLIENT_ID` in `.env.local`. It was the only key that changed name on the way to Convex, so one name in your file meant a different one on the server. Rerun `vexpo apple services-id`, or rename the line yourself.
+- Drop `EXPO_PUBLIC_SITE_URL`. It held the same value as `SITE_URL` and nothing in the app read it. `vexpo doctor` compares Convex's `SITE_URL` against the `SCHEME` in `app.config.ts` now, which is where the value comes from.
+- Stop routing `APPLE_KEY_ID` to Convex. Nothing there reads it. `vexpo apple jwt` signs the client secret locally and only the secret goes up.
+- Stop subscribing the Resend webhook to `email.suppressed`. It is a real Resend event, but `@convex-dev/resend` takes eight of the eleven types and logs "Invalid email event received" on the rest, so every suppression wrote a warning into the Convex logs and the branch that handled it never ran.
+- Declare `1C8F.1` next to `CA92.1` in the privacy manifest. `CA92.1` covers the app's own user defaults and the widget reads the App Group suite, which is what `1C8F.1` is for.
+- `vexpo asc privacy lint` takes `SURROUNDINGS` and `BODY`. Apple's questionnaire has sixteen data types and the list had fourteen, so a valid config came back as an error.
+- Drop `NSMicrophoneUsageDescription` from the build. `expo-image-picker` adds it by default and the profile picker is `mediaTypes: ["images"]`, so every build shipped a purpose string for a permission the app never asks for.
+- Restore `engines`, `exports`, `keywords`, `homepage` and `bugs` on both packages. The 0.5.0 release commit dropped them, so npm stopped warning anyone below the Node 22.12 floor the CLI needs.
+- Drop the `export` on `DeepLinkHref`. Nothing outside `deep-link.ts` reads it.
+- The scaffolder strips the EAS project id out of the packaged `app.json`, strips `ascAppId` and the App Store Connect key fields out of the packaged `eas.json`, and keeps every `store.config.*` except the example out of the payload. Whoever ran `asc connect` last would otherwise hand their ids and a local metadata draft to every new project.
+
 ## [0.5.0] - 2026-09-13
 
 - **Breaking:** remove `vexpo apple eas-rotation-secrets` and `vexpo env convex-key`. Both only fed the deleted EAS workflows.
@@ -452,9 +478,10 @@ First public release.
 - Ship `templates/default/`, a production-ready Expo SDK 56, Convex, Better Auth and Resend iOS app. Native SwiftUI via `@expo/ui/swift-ui`, Apple Sign In, APNs push, Universal Links, profile and sessions, an HMAC-verified webhook factory, and 10 EAS Workflows.
 - Start at 277 tests, 238 vexpo unit, 29 template and 10 e2e.
 
-See [`README.md`](./README.md) for the feature list and [`SECURITY.md`](./SECURITY.md) for the threat model.
+See [`README.md`](./README.md) for the feature list.
 
-[Unreleased]: https://github.com/ramonclaudio/vexpo/compare/v0.5.0...HEAD
+[Unreleased]: https://github.com/ramonclaudio/vexpo/compare/v0.6.0...HEAD
+[0.6.0]: https://github.com/ramonclaudio/vexpo/releases/tag/v0.6.0
 [0.5.0]: https://github.com/ramonclaudio/vexpo/releases/tag/v0.5.0
 [0.4.0]: https://github.com/ramonclaudio/vexpo/releases/tag/v0.4.0
 [0.3.3]: https://github.com/ramonclaudio/vexpo/releases/tag/v0.3.3

@@ -1,6 +1,6 @@
 {
   "name": "@ramonclaudio/create-vexpo",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "description": "Scaffold a vexpo app. Expo SDK 57 on iOS with SwiftUI screens through @expo/ui, plus Convex, Better Auth and Resend.",
   "keywords": [
     "apple-sign-in",

@@ -1,6 +1,6 @@
 {
   "name": "@ramonclaudio/vexpo",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "description": "The vexpo CLI. Sets up Convex, Better Auth, Resend and Apple, pushes env to Convex and EAS, checks it all, and submits to TestFlight.",
   "keywords": [
     "app-store-connect",
