@@ -139,6 +139,8 @@ export async function deleteWebhook(key: string, id: string): Promise<void> {
   await call("DELETE", `/webhooks/${id}`, key);
 }
 
+// @convex-dev/resend takes eight of Resend's eleven event types and logs a warning on the rest,
+// so email.suppressed, email.received and email.scheduled stay off the webhook.
 const RESEND_TRANSACTIONAL_EVENTS = [
   "email.sent",
   "email.delivered",
@@ -146,7 +148,6 @@ const RESEND_TRANSACTIONAL_EVENTS = [
   "email.bounced",
   "email.complained",
   "email.failed",
-  "email.suppressed",
   "email.opened",
   "email.clicked",
 ] as const;
