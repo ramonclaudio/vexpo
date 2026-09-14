@@ -16,7 +16,7 @@ const DeepLinkRoutes = {
 } as const satisfies Record<string, Href>;
 
 type DeepLinkPath = keyof typeof DeepLinkRoutes;
-export type DeepLinkHref = (typeof DeepLinkRoutes)[DeepLinkPath];
+type DeepLinkHref = (typeof DeepLinkRoutes)[DeepLinkPath];
 
 function normalizePath(raw: string | null | undefined): string {
   const trimmed = "/" + (raw ?? "").replace(/^\//, "").replace(/\/+$/, "");
