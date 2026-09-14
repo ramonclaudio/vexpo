@@ -15,6 +15,8 @@ const PRIVACY_DATA_TYPES = [
   "PURCHASES",
   "USAGE_DATA",
   "DIAGNOSTICS",
+  "SURROUNDINGS",
+  "BODY",
   "OTHER_DATA",
 ] as const;
 
