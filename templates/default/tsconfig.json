@@ -2,14 +2,28 @@
   "extends": "expo/tsconfig.base",
   "compilerOptions": {
     "strict": true,
-    "allowImportingTsExtensions": true,
-    "noEmit": true,
     "paths": {
-      "@/convex/*": ["./convex/*"],
-      "@/assets/*": ["./assets/*"],
-      "@/*": ["./src/*"]
-    }
+      "@/convex/*": [
+        "./convex/*"
+      ],
+      "@/assets/*": [
+        "./assets/*"
+      ],
+      "@/*": [
+        "./src/*"
+      ]
+    },
+    "types": [
+      "node"
+    ]
   },
-  "include": ["**/*.ts", "**/*.mts", "**/*.tsx", ".expo/types/**/*.ts", "expo-env.d.ts"],
-  "exclude": ["node_modules"]
+  "include": [
+    "**/*.ts",
+    "**/*.tsx",
+    ".expo/types/**/*.ts",
+    "expo-env.d.ts"
+  ],
+  "exclude": [
+    "node_modules"
+  ]
 }

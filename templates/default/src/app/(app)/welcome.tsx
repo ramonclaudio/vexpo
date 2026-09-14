@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState } from "react";
 import { router } from "expo-router";
 import {
   Host,
@@ -34,13 +34,13 @@ import {
   dynamicTypeSize,
 } from "@expo/ui/swift-ui/modifiers";
 import { useDynamicFont } from "@/lib/dynamic-font";
-import { Button as ButtonTokens, TouchTarget } from "@/constants/layout";
+import { ButtonTokens, TouchTarget } from "@/constants/layout";
 import { DynamicType, Duration, toSeconds } from "@/constants/ui";
 import BrandIcon from "@/components/ui/brand-icon";
 import { ProminentButton } from "@/components/ui/capsule-button";
 
 import { haptics } from "@/lib/haptics";
-import { useColors } from "@/hooks/use-theme";
+import { Colors } from "@/constants/theme";
 import { useOnboarding } from "@/hooks/use-onboarding";
 import { useReducedMotion } from "@/hooks/use-reduced-motion";
 
@@ -59,51 +59,47 @@ const STEPS: readonly WelcomeStep[] = [
     id: "built",
     icon: "hammer.fill",
     title: "Built with Expo",
-    subtitle: "Universal, fast, native.",
+    subtitle: "SwiftUI screens, written in TypeScript.",
   },
   {
     id: "ready",
     icon: "checkmark.circle.fill",
-    title: "Ready to Go",
-    subtitle: "Start building something great.",
+    title: "Ready to go",
+    subtitle: "The rest is yours to build.",
   },
 ] as const;
 
 export default function WelcomeScreen() {
   const dfont = useDynamicFont();
-  const colors = useColors();
   const [step, setStep] = useState(0);
   const { markSeen } = useOnboarding();
   const reduceMotion = useReducedMotion();
 
-  const handleContinue = useCallback(() => {
+  const handleContinue = () => {
     haptics.medium();
     markSeen();
     router.replace("/");
-  }, [markSeen]);
+  };
 
-  const handleNext = useCallback(() => {
+  const handleNext = () => {
     haptics.selection();
-    setStep((s) => Math.min(s + 1, STEPS.length - 1));
-  }, []);
+    setStep(step + 1);
+  };
 
-  const handlePageChange = useCallback((nextID: string) => {
+  const handlePageChange = (nextID: string) => {
     const idx = STEPS.findIndex((s) => s.id === nextID);
-    if (idx < 0) return;
-    setStep((current) => {
-      if (current !== idx) haptics.selection();
-      return idx;
-    });
-  }, []);
+    if (idx === step) return;
+    haptics.selection();
+    setStep(idx);
+  };
 
   const isLast = step === STEPS.length - 1;
 
   return (
-    <Host testID="welcome-screen" style={{ flex: 1 }} modifiers={[tint(colors.primary)]}>
+    <Host style={{ flex: 1 }} modifiers={[tint(Colors.primary)]}>
       <VStack spacing={0}>
         <VStack spacing={12} modifiers={[padding({ horizontal: 24, top: 24 })]}>
           <ProgressView
-            testID="welcome-progress"
             value={(step + 1) / STEPS.length}
             modifiers={[
               progressViewStyle("linear"),
@@ -141,7 +137,7 @@ export default function WelcomeScreen() {
                   <VStack spacing={0} modifiers={[accessibilityHidden(true)]}>
                     <Image
                       systemName={s.icon}
-                      color={colors.primary}
+                      color={Colors.primary}
                       modifiers={[
                         frame({ width: 80, height: 80 }),
                         dfont({ size: 48 }),
@@ -150,7 +146,7 @@ export default function WelcomeScreen() {
                     />
                     <Image
                       systemName={s.icon}
-                      color={colors.primary}
+                      color={Colors.primary}
                       modifiers={[
                         dfont({ size: 48 }),
                         dynamicTypeSize({ max: DynamicType.control }),
@@ -163,7 +159,6 @@ export default function WelcomeScreen() {
                   </VStack>
                 )}
                 <Text
-                  testID={`welcome-step-${s.id}-title`}
                   modifiers={[
                     dfont({ size: 34, weight: "bold" }),
                     kerning(-0.5),
@@ -173,10 +168,9 @@ export default function WelcomeScreen() {
                   {s.title}
                 </Text>
                 <Text
-                  testID={`welcome-step-${s.id}-subtitle`}
                   modifiers={[
                     dfont({ size: 17 }),
-                    foregroundStyle(colors.mutedForeground),
+                    foregroundStyle(Colors.mutedForeground),
                     multilineTextAlignment("center"),
                   ]}
                 >
@@ -190,18 +184,16 @@ export default function WelcomeScreen() {
 
         <VStack spacing={12} modifiers={[padding({ horizontal: 24, bottom: 24 })]}>
           <ProminentButton
-            testID="welcome-continue"
             label={isLast ? "Get Started" : "Next"}
             onPress={isLast ? handleContinue : handleNext}
           />
           {!isLast && (
             <Button
-              testID="welcome-skip"
               label="Skip"
               modifiers={[
                 buttonStyle("plain"),
                 dfont({ size: ButtonTokens.fontSize, weight: ButtonTokens.secondaryFontWeight }),
-                foregroundStyle(colors.mutedForeground),
+                foregroundStyle(Colors.mutedForeground),
                 frame({ minHeight: TouchTarget.min }),
                 contentShape(shapes.rectangle()),
               ]}

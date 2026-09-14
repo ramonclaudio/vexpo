@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { Host, ScrollView, Button, Text, VStack, HStack, Spacer, Alert } from "@expo/ui/swift-ui";
 import {
   accessibilityAddTraits,
@@ -29,13 +29,12 @@ import { ContentUnavailable } from "@/components/ui/content-unavailable";
 import { SkeletonSessions } from "@/components/ui/skeleton";
 import { ErrorText } from "@/components/ui/status-text";
 import { announce } from "@/lib/a11y";
-import { deviceLabel } from "@/lib/device";
 import { useDynamicFont } from "@/lib/dynamic-font";
 
 import { authClient } from "@/lib/auth-client";
 import { haptics } from "@/lib/haptics";
 import { fail, succeed } from "@/lib/form-result";
-import { useColors } from "@/hooks/use-theme";
+import { Colors } from "@/constants/theme";
 import { useScenePrivacy } from "@/hooks/use-scene-privacy";
 import { useReducedMotion } from "@/hooks/use-reduced-motion";
 
@@ -45,8 +44,22 @@ type SessionRow = {
   ipAddress?: string | null;
   userAgent?: string | null;
   createdAt: Date;
-  expiresAt: Date;
 };
+
+// Order matters, an iOS user agent carries Darwin and Mac too.
+const DEVICES: [RegExp, string][] = [
+  [/CFNetwork|Darwin|iPhone/i, "iPhone"],
+  [/iPad/i, "iPad"],
+  [/Mac/i, "Mac"],
+  [/Android/i, "Android"],
+  [/Windows/i, "Windows"],
+  [/Linux/i, "Linux"],
+];
+
+function deviceLabel(userAgent?: string | null): string {
+  if (!userAgent) return "Unknown device";
+  return DEVICES.find(([re]) => re.test(userAgent))?.[1] ?? userAgent.slice(0, 40);
+}
 
 function formatRelative(date: Date): string {
   const now = Date.now();
@@ -66,18 +79,17 @@ function formatRelative(date: Date): string {
 
 export default function SessionsScreen() {
   const dfont = useDynamicFont();
-  const colors = useColors();
   const scenePrivacy = useScenePrivacy();
   const reduceMotion = useReducedMotion();
   const { data: current } = authClient.useSession();
   const currentToken = current?.session?.token ?? null;
   const [sessions, setSessions] = useState<SessionRow[] | null>(null);
   const [loadError, setLoadError] = useState<"network" | "stale" | null>(null);
-  const [revoking, setRevoking] = useState<string | null>(null);
+  const [revoking, setRevoking] = useState(false);
   const [revokeError, setRevokeError] = useState<string | null>(null);
   const [confirmToken, setConfirmToken] = useState<string | null>(null);
 
-  const load = useCallback(async () => {
+  const load = async () => {
     try {
       const res = await authClient.listSessions();
       if (res.error) {
@@ -85,28 +97,20 @@ export default function SessionsScreen() {
         return;
       }
       setLoadError(null);
-      const rows = (res.data ?? []).map((s) => ({
-        id: s.id,
-        token: s.token,
-        ipAddress: s.ipAddress ?? null,
-        userAgent: s.userAgent ?? null,
-        createdAt: new Date(s.createdAt),
-        expiresAt: new Date(s.expiresAt),
-      }));
-      setSessions(rows);
+      setSessions((res.data ?? []).map((s) => ({ ...s, createdAt: new Date(s.createdAt) })));
     } catch {
       setLoadError("network");
     }
-  }, []);
+  };
 
   useEffect(() => {
-    load();
-  }, [load]);
+    void load();
+  }, []);
 
   const revoke = async (token: string) => {
     haptics.medium();
     announce("Revoking session");
-    setRevoking(token);
+    setRevoking(true);
     setRevokeError(null);
     try {
       const res = await authClient.revokeSession({ token });
@@ -119,43 +123,36 @@ export default function SessionsScreen() {
     } catch {
       setRevokeError(fail("Couldn't revoke session").error);
     } finally {
-      setRevoking(null);
+      setRevoking(false);
     }
   };
 
   return (
-    <Host
-      testID="sessions-screen"
-      style={{ flex: 1, backgroundColor: colors.background }}
-      modifiers={scenePrivacy}
-    >
+    <Host style={{ flex: 1, backgroundColor: Colors.background }} modifiers={scenePrivacy}>
       {sessions === null ? (
         loadError === "stale" ? (
           <ContentUnavailable
-            testID="sessions-stale"
             title="Sign in again to manage sessions"
             systemImage="lock.shield"
             description="For your security, managing sessions needs a recent sign-in. Sign out, sign back in, and come back here."
           />
         ) : loadError ? (
           <ContentUnavailable
-            testID="sessions-error"
             title="Couldn't load sessions"
             systemImage="exclamationmark.triangle"
             description="Check your connection and try again."
           />
         ) : (
-          <SkeletonSessions testID="sessions-loading" />
+          <SkeletonSessions />
         )
       ) : sessions.length === 0 ? (
         <ContentUnavailable
-          testID="sessions-empty"
           title="No active sessions"
           systemImage="list.bullet.rectangle.portrait"
           description="You have no other active sessions."
         />
       ) : (
-        <ScrollView modifiers={[tint(colors.primary), refreshable(load)]}>
+        <ScrollView modifiers={[tint(Colors.primary), refreshable(load)]}>
           <VStack
             spacing={12}
             alignment="leading"
@@ -172,10 +169,9 @@ export default function SessionsScreen() {
             ]}
           >
             <Text
-              testID="sessions-heading"
               modifiers={[
                 dfont({ size: 13, weight: "semibold" }),
-                foregroundStyle(colors.mutedForeground),
+                foregroundStyle(Colors.mutedForeground),
                 accessibilityAddTraits(["isHeader"]),
               ]}
             >
@@ -186,37 +182,33 @@ export default function SessionsScreen() {
               return (
                 <HStack
                   key={s.id}
-                  testID={`session-row-${s.token}`}
                   spacing={12}
                   alignment="center"
                   modifiers={[
                     frame({ maxWidth: Infinity }),
                     padding({ horizontal: 20, vertical: 14 }),
-                    background(colors.muted),
+                    background(Colors.muted),
                     cornerRadius(20),
                   ]}
                 >
                   <VStack
-                    testID={`session-identity-${s.token}`}
                     alignment="leading"
                     spacing={2}
                     modifiers={[accessibilityElement("combine")]}
                   >
                     <HStack spacing={8} alignment="center">
                       <Text
-                        testID={`session-device-${s.token}`}
                         modifiers={[dfont({ size: 16, weight: "semibold" }), textSelection(true)]}
                       >
                         {deviceLabel(s.userAgent)}
                       </Text>
                       {isCurrent ? (
                         <Text
-                          testID={`session-current-badge-${s.token}`}
                           modifiers={[
                             dfont({ size: 11, weight: "semibold" }),
-                            foregroundStyle(colors.primaryForeground),
+                            foregroundStyle(Colors.primaryForeground),
                             padding({ horizontal: 8, vertical: 2 }),
-                            background(colors.primary),
+                            background(Colors.primary),
                             cornerRadius(8),
                             dynamicTypeSize({ max: DynamicType.control }),
                           ]}
@@ -226,10 +218,9 @@ export default function SessionsScreen() {
                       ) : null}
                     </HStack>
                     <Text
-                      testID={`session-meta-${s.token}`}
                       modifiers={[
                         dfont({ size: 13 }),
-                        foregroundStyle(colors.mutedForeground),
+                        foregroundStyle(Colors.mutedForeground),
                         textSelection(true),
                         privacySensitive(),
                       ]}
@@ -246,7 +237,6 @@ export default function SessionsScreen() {
                     >
                       <Alert.Trigger>
                         <Button
-                          testID={`session-revoke-${s.token}`}
                           modifiers={[
                             buttonStyle("plain"),
                             frame({ minHeight: TouchTarget.min }),
@@ -266,7 +256,7 @@ export default function SessionsScreen() {
                           <Text
                             modifiers={[
                               dfont({ size: 14, weight: "medium" }),
-                              foregroundStyle(colors.destructive),
+                              foregroundStyle(Colors.destructive),
                             ]}
                           >
                             Revoke
@@ -275,7 +265,6 @@ export default function SessionsScreen() {
                       </Alert.Trigger>
                       <Alert.Actions>
                         <Button
-                          testID={`session-revoke-confirm-${s.token}`}
                           label="Revoke"
                           role="destructive"
                           onPress={() => {
@@ -283,11 +272,7 @@ export default function SessionsScreen() {
                             void revoke(s.token);
                           }}
                         />
-                        <Button
-                          testID={`session-revoke-cancel-${s.token}`}
-                          label="Cancel"
-                          role="cancel"
-                        />
+                        <Button label="Cancel" role="cancel" />
                       </Alert.Actions>
                       <Alert.Message>
                         <Text modifiers={[dfont({ size: 16 })]}>
@@ -302,10 +287,9 @@ export default function SessionsScreen() {
             })}
             {revoking ? (
               <Text
-                testID="sessions-revoking"
                 modifiers={[
                   dfont({ size: 13 }),
-                  foregroundStyle(colors.mutedForeground),
+                  foregroundStyle(Colors.mutedForeground),
                   multilineTextAlignment("center"),
                   frame({ maxWidth: Infinity }),
                 ]}
@@ -313,9 +297,7 @@ export default function SessionsScreen() {
                 Revoking session...
               </Text>
             ) : null}
-            {revokeError ? (
-              <ErrorText testID="sessions-revoke-error">{revokeError}</ErrorText>
-            ) : null}
+            {revokeError ? <ErrorText>{revokeError}</ErrorText> : null}
           </VStack>
         </ScrollView>
       )}

@@ -1,3 +1,4 @@
 {
-  "$schema": "./node_modules/convex/schemas/convex.schema.json"
+  "$schema": "./node_modules/convex/schemas/convex.schema.json",
+  "aiFiles": { "enabled": false }
 }

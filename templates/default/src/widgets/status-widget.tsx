@@ -2,7 +2,7 @@ import { Text, VStack } from "@expo/ui/swift-ui";
 import { font, foregroundStyle } from "@expo/ui/swift-ui/modifiers";
 import { createWidget } from "expo-widgets";
 
-export type StatusWidgetProps = {
+type StatusWidgetProps = {
   headline: string;
   detail: string;
 };

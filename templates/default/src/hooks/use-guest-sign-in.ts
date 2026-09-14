@@ -9,7 +9,7 @@ import { useAuthStatus } from "@/hooks/use-auth-status";
 type GuestState = { error?: string };
 const initialState: GuestState = {};
 
-export function guestSignInError(status?: number): string {
+function guestSignInError(status?: number): string {
   return status === 429
     ? "Too many tries. Wait a minute and tap it again."
     : "Couldn't start a guest session. Check your connection and try again.";

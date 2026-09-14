@@ -6,7 +6,7 @@ import { api } from "@/convex/_generated/api";
 import { useAuthStatus } from "@/hooks/use-auth-status";
 import { useDeepLinkHandler } from "@/hooks/use-deep-link";
 import { useOnboarding } from "@/hooks/use-onboarding";
-import { useColors } from "@/hooks/use-theme";
+import { Colors } from "@/constants/theme";
 import { useMotionScreenOptions } from "@/hooks/use-motion-screen-options";
 import { useReducedMotion } from "@/hooks/use-reduced-motion";
 import { FontFamily } from "@/constants/layout";
@@ -15,7 +15,7 @@ import { LoadingScreen } from "@/components/ui/loading-screen";
 export { AppErrorBoundary as ErrorBoundary } from "@/components/ui/error-boundary";
 
 export function SuspenseFallback() {
-  return <LoadingScreen testID="app-content-loading" />;
+  return <LoadingScreen />;
 }
 
 export const unstable_settings = { anchor: "(tabs)" } as const;
@@ -35,10 +35,9 @@ export default function AppLayout() {
 
   useDeepLinkHandler();
 
-  const colors = useColors();
   const reduceMotion = useReducedMotion();
-  const motion = useMotionScreenOptions("default");
-  const headerTint = colors.foreground;
+  const motion = useMotionScreenOptions();
+  const headerTint = Colors.foreground;
   const titleStyle = { color: headerTint, fontFamily: FontFamily.semiBold };
 
   return (
@@ -46,30 +45,19 @@ export default function AppLayout() {
       screenOptions={{
         ...motion,
         headerShown: false,
-        contentStyle: { backgroundColor: colors.background },
+        contentStyle: { backgroundColor: Colors.background },
         headerBackTitle: "Back",
         headerTintColor: headerTint,
         headerShadowVisible: false,
       }}
     >
       <Stack.Protected guard={isAuthenticated && !isAccountDeleted}>
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+        <Stack.Screen name="(tabs)" />
 
         <Stack.Screen
           name="welcome"
-          options={{
-            headerShown: false,
-            presentation: "fullScreenModal",
-            gestureEnabled: false,
-            animation: "fade",
-          }}
+          options={{ presentation: "fullScreenModal", gestureEnabled: false, animation: "fade" }}
         />
-
-        <Stack.Screen name="debug">
-          <Stack.Header transparent />
-          <Stack.Screen.Title style={titleStyle}>Debug</Stack.Screen.Title>
-          <Stack.Screen.BackButton withMenu>Settings</Stack.Screen.BackButton>
-        </Stack.Screen>
 
         <Stack.Screen name="help">
           <Stack.Header transparent />
@@ -126,12 +114,7 @@ export default function AppLayout() {
       <Stack.Protected guard={isAuthenticated && isAccountDeleted}>
         <Stack.Screen
           name="restore-account"
-          options={{
-            headerShown: false,
-            presentation: "modal",
-            gestureEnabled: false,
-            animation: reduceMotion ? "fade" : "default",
-          }}
+          options={{ presentation: "modal", gestureEnabled: false }}
         />
       </Stack.Protected>
 
@@ -139,7 +122,6 @@ export default function AppLayout() {
         <Stack.Screen
           name="auth"
           options={{
-            headerShown: false,
             presentation: "fullScreenModal",
             gestureEnabled: isGuest,
             animation: reduceMotion ? "fade" : "fade_from_bottom",

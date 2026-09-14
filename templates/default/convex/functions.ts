@@ -6,13 +6,6 @@ import type { AuthUser } from "./auth";
 
 export type { AuthUser };
 
-export const authQuery = customQuery(
-  query,
-  customCtx(async (ctx) => ({
-    user: await requireAuthenticatedUser(ctx),
-  })),
-);
-
 export const optionalAuthQuery = customQuery(
   query,
   customCtx(async (ctx) => ({

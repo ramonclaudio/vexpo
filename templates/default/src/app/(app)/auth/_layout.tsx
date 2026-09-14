@@ -1,24 +1,23 @@
 import { Stack } from "expo-router";
 
-import { useColors } from "@/hooks/use-theme";
+import { Colors } from "@/constants/theme";
 import { useMotionScreenOptions } from "@/hooks/use-motion-screen-options";
 import { LoadingScreen } from "@/components/ui/loading-screen";
 
 export { AppErrorBoundary as ErrorBoundary } from "@/components/ui/error-boundary";
 
 export function SuspenseFallback() {
-  return <LoadingScreen testID="auth-loading" />;
+  return <LoadingScreen />;
 }
 
 export default function AuthLayout() {
-  const colors = useColors();
-  const motion = useMotionScreenOptions("default");
+  const motion = useMotionScreenOptions();
   return (
     <Stack
       screenOptions={{
         ...motion,
         headerShown: false,
-        contentStyle: { backgroundColor: colors.background },
+        contentStyle: { backgroundColor: Colors.background },
       }}
     >
       <Stack.Screen name="sign-in" />

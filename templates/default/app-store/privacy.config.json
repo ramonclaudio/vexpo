@@ -1,5 +1,5 @@
 {
-  "_comment": "Drives `vexpo asc privacy lint`. The dashboard form at App Store Connect is the source of truth for submission. This file keeps a versioned, reviewable copy next to the code. Default state declares three categories: CONTACT_INFO for the sign-in email, IDENTIFIERS for the opaque user id, and DIAGNOSTICS for crash and performance data. Drop the DIAGNOSTICS entry if your build ships no analytics. Tighten or expand to match your app.",
+  "_comment": "Source for `vexpo asc privacy lint`. App Store Connect is the real source of truth, this is a versioned copy. Three defaults: contact info for the sign-in email, identifiers for the user id, diagnostics for crash data. Drop diagnostics if you ship no analytics.",
   "collectsData": true,
   "entries": [
     {

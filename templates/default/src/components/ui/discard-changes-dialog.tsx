@@ -4,13 +4,11 @@ import { frame } from "@expo/ui/swift-ui/modifiers";
 import { useDynamicFont } from "@/lib/dynamic-font";
 
 export function DiscardChangesDialog({
-  testIDPrefix,
   message,
   pendingNavAction,
   onDiscard,
   onDismiss,
 }: {
-  testIDPrefix: string;
   message: string;
   pendingNavAction: unknown;
   onDiscard: () => void;
@@ -30,13 +28,8 @@ export function DiscardChangesDialog({
         <Spacer modifiers={[frame({ width: 0, height: 0 })]} />
       </ConfirmationDialog.Trigger>
       <ConfirmationDialog.Actions>
-        <Button
-          testID={`${testIDPrefix}-discard`}
-          label="Discard"
-          role="destructive"
-          onPress={onDiscard}
-        />
-        <Button testID={`${testIDPrefix}-keep-editing`} label="Keep Editing" role="cancel" />
+        <Button label="Discard" role="destructive" onPress={onDiscard} />
+        <Button label="Keep Editing" role="cancel" />
       </ConfirmationDialog.Actions>
       <ConfirmationDialog.Message>
         <Text modifiers={[dfont({ size: 16 })]}>{message}</Text>

@@ -25,10 +25,10 @@ import {
   strokeBorder,
 } from "@expo/ui/swift-ui/modifiers";
 
-import { RemoteAvatar } from "@/components/ui/remote-avatar";
+import { Avatar } from "@/components/ui/remote-avatar";
 import { DynamicType } from "@/constants/ui";
 import { TouchTarget } from "@/constants/layout";
-import { useColors } from "@/hooks/use-theme";
+import { Colors } from "@/constants/theme";
 import { useDynamicFont } from "@/lib/dynamic-font";
 
 const AVATAR_SIZE = 96;
@@ -53,7 +53,6 @@ export function AvatarPickerRow({
   onRemove: () => void;
 }) {
   const dfont = useDynamicFont();
-  const colors = useColors();
   return (
     <ConfirmationDialog
       title="Profile photo"
@@ -63,7 +62,6 @@ export function AvatarPickerRow({
     >
       <ConfirmationDialog.Trigger>
         <Button
-          testID="profile-avatar"
           modifiers={[
             buttonStyle("plain"),
             frame({ maxWidth: Infinity, minHeight: TouchTarget.min }),
@@ -79,17 +77,11 @@ export function AvatarPickerRow({
           <HStack spacing={16} alignment="center" modifiers={[frame({ maxWidth: Infinity })]}>
             <AvatarView avatarUrl={me.avatarUrl} loading={avatarUpdating} />
             <VStack alignment="leading" spacing={4}>
+              <Text modifiers={[dfont({ size: 17, weight: "semibold" })]}>{me.name}</Text>
               <Text
-                testID="profile-name-value"
-                modifiers={[dfont({ size: 17, weight: "semibold" })]}
-              >
-                {me.name}
-              </Text>
-              <Text
-                testID="profile-email-value"
                 modifiers={[
                   dfont({ size: 14 }),
-                  foregroundStyle(colors.mutedForeground),
+                  foregroundStyle(Colors.mutedForeground),
                   privacySensitive(),
                 ]}
               >
@@ -99,7 +91,7 @@ export function AvatarPickerRow({
             <Spacer />
             <Image
               systemName="camera.circle.fill"
-              color={colors.primary}
+              color={Colors.primary}
               modifiers={[
                 dfont({ size: 28 }),
                 dynamicTypeSize({ max: DynamicType.control }),
@@ -111,33 +103,21 @@ export function AvatarPickerRow({
       </ConfirmationDialog.Trigger>
       <ConfirmationDialog.Actions>
         <Button
-          testID="profile-avatar-choose"
           label="Choose Photo"
           systemImage="photo.on.rectangle"
           onPress={() => onPick("library")}
         />
-        <Button
-          testID="profile-avatar-take"
-          label="Take Photo"
-          systemImage="camera"
-          onPress={() => onPick("camera")}
-        />
+        <Button label="Take Photo" systemImage="camera" onPress={() => onPick("camera")} />
         {me.hasUploadedAvatar && (
-          <Button
-            testID="profile-avatar-remove"
-            label="Remove Photo"
-            role="destructive"
-            onPress={onRemove}
-          />
+          <Button label="Remove Photo" role="destructive" onPress={onRemove} />
         )}
-        <Button testID="profile-avatar-cancel" label="Cancel" role="cancel" />
+        <Button label="Cancel" role="cancel" />
       </ConfirmationDialog.Actions>
     </ConfirmationDialog>
   );
 }
 
 function AvatarView({ avatarUrl, loading }: { avatarUrl: string | null; loading: boolean }) {
-  const colors = useColors();
   if (loading) {
     return (
       <VStack
@@ -146,7 +126,7 @@ function AvatarView({ avatarUrl, loading }: { avatarUrl: string | null; loading:
           frame({ width: AVATAR_SIZE, height: AVATAR_SIZE }),
           clipShape("circle"),
           strokeBorder({
-            color: colors.mutedForeground,
+            color: Colors.mutedForeground,
             shape: "circle",
             style: { lineWidth: 2, lineCap: "round", dash: [4, 6] },
           }),
@@ -158,15 +138,5 @@ function AvatarView({ avatarUrl, loading }: { avatarUrl: string | null; loading:
       </VStack>
     );
   }
-  if (avatarUrl) {
-    return <RemoteAvatar key={avatarUrl} url={avatarUrl} size={AVATAR_SIZE} />;
-  }
-  return (
-    <Image
-      systemName="person.crop.circle.fill"
-      size={AVATAR_SIZE}
-      color={colors.mutedForeground}
-      modifiers={[frame({ width: AVATAR_SIZE, height: AVATAR_SIZE }), accessibilityHidden(true)]}
-    />
-  );
+  return <Avatar url={avatarUrl} size={AVATAR_SIZE} />;
 }

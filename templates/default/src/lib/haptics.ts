@@ -9,13 +9,7 @@ const gate = (fn: () => Promise<void>) => () => {
 
 export const haptics = {
   selection: gate(() => Haptics.selectionAsync()),
-
-  light: gate(() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)),
   medium: gate(() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)),
-  heavy: gate(() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy)),
-  rigid: gate(() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Rigid)),
-  soft: gate(() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Soft)),
-
   success: gate(() => Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)),
   warning: gate(() => Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning)),
   error: gate(() => Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error)),

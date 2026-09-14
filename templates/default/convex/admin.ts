@@ -1,9 +1,8 @@
 import { v } from "convex/values";
 
 import { components } from "./_generated/api";
-import { internalAction, internalMutation } from "./_generated/server";
+import { internalAction } from "./_generated/server";
 import { createAuth } from "./auth";
-import { rateLimiter, type RateLimitName } from "./rateLimit";
 
 export const createReviewAccount = internalAction({
   args: {
@@ -82,18 +81,5 @@ export const createReviewAccount = internalAction({
       passwordReset,
       name,
     };
-  },
-});
-
-export const resetRateLimit = internalMutation({
-  args: { name: v.string(), key: v.optional(v.string()) },
-  returns: v.object({
-    reset: v.boolean(),
-    name: v.string(),
-    key: v.union(v.string(), v.null()),
-  }),
-  handler: async (ctx, { name, key }) => {
-    await rateLimiter.reset(ctx, name as RateLimitName, key ? { key } : undefined);
-    return { reset: true, name, key: key ?? null };
   },
 });

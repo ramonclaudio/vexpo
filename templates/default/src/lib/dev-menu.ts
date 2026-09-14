@@ -1,16 +1,8 @@
 import * as DevClient from "expo-dev-client";
 import * as SecureStore from "expo-secure-store";
 import * as Clipboard from "expo-clipboard";
-import Constants from "expo-constants";
-import { checkForUpdateAsync } from "expo-updates";
 
-import { authClient } from "@/lib/auth-client";
-import { checkForUpdate } from "@/lib/updates";
-import { setTheme } from "@/hooks/use-theme";
-import { reloadApp } from "./app";
-
-const rawScheme = Constants.expoConfig?.scheme;
-const scheme = Array.isArray(rawScheme) ? rawScheme[0] : rawScheme;
+import { authClient, storagePrefix } from "@/lib/auth-client";
 
 async function copyAuthSessionId() {
   try {
@@ -34,14 +26,12 @@ function showPublicEnv() {
   console.log("[DevMenu] EXPO_PUBLIC_* env:", snapshot);
 }
 
-function clearLocalStorage() {
-  const ls = (globalThis as { localStorage?: Storage }).localStorage;
-  if (!ls) {
-    console.log("[DevMenu] localStorage unavailable on native");
-    return;
-  }
-  ls.clear();
-  console.log("[DevMenu] localStorage cleared");
+// The auth cookie and session live in SecureStore, preferences and onboarding in localStorage.
+function resetAppData() {
+  SecureStore.deleteItemAsync(`${storagePrefix}_cookie`).catch(() => {});
+  SecureStore.deleteItemAsync(`${storagePrefix}_session_data`).catch(() => {});
+  localStorage.clear();
+  console.log("[DevMenu] App data reset. Reload to start fresh");
 }
 
 export function registerDevMenuItems() {
@@ -49,28 +39,8 @@ export function registerDevMenuItems() {
 
   DevClient.registerDevMenuItems([
     {
-      name: "Clear Secure Storage",
-      callback: () => {
-        const prefix = scheme ?? "better-auth";
-        SecureStore.deleteItemAsync(`${prefix}_cookie`).catch(() => {});
-        SecureStore.deleteItemAsync(`${prefix}_session_data`).catch(() => {});
-        console.log("[DevMenu] Secure storage cleared");
-      },
-    },
-    {
-      name: "Reset Theme",
-      callback: () => {
-        setTheme("system");
-        console.log("[DevMenu] Theme reset to system");
-      },
-    },
-    {
-      name: "Copy Session ID",
-      callback: () => {
-        Clipboard.setStringAsync(Constants.sessionId);
-        console.log("[DevMenu] Session ID copied:", Constants.sessionId);
-      },
-      shouldCollapse: true,
+      name: "Reset App Data",
+      callback: resetAppData,
     },
     {
       name: "Copy Auth Session ID",
@@ -80,37 +50,8 @@ export function registerDevMenuItems() {
       shouldCollapse: true,
     },
     {
-      name: "Check for Updates",
-      callback: () => {
-        checkForUpdate()
-          .then((result) => console.log("[DevMenu] Update check:", result))
-          .catch((err) => console.log("[DevMenu] Update check unavailable:", err.message));
-      },
-    },
-    {
-      name: "Force OTA Update Check",
-      callback: () => {
-        checkForUpdateAsync()
-          .then((result) => console.log("[DevMenu] Forced update check:", result))
-          .catch((err) =>
-            console.log("[DevMenu] Forced update check failed:", err?.message ?? err),
-          );
-      },
-    },
-    {
-      name: "Clear localStorage",
-      callback: clearLocalStorage,
-    },
-    {
       name: "Show Env",
       callback: showPublicEnv,
-      shouldCollapse: true,
-    },
-    {
-      name: "Reload App",
-      callback: () => {
-        reloadApp();
-      },
       shouldCollapse: true,
     },
   ]);

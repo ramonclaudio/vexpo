@@ -1,6 +1,6 @@
-import { startTransition, useActionState, useState } from "react";
+import { startTransition, useActionState, useEffect, useState } from "react";
 import * as AppleAuthentication from "expo-apple-authentication";
-import { router } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import { useQuery } from "convex/react";
 import { Host, ScrollView, VStack, Button, Text, useNativeState } from "@expo/ui/swift-ui";
 import { scheduleOnRN } from "react-native-worklets";
@@ -42,12 +42,12 @@ import { ProminentButton } from "@/components/ui/capsule-button";
 import { OtpVerification, type OtpFlow } from "@/components/auth/otp-verification";
 import { CapsuleTextField } from "@/components/ui/capsule-text-field";
 import { GuestOptions } from "@/components/auth/guest-options";
-import { HelperText } from "@/components/ui/helper-text";
 import { PasswordField } from "@/components/auth/password-field";
+import { AuthModeToggle } from "@/components/auth/auth-mode-toggle";
 import { SegmentedToggle } from "@/components/ui/segmented-toggle";
 import { ErrorText } from "@/components/ui/status-text";
 import { UNEXPECTED_ERROR, fail, succeed } from "@/lib/form-result";
-import { useColors } from "@/hooks/use-theme";
+import { Colors } from "@/constants/theme";
 import { useAppleAuth } from "@/hooks/use-apple-auth";
 import { useAuthStatus } from "@/hooks/use-auth-status";
 import { useGuestSignIn } from "@/hooks/use-guest-sign-in";
@@ -71,29 +71,14 @@ function methodOptions(emailFeatures: boolean): MethodOption[] {
   return emailFeatures ? [...base, { value: "otp", label: "Email OTP" }] : base;
 }
 
-function Subtitle({ isGuest, isOtp }: { isGuest: boolean; isOtp: boolean }) {
+function ForgotPasswordLink() {
   const dfont = useDynamicFont();
-  const colors = useColors();
-  const text = isGuest
-    ? "Sign in and everything you did as a guest comes with you."
-    : isOtp
-      ? "We'll email you a 6-digit code. No password needed."
-      : "Enter your credentials to access your account.";
-  return (
-    <Text modifiers={[dfont({ size: 16 }), foregroundStyle(colors.mutedForeground)]}>{text}</Text>
-  );
-}
-
-function ForgotPasswordLink({ testID }: { testID: string }) {
-  const dfont = useDynamicFont();
-  const colors = useColors();
   return (
     <Button
-      testID={testID}
       label="Forgot password?"
       modifiers={[
         buttonStyle("plain"),
-        foregroundStyle(colors.mutedForeground),
+        foregroundStyle(Colors.mutedForeground),
         dfont({ size: 13 }),
         frame({ minHeight: TouchTarget.min }),
         contentShape(shapes.rectangle()),
@@ -105,9 +90,11 @@ function ForgotPasswordLink({ testID }: { testID: string }) {
   );
 }
 
+type LinkParams = { email?: string; otp?: string; flow?: string };
+
 export default function SignInScreen() {
   const dfont = useDynamicFont();
-  const colors = useColors();
+  const link = useLocalSearchParams<LinkParams>();
 
   const [signInMethod, setSignInMethod] = useState<SignInMethod>("email");
   const [emailValue, setEmailValue] = useState("");
@@ -117,6 +104,14 @@ export default function SignInScreen() {
   const [otpEmail, setOtpEmail] = useState("");
   const [showOtpVerification, setShowOtpVerification] = useState(false);
   const [otpFlow, setOtpFlow] = useState<OtpFlow>("sign-in");
+
+  useEffect(() => {
+    if (!link.email || !link.otp) return;
+    setOtpEmail(link.email);
+    setOtpFlow(link.flow === "verify-email" ? "verify-email" : "sign-in");
+    setShowOtpVerification(true);
+  }, [link.email, link.otp, link.flow]);
+
   const apple = useAppleAuth({ successMessage: "Signed in with Apple" });
   const providers = useQuery(api.auth.getEnabledProviders);
   const showApple = apple.available && providers?.apple === true;
@@ -125,6 +120,11 @@ export default function SignInScreen() {
   const { isGuest } = useAuthStatus();
   const guest = useGuestSignIn();
   const showGuest = providers?.guest === true && !isGuest;
+  const subtitle = isGuest
+    ? "Sign in and everything you did as a guest comes with you."
+    : isOtp
+      ? "We'll email you a 6-digit code. No password needed."
+      : "Enter your credentials to access your account.";
 
   const startEmailVerification = async (email: string): Promise<SignInState> => {
     const sent = await authClient.emailOtp.sendVerificationOtp({
@@ -240,8 +240,10 @@ export default function SignInScreen() {
   if (showOtpVerification) {
     return (
       <OtpVerification
+        key={link.otp}
         email={otpEmail}
         flow={otpFlow}
+        initialOtp={link.otp}
         onBack={() => setShowOtpVerification(false)}
       />
     );
@@ -253,18 +255,20 @@ export default function SignInScreen() {
     return sendSignInOtp();
   };
 
-  const primaryLabel = (() => {
-    if (signInMethod === "otp") return isSendingOtp ? "Sending..." : "Send code";
-    if (signInMethod === "email") return isEmailPending ? "Signing in..." : "Sign in";
-    return isUsernamePending ? "Signing in..." : "Sign in";
-  })();
+  const primaryLabel = isOtp
+    ? isSendingOtp
+      ? "Sending..."
+      : "Send code"
+    : isEmailPending || isUsernamePending
+      ? "Signing in..."
+      : "Sign in";
 
   return (
-    <Host testID="sign-in-screen" style={{ flex: 1, backgroundColor: colors.background }}>
+    <Host style={{ flex: 1, backgroundColor: Colors.background }}>
       <ScrollView
         modifiers={[
           scrollDismissesKeyboard("interactively"),
-          tint(colors.primary),
+          tint(Colors.primary),
           defaultScrollAnchorForRole("center", "sizeChanges"),
         ]}
       >
@@ -277,7 +281,6 @@ export default function SignInScreen() {
 
           <VStack spacing={6} alignment="leading">
             <Text
-              testID="sign-in-title"
               modifiers={[
                 dfont({ size: 28, weight: "bold" }),
                 accessibilityAddTraits(["isHeader"]),
@@ -285,37 +288,26 @@ export default function SignInScreen() {
             >
               Sign in
             </Text>
-            <Subtitle isGuest={isGuest} isOtp={isOtp} />
+            <Text modifiers={[dfont({ size: 16 }), foregroundStyle(Colors.mutedForeground)]}>
+              {subtitle}
+            </Text>
           </VStack>
 
-          <SegmentedToggle
-            testID="sign-in-auth-mode"
-            accessibilityLabel="Sign in or sign up"
-            value="sign-in"
-            options={[
-              { value: "sign-in", label: "Sign in" },
-              { value: "sign-up", label: "Sign up" },
-            ]}
-            onChange={(v) => {
-              if (v === "sign-up") router.replace("/auth/sign-up");
-            }}
-          />
+          <AuthModeToggle current="sign-in" />
 
           <SegmentedToggle
-            testID="sign-in-method"
             accessibilityLabel="Sign-in method"
             value={signInMethod}
             options={methodOptions(emailFeatures)}
             onChange={(value) => setSignInMethod(value as SignInMethod)}
           />
 
-          {error && <ErrorText testID="sign-in-error">{error}</ErrorText>}
+          {error && <ErrorText>{error}</ErrorText>}
 
           {signInMethod === "email" && (
             <>
               <LabeledField label="Email">
                 <CapsuleTextField
-                  testID="sign-in-email"
                   placeholder="you@example.com"
                   onTextChange={setEmailValue}
                   modifiers={[
@@ -332,14 +324,13 @@ export default function SignInScreen() {
               </LabeledField>
               <LabeledField label="Password">
                 <PasswordField
-                  testID="sign-in-email-password"
                   onTextChange={setPassword}
                   onSubmit={() => startTransition(() => signInWithEmail())}
                   disabled={isLoading}
                   accessibilityLabel="Password"
                 />
               </LabeledField>
-              {emailFeatures && <ForgotPasswordLink testID="sign-in-email-forgot-password" />}
+              {emailFeatures && <ForgotPasswordLink />}
             </>
           )}
 
@@ -347,7 +338,6 @@ export default function SignInScreen() {
             <>
               <LabeledField label="Username">
                 <CapsuleTextField
-                  testID="sign-in-username"
                   text={usernameFieldState}
                   placeholder="johndoe"
                   onTextChange={(text) => {
@@ -370,21 +360,19 @@ export default function SignInScreen() {
               </LabeledField>
               <LabeledField label="Password">
                 <PasswordField
-                  testID="sign-in-username-password"
                   onTextChange={setPassword}
                   onSubmit={() => startTransition(() => signInWithUsername())}
                   disabled={isLoading}
                   accessibilityLabel="Password"
                 />
               </LabeledField>
-              {emailFeatures && <ForgotPasswordLink testID="sign-in-username-forgot-password" />}
+              {emailFeatures && <ForgotPasswordLink />}
             </>
           )}
 
           {signInMethod === "otp" && (
             <LabeledField label="Email">
               <CapsuleTextField
-                testID="sign-in-otp-email"
                 placeholder="you@example.com"
                 onTextChange={setOtpEmail}
                 modifiers={[
@@ -399,12 +387,10 @@ export default function SignInScreen() {
                   accessibilityHint("Enter the email address for your account"),
                 ]}
               />
-              <HelperText>We&apos;ll email you a 6-digit code. No password needed.</HelperText>
             </LabeledField>
           )}
 
           <ProminentButton
-            testID="sign-in-submit"
             label={primaryLabel}
             onPress={() => startTransition(onSubmit)}
             disabled={isLoading}
@@ -412,7 +398,6 @@ export default function SignInScreen() {
 
           {!isOtp && showApple && (
             <AppleButton
-              testID="sign-in-apple"
               type={AppleAuthentication.AppleAuthenticationButtonType.SIGN_IN}
               onPress={() => startTransition(() => apple.signIn())}
               disabled={isLoading}
@@ -420,7 +405,7 @@ export default function SignInScreen() {
           )}
 
           <GuestOptions
-            testIDPrefix="sign-in"
+            screen="sign-in"
             showGuest={showGuest}
             isGuest={isGuest}
             isLoading={isLoading}

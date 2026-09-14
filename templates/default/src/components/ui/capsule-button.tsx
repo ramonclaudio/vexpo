@@ -12,14 +12,13 @@ import {
   shapes,
 } from "@expo/ui/swift-ui/modifiers";
 
-import { Button as ButtonTokens } from "@/constants/layout";
-import { useColors } from "@/hooks/use-theme";
+import { ButtonTokens, TouchTarget } from "@/constants/layout";
+import { Colors } from "@/constants/theme";
 import { useDynamicFont } from "@/lib/dynamic-font";
 
 type CapsuleButtonProps = {
   label: string;
   onPress: () => void;
-  testID?: string;
   disabled?: boolean;
   destructive?: boolean;
   filled?: boolean;
@@ -30,19 +29,16 @@ function CapsuleButton({
   variant,
   label,
   onPress,
-  testID,
   disabled,
   destructive,
   filled = true,
   inputLabels,
 }: CapsuleButtonProps & { variant: "prominent" | "secondary" }) {
   const dfont = useDynamicFont();
-  const colors = useColors();
   const prominent = variant === "prominent";
-  const fill = prominent ? colors.primary : colors.muted;
+  const fill = prominent ? Colors.primary : Colors.muted;
   return (
     <Button
-      testID={testID}
       modifiers={[
         buttonStyle("plain"),
         frame({ maxWidth: Infinity }),
@@ -69,10 +65,10 @@ function CapsuleButton({
           }),
           foregroundStyle(
             prominent
-              ? colors.primaryForeground
+              ? Colors.primaryForeground
               : destructive
-                ? colors.destructive
-                : colors.foreground,
+                ? Colors.destructive
+                : Colors.foreground,
           ),
         ]}
       >
@@ -89,3 +85,29 @@ export const ProminentButton = (props: CapsuleButtonProps) => (
 export const SecondaryButton = (props: CapsuleButtonProps) => (
   <CapsuleButton variant="secondary" {...props} />
 );
+
+export function PlainButton({
+  label,
+  onPress,
+  disabled,
+}: {
+  label: string;
+  onPress: () => void;
+  disabled?: boolean;
+}) {
+  const dfont = useDynamicFont();
+  return (
+    <Button
+      label={label}
+      modifiers={[
+        buttonStyle("plain"),
+        foregroundStyle(Colors.mutedForeground),
+        dfont({ size: 14, weight: "semibold" }),
+        frame({ minHeight: TouchTarget.min }),
+        contentShape(shapes.rectangle()),
+        ...(disabled === undefined ? [] : [disabledModifier(disabled)]),
+      ]}
+      onPress={onPress}
+    />
+  );
+}

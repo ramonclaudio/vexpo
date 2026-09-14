@@ -6,14 +6,6 @@ import { internalMutation } from "./_generated/server";
 const crons = cronJobs();
 
 crons.daily(
-  "cleanup stale push tokens",
-  { hourUTC: 3, minuteUTC: 0 },
-  internal.pushTokens.cleanupStale,
-);
-
-crons.interval("reconcile push receipts", { minutes: 15 }, internal.pushSender.reconcileReceipts);
-
-crons.daily(
   "hard-delete expired account tombstones",
   { hourUTC: 4, minuteUTC: 0 },
   internal.users.hardDeleteExpired,

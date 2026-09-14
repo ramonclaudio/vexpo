@@ -3,7 +3,7 @@ import * as AppleAuthentication from "expo-apple-authentication";
 import { VStack, RNHostView } from "@expo/ui/swift-ui";
 import { frame } from "@expo/ui/swift-ui/modifiers";
 
-import { Button as ButtonTokens } from "@/constants/layout";
+import { ButtonTokens } from "@/constants/layout";
 import { useColorScheme } from "@/hooks/use-theme";
 
 const MAX_SCALE = 1.6;
@@ -12,12 +12,10 @@ export function AppleButton({
   type,
   onPress,
   disabled,
-  testID,
 }: {
   type: AppleAuthentication.AppleAuthenticationButtonType;
   onPress: () => void;
   disabled?: boolean;
-  testID?: string;
 }) {
   const colorScheme = useColorScheme();
   const { fontScale } = useWindowDimensions();
@@ -26,7 +24,6 @@ export function AppleButton({
     <VStack alignment="center" modifiers={[frame({ maxWidth: Infinity, height })]}>
       <RNHostView>
         <AppleAuthentication.AppleAuthenticationButton
-          testID={testID}
           buttonType={type}
           buttonStyle={
             colorScheme === "dark"

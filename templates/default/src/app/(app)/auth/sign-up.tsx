@@ -1,6 +1,5 @@
-import { startTransition, useActionState, useCallback, useEffect, useRef, useState } from "react";
+import { startTransition, useActionState, useEffect, useState } from "react";
 import * as AppleAuthentication from "expo-apple-authentication";
-import { router } from "expo-router";
 import { useQuery } from "convex/react";
 import { Host, ScrollView, VStack, HStack, Text, Image, useNativeState } from "@expo/ui/swift-ui";
 import {
@@ -41,12 +40,12 @@ import { GuestOptions } from "@/components/auth/guest-options";
 import { HelperText } from "@/components/ui/helper-text";
 import { useUnsavedChanges } from "@/hooks/use-unsaved-changes";
 import { PasswordField } from "@/components/auth/password-field";
-import { SegmentedToggle } from "@/components/ui/segmented-toggle";
+import { AuthModeToggle } from "@/components/auth/auth-mode-toggle";
 import { firstError, firstErrorField, signUpSchema } from "@/lib/schemas";
 import { ErrorText } from "@/components/ui/status-text";
 import { announce } from "@/lib/a11y";
 import { UNEXPECTED_ERROR, fail, succeed } from "@/lib/form-result";
-import { useColors } from "@/hooks/use-theme";
+import { Colors } from "@/constants/theme";
 import { useAppleAuth } from "@/hooks/use-apple-auth";
 import { useAuthStatus } from "@/hooks/use-auth-status";
 import { useGuestSignIn } from "@/hooks/use-guest-sign-in";
@@ -65,19 +64,6 @@ type UsernameStatus = {
   icon: "ellipsis.circle" | "checkmark.circle.fill" | "exclamationmark.circle.fill";
 };
 
-function Subtitle({ isGuest, emailFeatures }: { isGuest: boolean; emailFeatures: boolean }) {
-  const dfont = useDynamicFont();
-  const colors = useColors();
-  const text = isGuest
-    ? "Your guest data comes with you, and you get it back on your next device."
-    : emailFeatures
-      ? "A verification code will be sent to confirm your email."
-      : "Sign up and you're in. No email to confirm.";
-  return (
-    <Text modifiers={[dfont({ size: 16 }), foregroundStyle(colors.mutedForeground)]}>{text}</Text>
-  );
-}
-
 function UsernameStatusRow({ status }: { status: UsernameStatus | null }) {
   const dfont = useDynamicFont();
   if (!status) return <HelperText>A unique handle others can use to find you.</HelperText>;
@@ -88,19 +74,13 @@ function UsernameStatusRow({ status }: { status: UsernameStatus | null }) {
         color={status.color}
         modifiers={[dfont({ size: 13 }), accessibilityHidden(true)]}
       />
-      <Text
-        testID="sign-up-username-status"
-        modifiers={[dfont({ size: 13 }), foregroundStyle(status.color)]}
-      >
-        {status.text}
-      </Text>
+      <Text modifiers={[dfont({ size: 13 }), foregroundStyle(status.color)]}>{status.text}</Text>
     </HStack>
   );
 }
 
 export default function SignUpScreen() {
   const dfont = useDynamicFont();
-  const colors = useColors();
   const nameFieldState = useNativeState("");
   const [name, setName] = useState("");
   const [prefilledName, setPrefilledName] = useState("");
@@ -116,55 +96,42 @@ export default function SignUpScreen() {
   const { isGuest, name: sessionName } = useAuthStatus();
   const guest = useGuestSignIn();
   const showGuest = providers?.guest === true && !isGuest;
+  const subtitle = isGuest
+    ? "Your guest data comes with you, and you get it back on your next device."
+    : emailFeatures
+      ? "A verification code will be sent to confirm your email."
+      : "Sign up and you're in. No email to confirm.";
 
   const activeField = useNativeState<string | null>(null);
 
   const [usernameAvailable, setUsernameAvailable] = useState<boolean | null>(null);
   const [isCheckingUsername, setIsCheckingUsername] = useState(false);
-  const usernameCheckRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const pendingCandidateRef = useRef<string | null>(null);
 
-  const checkUsernameAvailability = useCallback(async (candidate: string) => {
-    setIsCheckingUsername(true);
-    try {
-      const result = await authClient.isUsernameAvailable({ username: candidate });
-      if (candidate !== pendingCandidateRef.current) return;
-      if (result.data) setUsernameAvailable(result.data.available);
-    } catch {
-      if (candidate !== pendingCandidateRef.current) return;
-      setUsernameAvailable(null);
-    } finally {
-      if (candidate === pendingCandidateRef.current) setIsCheckingUsername(false);
+  useEffect(() => {
+    setUsernameAvailable(null);
+    const candidate = username.trim();
+    if (!candidate || !isValidUsernameFormat(candidate)) return;
+    if (isReservedUsername(candidate)) {
+      setUsernameAvailable(false);
+      return;
     }
-  }, []);
-
-  const handleUsernameChange = useCallback(
-    (value: string) => {
-      setUsername(value);
-      setUsernameAvailable(null);
-      if (usernameCheckRef.current) clearTimeout(usernameCheckRef.current);
-      const trimmed = value.trim();
-      pendingCandidateRef.current = null;
-      if (!trimmed || !isValidUsernameFormat(trimmed)) return;
-      if (isReservedUsername(trimmed)) {
-        setUsernameAvailable(false);
-        return;
+    let cancelled = false;
+    const id = setTimeout(async () => {
+      setIsCheckingUsername(true);
+      try {
+        const result = await authClient.isUsernameAvailable({ username: candidate });
+        if (!cancelled && result.data) setUsernameAvailable(result.data.available);
+      } catch {
+        // Leave it unknown, the server rejects a taken username on submit anyway.
+      } finally {
+        if (!cancelled) setIsCheckingUsername(false);
       }
-      pendingCandidateRef.current = trimmed;
-      usernameCheckRef.current = setTimeout(() => {
-        void checkUsernameAvailability(trimmed);
-      }, 500);
-    },
-    [checkUsernameAvailability],
-  );
-
-  useEffect(
-    () => () => {
-      if (usernameCheckRef.current) clearTimeout(usernameCheckRef.current);
-      pendingCandidateRef.current = null;
-    },
-    [],
-  );
+    }, 500);
+    return () => {
+      cancelled = true;
+      clearTimeout(id);
+    };
+  }, [username]);
 
   useEffect(() => {
     if (usernameAvailable === true) announce("Username is available");
@@ -242,21 +209,21 @@ export default function SignUpScreen() {
     if (isCheckingUsername) {
       return {
         text: "Checking availability...",
-        color: colors.mutedForeground,
+        color: Colors.mutedForeground,
         icon: "ellipsis.circle",
       };
     }
     if (usernameAvailable === true) {
       return {
         text: "Username is available",
-        color: colors.success,
+        color: Colors.success,
         icon: "checkmark.circle.fill",
       };
     }
     if (usernameAvailable === false) {
       return {
         text: "This username is not available",
-        color: colors.destructive,
+        color: Colors.destructive,
         icon: "exclamationmark.circle.fill",
       };
     }
@@ -268,11 +235,11 @@ export default function SignUpScreen() {
   }
 
   return (
-    <Host testID="sign-up-screen" style={{ flex: 1, backgroundColor: colors.background }}>
+    <Host style={{ flex: 1, backgroundColor: Colors.background }}>
       <ScrollView
         modifiers={[
           scrollDismissesKeyboard("interactively"),
-          tint(colors.primary),
+          tint(Colors.primary),
           scrollPosition(activeField, { anchor: "top" }),
           defaultScrollAnchorForRole("center", "sizeChanges"),
         ]}
@@ -286,7 +253,6 @@ export default function SignUpScreen() {
 
           <VStack spacing={6} alignment="leading">
             <Text
-              testID="sign-up-title"
               modifiers={[
                 dfont({ size: 28, weight: "bold" }),
                 accessibilityAddTraits(["isHeader"]),
@@ -294,27 +260,17 @@ export default function SignUpScreen() {
             >
               Create your account
             </Text>
-            <Subtitle isGuest={isGuest} emailFeatures={emailFeatures} />
+            <Text modifiers={[dfont({ size: 16 }), foregroundStyle(Colors.mutedForeground)]}>
+              {subtitle}
+            </Text>
           </VStack>
 
-          <SegmentedToggle
-            testID="sign-up-auth-mode"
-            accessibilityLabel="Sign in or sign up"
-            value="sign-up"
-            options={[
-              { value: "sign-in", label: "Sign in" },
-              { value: "sign-up", label: "Sign up" },
-            ]}
-            onChange={(v) => {
-              if (v === "sign-in") router.replace("/auth/sign-in");
-            }}
-          />
+          <AuthModeToggle current="sign-up" />
 
-          {error && <ErrorText testID="sign-up-error">{error}</ErrorText>}
+          {error && <ErrorText>{error}</ErrorText>}
 
           <LabeledField label="Name" modifiers={[id("field-name")]}>
             <CapsuleTextField
-              testID="sign-up-name"
               text={nameFieldState}
               placeholder="Your name"
               onTextChange={setName}
@@ -331,14 +287,13 @@ export default function SignUpScreen() {
 
           <LabeledField label="Username (optional)" modifiers={[id("field-username")]}>
             <CapsuleTextField
-              testID="sign-up-username"
               text={usernameState}
               placeholder="johndoe"
               onTextChange={(text) => {
                 "worklet";
                 const next = maskUsername(text);
                 usernameState.value = next;
-                scheduleOnRN(handleUsernameChange, next);
+                scheduleOnRN(setUsername, next);
               }}
               modifiers={[
                 keyboardType("ascii-capable"),
@@ -356,7 +311,6 @@ export default function SignUpScreen() {
 
           <LabeledField label="Email" modifiers={[id("field-email")]}>
             <CapsuleTextField
-              testID="sign-up-email"
               placeholder="you@example.com"
               onTextChange={setEmail}
               modifiers={[
@@ -374,7 +328,6 @@ export default function SignUpScreen() {
 
           <LabeledField label="Password" modifiers={[id("field-password")]}>
             <PasswordField
-              testID="sign-up-password"
               onTextChange={setPassword}
               onSubmit={() => startTransition(() => signUp())}
               contentType="newPassword"
@@ -386,7 +339,6 @@ export default function SignUpScreen() {
           </LabeledField>
 
           <ProminentButton
-            testID="sign-up-submit"
             label={isPending ? "Creating account..." : "Create account"}
             onPress={() => startTransition(() => signUp())}
             disabled={isLoading}
@@ -394,7 +346,6 @@ export default function SignUpScreen() {
 
           {showApple && (
             <AppleButton
-              testID="sign-up-apple"
               type={AppleAuthentication.AppleAuthenticationButtonType.SIGN_UP}
               onPress={() => startTransition(() => apple.signIn())}
               disabled={isLoading}
@@ -402,7 +353,7 @@ export default function SignUpScreen() {
           )}
 
           <GuestOptions
-            testIDPrefix="sign-up"
+            screen="sign-up"
             showGuest={showGuest}
             isGuest={isGuest}
             isLoading={isLoading}
@@ -412,7 +363,6 @@ export default function SignUpScreen() {
       </ScrollView>
 
       <DiscardChangesDialog
-        testIDPrefix="sign-up"
         message="You have unsaved input that will be lost."
         pendingNavAction={pendingNavAction}
         onDiscard={discard}

@@ -2,10 +2,12 @@ export const GUEST_NAME = "Guest";
 
 export const USERNAME_MIN_LENGTH = 3;
 export const USERNAME_MAX_LENGTH = 30;
+export const BIO_MAX_LENGTH = 500;
+export const ACCOUNT_DELETION_GRACE_MS = 30 * 24 * 60 * 60 * 1000;
 
 export const USERNAME_FORMAT_REGEX = /^[a-zA-Z0-9_.]+$/;
 
-export const RESERVED_USERNAMES = [
+const RESERVED_USERNAMES = [
   "admin",
   "administrator",
   "root",

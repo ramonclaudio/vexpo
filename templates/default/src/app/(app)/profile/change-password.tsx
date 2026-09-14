@@ -1,18 +1,15 @@
 import { startTransition, useActionState, useEffect, useState } from "react";
 import { router } from "expo-router";
 import { useQuery } from "convex/react";
-import { Host, ScrollView, VStack, Button, Text, useNativeState } from "@expo/ui/swift-ui";
+import { Host, ScrollView, VStack, Text, useNativeState } from "@expo/ui/swift-ui";
 import {
   accessibilityAddTraits,
   accessibilityLabel,
-  buttonStyle,
-  contentShape,
   defaultScrollAnchorForRole,
   disabled,
   foregroundStyle,
   frame,
   padding,
-  shapes,
   scrollDismissesKeyboard,
   textContentType,
   tint,
@@ -20,47 +17,43 @@ import {
 
 import { api } from "@/convex/_generated/api";
 import { authClient } from "@/lib/auth-client";
-import { TouchTarget } from "@/constants/layout";
 import { PasswordField } from "@/components/auth/password-field";
 import { CapsuleTextField } from "@/components/ui/capsule-text-field";
 import { DiscardChangesDialog } from "@/components/ui/discard-changes-dialog";
 import { HelperText } from "@/components/ui/helper-text";
-import { ProminentButton } from "@/components/ui/capsule-button";
+import { PlainButton, ProminentButton } from "@/components/ui/capsule-button";
 import { ErrorText } from "@/components/ui/status-text";
 import { LoadingScreen } from "@/components/ui/loading-screen";
 import { LabeledField } from "@/components/ui/labeled-field";
-import { useColors } from "@/hooks/use-theme";
+import { Colors } from "@/constants/theme";
 import { useUnsavedChanges } from "@/hooks/use-unsaved-changes";
 import { useDynamicFont } from "@/lib/dynamic-font";
-import { fail, succeed } from "@/lib/form-result";
+import { UNEXPECTED_ERROR, fail, succeed } from "@/lib/form-result";
+import { changePasswordSchema, firstError } from "@/lib/schemas";
 
 type ChangePasswordState = { error?: string; ok?: boolean };
 const initialState: ChangePasswordState = {};
 
 export default function ChangePasswordScreen() {
   const me = useQuery(api.users.getMe);
-  if (!me) return <LoadingScreen testID="change-password-loading" />;
+  if (!me) return <LoadingScreen />;
   return <ChangePasswordForm email={me.email} />;
 }
 
 function ChangePasswordForm({ email }: { email: string }) {
   const dfont = useDynamicFont();
-  const colors = useColors();
   const [current, setCurrent] = useState("");
   const [next, setNext] = useState("");
   const [confirm, setConfirm] = useState("");
   const emailState = useNativeState(email);
 
   const [state, submit, isPending] = useActionState<ChangePasswordState, void>(async () => {
-    if (!current || !next || !confirm) {
-      return fail("Fill in every field");
-    }
-    if (next.length < 10 || next.length > 128) {
-      return fail("Password must be 10-128 characters");
-    }
-    if (next !== confirm) {
-      return fail("Passwords do not match");
-    }
+    const parsed = changePasswordSchema.safeParse({
+      current,
+      password: next,
+      confirmPassword: confirm,
+    });
+    if (!parsed.success) return fail(firstError(parsed)!);
     try {
       const res = await authClient.changePassword({
         currentPassword: current,
@@ -73,7 +66,7 @@ function ChangePasswordForm({ email }: { email: string }) {
       succeed("Password changed. Other sessions have been signed out.");
       return { ok: true };
     } catch {
-      return fail("An unexpected error occurred");
+      return fail(UNEXPECTED_ERROR);
     }
   }, initialState);
 
@@ -85,11 +78,11 @@ function ChangePasswordForm({ email }: { email: string }) {
   }, [state.ok]);
 
   return (
-    <Host testID="change-password-screen" style={{ flex: 1, backgroundColor: colors.background }}>
+    <Host style={{ flex: 1, backgroundColor: Colors.background }}>
       <ScrollView
         modifiers={[
           scrollDismissesKeyboard("interactively"),
-          tint(colors.primary),
+          tint(Colors.primary),
           defaultScrollAnchorForRole("center", "sizeChanges"),
         ]}
       >
@@ -100,7 +93,6 @@ function ChangePasswordForm({ email }: { email: string }) {
         >
           <VStack spacing={6} alignment="leading">
             <Text
-              testID="change-password-title"
               modifiers={[
                 dfont({ size: 28, weight: "bold" }),
                 accessibilityAddTraits(["isHeader"]),
@@ -108,17 +100,16 @@ function ChangePasswordForm({ email }: { email: string }) {
             >
               Change password
             </Text>
-            <Text modifiers={[dfont({ size: 14 }), foregroundStyle(colors.mutedForeground)]}>
+            <Text modifiers={[dfont({ size: 14 }), foregroundStyle(Colors.mutedForeground)]}>
               Other devices will be signed out.
             </Text>
           </VStack>
 
           <LabeledField label="Account">
             <CapsuleTextField
-              testID="change-password-account"
               text={emailState}
               modifiers={[
-                foregroundStyle(colors.mutedForeground),
+                foregroundStyle(Colors.mutedForeground),
                 textContentType("username"),
                 disabled(true),
                 accessibilityLabel("Account email"),
@@ -128,7 +119,6 @@ function ChangePasswordForm({ email }: { email: string }) {
 
           <LabeledField label="Current password">
             <PasswordField
-              testID="change-password-current"
               onTextChange={setCurrent}
               disabled={isPending}
               submitLabelType="next"
@@ -139,7 +129,6 @@ function ChangePasswordForm({ email }: { email: string }) {
 
           <LabeledField label="New password">
             <PasswordField
-              testID="change-password-new"
               onTextChange={setNext}
               contentType="newPassword"
               disabled={isPending}
@@ -152,7 +141,6 @@ function ChangePasswordForm({ email }: { email: string }) {
 
           <LabeledField label="Confirm new password">
             <PasswordField
-              testID="change-password-confirm"
               onTextChange={setConfirm}
               onSubmit={() => startTransition(() => submit())}
               contentType="newPassword"
@@ -162,37 +150,21 @@ function ChangePasswordForm({ email }: { email: string }) {
             />
           </LabeledField>
 
-          {state.error ? <ErrorText testID="change-password-error">{state.error}</ErrorText> : null}
+          {state.error ? <ErrorText>{state.error}</ErrorText> : null}
 
           <ProminentButton
-            testID="change-password-submit"
             label={isPending ? "Updating..." : "Update password"}
             onPress={() => startTransition(() => submit())}
             disabled={isPending}
           />
 
           <VStack alignment="center" modifiers={[frame({ maxWidth: Infinity })]}>
-            <Button
-              testID="change-password-cancel"
-              label="Cancel"
-              modifiers={[
-                buttonStyle("plain"),
-                foregroundStyle(colors.mutedForeground),
-                dfont({ size: 14, weight: "semibold" }),
-                frame({ minHeight: TouchTarget.min }),
-                contentShape(shapes.rectangle()),
-                disabled(isPending),
-              ]}
-              onPress={() => {
-                router.back();
-              }}
-            />
+            <PlainButton label="Cancel" onPress={() => router.back()} disabled={isPending} />
           </VStack>
         </VStack>
       </ScrollView>
 
       <DiscardChangesDialog
-        testIDPrefix="change-password"
         message="Your password entries will be lost."
         pendingNavAction={pendingNavAction}
         onDiscard={discard}

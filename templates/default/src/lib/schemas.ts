@@ -7,8 +7,8 @@ import {
   isReservedUsername,
 } from "@/convex/constants";
 
-export const PASSWORD_MIN_LENGTH = 10;
-export const PASSWORD_MAX_LENGTH = 128;
+const PASSWORD_MIN_LENGTH = 10;
+const PASSWORD_MAX_LENGTH = 128;
 
 const usernameSchema = z
   .string()
@@ -44,11 +44,6 @@ const nameSchema = z.string().trim().min(1, { error: "Name is required" });
 
 const otpSchema = z.string().regex(/^\d{6}$/, { error: "Enter the 6-digit code" });
 
-export const signInSchema = z.object({
-  identifier: z.string().trim().min(1, { error: "Username or email is required" }),
-  password: z.string().min(1, { error: "Password is required" }),
-});
-
 export const signInEmailSchema = z.object({
   email: emailSchema,
   password: z.string().min(1, { error: "Password is required" }),
@@ -80,6 +75,17 @@ export const resetPasswordSchema = z
   .object({
     email: emailSchema,
     otp: otpSchema,
+    password: passwordSchema,
+    confirmPassword: z.string(),
+  })
+  .refine((data) => data.password === data.confirmPassword, {
+    error: "Passwords do not match",
+    path: ["confirmPassword"],
+  });
+
+export const changePasswordSchema = z
+  .object({
+    current: z.string().min(1, { error: "Enter your current password" }),
     password: passwordSchema,
     confirmPassword: z.string(),
   })

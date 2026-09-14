@@ -1,4 +1,3 @@
-import { type ComponentProps } from "react";
 import { Text, TextField } from "@expo/ui/swift-ui";
 import {
   accessibilityElement,
@@ -21,15 +20,14 @@ import {
 } from "@expo/ui/swift-ui/modifiers";
 import { scheduleOnRN } from "react-native-worklets";
 
-import { CapsuleTextField } from "@/components/ui/capsule-text-field";
+import { CapsuleTextField, type TextFieldState } from "@/components/ui/capsule-text-field";
 import { HelperText } from "@/components/ui/helper-text";
 import { ProminentButton } from "@/components/ui/capsule-button";
 import { LabeledField } from "@/components/ui/labeled-field";
-import { useColors } from "@/hooks/use-theme";
+import { Colors } from "@/constants/theme";
+import { BIO_MAX_LENGTH } from "@/convex/constants";
 import { maskUsername } from "@/lib/masks";
 import { useDynamicFont } from "@/lib/dynamic-font";
-
-type FieldState = ComponentProps<typeof CapsuleTextField>["text"];
 
 export function ProfileFields({
   nameState,
@@ -47,10 +45,10 @@ export function ProfileFields({
   hasChanges,
   onSave,
 }: {
-  nameState: FieldState;
-  usernameState: FieldState;
-  emailState: FieldState;
-  bioState: FieldState;
+  nameState: TextFieldState;
+  usernameState: TextFieldState;
+  emailState: TextFieldState;
+  bioState: TextFieldState;
   onNameChange: (v: string) => void;
   onUsernameChange: (v: string) => void;
   onEmailChange: (v: string) => void;
@@ -63,13 +61,11 @@ export function ProfileFields({
   onSave: () => void;
 }) {
   const dfont = useDynamicFont();
-  const colors = useColors();
 
   return (
     <>
       <LabeledField label="Name">
         <CapsuleTextField
-          testID="profile-name"
           text={nameState}
           placeholder="Name"
           onTextChange={onNameChange}
@@ -88,13 +84,12 @@ export function ProfileFields({
         <>
           <LabeledField label="Username">
             <CapsuleTextField
-              testID="profile-username"
               text={usernameState}
               placeholder="johndoe"
               onTextChange={(text) => {
                 "worklet";
                 const next = maskUsername(text);
-                if (usernameState) usernameState.value = next;
+                usernameState.value = next;
                 scheduleOnRN(onUsernameChange, next);
               }}
               modifiers={[
@@ -113,7 +108,6 @@ export function ProfileFields({
 
           <LabeledField label="Email">
             <CapsuleTextField
-              testID="profile-email"
               text={emailState}
               placeholder="you@example.com"
               onTextChange={onEmailChange}
@@ -144,7 +138,6 @@ export function ProfileFields({
 
       <LabeledField label="Bio">
         <TextField
-          testID="profile-bio"
           text={bioState}
           placeholder="Tell others about yourself"
           onTextChange={onBioChange}
@@ -153,36 +146,34 @@ export function ProfileFields({
             textFieldStyle("plain"),
             padding({ horizontal: 16, vertical: 12 }),
             frame({ maxWidth: Infinity }),
-            background(colors.muted),
+            background(Colors.muted),
             cornerRadius(20),
             dfont({ size: 16 }),
             lineLimit({ min: 1, max: 4 }),
             disabled(isSaving),
             submitLabel("done"),
             accessibilityLabel("Bio"),
-            accessibilityHint("Up to 500 characters describing yourself"),
+            accessibilityHint(`Up to ${BIO_MAX_LENGTH} characters describing yourself`),
           ]}
         />
         <HelperText>
           {isGuest
-            ? "Up to 500 characters. It comes with you when you create an account."
-            : "Up to 500 characters. Visible on your public profile."}
+            ? `Up to ${BIO_MAX_LENGTH} characters. It comes with you when you create an account.`
+            : `Up to ${BIO_MAX_LENGTH} characters. Visible on your public profile.`}
         </HelperText>
       </LabeledField>
 
       <LabeledField
-        testID="profile-member-since"
         label={isGuest ? "Browsing since" : "Member since"}
         modifiers={[accessibilityElement("combine")]}
       >
-        <Text modifiers={[dfont({ size: 16 }), foregroundStyle(colors.mutedForeground)]}>
+        <Text modifiers={[dfont({ size: 16 }), foregroundStyle(Colors.mutedForeground)]}>
           {formatDate(createdAt)}
         </Text>
       </LabeledField>
 
       {hasChanges ? (
         <ProminentButton
-          testID="profile-save"
           label={isSaving ? "Saving..." : "Save changes"}
           onPress={onSave}
           disabled={isSaving}

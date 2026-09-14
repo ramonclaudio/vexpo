@@ -1,4 +1,3 @@
-import { type ComponentProps } from "react";
 import {
   accessibilityHint,
   accessibilityLabel,
@@ -16,43 +15,39 @@ import {
 import { useWindowDimensions } from "react-native";
 import { scheduleOnRN } from "react-native-worklets";
 
-import { CapsuleTextField } from "@/components/ui/capsule-text-field";
+import { CapsuleTextField, type TextFieldState } from "@/components/ui/capsule-text-field";
 import { DynamicType, otpKerning } from "@/constants/ui";
-import { useColors } from "@/hooks/use-theme";
+import { Colors } from "@/constants/theme";
 import { useDynamicFont } from "@/lib/dynamic-font";
 import { maskOtp } from "@/lib/masks";
 
-type CodeState = ComponentProps<typeof CapsuleTextField>["text"];
-
 export function OtpField({
-  testID,
   text,
   hint,
   onChange,
   onVerify,
+  submit = "done",
   isVerifying,
   invalidCode,
 }: {
-  testID: string;
-  text: CodeState;
+  text: TextFieldState;
   hint: string;
   onChange: (digits: string) => void;
-  onVerify: () => void;
+  onVerify?: () => void;
+  submit?: Parameters<typeof submitLabel>[0];
   isVerifying: boolean;
   invalidCode: boolean;
 }) {
   const dfont = useDynamicFont();
-  const colors = useColors();
   const { fontScale } = useWindowDimensions();
   return (
     <CapsuleTextField
-      testID={testID}
       text={text}
       placeholder="000000"
       onTextChange={(raw) => {
         "worklet";
         const digits = maskOtp(raw);
-        if (text) text.value = digits;
+        text.value = digits;
         scheduleOnRN(onChange, digits);
       }}
       autoFocus
@@ -64,13 +59,13 @@ export function OtpField({
         dynamicTypeSize({ max: DynamicType.otp }),
         keyboardType("numeric"),
         textContentType("oneTimeCode"),
-        onSubmit(onVerify),
-        submitLabel("done"),
+        ...(onVerify ? [onSubmit(onVerify)] : []),
+        submitLabel(submit),
         disabled(isVerifying),
         accessibilityLabel("Verification code"),
         accessibilityHint(hint),
         ...(invalidCode
-          ? [strokeBorder({ color: colors.destructive, shape: "capsule", style: { lineWidth: 2 } })]
+          ? [strokeBorder({ color: Colors.destructive, shape: "capsule", style: { lineWidth: 2 } })]
           : []),
       ]}
     />

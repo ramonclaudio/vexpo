@@ -8,17 +8,14 @@ export function LabeledField({
   label,
   children,
   modifiers,
-  testID,
 }: {
   label: string;
   children: ReactNode;
   modifiers?: ComponentProps<typeof VStack>["modifiers"];
-  testID?: string;
 }) {
   const dfont = useDynamicFont();
   return (
     <VStack
-      testID={testID}
       spacing={6}
       alignment="leading"
       modifiers={[frame({ maxWidth: Infinity }), ...(modifiers ?? [])]}

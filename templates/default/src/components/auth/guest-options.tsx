@@ -7,24 +7,23 @@ import { HelperText } from "@/components/ui/helper-text";
 import { dismissAuth, type useGuestSignIn } from "@/hooks/use-guest-sign-in";
 
 export function GuestOptions({
-  testIDPrefix,
+  screen,
   showGuest,
   isGuest,
   isLoading,
   guest,
 }: {
-  testIDPrefix: "sign-in" | "sign-up";
+  screen: "sign-in" | "sign-up";
   showGuest: boolean;
   isGuest: boolean;
   isLoading: boolean;
   guest: ReturnType<typeof useGuestSignIn>;
 }) {
   if (showGuest) {
-    const skipLabel = testIDPrefix === "sign-in" ? "Skip sign in" : "Skip sign up";
+    const skipLabel = screen === "sign-in" ? "Skip sign in" : "Skip sign up";
     return (
       <VStack spacing={6} alignment="leading" modifiers={[frame({ maxWidth: Infinity })]}>
         <SecondaryButton
-          testID={`${testIDPrefix}-guest`}
           label={guest.isPending ? "Starting..." : "Continue as guest"}
           onPress={() => startTransition(() => guest.signIn())}
           disabled={isLoading}
@@ -36,12 +35,6 @@ export function GuestOptions({
   }
   if (!isGuest) return null;
   return (
-    <SecondaryButton
-      testID={`${testIDPrefix}-dismiss`}
-      label="Not now"
-      onPress={dismissAuth}
-      disabled={isLoading}
-      filled={false}
-    />
+    <SecondaryButton label="Not now" onPress={dismissAuth} disabled={isLoading} filled={false} />
   );
 }

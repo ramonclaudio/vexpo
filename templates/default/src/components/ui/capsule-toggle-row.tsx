@@ -12,28 +12,23 @@ import {
 } from "@expo/ui/swift-ui/modifiers";
 
 import { useDynamicFont } from "@/lib/dynamic-font";
-import { Button as ButtonTokens } from "@/constants/layout";
-import { useColors } from "@/hooks/use-theme";
+import { ButtonTokens } from "@/constants/layout";
+import { Colors } from "@/constants/theme";
 
 type SFSymbol = NonNullable<ComponentProps<typeof Image>["systemName"]>;
 
 export function CapsuleToggleRow({
-  testID,
   systemImage,
   label,
   value,
   onChange,
-  a11yLabel,
 }: {
-  testID: string;
   systemImage: SFSymbol;
   label: string;
   value: boolean;
   onChange: (value: boolean) => void;
-  a11yLabel?: string;
 }) {
   const dfont = useDynamicFont();
-  const colors = useColors();
   return (
     <HStack
       spacing={12}
@@ -41,19 +36,19 @@ export function CapsuleToggleRow({
       modifiers={[
         frame({ maxWidth: Infinity, minHeight: ButtonTokens.height }),
         padding({ horizontal: 16 }),
-        background(colors.muted),
+        background(Colors.muted),
         clipShape("capsule"),
       ]}
     >
       <Image
         systemName={systemImage}
-        color={colors.foreground}
+        color={Colors.foreground}
         modifiers={[dfont({ size: 18 }), accessibilityHidden(true)]}
       />
       <Text
         modifiers={[
           dfont({ size: 16, weight: "medium" }),
-          foregroundStyle(colors.foreground),
+          foregroundStyle(Colors.foreground),
           accessibilityHidden(true),
         ]}
       >
@@ -61,10 +56,9 @@ export function CapsuleToggleRow({
       </Text>
       <Spacer />
       <Toggle
-        testID={testID}
         isOn={value}
         onIsOnChange={onChange}
-        modifiers={[tint(colors.primary), accessibilityLabel(a11yLabel ?? label)]}
+        modifiers={[tint(Colors.primary), accessibilityLabel(label)]}
       />
     </HStack>
   );

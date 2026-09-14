@@ -1,4 +1,4 @@
-import { existsSync, readFileSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
 import type { ConfigContext, ExpoConfig } from "expo/config";
@@ -65,48 +65,28 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     ...config,
     name: IS_DEV ? `${APP_NAME} (Dev)` : APP_NAME,
     slug: "vexpo",
-    description: "",
     version: pkg.version,
     orientation: "portrait",
     userInterfaceStyle: "automatic",
     backgroundColor: "#0A0A0A",
-    primaryColor: "#171717",
     platforms: ["ios"],
     scheme: IS_DEV ? `${SCHEME}dev` : SCHEME,
     icon: "./assets/icon.png",
     ...(EXPO_OWNER ? { owner: EXPO_OWNER } : {}),
     runtimeVersion: { policy: "fingerprint" },
-    developmentClient: {
-      silentLaunch: true,
-    },
     updates: {
       enabled: !!projectId,
-      checkAutomatically: "ON_LOAD",
       fallbackToCacheTimeout: 2000,
       ...(projectId ? { url: `https://u.expo.dev/${projectId}` } : {}),
-      requestHeaders: { "expo-channel-name": "development" },
-      assetPatternsToBeBundled: [
-        "assets/icon.png",
-        "assets/splash-image-*.png",
-        "assets/brand-icon-*.png",
-      ],
-      ...(existsSync(resolve(process.cwd(), "certs", "certificate.pem"))
-        ? {
-            codeSigningCertificate: "./certs/certificate.pem",
-            codeSigningMetadata: { keyid: "main", alg: "rsa-v1_5-sha256" },
-          }
-        : {}),
+      assetPatternsToBeBundled: ["assets/brand-icon-*.png"],
     },
     ios: {
-      supportsTablet: false,
       bundleIdentifier: IS_DEV ? `${BUNDLE_ID}.dev` : BUNDLE_ID,
       appleTeamId: APPLE_TEAM_ID,
-      userInterfaceStyle: "automatic",
-      backgroundColor: "#0A0A0A",
       usesAppleSignIn: true,
       infoPlist: {
         ITSAppUsesNonExemptEncryption: false,
-        LSApplicationQueriesSchemes: ["mailto", "tel", "sms", "itms-apps"],
+        LSApplicationQueriesSchemes: ["mailto"],
       },
       associatedDomains: [
         `applinks:${process.env.EXPO_PUBLIC_CONVEX_SITE_URL?.replace(/^https?:\/\//, "") ?? "example.convex.site"}`,
@@ -156,15 +136,6 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       ],
       ["expo-font", { fonts: ["./assets/fonts"] }],
       [
-        "expo-notifications",
-        {
-          icon: "./assets/icon.png",
-          color: "#171717",
-          sounds: ["./assets/sounds/notification.wav"],
-          enableBackgroundRemoteNotifications: true,
-        },
-      ],
-      [
         "expo-image-picker",
         {
           photosPermission: "Allow $(PRODUCT_NAME) to access your photos for profile pictures.",
@@ -177,13 +148,6 @@ export default ({ config }: ConfigContext): ExpoConfig => {
           faceIDPermission: "Allow $(PRODUCT_NAME) to use Face ID to confirm sensitive actions.",
         },
       ],
-      "expo-asset",
-      "expo-image",
-      "expo-sqlite",
-      "expo-status-bar",
-      "expo-system-ui",
-      "expo-secure-store",
-      "expo-web-browser",
       [
         "expo-widgets",
         {
@@ -198,9 +162,6 @@ export default ({ config }: ConfigContext): ExpoConfig => {
         },
       ],
       ["expo-dev-client", { launchMode: "most-recent" }],
-      ["expo-build-properties", { ios: { deploymentTarget: "16.4" } }],
-      ["./plugins/with-pod-deployment-target", { target: "16.4" }],
-      "./plugins/with-auto-signing",
     ],
     extra: {
       ...config.extra,
@@ -217,7 +178,6 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     experiments: {
       typedRoutes: true,
       reactCompiler: true,
-      tsconfigPaths: true,
     },
   };
 };

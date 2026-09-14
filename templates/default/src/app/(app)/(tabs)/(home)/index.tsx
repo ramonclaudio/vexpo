@@ -13,24 +13,19 @@ import { ContentUnavailable } from "@/components/ui/content-unavailable";
 import { GUEST_NAME } from "@/convex/constants";
 import { authClient } from "@/lib/auth-client";
 import { useDynamicFont } from "@/lib/dynamic-font";
-import { useColors } from "@/hooks/use-theme";
+import { Colors } from "@/constants/theme";
 
 export default function HomeScreen() {
   const dfont = useDynamicFont();
-  const colors = useColors();
   const { data: session, refetch } = authClient.useSession();
 
   const rawName = session?.user?.name;
   const name = !rawName || rawName === GUEST_NAME ? "there" : rawName.split(" ")[0];
   const now = new Date();
 
-  const onRefresh = async () => {
-    await refetch?.();
-  };
-
   return (
-    <Host testID="home-screen" style={{ flex: 1 }}>
-      <ScrollView modifiers={[tint(colors.primary), refreshable(onRefresh)]}>
+    <Host style={{ flex: 1 }}>
+      <ScrollView modifiers={[tint(Colors.primary), refreshable(async () => refetch())]}>
         <VStack
           spacing={24}
           alignment="leading"
@@ -41,14 +36,10 @@ export default function HomeScreen() {
             alignment="leading"
             modifiers={[frame({ maxWidth: Infinity, alignment: "leading" })]}
           >
-            <Text
-              testID="home-date"
-              modifiers={[dfont({ size: 14 }), foregroundStyle(colors.mutedForeground)]}
-            >
+            <Text modifiers={[dfont({ size: 14 }), foregroundStyle(Colors.mutedForeground)]}>
               <Text date={now} dateStyle="date" />
             </Text>
             <Text
-              testID="home-greeting"
               modifiers={[
                 dfont({ size: 32, design: "rounded" }),
                 kerning(-0.5),
@@ -63,7 +54,6 @@ export default function HomeScreen() {
           </VStack>
 
           <ContentUnavailable
-            testID="home-empty"
             title="Nothing here yet"
             systemImage="square.dashed"
             description="Home screen is ready to build."

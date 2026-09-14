@@ -3,9 +3,9 @@ import { HStack, Image, Text } from "@expo/ui/swift-ui";
 import { accessibilityHidden, foregroundStyle } from "@expo/ui/swift-ui/modifiers";
 
 import { useDynamicFont } from "@/lib/dynamic-font";
-import { useColors } from "@/hooks/use-theme";
+import { Colors } from "@/constants/theme";
 
-type Props = { children: string; size?: number; testID?: string };
+type Props = { children: string };
 type Tone = {
   icon: ComponentProps<typeof Image>["systemName"];
   color: "destructive" | "success";
@@ -14,20 +14,17 @@ type Tone = {
 const ERROR: Tone = { icon: "exclamationmark.triangle.fill", color: "destructive" };
 const SUCCESS: Tone = { icon: "checkmark.circle.fill", color: "success" };
 
-function StatusText({ children, size = 14, testID, tone }: Props & { tone: Tone }) {
+function StatusText({ children, tone }: Props & { tone: Tone }) {
   const dfont = useDynamicFont();
-  const colors = useColors();
 
   return (
     <HStack spacing={6} alignment="center">
       <Image
         systemName={tone.icon}
-        color={colors[tone.color]}
-        modifiers={[dfont({ size }), accessibilityHidden(true)]}
+        color={Colors[tone.color]}
+        modifiers={[dfont({ size: 14 }), accessibilityHidden(true)]}
       />
-      <Text testID={testID} modifiers={[dfont({ size }), foregroundStyle(colors[tone.color])]}>
-        {children}
-      </Text>
+      <Text modifiers={[dfont({ size: 14 }), foregroundStyle(Colors[tone.color])]}>{children}</Text>
     </HStack>
   );
 }

@@ -14,17 +14,14 @@ import { BetterAuthConvexProvider } from "@/lib/convex-auth";
 import { assetModules } from "@/lib/assets";
 import { useAssets } from "expo-asset";
 import { env } from "@/lib/env";
-import { useColorScheme, useColors } from "@/hooks/use-theme";
+import { useColorScheme } from "@/hooks/use-theme";
 import { useMotionScreenOptions } from "@/hooks/use-motion-screen-options";
-import { useNotifications } from "@/hooks/use-notifications";
 import { useWidgetSync } from "@/hooks/use-widget-sync";
-import { useNavigationTracking } from "@/hooks/use-navigation-tracking";
 import { OfflineBanner } from "@/components/ui/offline-banner";
 import { UpdateBanner } from "@/components/ui/update-banner";
 import { LoadingScreen } from "@/components/ui/loading-screen";
 import { Duration } from "@/constants/ui";
-import { NavigationDark, NavigationLight } from "@/constants/theme";
-import { setForegroundHandler, registerBackgroundTask } from "@/lib/notifications";
+import { Colors, NavigationDark, NavigationLight } from "@/constants/theme";
 
 const convex = new ConvexReactClient(env.convexUrl, {
   unsavedChangesWarning: false,
@@ -36,13 +33,11 @@ if (__DEV__) registerDevMenuItems();
 
 SplashScreen.preventAutoHideAsync();
 SplashScreen.setOptions({ duration: Duration.splash, fade: true });
-setForegroundHandler();
-registerBackgroundTask();
 
 function RootLayout() {
   return (
     <BetterAuthConvexProvider client={convex}>
-      <Suspense fallback={<LoadingScreen testID="app-loading" />}>
+      <Suspense fallback={<LoadingScreen />}>
         <RootNavigator />
       </Suspense>
     </BetterAuthConvexProvider>
@@ -54,13 +49,10 @@ export default ObserveRoot.wrap(RootLayout);
 function RootNavigator() {
   const { isPending } = authClient.useSession();
   const colorScheme = useColorScheme();
-  const colors = useColors();
-  const motion = useMotionScreenOptions("default");
+  const motion = useMotionScreenOptions();
   const [assets, assetError] = useAssets(assetModules);
   const { markInteractive } = useObserve();
 
-  useNotifications();
-  useNavigationTracking();
   useWidgetSync();
 
   useEffect(() => {
@@ -72,22 +64,22 @@ function RootNavigator() {
   }, [isPending, assets, assetError, markInteractive]);
 
   return (
-    <GestureHandlerRootView style={{ flex: 1, backgroundColor: colors.background }}>
+    <GestureHandlerRootView style={{ flex: 1, backgroundColor: Colors.background }}>
       <KeyboardProvider>
         <NavigationThemeProvider value={colorScheme === "dark" ? NavigationDark : NavigationLight}>
           <Stack
             screenOptions={{
               ...motion,
               headerShown: false,
-              contentStyle: { backgroundColor: colors.background },
+              contentStyle: { backgroundColor: Colors.background },
             }}
           >
             <Stack.Screen name="(app)" />
             <Stack.Screen name="+not-found" />
           </Stack>
           <StatusBar style="auto" />
-          <OfflineBanner testID="offline-banner" />
-          <UpdateBanner testID="update-banner" />
+          <OfflineBanner />
+          <UpdateBanner />
         </NavigationThemeProvider>
       </KeyboardProvider>
     </GestureHandlerRootView>

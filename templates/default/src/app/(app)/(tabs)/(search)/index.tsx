@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { router, Stack } from "expo-router";
 import { Host, ScrollView, Button, Text, VStack, HStack, Spacer, Image } from "@expo/ui/swift-ui";
 import {
@@ -21,9 +21,7 @@ import type { SFSymbol } from "sf-symbols-typescript";
 
 import { useDynamicFont } from "@/lib/dynamic-font";
 import { useAuthStatus } from "@/hooks/use-auth-status";
-import { useColors } from "@/hooks/use-theme";
-import { useDebounce } from "@/hooks/use-debounce";
-import { useDebugEnabled } from "@/lib/preferences";
+import { Colors } from "@/constants/theme";
 import { ContentUnavailable } from "@/components/ui/content-unavailable";
 import { SectionLabel } from "@/components/ui/section-label";
 
@@ -39,10 +37,10 @@ type Destination = {
 const DESTINATIONS: readonly Destination[] = [
   {
     title: "Home",
-    subtitle: "Recent activity and updates",
+    subtitle: "Your start screen",
     icon: "house.fill",
     href: "/(app)/(tabs)/(home)",
-    keywords: "home dashboard activity feed",
+    keywords: "home start",
   },
   {
     title: "Settings",
@@ -74,11 +72,11 @@ const DESTINATIONS: readonly Destination[] = [
     accountOnly: true,
   },
   {
-    title: "Linked accounts",
-    subtitle: "Apple, email, social providers",
+    title: "Linked",
+    subtitle: "What the last deep link carried",
     icon: "link.circle.fill",
     href: "/(app)/linked",
-    keywords: "linked apple sign in social providers oauth",
+    keywords: "linked deep link universal link params",
   },
   {
     title: "Help",
@@ -104,16 +102,6 @@ const SIGN_UP_DESTINATION: Destination = {
   keywords: "create account sign up register guest upgrade save data sign in",
 };
 
-const DEBUG_DESTINATION: Destination = {
-  title: "Debug",
-  subtitle: "Version, build, OTA update, device, push diagnostics",
-  icon: "ant.circle.fill",
-  href: "/(app)/debug" as Destination["href"],
-  keywords: "debug diagnostics version build sdk runtime release update vendor push session",
-};
-
-const DEBOUNCE_MS = 120;
-
 function score(d: Destination, query: string): number {
   if (query.length === 0) return 0;
   const q = query.toLowerCase();
@@ -128,43 +116,33 @@ function score(d: Destination, query: string): number {
 
 export default function SearchScreen() {
   const dfont = useDynamicFont();
-  const colors = useColors();
-  const [raw, setRaw] = useState("");
-  const query = useDebounce(raw, DEBOUNCE_MS);
-  const [debugOn] = useDebugEnabled();
+  const [query, setQuery] = useState("");
   const { isGuest } = useAuthStatus();
 
-  const destinations = useMemo<readonly Destination[]>(() => {
-    const base = isGuest
-      ? [SIGN_UP_DESTINATION, ...DESTINATIONS.filter((d) => !d.accountOnly)]
-      : DESTINATIONS;
-    return debugOn ? [...base, DEBUG_DESTINATION] : base;
-  }, [debugOn, isGuest]);
-
-  const results = useMemo(() => {
-    const trimmed = query.trim();
-    if (trimmed.length === 0) return destinations;
-    const scored = destinations.map((d) => ({ d, s: score(d, trimmed) })).filter(({ s }) => s > 0);
-    scored.sort((a, b) => b.s - a.s);
-    return scored.map(({ d }) => d);
-  }, [query, destinations]);
-
-  const open = (href: Destination["href"]) => {
-    router.push(href);
-  };
+  const destinations = isGuest
+    ? [SIGN_UP_DESTINATION, ...DESTINATIONS.filter((d) => !d.accountOnly)]
+    : DESTINATIONS;
+  const trimmed = query.trim();
+  const results = trimmed
+    ? destinations
+        .map((d) => ({ d, s: score(d, trimmed) }))
+        .filter(({ s }) => s > 0)
+        .sort((a, b) => b.s - a.s)
+        .map(({ d }) => d)
+    : destinations;
 
   return (
     <>
       <Stack.SearchBar
         placement="automatic"
         placeholder="Search screens"
-        onChangeText={(e) => setRaw(e.nativeEvent.text)}
+        onChangeText={(e) => setQuery(e.nativeEvent.text)}
       />
-      <Host testID="search-screen" style={{ flex: 1, backgroundColor: colors.background }}>
+      <Host style={{ flex: 1, backgroundColor: Colors.background }}>
         <ScrollView
           modifiers={[
             scrollDismissesKeyboard("interactively"),
-            tint(colors.primary),
+            tint(Colors.primary),
             scrollTargetBehavior("viewAligned"),
           ]}
         >
@@ -175,25 +153,23 @@ export default function SearchScreen() {
           >
             {results.length === 0 ? (
               <ContentUnavailable
-                testID="search-empty"
                 title="No results"
                 systemImage="magnifyingglass"
-                description={`Nothing matches "${query.trim()}"`}
+                description={`Nothing matches "${trimmed}"`}
               />
             ) : (
               <VStack spacing={8} alignment="leading" modifiers={[frame({ maxWidth: Infinity })]}>
-                <SectionLabel>{query.trim() ? "RESULTS" : "JUMP TO"}</SectionLabel>
+                <SectionLabel>{trimmed ? "RESULTS" : "JUMP TO"}</SectionLabel>
                 {results.map((d) => (
                   <Button
                     key={d.href as string}
-                    testID={`search-result-${d.title.toLowerCase().replace(/\s+/g, "-")}`}
                     modifiers={[
                       buttonStyle("plain"),
                       frame({ maxWidth: Infinity }),
-                      background(colors.muted),
+                      background(Colors.muted),
                       clipShape("capsule"),
                     ]}
-                    onPress={() => open(d.href)}
+                    onPress={() => router.push(d.href)}
                   >
                     <HStack
                       spacing={14}
@@ -206,20 +182,20 @@ export default function SearchScreen() {
                     >
                       <Image
                         systemName={d.icon}
-                        color={colors.foreground}
+                        color={Colors.foreground}
                         modifiers={[dfont({ size: 20 }), accessibilityHidden(true)]}
                       />
                       <VStack alignment="leading" spacing={2}>
                         <Text
                           modifiers={[
                             dfont({ size: 16, weight: "medium" }),
-                            foregroundStyle(colors.foreground),
+                            foregroundStyle(Colors.foreground),
                           ]}
                         >
                           {d.title}
                         </Text>
                         <Text
-                          modifiers={[dfont({ size: 13 }), foregroundStyle(colors.mutedForeground)]}
+                          modifiers={[dfont({ size: 13 }), foregroundStyle(Colors.mutedForeground)]}
                         >
                           {d.subtitle}
                         </Text>
@@ -227,7 +203,7 @@ export default function SearchScreen() {
                       <Spacer />
                       <Image
                         systemName="chevron.right"
-                        color={colors.mutedForeground}
+                        color={Colors.mutedForeground}
                         modifiers={[
                           dfont({ size: 16 }),
                           imageScale("small"),
@@ -240,17 +216,17 @@ export default function SearchScreen() {
               </VStack>
             )}
 
-            {query.trim() === "" ? (
+            {trimmed ? null : (
               <Text
                 modifiers={[
                   dfont({ size: 13 }),
-                  foregroundStyle(colors.mutedForeground),
+                  foregroundStyle(Colors.mutedForeground),
                   padding({ horizontal: 8, top: 4 }),
                 ]}
               >
                 Type to find any screen.
               </Text>
-            ) : null}
+            )}
           </VStack>
         </ScrollView>
       </Host>

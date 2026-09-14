@@ -1,9 +1,8 @@
 import { useState } from "react";
 import Constants from "expo-constants";
-import * as Clipboard from "expo-clipboard";
 import { useDeleteAccount } from "@/hooks/use-delete-account";
-import { useDiscardGuest } from "@/hooks/use-discard-guest";
-import { router, type Href } from "expo-router";
+import { useSignOutMutation } from "@/hooks/use-sign-out-mutation";
+import { router } from "expo-router";
 import { useQuery } from "convex/react";
 import {
   Host,
@@ -15,7 +14,6 @@ import {
   Spacer,
   Image,
   Alert,
-  ConfirmationDialog,
 } from "@expo/ui/swift-ui";
 import {
   background,
@@ -39,71 +37,56 @@ import {
 import { useDynamicFont } from "@/lib/dynamic-font";
 
 import { api } from "@/convex/_generated/api";
+import { GUEST_NAME } from "@/convex/constants";
 import { CapsuleRowButton } from "@/components/ui/capsule-row-button";
-import { RemoteAvatar } from "@/components/ui/remote-avatar";
+import { Avatar } from "@/components/ui/remote-avatar";
 import { SectionLabel } from "@/components/ui/section-label";
 import { ErrorText } from "@/components/ui/status-text";
 import { useAuthStatus } from "@/hooks/use-auth-status";
-import { useColors } from "@/hooks/use-theme";
+import { Colors } from "@/constants/theme";
 import { useScenePrivacy } from "@/hooks/use-scene-privacy";
-import { useSignOut } from "@/hooks/use-sign-out";
-import { useDebugEnabled } from "@/lib/preferences";
-import { succeed } from "@/lib/form-result";
-
-const PROFILE_HREF = "/profile" as Href;
-const DEBUG_HREF = "/debug" as Href;
-const SIGN_UP_HREF = "/auth/sign-up" as Href;
 
 const HEADER_AVATAR_SIZE = 56;
 
+// A guest starts as GUEST_NAME with no photo, so the row asks for whatever is still missing.
+function guestSubtitle(name: string | undefined, hasPhoto: boolean): string {
+  const needsName = !name || name === GUEST_NAME;
+  if (needsName && !hasPhoto) return "Add a name and a photo";
+  if (needsName) return "Add a name";
+  if (!hasPhoto) return "Add a photo";
+  return "Guest session";
+}
+
 export default function SettingsScreen() {
   const dfont = useDynamicFont();
-  const colors = useColors();
   const scenePrivacy = useScenePrivacy();
   const me = useQuery(api.users.getMe);
   const { isGuest } = useAuthStatus();
   const { deleteAccount, deleteError } = useDeleteAccount();
-  const { discardGuest, discardError } = useDiscardGuest();
-  const handleSignOut = useSignOut();
+  const [discardGuest, discardError] = useSignOutMutation(api.users.discardGuest);
 
-  const [showSignOut, setShowSignOut] = useState(false);
   const [showDeleteAccount, setShowDeleteAccount] = useState(false);
   const [showDiscardGuest, setShowDiscardGuest] = useState(false);
-  const [debugOn] = useDebugEnabled();
-
-  const navigate = (path: Href) => {
-    router.push(path);
-  };
 
   const version = Constants.expoConfig?.version ?? "1.0.0";
 
-  const handleCopyVersion = async () => {
-    await Clipboard.setStringAsync(`v${version}`);
-    succeed("Version copied");
-  };
-
   return (
-    <Host
-      testID="settings-screen"
-      style={{ flex: 1, backgroundColor: colors.background }}
-      modifiers={scenePrivacy}
-    >
-      <ScrollView modifiers={[scrollDismissesKeyboard("interactively"), tint(colors.primary)]}>
+    <Host style={{ flex: 1, backgroundColor: Colors.background }} modifiers={scenePrivacy}>
+      <ScrollView modifiers={[scrollDismissesKeyboard("interactively"), tint(Colors.primary)]}>
         <VStack
           spacing={12}
           alignment="leading"
           modifiers={[padding({ horizontal: 24, top: 24, bottom: 40 })]}
         >
           <Button
-            testID="settings-profile"
             modifiers={[
               buttonStyle("plain"),
               frame({ maxWidth: Infinity }),
-              background(colors.muted),
+              background(Colors.muted),
               clipShape("capsule"),
               accessibilityHint("Opens your profile"),
             ]}
-            onPress={() => navigate(PROFILE_HREF)}
+            onPress={() => router.push("/profile")}
           >
             <HStack
               spacing={16}
@@ -114,13 +97,12 @@ export default function SettingsScreen() {
                 contentShape(shapes.capsule()),
               ]}
             >
-              <ProfileHeaderAvatar avatarUrl={me?.avatarUrl ?? null} />
+              <Avatar url={me?.avatarUrl ?? null} size={HEADER_AVATAR_SIZE} />
               <VStack alignment="leading" spacing={2}>
                 <Text
-                  testID="settings-profile-name"
                   modifiers={[
                     dfont({ size: 17, weight: "semibold" }),
-                    foregroundStyle(colors.foreground),
+                    foregroundStyle(Colors.foreground),
                     lineLimit(2),
                     truncationMode("tail"),
                   ]}
@@ -129,21 +111,19 @@ export default function SettingsScreen() {
                 </Text>
                 {isGuest ? (
                   <Text
-                    testID="settings-profile-guest-hint"
                     modifiers={[
                       dfont({ size: 14 }),
-                      foregroundStyle(colors.mutedForeground),
+                      foregroundStyle(Colors.mutedForeground),
                       lineLimit(2),
                     ]}
                   >
-                    Add a name and a photo
+                    {guestSubtitle(me?.name, me?.hasUploadedAvatar === true)}
                   </Text>
                 ) : me?.email ? (
                   <Text
-                    testID="settings-profile-email"
                     modifiers={[
                       dfont({ size: 14 }),
-                      foregroundStyle(colors.mutedForeground),
+                      foregroundStyle(Colors.mutedForeground),
                       lineLimit(1),
                       truncationMode("middle"),
                       textSelection(true),
@@ -157,7 +137,7 @@ export default function SettingsScreen() {
               <Spacer />
               <Image
                 systemName="chevron.right"
-                color={colors.mutedForeground}
+                color={Colors.mutedForeground}
                 modifiers={[dfont({ size: 17 }), imageScale("small"), accessibilityHidden(true)]}
               />
             </HStack>
@@ -167,57 +147,38 @@ export default function SettingsScreen() {
             <SectionLabel>ACCOUNT</SectionLabel>
             {isGuest ? (
               <CapsuleRowButton
-                testID="settings-create-account"
                 label="Create an account"
                 inputLabels={["Create an account", "Sign up"]}
                 systemImage="person.crop.circle.badge.plus"
-                onPress={() => navigate(SIGN_UP_HREF)}
+                onPress={() => router.push("/auth/sign-up")}
               />
             ) : (
               <CapsuleRowButton
-                testID="settings-sessions"
                 label="Sessions"
                 systemImage="list.bullet.rectangle.portrait"
-                onPress={() => navigate("/sessions")}
+                onPress={() => router.push("/sessions")}
               />
             )}
             <CapsuleRowButton
-              testID="settings-preferences"
               label="Preferences"
               systemImage="slider.horizontal.3"
-              onPress={() => navigate("/settings/preferences")}
+              onPress={() => router.push("/settings/preferences")}
             />
           </VStack>
 
           <VStack spacing={8} alignment="leading" modifiers={[frame({ maxWidth: Infinity })]}>
             <SectionLabel>SUPPORT</SectionLabel>
             <CapsuleRowButton
-              testID="settings-help"
               label="Help & Feedback"
               inputLabels={["Help and Feedback", "Help", "Feedback"]}
               systemImage="questionmark.bubble.fill"
-              onPress={() => navigate("/help")}
+              onPress={() => router.push("/help")}
             />
             <CapsuleRowButton
-              testID="settings-privacy"
               label="Privacy"
               systemImage="lock.shield.fill"
-              onPress={() => navigate("/privacy")}
+              onPress={() => router.push("/privacy")}
             />
-            <CapsuleRowButton
-              testID="settings-copy-version"
-              label="Copy version"
-              systemImage="doc.on.doc"
-              onPress={handleCopyVersion}
-            />
-            {debugOn ? (
-              <CapsuleRowButton
-                testID="settings-debug"
-                label="Debug"
-                systemImage="ant.circle"
-                onPress={() => navigate(DEBUG_HREF)}
-              />
-            ) : null}
           </VStack>
 
           <VStack spacing={8} alignment="leading" modifiers={[frame({ maxWidth: Infinity })]}>
@@ -230,7 +191,6 @@ export default function SettingsScreen() {
               >
                 <Alert.Trigger>
                   <CapsuleRowButton
-                    testID="settings-discard-guest"
                     label="Discard guest data"
                     systemImage="trash"
                     onPress={() => setShowDiscardGuest(true)}
@@ -238,13 +198,8 @@ export default function SettingsScreen() {
                   />
                 </Alert.Trigger>
                 <Alert.Actions>
-                  <Button
-                    testID="settings-discard-guest-confirm"
-                    label="Discard"
-                    role="destructive"
-                    onPress={discardGuest}
-                  />
-                  <Button testID="settings-discard-guest-cancel" label="Cancel" role="cancel" />
+                  <Button label="Discard" role="destructive" onPress={discardGuest} />
+                  <Button label="Cancel" role="cancel" />
                 </Alert.Actions>
                 <Alert.Message>
                   <Text modifiers={[dfont({ size: 16 })]}>
@@ -256,83 +211,39 @@ export default function SettingsScreen() {
             ) : null}
 
             {isGuest ? null : (
-              <>
-                <ConfirmationDialog
-                  title="Sign out?"
-                  isPresented={showSignOut}
-                  onIsPresentedChange={setShowSignOut}
-                  titleVisibility="visible"
-                >
-                  <ConfirmationDialog.Trigger>
-                    <CapsuleRowButton
-                      testID="settings-sign-out"
-                      label="Sign out"
-                      systemImage="rectangle.portrait.and.arrow.right"
-                      onPress={() => setShowSignOut(true)}
-                      role="destructive"
-                    />
-                  </ConfirmationDialog.Trigger>
-                  <ConfirmationDialog.Actions>
-                    <Button
-                      testID="settings-sign-out-confirm"
-                      label="Sign Out"
-                      role="destructive"
-                      onPress={handleSignOut}
-                    />
-                    <Button testID="settings-sign-out-cancel" label="Cancel" role="cancel" />
-                  </ConfirmationDialog.Actions>
-                  <ConfirmationDialog.Message>
-                    <Text modifiers={[dfont({ size: 16 })]}>
-                      You will need to sign in again to access your account.
-                    </Text>
-                  </ConfirmationDialog.Message>
-                </ConfirmationDialog>
-
-                <Alert
-                  title="Delete account?"
-                  isPresented={showDeleteAccount}
-                  onIsPresentedChange={setShowDeleteAccount}
-                >
-                  <Alert.Trigger>
-                    <CapsuleRowButton
-                      testID="settings-delete-account"
-                      label="Delete account"
-                      systemImage="trash"
-                      onPress={() => setShowDeleteAccount(true)}
-                      role="destructive"
-                    />
-                  </Alert.Trigger>
-                  <Alert.Actions>
-                    <Button
-                      testID="settings-delete-account-confirm"
-                      label="Delete Account"
-                      role="destructive"
-                      onPress={deleteAccount}
-                    />
-                    <Button testID="settings-delete-account-cancel" label="Cancel" role="cancel" />
-                  </Alert.Actions>
-                  <Alert.Message>
-                    <Text modifiers={[dfont({ size: 16 })]}>
-                      Your account is scheduled for permanent deletion in 30 days. Sign in within
-                      that window to restore it.
-                    </Text>
-                  </Alert.Message>
-                </Alert>
-              </>
+              <Alert
+                title="Delete account?"
+                isPresented={showDeleteAccount}
+                onIsPresentedChange={setShowDeleteAccount}
+              >
+                <Alert.Trigger>
+                  <CapsuleRowButton
+                    label="Delete account"
+                    systemImage="trash"
+                    onPress={() => setShowDeleteAccount(true)}
+                    role="destructive"
+                  />
+                </Alert.Trigger>
+                <Alert.Actions>
+                  <Button label="Delete Account" role="destructive" onPress={deleteAccount} />
+                  <Button label="Cancel" role="cancel" />
+                </Alert.Actions>
+                <Alert.Message>
+                  <Text modifiers={[dfont({ size: 16 })]}>
+                    Your account is scheduled for permanent deletion in 30 days. Sign in within that
+                    window to restore it.
+                  </Text>
+                </Alert.Message>
+              </Alert>
             )}
           </VStack>
 
-          {deleteError ? <ErrorText testID="settings-delete-error">{deleteError}</ErrorText> : null}
-          {discardError ? (
-            <ErrorText testID="settings-discard-guest-error">{discardError}</ErrorText>
-          ) : null}
+          {deleteError ? <ErrorText>{deleteError}</ErrorText> : null}
+          {discardError ? <ErrorText>{discardError}</ErrorText> : null}
 
           <HStack modifiers={[frame({ maxWidth: Infinity }), padding({ top: 16 })]}>
             <Spacer />
-            <Text
-              testID="settings-version"
-              modifiers={[dfont({ size: 12 }), foregroundStyle(colors.mutedForeground)]}
-            >
+            <Text modifiers={[dfont({ size: 12 }), foregroundStyle(Colors.mutedForeground)]}>
               v{version}
             </Text>
             <Spacer />
@@ -340,23 +251,5 @@ export default function SettingsScreen() {
         </VStack>
       </ScrollView>
     </Host>
-  );
-}
-
-function ProfileHeaderAvatar({ avatarUrl }: { avatarUrl: string | null }) {
-  const colors = useColors();
-  if (avatarUrl) {
-    return <RemoteAvatar key={avatarUrl} url={avatarUrl} size={HEADER_AVATAR_SIZE} />;
-  }
-  return (
-    <Image
-      systemName="person.crop.circle.fill"
-      size={HEADER_AVATAR_SIZE}
-      color={colors.mutedForeground}
-      modifiers={[
-        frame({ width: HEADER_AVATAR_SIZE, height: HEADER_AVATAR_SIZE }),
-        accessibilityHidden(true),
-      ]}
-    />
   );
 }
