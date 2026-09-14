@@ -24,10 +24,15 @@ export type AscBundleId = {
   };
 };
 
+export type AscCapabilitySetting = {
+  key: string;
+  options: Array<{ key: string; enabled: boolean }>;
+};
+
 type AscBundleIdCapability = {
   type: "bundleIdCapabilities";
   id: string;
-  attributes: { capabilityType: string };
+  attributes: { capabilityType: string; settings: AscCapabilitySetting[] | null };
 };
 
 type AscApp = { type: "apps"; id: string };
@@ -193,11 +198,15 @@ export function makeAscClient(creds: AscCredentials) {
       async create(args: {
         bundleIdResourceId: string;
         capabilityType: string;
+        settings?: AscCapabilitySetting[];
       }): Promise<AscBundleIdCapability> {
         const body = {
           data: {
             type: "bundleIdCapabilities",
-            attributes: { capabilityType: args.capabilityType },
+            attributes: {
+              capabilityType: args.capabilityType,
+              ...(args.settings ? { settings: args.settings } : {}),
+            },
             relationships: {
               bundleId: {
                 data: { type: "bundleIds", id: args.bundleIdResourceId },
@@ -248,3 +257,12 @@ export async function validate(creds: AscCredentials): Promise<ValidateResult> {
 }
 
 export const SIGN_IN_WITH_APPLE_CAPABILITY = "APPLE_ID_AUTH";
+export const APP_GROUPS_CAPABILITY = "APP_GROUPS";
+export const ASSOCIATED_DOMAINS_CAPABILITY = "ASSOCIATED_DOMAINS";
+export const PUSH_NOTIFICATIONS_CAPABILITY = "PUSH_NOTIFICATIONS";
+
+// Sign In with Apple is the only one of the four Apple stores a setting for. Every identifier that
+// got it through Xcode or eas-cli reads back this pair, so send it rather than leaving it null.
+export const SIGN_IN_WITH_APPLE_SETTINGS: AscCapabilitySetting[] = [
+  { key: "APPLE_ID_AUTH_APP_CONSENT", options: [{ key: "PRIMARY_APP_CONSENT", enabled: true }] },
+];

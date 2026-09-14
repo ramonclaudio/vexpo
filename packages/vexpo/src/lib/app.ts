@@ -36,8 +36,40 @@ export async function bundleIdFallback(): Promise<string | null> {
   return /EXPO_PUBLIC_APP_BUNDLE_ID\s*\?\?\s*["`]([^"`]+)["`]/.exec(text)?.[1] ?? null;
 }
 
+export async function hasWidgets(): Promise<boolean> {
+  return /["']expo-widgets["']/.test(await readProjectFile("app.config.ts"));
+}
+
 export async function appleTeamIdFallback(): Promise<string | null> {
   const text = await readProjectFile("app.config.ts");
   const value = /EXPO_PUBLIC_APPLE_TEAM_ID\s*\?\?\s*["`]([^"`]+)["`]/.exec(text)?.[1] ?? null;
   return value === "ABCDE12345" ? null : value;
+}
+
+type EasBuildProfile = { extends?: string; env?: Record<string, string> };
+
+// The development profiles in eas.json set APP_VARIANT, eas-cli passes a profile's env in when it
+// evaluates app.config.ts, and the config appends .dev to the bundle id when the variant is set.
+// So a dev profile signs a different identifier than production, widget target and app group too.
+export async function isDevProfile(profile: string): Promise<boolean> {
+  let build: Record<string, EasBuildProfile>;
+  try {
+    const eas = JSON.parse(await readProjectFile("eas.json")) as {
+      build?: Record<string, EasBuildProfile>;
+    };
+    build = eas.build ?? {};
+  } catch {
+    return false;
+  }
+  const seen = new Set<string>();
+  for (
+    let name: string | undefined = profile;
+    name && !seen.has(name);
+    name = build[name]?.extends
+  ) {
+    seen.add(name);
+    const variant = build[name]?.env?.APP_VARIANT;
+    if (variant) return variant === "development";
+  }
+  return false;
 }
